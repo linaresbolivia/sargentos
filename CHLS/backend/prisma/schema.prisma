@@ -1,0 +1,420 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------------------------------------
+// IDENTITY & AUTHENTICATION
+// ------------------------------------------------------
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  firstName    String   @default("Usuario")
+  lastName     String   @default("Desconocido")
+  documentId   String?  @unique
+  phone        String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  roles  Role[]      @relation("UserRoles")
+  tokens UserToken[]
+  assignedPqrs PqrsTicket[]
+
+  // Link to the rich Person profile (Socio, Beneficiary)
+  person Person?
+
+  @@map("users")
+}
+
+model Role {
+  id          String       @id @default(uuid())
+  name        String       @unique
+  description String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  users       User[]       @relation("UserRoles")
+  permissions Permission[] @relation("RolePermissions")
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  roles       Role[]   @relation("RolePermissions")
+
+  @@map("permissions")
+}
+
+model UserToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@map("user_tokens")
+}
+
+// ------------------------------------------------------
+// MEMBERS MODULE (SOCIOS)
+// ------------------------------------------------------
+
+// 1. Socio (Persona)
+model Person {
+  id     String  @id @default(uuid())
+  userId String? @unique // Optional link to auth User
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  documentId          String    @unique
+  firstName           String
+  lastName            String
+  birthDate           DateTime?
+  gender              String?
+  maritalStatus       String?
+  nationality         String?
+  profession          String?
+  company             String?
+  address             String?
+  city                String?
+  phone               String?
+  mobile              String?
+  email               String?
+  photoUrl            String?
+  digitalSignatureUrl String?
+  status              String    @default("ACTIVO") // Activo, Suspendido, Fallecido, Retirado
+  personType          String    @default("SOCIO") // SOCIO, RECIPROCITY, EXTERNAL
+
+  // Memberships where this person is the TITULAR
+  titularMemberships Membership[] @relation("TitularMemberships")
+
+  // Memberships where this person is a BENEFICIARY
+  beneficiaries Beneficiary[]
+
+  // Credentials (RFID, QR, etc)
+  credentials Credential[]
+
+  // Access Logs
+  accessLogs AccessLog[]
+
+  // Occasional Guests hosted by this person
+  guests Guest[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("persons")
+}
+
+// ------------------------------------------------------
+// GUESTS (Invitados Ocasionales)
+// ------------------------------------------------------
+model Guest {
+  id           String   @id @default(uuid())
+  hostId       String   // Socio que invitó
+  host         Person   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  firstName    String
+  lastName     String
+  documentId   String?
+  status       String   @default("ACTIVO")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accessLogs   AccessLog[]
+
+  @@map("guests")
+}
+
+// 3. Tipos de Membresía
+model MembershipType {
+  id               String  @id @default(uuid())
+  code             String  @unique // TIT, FAM, HON, VIT
+  name             String
+  monthlyFee       Decimal @default(0)
+  maxBeneficiaries Int     @default(0)
+  votingRights     Boolean @default(false)
+  benefits         String?
+  accessRules      String?
+
+  memberships Membership[]
+
+  @@map("membership_types")
+}
+
+// 2. Membresía (Patrimonio)
+model Membership {
+  id               String @id @default(uuid())
+  membershipNumber String @unique
+
+  typeId String
+  type   MembershipType @relation(fields: [typeId], references: [id])
+
+  titularId String
+  titular   Person @relation("TitularMemberships", fields: [titularId], references: [id])
+
+  status             String    @default("ACTIVA") // Activa, Suspendida, Bloqueada, En Venta, Transferida, Cancelada
+  admissionDate      DateTime  @default(now())
+  activationDate     DateTime?
+  purchaseValue      Decimal   @default(0)
+  currentValue       Decimal   @default(0)
+  acquisitionMethod  String?
+  isTransferable     Boolean   @default(true)
+  hasShares          Boolean   @default(false)
+  sharesQuantity     Int       @default(0)
+  physicalDossierLoc String?
+  observations       String?
+  totalDebt          Decimal   @default(0) // Financial state caching
+
+  beneficiaries Beneficiary[]
+  history       MembershipHistory[]
+  vehicles      Vehicle[]
+  horses        Horse[]
+  pets          Pet[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("memberships")
+}
+
+// 4. Beneficiarios (Grupo Familiar)
+model Beneficiary {
+  id           String     @id @default(uuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  personId     String
+  person       Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  relationship String // Cónyuge, Hijo, Padre, Invitado Permanente
+  status       String @default("ACTIVO")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([membershipId, personId])
+  @@map("beneficiaries")
+}
+
+// 6. Historial de la Membresía
+model MembershipHistory {
+  id           String     @id @default(uuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  date         DateTime   @default(now())
+  action       String // Cambio de categoría, Transferencia, Suspensión, etc.
+  reason       String?
+  performedBy  String? // Usuario que realizó la acción
+
+  @@map("membership_history")
+}
+
+// 8. Credenciales
+model Credential {
+  id        String   @id @default(uuid())
+  personId  String
+  person    Person   @relation(fields: [personId], references: [id], onDelete: Cascade)
+  type      String // QR, BARRAS, RFID, HUELLA, FACIAL
+  value     String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  @@map("credentials")
+}
+
+// 9. Vehículos
+model Vehicle {
+  id           String     @id @default(uuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  type         String // Auto, Motocicleta, Bicicleta, Remolque
+  plate        String     @unique
+  brand        String?
+  model        String?
+  color        String?
+
+  @@map("vehicles")
+}
+
+// 10. Mascotas
+model Pet {
+  id           String     @id @default(uuid())
+  membershipId String
+  membership   Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  name         String
+  breed        String?
+  vaccines     String?
+  photoUrl     String?
+
+  @@map("pets")
+}
+
+// 11. Caballos
+model Horse {
+  id             String     @id @default(uuid())
+  membershipId   String
+  membership     Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  name           String
+  assignedBox    String?
+  coOwners       String?
+  hiredServices  String?
+  feedingDiet    String?
+  veterinarian   String?
+  farrier        String? // Herrador
+  competitions   String?
+  medicalHistory String?
+
+  @@map("horses")
+}
+
+// 12. Accesos
+model AccessLog {
+  id           String   @id @default(uuid())
+  personId     String?
+  person       Person?  @relation(fields: [personId], references: [id])
+  timestamp    DateTime @default(now())
+  gate         String // e.g. "Puerta Principal"
+  method       String // e.g. "Reconocimiento Facial", "Manual"
+  actionType   String @default("ENTRY") // "ENTRY", "EXIT"
+  personType   String @default("SOCIO") // Captured from Person
+  status       String // "GRANTED", "DENIED"
+  reason       String? // System reason (e.g. "Deuda Pendiente")
+  observation  String? // Manual observation from the guard
+  vehiclePlate String? // If they entered with a car
+
+  guestId      String?
+  guest        Guest?   @relation(fields: [guestId], references: [id], onDelete: SetNull)
+
+  @@map("access_logs")
+}
+
+// ------------------------------------------------------
+// WHATSAPP MODULE
+// ------------------------------------------------------
+
+model WhatsAppCampaign {
+  id           String   @id @default(uuid())
+  name         String
+  message      String
+  status       String   @default("EN_PROGRESO") // EN_PROGRESO, COMPLETA, CANCELADA
+  total        Int      @default(0)
+  successCount Int      @default(0)
+  failCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("whatsapp_campaigns")
+}
+
+model WhatsAppChat {
+  id            String   @id @default(uuid())
+  phone         String   @unique
+  contactName   String?
+  unreadCount   Int      @default(0)
+  lastMessage   String?
+  lastMessageAt DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages      WhatsAppMessage[]
+
+  @@map("whatsapp_chats")
+}
+
+model WhatsAppMessage {
+  id         String   @id @default(uuid())
+  chatId     String
+  chat       WhatsAppChat @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  content    String
+  fromMe     Boolean  @default(true)
+  status     String   @default("SENT") // SENT, DELIVERED, READ, FAILED
+  timestamp  DateTime @default(now())
+  hasMedia   Boolean  @default(false)
+
+  @@map("whatsapp_messages")
+}
+
+// ------------------------------------------------------
+// PQRS MODULE
+// ------------------------------------------------------
+
+model PqrsTicket {
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  trackingCode       String?  @unique
+  fullName           String
+  phone              String
+  email              String?
+  memberCode         String?
+  type               String
+  area               String?
+  applicantCondition String
+  description        String
+  status             String   @default("ABIERTO")
+  isRead             Boolean  @default(false)
+  resolution         String?
+  priority           String   @default("MEDIA")
+  assignedToId       String?
+  assignedTo         User?    @relation(fields: [assignedToId], references: [id])
+  rating             Int?
+  isWaitingForRating Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  history            PqrsHistory[]
+
+  @@map("pqrs_tickets")
+}
+
+model PqrsHistory {
+  id           String     @id @default(uuid())
+  ticketId     String
+  ticket       PqrsTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  action       String     // e.g. "CREADO", "ESTADO_ACTUALIZADO", "WHATSAPP_ENVIADO"
+  description  String     // Detalles de la acción
+  performedBy  String?    // User info or "System"
+  createdAt    DateTime   @default(now())
+
+  @@map("pqrs_history")
+}
+
+// ------------------------------------------------------
+// RESERVATIONS MODULE
+// ------------------------------------------------------
+
+model Court {
+  id           String             @id @default(uuid())
+  name         String
+  sport        String             // e.g. "Tenis", "Padel", "Wally"
+  isActive     Boolean            @default(true)
+  reservations CourtReservation[]
+
+  @@map("courts")
+}
+
+model CourtReservation {
+  id           String   @id @default(uuid())
+  courtId      String
+  court        Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  date         String   // YYYY-MM-DD
+  startTime    String   // HH:mm
+  endTime      String   // HH:mm
+  memberCode   String
+  memberName   String
+  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("court_reservations")
+}

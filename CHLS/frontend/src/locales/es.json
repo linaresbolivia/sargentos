@@ -1,0 +1,75 @@
+{
+  "login": {
+    "title": "Club Hípico Los Sargentos",
+    "emailLabel": "Correo Electrónico",
+    "emailPlaceholder": "ejemplo@correo.com",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "••••••••",
+    "submit": "Ingresar",
+    "noAccount": "¿No tienes una cuenta?",
+    "registerHere": "Regístrate aquí",
+    "errorFields": "Por favor complete todos los campos",
+    "welcomeBack": "¡Bienvenido de vuelta!",
+    "errorLogin": "Error al iniciar sesión"
+  },
+  "register": {
+    "title": "Registro de Socios y Personal",
+    "firstNameLabel": "Nombres",
+    "lastNameLabel": "Apellidos",
+    "documentLabel": "C.I. o Pasaporte (Opcional)",
+    "phoneLabel": "Teléfono (Opcional)",
+    "emailLabel": "Correo Electrónico",
+    "passwordLabel": "Contraseña",
+    "passwordPlaceholder": "Mínimo 6 caracteres",
+    "submit": "Crear Cuenta",
+    "creating": "Creando cuenta...",
+    "hasAccount": "¿Ya tienes una cuenta?",
+    "loginHere": "Inicia sesión aquí",
+    "errorFields": "Por favor complete todos los campos obligatorios",
+    "success": "¡Registro exitoso! Bienvenido",
+    "errorRegister": "Error en el registro"
+  },
+  "dashboard": {
+    "title": "PANEL DEL SOCIO",
+    "subtitle": "Gestión de Membresía y Patrimonio",
+    "membership": {
+      "notFound": "NO ENCONTRADA",
+      "noMembershipDesc": "No hay una membresía activa registrada para este perfil.",
+      "memberNumber": "Nº Socio:",
+      "status": "Estado:",
+      "admission": "Ingreso:",
+      "active": "ACTIVO",
+      "inactive": "INACTIVO"
+    },
+    "menus": {
+      "myMembership": "Mi Membresía",
+      "myData": "Mis Datos",
+      "family": "Familia",
+      "assets": "Patrimonio",
+      "billing": "Facturación"
+    },
+    "kpis": {
+      "debt": "Deuda Activa",
+      "debtDesc": "Cuota del mes al día",
+      "seniority": "Antigüedad",
+      "seniorityDesc": "Años en el Club",
+      "horses": "Caballos (Stud)",
+      "horsesDesc": "Registrados",
+      "vehicles": "Vehículos",
+      "vehiclesDesc": "Con Sticker"
+    },
+    "quickActions": "Acciones Rápidas",
+    "actions": {
+      "pay": "Pagar Cuota",
+      "qr": "Generar QR",
+      "family": "Añadir Familiar",
+      "horse": "Registrar Caballo"
+    },
+    "lastActivity": "Última Actividad",
+    "noActivity": "No hay actividad reciente registrada."
+  },
+  "header": {
+    "logout": "Cerrar Sesión",
+    "logoutSuccess": "Sesión cerrada correctamente"
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "login": {
+    "title": "Los Sargentos Equestrian Club",
+    "emailLabel": "Email Address",
+    "emailPlaceholder": "example@email.com",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "••••••••",
+    "submit": "Sign In",
+    "noAccount": "Don't have an account?",
+    "registerHere": "Register here",
+    "errorFields": "Please fill in all fields",
+    "welcomeBack": "Welcome back!",
+    "errorLogin": "Error logging in"
+  },
+  "register": {
+    "title": "Member & Staff Registration",
+    "firstNameLabel": "First Name",
+    "lastNameLabel": "Last Name",
+    "documentLabel": "ID or Passport (Optional)",
+    "phoneLabel": "Phone Number (Optional)",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "passwordPlaceholder": "Minimum 6 characters",
+    "submit": "Create Account",
+    "creating": "Creating account...",
+    "hasAccount": "Already have an account?",
+    "loginHere": "Sign in here",
+    "errorFields": "Please fill in all required fields",
+    "success": "Registration successful! Welcome",
+    "errorRegister": "Registration error"
+  },
+  "dashboard": {
+    "title": "MEMBER DASHBOARD",
+    "subtitle": "Membership & Asset Management",
+    "membership": {
+      "notFound": "NOT FOUND",
+      "noMembershipDesc": "There is no active membership registered for this profile.",
+      "memberNumber": "Member No:",
+      "status": "Status:",
+      "admission": "Admission:",
+      "active": "ACTIVE",
+      "inactive": "INACTIVE"
+    },
+    "menus": {
+      "myMembership": "My Membership",
+      "myData": "My Data",
+      "family": "Family",
+      "assets": "Assets",
+      "billing": "Billing"
+    },
+    "kpis": {
+      "debt": "Active Debt",
+      "debtDesc": "Current month fee",
+      "seniority": "Seniority",
+      "seniorityDesc": "Years in the Club",
+      "horses": "Horses (Stud)",
+      "horsesDesc": "Registered",
+      "vehicles": "Vehicles",
+      "vehiclesDesc": "With Sticker"
+    },
+    "quickActions": "Quick Actions",
+    "actions": {
+      "pay": "Pay Fee",
+      "qr": "Generate QR",
+      "family": "Add Relative",
+      "horse": "Register Horse"
+    },
+    "lastActivity": "Last Activity",
+    "noActivity": "No recent activity registered."
+  },
+  "header": {
+    "logout": "Sign Out",
+    "logoutSuccess": "Signed out successfully"
+  }
+}
