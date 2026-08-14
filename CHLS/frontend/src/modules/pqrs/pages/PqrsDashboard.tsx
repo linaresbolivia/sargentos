@@ -33,8 +33,6 @@ interface PqrsTicket {
   assignedToId?: string | null;
   assignedTo?: { id: string; firstName: string; lastName: string; email: string };
   history?: PqrsHistory[];
-  rating?: number;
-  isWaitingForRating?: boolean;
 }
 
 interface PqrsHistory {
@@ -63,7 +61,7 @@ const getLastNote = (ticket: PqrsTicket) => {
   return last.description.split('\n')[0]; 
 };
 
-const KanbanCard = ({ ticket, onOpen, activeTab }: { ticket: PqrsTicket, onOpen: () => void, activeTab: string }) => {
+const KanbanCard = ({ ticket, onOpen }: { ticket: PqrsTicket, onOpen: () => void }) => {
   const lastActionDate = ticket.history && ticket.history.length > 0 ? new Date(ticket.history[0].createdAt) : new Date(ticket.createdAt);
   const daysOpen = differenceInDays(new Date(), lastActionDate);
   const isStuck = daysOpen >= 3 && ticket.status !== 'CERRADO';
@@ -157,8 +155,6 @@ export const PqrsDashboard: React.FC = () => {
   const [newPriority, setNewPriority] = useState('');
   const [newAssignedTo, setNewAssignedTo] = useState('');
   const [internalNote, setInternalNote] = useState('');
-  const [closingImageBase64, setClosingImageBase64] = useState<string | null>(null);
-  const [compressionStats, setCompressionStats] = useState<{original: string, compressed: string, saved: string} | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [isSentSuccess, setIsSentSuccess] = useState(false);
   const navigate = useNavigate();
@@ -294,8 +290,6 @@ export const PqrsDashboard: React.FC = () => {
     setNewPriority(ticket.priority || 'MEDIA');
     setNewAssignedTo(ticket.assignedToId || '');
     setInternalNote('');
-    setClosingImageBase64(null);
-    setCompressionStats(null);
   };
 
   const handleCloseModal = () => {
@@ -344,75 +338,13 @@ export const PqrsDashboard: React.FC = () => {
   // Removed WhatsApp responder handlers
 
 
-  const handleClosingImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setClosingImageBase64(null);
-      setCompressionStats(null);
-      return;
-    }
-    
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor, selecciona una imagen válida.');
-      return;
-    }
-    
-    const originalSizeKb = (file.size / 1024).toFixed(1);
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1000;
-        const MAX_HEIGHT = 1000;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.6);
-        const compressedSizeKb = (Math.round((compressedBase64.length * 3 / 4) / 1024)).toFixed(1);
-        const savedPercent = (100 - (Number(compressedSizeKb) / Number(originalSizeKb)) * 100).toFixed(1);
-
-        setClosingImageBase64(compressedBase64);
-        setCompressionStats({
-           original: originalSizeKb,
-           compressed: compressedSizeKb,
-           saved: savedPercent
-        });
-      };
-      img.src = event.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  };
-
   const handleSaveChanges = async () => {
     if (!selectedTicket) return;
 
     const isClosing = (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && selectedTicket.status !== 'CERRADO' && selectedTicket.status !== 'RESUELTO';
     
     if (isClosing) {
-      if (!closingImageBase64) {
-        toast.error('Por favor, adjunta una imagen de respaldo para cerrar el caso.');
-        return;
-      }
-      const confirmClose = window.confirm("¿Estás seguro de que deseas cerrar este ticket?\nSe enviará automáticamente un mensaje de WhatsApp al socio con la imagen adjunta para pedir su calificación.");
+      const confirmClose = window.confirm("¿Estás seguro de que deseas cerrar este ticket?\nSe enviará automáticamente un mensaje de WhatsApp al socio para pedir su calificación.");
       if (!confirmClose) return;
     }
 
@@ -443,8 +375,7 @@ export const PqrsDashboard: React.FC = () => {
       if (hasStatusChanges) {
         await api.put(`/pqrs/${selectedTicket.id}/status`, {
           status: finalStatus,
-          resolution: !noteSent ? internalNote.trim() : undefined,
-          mediaBase64: isClosing ? closingImageBase64 : undefined
+          resolution: !noteSent ? internalNote.trim() : undefined
         });
         if (!noteSent && internalNote.trim()) noteSent = true;
         madeChanges = true;
@@ -1057,7 +988,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'ABIERTO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} activeTab={activeTab} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
               ))}
             </div>
           </div>
@@ -1068,7 +999,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'EN_PROGRESO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} activeTab={activeTab} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
               ))}
             </div>
           </div>
@@ -1080,7 +1011,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'CERRADO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} activeTab={activeTab} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
               ))}
             </div>
           </div>
@@ -1435,30 +1366,7 @@ export const PqrsDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && (
-                    <div className="mb-4 relative z-10">
-                      <label className="block text-xs uppercase tracking-wider font-semibold text-emerald-600 dark:text-emerald-400 mb-2">
-                        Imagen de Respaldo (Obligatoria)
-                      </label>
-                      <input 
-                        type="file" 
-                        accept="image/*"
-                        onChange={handleClosingImageChange}
-                        className="w-full text-sm p-2 rounded bg-white dark:bg-black/30 border border-emerald-300 dark:border-emerald-700 custom-scrollbar"
-                      />
-                      {closingImageBase64 && compressionStats && (
-                        <div className="mt-2 text-xs text-emerald-700 dark:text-emerald-300 font-semibold bg-emerald-50 dark:bg-emerald-900/20 p-2 rounded border border-emerald-200 dark:border-emerald-800 flex flex-col gap-1">
-                          <div className="flex items-center gap-1">
-                            <CheckCircle size={14} /> ¡Imagen subida y comprimida con éxito!
-                          </div>
-                          <div className="text-emerald-600 dark:text-emerald-400 pl-5">
-                            Tamaño original: {compressionStats.original} KB <br/>
-                            Tamaño final: {compressionStats.compressed} KB (Ahorro del {compressionStats.saved}%)
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && null }
 
                   <div className="flex flex-col flex-1 mb-6 relative z-10">
                     <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-2">

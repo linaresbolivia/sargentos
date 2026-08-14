@@ -17,7 +17,7 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
 
   const fetchStatus = async () => {
     try {
-      const res = await api.get(`/whatsapp/chls-pqrs/status?t=${Date.now()}`);
+      const res = await api.get('/whatsapp/chls-pqrs/status');
       if (res.data && res.data.success) {
         setWaStatus(res.data.data);
       }

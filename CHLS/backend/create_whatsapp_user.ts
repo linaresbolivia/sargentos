@@ -18,14 +18,14 @@ async function main() {
   await prisma.user.upsert({
     where: { email: 'adminmasivo@chls.com' },
     update: {
-      roles: { connect: [{ name: 'MODULO_WHATSAPP' }, { name: 'MODULO_PQRS' }] }
+      roles: { connect: [{ name: 'MODULO_WHATSAPP' }] }
     },
     create: {
       firstName: 'Admin',
       lastName: 'Masivo',
       email: 'adminmasivo@chls.com',
       passwordHash: passwordHash,
-      roles: { connect: [{ name: 'MODULO_WHATSAPP' }, { name: 'MODULO_PQRS' }] }
+      roles: { connect: [{ name: 'MODULO_WHATSAPP' }] }
     }
   });
 

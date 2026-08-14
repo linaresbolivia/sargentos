@@ -21,7 +21,20 @@ export class WhatsappClientInstance {
     this.client = new Client({
       authStrategy: new LocalAuth({ clientId: this.clientId }),
       puppeteer: {
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-accelerated-2d-canvas', '--disable-gpu'],
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-accelerated-2d-canvas',
+          '--no-first-run',
+          '--no-zygote',
+          '--disable-gpu'
+        ],
+        bypassCSP: true,
+      },
+      webVersionCache: {
+        type: 'none',
       }
     });
     this.initializeEvents();
@@ -213,7 +226,7 @@ export class WhatsappClientInstance {
         }
         if (!cleanHistory) cleanHistory = 'En proceso de revisión.';
         
-        const formatText = (text: string | null | undefined) => {
+        const formatText = (text?: string | null) => {
           if (!text) return '';
           const lower = text.replace(/_/g, ' ').toLowerCase();
           return lower.charAt(0).toUpperCase() + lower.slice(1);
@@ -236,7 +249,7 @@ export class WhatsappClientInstance {
     }
   }
 
-  public async sendMessage(to: string, content: string, mediaBase64?: string) {
+  public async sendMessage(to: string, content: string) {
     if (this.status !== 'CONNECTED' || !this.client) {
       console.error('WhatsApp client is not connected');
       return;
@@ -257,23 +270,7 @@ export class WhatsappClientInstance {
         console.warn(`[${this.clientId}] No se pudo simular escritura para ${chatId}`);
       }
       
-      let mediaToSend: MessageMedia | undefined;
-      if (mediaBase64) {
-        const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
-        if (match) {
-          const extension = match[1].split('/')[1] || 'jpg';
-          mediaToSend = new MessageMedia(match[1], match[2], `respaldo.${extension}`);
-        }
-      }
-      
-      if (mediaToSend) {
-        await this.client.sendMessage(chatId, mediaToSend, { 
-          caption: content,
-          sendMediaAsDocument: false
-        });
-      } else {
-        await this.client.sendMessage(chatId, content);
-      }
+      await this.client.sendMessage(chatId, content);
     } catch (e) {
       console.error(`[${this.clientId}] Error sending direct message`, e);
     }

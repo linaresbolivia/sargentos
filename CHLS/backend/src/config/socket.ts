@@ -9,7 +9,7 @@ class SocketService {
   public init(httpServer: HttpServer) {
     this.io = new Server(httpServer, {
       cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+        origin: (env as any).CORS_ORIGIN || 'http://localhost:5173',
         credentials: true,
       },
     });
