@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -118,7 +118,7 @@ export const MainPortal: React.FC = () => {
             
             {isAdmin && (
               <Link 
-                to="/gatehouse"
+                to="/access-selection"
                 className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
               >
                 <div className="w-14 h-14 rounded-xl bg-brand-gold/10 flex items-center justify-center text-brand-gold group-hover:scale-110 transition-transform duration-300 mr-6">
@@ -129,7 +129,7 @@ export const MainPortal: React.FC = () => {
                     Control de Acceso
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Punto de control de portería, validación y registro de ingresos.
+                    Puntos de control: Caseta Principal, Piscina y Gimnasio.
                   </p>
                 </div>
               </Link>
@@ -192,24 +192,45 @@ export const MainPortal: React.FC = () => {
               </Link>
             )}
 
-            {isMember && !isAdmin && (
-              <Link 
-                to="/member"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                  <Settings className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-purple-500 transition-colors">
-                    Portal del Socio
+            {/* Semáforo de Aforo en Tiempo Real */}
+            <Link 
+              to="/member/occupancy"
+              className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-cyan-500/20 dark:border-cyan-500/30 rounded-2xl hover:border-cyan-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+            >
+              <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform duration-300 mr-6">
+                <Waves className="w-7 h-7" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-cyan-400 transition-colors">
+                    Semáforo de Aforo (En Vivo)
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Visualiza tu membresía, historial y estados de cuenta.
-                  </p>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    SOCIOS
+                  </span>
                 </div>
-              </Link>
-            )}
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Consulta cuán lleno está el club (Piscina, Gimnasio y Canchas) antes de asistir.
+                </p>
+              </div>
+            </Link>
+
+            <Link 
+              to="/member"
+              className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
+            >
+              <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-300 mr-6">
+                <Settings className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-purple-500 transition-colors">
+                  Portal del Socio
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Visualiza tu membresía, credencial digital, historial y estados de cuenta.
+                </p>
+              </div>
+            </Link>
 
           </div>
         </div>

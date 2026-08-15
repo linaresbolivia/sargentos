@@ -18,6 +18,11 @@ import { PqrsAnalytics } from './modules/pqrs/pages/PqrsAnalytics';
 import { PqrsReports } from './modules/pqrs/pages/PqrsReports';
 import { CourtBooking } from './modules/reservations/pages/CourtBooking';
 import { CourtAdminDashboard } from './modules/reservations/pages/CourtAdminDashboard';
+import { AccessPointSelection } from './modules/accessControl/pages/AccessPointSelection';
+import { AreaAccessDashboard } from './modules/accessControl/pages/AreaAccessDashboard';
+import { AreaReports } from './modules/accessControl/pages/AreaReports';
+import { AreaManagementAnalytics } from './modules/accessControl/pages/AreaManagementAnalytics';
+import { LiveClubOccupancy } from './modules/members/pages/LiveClubOccupancy';
 
 import { MainPortal } from '@shared/pages/MainPortal';
 
@@ -85,12 +90,21 @@ export const App: React.FC = () => {
           <Route path="/" element={<DashboardRedirect />} />
           <Route path="/member" element={<MemberDashboard />} />
           <Route path="/member/reservations" element={<CourtBooking />} />
+          <Route path="/member/occupancy" element={<LiveClubOccupancy />} />
+          <Route path="/live-occupancy" element={<LiveClubOccupancy />} />
         </Route>
 
-        {/* Admin only protected routes */}
-        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN']} />}>
-          <Route path="/admin/access" element={<AccessControl />} />
+        {/* Admin and Staff Access Control routes */}
+        <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'STAFF']} />}>
+          <Route path="/access-selection" element={<AccessPointSelection />} />
           <Route path="/gatehouse" element={<GatehouseDashboard />} />
+          <Route path="/access/piscina" element={<AreaAccessDashboard areaProp="PISCINA" />} />
+          <Route path="/access/gimnasio" element={<AreaAccessDashboard areaProp="GIMNASIO" />} />
+          <Route path="/access/reports" element={<AreaReports />} />
+          <Route path="/access/piscina/reports" element={<AreaReports defaultArea="PISCINA" />} />
+          <Route path="/access/gimnasio/reports" element={<AreaReports defaultArea="GIMNASIO" />} />
+          <Route path="/access/analytics" element={<AreaManagementAnalytics />} />
+          <Route path="/admin/access" element={<AccessControl />} />
           <Route path="/admin/reservations" element={<CourtAdminDashboard />} />
         </Route>
 

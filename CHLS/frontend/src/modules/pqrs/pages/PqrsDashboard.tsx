@@ -30,6 +30,8 @@ interface PqrsTicket {
   createdAt: string;
   isRead?: boolean;
   priority: string;
+  rating?: number;
+  ratingComment?: string;
   assignedToId?: string | null;
   assignedTo?: { id: string; firstName: string; lastName: string; email: string };
   history?: PqrsHistory[];
@@ -61,7 +63,7 @@ const getLastNote = (ticket: PqrsTicket) => {
   return last.description.split('\n')[0]; 
 };
 
-const KanbanCard = ({ ticket, onOpen }: { ticket: PqrsTicket, onOpen: () => void }) => {
+const KanbanCard = ({ ticket, onOpen, activeTab }: { ticket: PqrsTicket, onOpen: () => void, activeTab?: string }) => {
   const lastActionDate = ticket.history && ticket.history.length > 0 ? new Date(ticket.history[0].createdAt) : new Date(ticket.createdAt);
   const daysOpen = differenceInDays(new Date(), lastActionDate);
   const isStuck = daysOpen >= 3 && ticket.status !== 'CERRADO';

@@ -300,6 +300,60 @@ model AccessLog {
   @@map("access_logs")
 }
 
+// 13. Accesos Específicos por Área (Piscina / Gimnasio)
+model AreaAccessLog {
+  id              String    @id @default(uuid())
+  area            String    // "PISCINA" | "GIMNASIO"
+  entryTime       DateTime  @default(now())
+  exitTime        DateTime?
+  memberCode      String?
+  personName      String
+  documentId      String?
+  dependency      String    @default("TITULAR") // TITULAR, ESPOSA, HIJO, PADRE_MADRE, NIETO, INVITADO, PROFESOR, EXTERNO, CONVENIO, HUESPED
+  gender          String    @default("VARON")   // VARON, MUJER
+  lockerKey       String?   // Número de llave / casillero entregado
+  towelNumber     String?   // Número de toalla entregada (ej: "45", "12", "T-08")
+  towelQty        Int       @default(0)         // Cantidad de toallas entregadas
+  towelSize       String?   // "GRANDE", "PEQUEÑA", "AMBAS", "NINGUNA"
+  observations    String?
+  status          String    @default("DENTRO")  // "DENTRO", "SALIO"
+  registeredById  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  personId        String?
+  person          Person?   @relation(fields: [personId], references: [id], onDelete: SetNull)
+
+  @@map("area_access_logs")
+}
+
+// 14. Configuración Dinámica de Áreas (Capacidad y Casilleros)
+model AreaConfig {
+  id           String   @id @default(uuid())
+  area         String   @unique // "PISCINA" | "GIMNASIO"
+  totalLockers Int      @default(50)
+  maxCapacity  Int      @default(50)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("area_configs")
+}
+
+// 15. Registro Periódico de Temperatura del Agua de Piscina
+model PoolTemperatureLog {
+  id            String   @id @default(uuid())
+  temperature   Float    // Ej: 28.5
+  ambientTemp   Float?   // Ej: 22.0
+  phLevel       Float?   // Ej: 7.4
+  chlorineLevel Float?   // Ej: 1.5
+  notes         String?  // Ej: "Caldera funcionando normal"
+  recordedBy    String?  // Nombre del funcionario que midió
+  recordedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@map("pool_temperature_logs")
+}
+
 // ------------------------------------------------------
 // WHATSAPP MODULE
 // ------------------------------------------------------

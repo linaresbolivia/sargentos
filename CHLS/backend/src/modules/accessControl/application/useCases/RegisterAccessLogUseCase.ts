@@ -10,6 +10,7 @@ export interface RegisterAccessLogDTO {
   observation?: string;
   vehiclePlate?: string;
   personType?: string;
+  itemsReceivedAtGatehouse?: boolean;
 }
 
 export class RegisterAccessLogUseCase {
@@ -43,6 +44,29 @@ export class RegisterAccessLogUseCase {
         }
       }
     });
+
+    // If person is exiting the entire club, update any open AreaAccessLog sessions (Piscina / Gimnasio)
+    if (data.actionType === 'EXIT' && data.personId) {
+      try {
+        const obsNote = data.itemsReceivedAtGatehouse
+          ? 'Insumos (Llave/Toalla) entregados y recibidos en Caseta Principal'
+          : 'Salida del Club registrada en Caseta Principal';
+
+        await this.prisma.areaAccessLog.updateMany({
+          where: {
+            personId: data.personId,
+            status: 'DENTRO'
+          },
+          data: {
+            status: 'SALIO',
+            exitTime: new Date(),
+            observations: obsNote
+          }
+        });
+      } catch (err) {
+        console.error('Error auto-closing area logs upon gatehouse exit:', err);
+      }
+    }
 
     return log;
   }

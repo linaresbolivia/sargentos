@@ -1,5 +1,16 @@
 import { PrismaClient } from '@prisma/client';
 
+export interface AreaLoanItem {
+  id: string;
+  area: string;
+  entryTime: Date;
+  lockerKey: string | null;
+  towelNumber: string | null;
+  towelQty: number;
+  towelSize: string | null;
+  observations?: string | null;
+}
+
 export interface AccessSearchResult {
   personId: string;
   fullName: string;
@@ -19,6 +30,7 @@ export interface AccessSearchResult {
   currentLocation: 'INSIDE' | 'OUTSIDE';
   lastVehiclePlate?: string | null;
   personType: string;
+  pendingAreaLoans?: AreaLoanItem[];
 }
 
 export class SearchMemberForAccessUseCase {
@@ -78,6 +90,10 @@ export class SearchMemberForAccessUseCase {
         accessLogs: {
           orderBy: { timestamp: 'desc' },
           take: 1
+        },
+        areaAccessLogs: {
+          where: { status: 'DENTRO' },
+          orderBy: { entryTime: 'desc' }
         }
       },
       take: 5
@@ -128,6 +144,20 @@ export class SearchMemberForAccessUseCase {
         ? 'INSIDE' 
         : 'OUTSIDE';
 
+      // Check for unreturned locker keys or towels in Piscina or Gimnasio
+      const pendingAreaLoans: AreaLoanItem[] = (person.areaAccessLogs || [])
+        .filter(l => l.status === 'DENTRO' && (Boolean(l.lockerKey) || Boolean(l.towelNumber) || (l.towelQty && l.towelQty > 0)))
+        .map(l => ({
+          id: l.id,
+          area: l.area,
+          entryTime: l.entryTime,
+          lockerKey: l.lockerKey,
+          towelNumber: l.towelNumber,
+          towelQty: l.towelQty,
+          towelSize: l.towelSize,
+          observations: l.observations
+        }));
+
       return {
         personId: person.id,
         fullName: `${person.firstName} ${person.lastName}`,
@@ -146,7 +176,8 @@ export class SearchMemberForAccessUseCase {
         })) || [],
         currentLocation,
         lastVehiclePlate: lastLog?.vehiclePlate,
-        personType: person.personType || 'SOCIO'
+        personType: person.personType || 'SOCIO',
+        pendingAreaLoans
       };
     });
   }

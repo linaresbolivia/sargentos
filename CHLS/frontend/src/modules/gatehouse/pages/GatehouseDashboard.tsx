@@ -2,7 +2,24 @@ import React, { useState, useRef } from 'react';
 import { api } from '@config/api';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Search, CheckCircle, XCircle, LogOut, Car, AlertCircle, Clock, UserPlus, ArrowLeft } from 'lucide-react';
+import { 
+  Search, 
+  CheckCircle, 
+  XCircle, 
+  LogOut, 
+  Car, 
+  AlertCircle, 
+  Clock, 
+  UserPlus, 
+  ArrowLeft,
+  ShieldAlert,
+  AlertTriangle,
+  Check,
+  Waves,
+  Dumbbell,
+  Key,
+  Layers
+} from 'lucide-react';
 import { AccessLogHistory } from '../components/AccessLogHistory';
 import { AccessSearchResult } from '../../../../../backend/src/modules/accessControl/application/useCases/SearchMemberForAccessUseCase';
 import { useDispatch } from 'react-redux';
@@ -28,6 +45,7 @@ export const GatehouseDashboard: React.FC = () => {
   const [isGuestModalOpen, setIsGuestModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isStandaloneModalOpen, setIsStandaloneModalOpen] = useState(false);
+  const [isPendingLoansModalOpen, setIsPendingLoansModalOpen] = useState(false);
   
   const [observation, setObservation] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
@@ -91,8 +109,26 @@ export const GatehouseDashboard: React.FC = () => {
     }
   };
 
-  const handleRegisterAccess = async (forceGranted: boolean = false) => {
+  const handleRegisterAccess = async (
+    forceGranted: boolean = false, 
+    itemsReceivedAtGatehouse: boolean = false, 
+    forceWithoutItems: boolean = false
+  ) => {
     if (!selectedMember) return;
+    
+    const effectiveAction = actionType || (selectedMember.currentLocation === 'INSIDE' ? 'EXIT' : 'ENTRY');
+
+    // Intercept EXIT if member has unreturned area items and guard hasn't confirmed action in modal
+    if (
+      effectiveAction === 'EXIT' && 
+      selectedMember.pendingAreaLoans && 
+      selectedMember.pendingAreaLoans.length > 0 && 
+      !itemsReceivedAtGatehouse && 
+      !forceWithoutItems
+    ) {
+      setIsPendingLoansModalOpen(true);
+      return;
+    }
     
     if (!accessMethod) {
       toast.error('Debe seleccionar un método de acceso (Vehicular, Taxi o Peatonal)');
@@ -115,23 +151,37 @@ export const GatehouseDashboard: React.FC = () => {
         finalObservation = `[ACCESO FORZADO] ${observation}`;
       }
 
+      if (forceWithoutItems) {
+        finalObservation = `[SALIDA FORZADA - INSUMOS NO DEVUELTOS] ${observation}`;
+      } else if (itemsReceivedAtGatehouse) {
+        finalObservation = `[INSUMOS RECIBIDOS EN CASETA] ${observation}`;
+      }
+
       await api.post('/access/log', {
         personId: selectedMember.personId,
         gate: 'Puerta Principal',
         method: accessMethod === 'VEHICLE' ? 'Manual' : (accessMethod === 'TAXI' ? 'Taxi' : 'Peatonal'),
-        actionType: actionType || (selectedMember.currentLocation === 'INSIDE' ? 'EXIT' : 'ENTRY'),
+        actionType: effectiveAction,
         status: finalStatus,
         reason: selectedMember.reason,
-        observation: finalObservation,
+        observation: finalObservation.trim(),
         vehiclePlate: accessMethod === 'VEHICLE' ? (vehiclePlate || undefined) : undefined,
-        personType: accessPersonType
+        personType: accessPersonType,
+        itemsReceivedAtGatehouse
       });
 
-      toast.success(finalStatus === 'GRANTED' 
-        ? (actionType === 'EXIT' ? 'Salida Registrada' : 'Ingreso Registrado') 
-        : 'Denegación Registrada');
+      if (itemsReceivedAtGatehouse) {
+        toast.success('¡Insumos recibidos en Caseta y Salida Registrada!', { icon: '📥', duration: 4000 });
+      } else if (forceWithoutItems) {
+        toast('Salida registrada con Incidencia de Seguridad (Insumos no devueltos)', { icon: '⚠️', duration: 5000 });
+      } else {
+        toast.success(finalStatus === 'GRANTED' 
+          ? (effectiveAction === 'EXIT' ? 'Salida Registrada' : 'Ingreso Registrado') 
+          : 'Denegación Registrada');
+      }
       
       // Reset
+      setIsPendingLoansModalOpen(false);
       setSearchTerm('');
       setHasSearched(false);
       setSelectedMember(null);
@@ -328,6 +378,43 @@ export const GatehouseDashboard: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Warning Banner: Insumos Pendientes de Devolución */}
+              {selectedMember.pendingAreaLoans && selectedMember.pendingAreaLoans.length > 0 && (
+                <div className="w-full bg-gradient-to-r from-amber-500/20 via-red-500/20 to-amber-500/20 border-2 border-amber-500/60 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-11 h-11 rounded-xl bg-amber-500/30 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0">
+                      <ShieldAlert className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider">
+                          ¡Alerta Caseta!
+                        </span>
+                        <h4 className="font-extrabold text-sm text-amber-400 uppercase tracking-wide">
+                          Insumos del Club Pendientes de Devolución
+                        </h4>
+                      </div>
+                      <div className="text-xs text-gray-200 mt-1 flex flex-wrap gap-2">
+                        {selectedMember.pendingAreaLoans.map((loan) => (
+                          <span key={loan.id} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-black/50 border border-amber-500/40 text-white font-medium text-xs">
+                            {loan.area === 'PISCINA' ? <Waves className="w-3.5 h-3.5 text-cyan-400" /> : <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />}
+                            <strong>{loan.area}:</strong> 
+                            {loan.lockerKey ? ` Casillero #${loan.lockerKey}` : ''}
+                            {(loan.towelNumber || loan.towelQty > 0) ? ` • Toalla #${loan.towelNumber || loan.towelQty} (${loan.towelSize || ''})` : ''}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right shrink-0">
+                    <span className="text-[11px] text-amber-300 font-semibold bg-black/40 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                      👉 Solicitar entrega antes de permitir salida
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* Bottom Row: Entry Form */}
               <div className="w-full bg-white dark:bg-[#0d2116] rounded-2xl border border-gray-200 dark:border-brand-gold/20 p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200">
@@ -701,6 +788,102 @@ export const GatehouseDashboard: React.FC = () => {
           handleSelectMember(person, true);
         }}
       />
+
+      {/* Modal de Alerta e Intercepción de Insumos Pendientes */}
+      {isPendingLoansModalOpen && selectedMember && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fadeIn">
+          <div className="bg-white dark:bg-[#0c130f] border-2 border-amber-500 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl shadow-amber-500/20 animate-scaleIn relative overflow-hidden">
+            
+            {/* Background glow */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -z-0"></div>
+
+            {/* Header */}
+            <div className="flex items-center gap-3.5 mb-5 border-b border-gray-200 dark:border-white/10 pb-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 border border-amber-500/40 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              <div>
+                <span className="text-[10px] font-black tracking-widest uppercase bg-amber-500 text-black px-2.5 py-0.5 rounded-full">
+                  Control de Insumos • Caseta
+                </span>
+                <h3 className="text-xl font-extrabold text-gray-900 dark:text-white mt-0.5">
+                  Insumos Pendientes de Devolución
+                </h3>
+              </div>
+            </div>
+
+            {/* Member summary */}
+            <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-gray-200 dark:border-white/10 mb-5 flex items-center gap-3">
+              <div className="w-11 h-11 rounded-xl bg-brand-gold/20 text-brand-gold font-bold flex items-center justify-center shrink-0">
+                {selectedMember.fullName.charAt(0)}
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">{selectedMember.fullName}</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400">CI: {selectedMember.documentId} • Membresía: <strong className="text-brand-gold">{selectedMember.membershipNumber}</strong></p>
+              </div>
+            </div>
+
+            {/* Items list */}
+            <div className="space-y-3 mb-6">
+              <p className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase tracking-wider">
+                Elementos del club registrados a nombre del socio:
+              </p>
+              {selectedMember.pendingAreaLoans?.map((loan) => (
+                <div key={loan.id} className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    {loan.area === 'PISCINA' ? <Waves className="w-5 h-5 text-cyan-400" /> : <Dumbbell className="w-5 h-5 text-emerald-400" />}
+                    <div>
+                      <div className="text-xs font-extrabold text-gray-900 dark:text-white uppercase">{loan.area}</div>
+                      <div className="text-xs text-gray-600 dark:text-gray-300 font-medium">
+                        {loan.lockerKey && <span>🔑 Casillero / Llave: <strong className="text-amber-400 font-bold">#{loan.lockerKey}</strong></span>}
+                        {(loan.towelNumber || loan.towelQty > 0) && <span className="ml-2">🧺 Toalla: <strong className="text-blue-400">#{loan.towelNumber || loan.towelQty} ({loan.towelSize})</strong></span>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-xs text-blue-300 font-medium mb-6 flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+              <span>Si el socio tiene los elementos en mano, puedes recibirlos directamente aquí en Caseta y quedarán liberados en el sistema.</span>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2.5">
+              <button
+                onClick={() => handleRegisterAccess(false, true, false)}
+                disabled={isSubmitting}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-extrabold text-xs uppercase tracking-wider shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
+              >
+                <Check className="w-4 h-4 stroke-[3]" />
+                1. Recibir Insumos Aquí en Caseta y Autorizar Salida
+              </button>
+
+              <button
+                onClick={() => setIsPendingLoansModalOpen(false)}
+                className="w-full py-3 px-4 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-800 dark:text-gray-200 font-bold text-xs uppercase tracking-wider transition-all"
+              >
+                2. Cancelar Salida (El socio va a devolver los insumos al área)
+              </button>
+
+              <button
+                onClick={() => {
+                  if (window.confirm('¿Confirmar salida forzada SIN devolver insumos? Esto quedará registrado como incidencia de seguridad.')) {
+                    handleRegisterAccess(false, false, true);
+                  }
+                }}
+                disabled={isSubmitting}
+                className="w-full py-2.5 px-4 rounded-xl bg-transparent hover:bg-red-500/10 text-red-400 border border-red-500/30 font-bold text-[11px] uppercase tracking-wider transition-all flex items-center justify-center gap-1.5"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                3. Salida Forzada sin Devolución (Registrar Incidencia)
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -16,7 +16,11 @@ import {
   Clock,
   ShieldCheck,
   UserPlus,
-  QrCode
+  QrCode,
+  Waves,
+  Dumbbell,
+  Sparkles,
+  Activity
 } from 'lucide-react';
 import { logout } from '@store/authSlice';
 import toast from 'react-hot-toast';
@@ -84,6 +88,43 @@ export const MemberDashboard: React.FC = () => {
 
       <main className="relative z-10 px-6 py-8 max-w-4xl mx-auto space-y-8">
         
+        {/* Live Club Occupancy Widget */}
+        <section 
+          onClick={() => navigate('/member/occupancy')}
+          className="relative glass-panel p-5 border border-brand-gold/30 hover:border-brand-gold rounded-3xl bg-gradient-to-r from-cyan-950/20 via-black/40 to-emerald-950/20 cursor-pointer group shadow-lg hover:shadow-brand-gold/10 transition-all overflow-hidden"
+        >
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-brand-gold/20 text-brand-gold flex items-center justify-center font-black shadow-inner group-hover:scale-105 transition-transform">
+                <Activity className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 tracking-wider">
+                    EN VIVO
+                  </span>
+                  <span className="text-xs text-brand-gold font-bold uppercase tracking-wider">
+                    Semáforo de Aforo
+                  </span>
+                </div>
+                <h3 className="text-base font-extrabold theme-text group-hover:text-brand-gold transition-colors">
+                  ¿Cuan lleno está el Club ahora?
+                </h3>
+                <p className="text-xs theme-subtitle">
+                  Consulta el aforo en tiempo real de Piscina, Gimnasio y Canchas antes de venir.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <span className="text-xs font-bold text-brand-gold uppercase tracking-wider group-hover:underline">
+                Ver Semáforo Completo
+              </span>
+              <ChevronRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </section>
+
         {/* Sección 1: Perfil y Membresía Principal */}
         <section className="glass-panel p-6 border-l-4 border-brand-green dark:border-brand-gold relative overflow-hidden group">
           <div className="absolute -right-12 -top-12 opacity-10 group-hover:scale-110 transition-transform duration-700">
