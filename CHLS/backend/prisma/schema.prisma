@@ -108,6 +108,7 @@ model Person {
 
   // Access Logs
   accessLogs AccessLog[]
+  areaAccessLogs AreaAccessLog[]
 
   // Occasional Guests hosted by this person
   guests Guest[]

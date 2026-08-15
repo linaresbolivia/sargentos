@@ -25,7 +25,7 @@ import { MainPortal } from '@shared/pages/MainPortal';
 const DashboardRedirect: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   
-  if (user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r))) {
+  if (user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF', 'MODULO_WHATSAPP', 'MODULO_PQRS', 'MODULO_USUARIO_PQRS'].includes(r))) {
     return <MainPortal />;
   }
   return <Navigate to="/member" replace />;

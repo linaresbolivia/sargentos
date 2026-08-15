@@ -39,6 +39,7 @@ const MODULES_MAP: Record<string, string> = {
   MODULO_DIRECTORIO: 'Directorio y Gerencia',
   MODULO_PQRS: 'Gestión PQRS',
   MODULO_USUARIO_PQRS: 'Usuario PQRS',
+  MODULO_WHATSAPP: 'Envío Masivo (WhatsApp)',
 };
 
 export const SuperAdminDashboard = () => {
