@@ -12,8 +12,13 @@ import pqrsRoutes from './modules/pqrs/infrastructure/routes/pqrs.routes';
 import reservationsRoutes from './modules/reservations/infrastructure/routes/reservations.routes';
 import { AccessController } from '@modules/accessControl/infrastructure/controllers/AccessController';
 
+import path from 'path';
+
 const app = express();
 const accessController = new AccessController();
+
+// Static uploads serving
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Security Middlewares
 app.use(helmet());

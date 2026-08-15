@@ -165,6 +165,8 @@ export const PqrsDashboard: React.FC = () => {
   const [isCompressing, setIsCompressing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isSentSuccess, setIsSentSuccess] = useState(false);
+  const [showCloseConfirmModal, setShowCloseConfirmModal] = useState(false);
+  const [previewModalImage, setPreviewModalImage] = useState<string | null>(null);
   const navigate = useNavigate();
   const [staffUsers, setStaffUsers] = useState<any[]>([]);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
@@ -434,9 +436,16 @@ export const PqrsDashboard: React.FC = () => {
     const isClosing = (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && selectedTicket.status !== 'CERRADO' && selectedTicket.status !== 'RESUELTO';
     
     if (isClosing) {
-      const confirmClose = window.confirm("¿Estás seguro de que deseas cerrar este ticket?\nSe enviará automáticamente el mensaje de resolución y encuesta de satisfacción al socio por WhatsApp.");
-      if (!confirmClose) return;
+      setShowCloseConfirmModal(true);
+      return;
     }
+
+    await executeSaveChanges();
+  };
+
+  const executeSaveChanges = async () => {
+    if (!selectedTicket) return;
+    const isClosing = (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && selectedTicket.status !== 'CERRADO' && selectedTicket.status !== 'RESUELTO';
 
     setIsSending(true);
     try {
@@ -496,6 +505,7 @@ export const PqrsDashboard: React.FC = () => {
       
       setInternalNote('');
       setIsSentSuccess(true);
+      setShowCloseConfirmModal(false);
       setTimeout(() => setIsSentSuccess(false), 5000);
       await refreshSelectedTicket(selectedTicket.id);
     } catch (err) {
@@ -572,17 +582,18 @@ export const PqrsDashboard: React.FC = () => {
       
       doc.text(`Tiempo transcurrido: ${timeStr}`, 14, 42);
 
-      // Helper to strip emojis for PDF rendering
-      const stripEmojis = (str: string) => {
+      // Helper to strip emojis and tags for PDF rendering
+      const stripDescription = (str: string) => {
         if (!str) return '';
-        return str.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g, '');
+        const clean = str.replace(/\[IMAGEN_RESPALDO\]:[^\s\n]+/g, '[Foto de Respaldo Adjunta]');
+        return clean.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]/g, '');
       };
 
       const tableData = selectedTicket.history?.map(hist => [
         format(new Date(hist.createdAt), "dd/MM/yyyy HH:mm"),
         hist.action.replace(/_/g, ' '),
         hist.performedBy || 'Sistema',
-        stripEmojis(hist.description)
+        stripDescription(hist.description)
       ]) || [];
 
       autoTable(doc, {
@@ -1362,6 +1373,12 @@ export const PqrsDashboard: React.FC = () => {
                       
                       const timeSpent = formatDistance(new Date(hist.createdAt), prevEventDate, { locale: es });
                       
+                      const imageMatch = hist.description.match(/\[IMAGEN_RESPALDO\]:([^\s\n]+)/);
+                      const imageUrl = imageMatch ? imageMatch[1] : null;
+                      const cleanDescription = hist.description.replace(/\[IMAGEN_RESPALDO\]:[^\s\n]+/g, '').trim();
+                      const serverBase = (api.defaults.baseURL || '').replace('/api', '');
+                      const fullImageUrl = imageUrl ? (imageUrl.startsWith('http') || imageUrl.startsWith('data:') ? imageUrl : `${serverBase}${imageUrl}`) : null;
+
                       return (
                         <div key={hist.id} className="relative">
                           {!isLast && (
@@ -1385,8 +1402,33 @@ export const PqrsDashboard: React.FC = () => {
                             </div>
                             
                             <div className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                              {hist.description}
+                              {cleanDescription}
                             </div>
+
+                            {fullImageUrl && (
+                              <div className="mt-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewModalImage(fullImageUrl)}
+                                  className="group relative inline-flex items-center gap-3 p-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all text-left max-w-sm cursor-pointer shadow-sm hover:shadow-md"
+                                >
+                                  <div className="relative w-14 h-14 rounded-lg overflow-hidden border border-emerald-500/40 bg-black/20 flex-shrink-0">
+                                    <img src={fullImageUrl} alt="Respaldo" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                                      🔍
+                                    </div>
+                                  </div>
+                                  <div className="flex-1 min-w-0 pr-2">
+                                    <span className="block text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                      📷 Foto de Respaldo / Solución
+                                    </span>
+                                    <span className="text-[11px] text-gray-500 dark:text-gray-400 group-hover:text-emerald-500 transition-colors">
+                                      Haz clic para ver en tamaño completo
+                                    </span>
+                                  </div>
+                                </button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       );
@@ -1402,145 +1444,147 @@ export const PqrsDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* BOTTOM SECTION: Management */}
-              <div className="grid grid-cols-1 gap-6">
-                
-                {/* Unified Management Form */}
-                <div className="bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-gray-200 dark:border-white/10 relative overflow-hidden flex flex-col">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-bl-full pointer-events-none"></div>
+              {/* BOTTOM SECTION: Management (Only visible if ticket is NOT archived/closed) */}
+              {selectedTicket.status !== 'CERRADO' && (
+                <div className="grid grid-cols-1 gap-6">
                   
-                  <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-white/10 pb-3 mb-5 flex items-center gap-2 relative z-10">
-                    <List size={20} /> Gestión Unificada del Ticket
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 relative z-10">
-                    <div className="space-y-2">
-                      <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Estado Actual</label>
-                      <select 
-                        value={newStatus}
-                        onChange={(e) => setNewStatus(e.target.value)}
-                        disabled={!selectedTicket.isRead && !isMainAdmin}
-                        className="glass-input w-full font-medium"
-                      >
-                        <option value="ABIERTO">Abierto</option>
-                        <option value="EN_PROGRESO">En Progreso</option>
-                        {(isMainAdmin || newStatus === 'CERRADO' || selectedTicket.status === 'EN_PROGRESO') && <option value="CERRADO">Cerrado</option>}
-                      </select>
+                  {/* Unified Management Form */}
+                  <div className="bg-black/5 dark:bg-white/5 p-4 rounded-xl border border-gray-200 dark:border-white/10 relative overflow-hidden flex flex-col">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 dark:bg-blue-500/10 rounded-bl-full pointer-events-none"></div>
+                    
+                    <h3 className="text-xl font-bold text-blue-600 dark:text-blue-400 border-b border-gray-200 dark:border-white/10 pb-3 mb-5 flex items-center gap-2 relative z-10">
+                      <List size={20} /> Gestión Unificada del Ticket
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5 relative z-10">
+                      <div className="space-y-2">
+                        <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Estado Actual</label>
+                        <select 
+                          value={newStatus}
+                          onChange={(e) => setNewStatus(e.target.value)}
+                          disabled={!selectedTicket.isRead && !isMainAdmin}
+                          className="glass-input w-full font-medium"
+                        >
+                          <option value="ABIERTO">Abierto</option>
+                          <option value="EN_PROGRESO">En Progreso</option>
+                          {(isMainAdmin || newStatus === 'CERRADO' || selectedTicket.status === 'EN_PROGRESO') && <option value="CERRADO">Cerrado</option>}
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Prioridad</label>
+                        <select 
+                          value={newPriority}
+                          onChange={(e) => setNewPriority(e.target.value)}
+                          disabled={!selectedTicket.isRead && !isMainAdmin}
+                          className="glass-input w-full font-medium"
+                        >
+                          <option value="BAJA">Baja</option>
+                          <option value="MEDIA">Media</option>
+                          <option value="ALTA">Alta</option>
+                          <option value="URGENTE">Urgente</option>
+                        </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Asignar a / Derivar</label>
+                        <select 
+                          value={newAssignedTo}
+                          onChange={(e) => setNewAssignedTo(e.target.value)}
+                          disabled={!selectedTicket.isRead && !isMainAdmin}
+                          className="glass-input w-full font-medium"
+                        >
+                          <option value="">Sin Asignar</option>
+                          {staffUsers.map((u: any) => (
+                            <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Prioridad</label>
-                      <select 
-                        value={newPriority}
-                        onChange={(e) => setNewPriority(e.target.value)}
-                        disabled={!selectedTicket.isRead && !isMainAdmin}
-                        className="glass-input w-full font-medium"
-                      >
-                        <option value="BAJA">Baja</option>
-                        <option value="MEDIA">Media</option>
-                        <option value="ALTA">Alta</option>
-                        <option value="URGENTE">Urgente</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400">Asignar a / Derivar</label>
-                      <select 
-                        value={newAssignedTo}
-                        onChange={(e) => setNewAssignedTo(e.target.value)}
-                        disabled={!selectedTicket.isRead && !isMainAdmin}
-                        className="glass-input w-full font-medium"
-                      >
-                        <option value="">Sin Asignar</option>
-                        {staffUsers.map((u: any) => (
-                          <option key={u.id} value={u.id}>{u.firstName} {u.lastName}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
 
-                  { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && (
-                    <div className="mb-4 relative z-10">
-                      {!closingImage ? (
-                        <div className="p-3.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-950/20">
-                          <label className="block text-xs uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
-                            📷 Foto de Respaldo / Solución (Adjunto para WhatsApp)
-                          </label>
-                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
-                            Adjunta una imagen de respaldo. El sistema la optimizará automáticamente para enviarla junto al mensaje.
-                          </p>
-                          <input 
-                            type="file" 
-                            accept="image/*"
-                            onChange={handleImageFileSelected}
-                            disabled={isCompressing || (!selectedTicket.isRead && !isMainAdmin)}
-                            className="w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
-                          />
-                          {isCompressing && (
-                            <div className="mt-2 text-xs text-blue-500 flex items-center gap-1.5 animate-pulse">
-                              ⏳ Optimizando y comprimiendo imagen...
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl border border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/40 flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3">
-                            <img src={closingImage} alt="Vista previa" className="w-12 h-12 object-cover rounded-lg border border-emerald-400/50 shadow-sm" />
-                            <div>
-                              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
-                                <CheckCircle size={13} className="text-emerald-500" /> Imagen comprimida y lista
+                    { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && (
+                      <div className="mb-4 relative z-10">
+                        {!closingImage ? (
+                          <div className="p-3.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-950/20">
+                            <label className="block text-xs uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
+                              📷 Foto de Respaldo / Solución (Adjunto para WhatsApp)
+                            </label>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+                              Adjunta una imagen de respaldo. El sistema la optimizará automáticamente para enviarla junto al mensaje.
+                            </p>
+                            <input 
+                              type="file" 
+                              accept="image/*"
+                              onChange={handleImageFileSelected}
+                              disabled={isCompressing || (!selectedTicket.isRead && !isMainAdmin)}
+                              className="w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                            />
+                            {isCompressing && (
+                              <div className="mt-2 text-xs text-blue-500 flex items-center gap-1.5 animate-pulse">
+                                ⏳ Optimizando y comprimiendo imagen...
                               </div>
-                              {compressionInfo && (
-                                <div className="text-[11px] text-gray-600 dark:text-gray-300">
-                                  <span className="font-medium">{compressionInfo.fileName}</span> • De <span className="line-through opacity-70">{compressionInfo.originalSize}</span> a <span className="font-bold text-emerald-600 dark:text-emerald-400">{compressionInfo.compressedSize}</span> ({compressionInfo.reductionPercentage}% reducción)
-                                </div>
-                              )}
-                            </div>
+                            )}
                           </div>
-                          <button 
-                            type="button"
-                            onClick={handleRemoveClosingImage}
-                            className="text-xs text-red-500 hover:text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-500/10 transition-colors font-medium"
-                          >
-                            Quitar
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col flex-1 mb-6 relative z-10">
-                    <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-2">
-                      Acciones de Resolución o del Proceso del Caso
-                    </label>
-                    <textarea 
-                      value={internalNote}
-                      onChange={(e) => setInternalNote(e.target.value)}
-                      disabled={!selectedTicket.isRead && !isMainAdmin}
-                      className="glass-input w-full resize-none flex-1 min-h-[100px] p-4 text-sm"
-                      placeholder="Escribe aquí instrucciones, detalles de derivación o cómo se solucionó el problema..."
-                    />
-                    <span className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
-                      <CheckCircle size={12} /> Esta nota se registrará en el historial y quedará documentada.
-                    </span>
-                  </div>
-                  
-                  <button 
-                    onClick={handleSaveChanges}
-                    disabled={isSending || isSentSuccess || (!selectedTicket.isRead && !isMainAdmin)}
-                    className={`w-full text-white font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-3 mt-auto text-sm uppercase tracking-widest relative z-10 ${
-                      isSentSuccess 
-                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)] border border-blue-400/50' 
-                        : 'bg-gradient-to-r from-emerald-500 to-brand-green hover:from-emerald-400 hover:to-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-emerald-400/30'
-                    }`}
-                  >
-                    {isSending ? (
-                      <span className="animate-spin text-xl">⏳</span>
-                    ) : (
-                      <CheckCircle size={20} />
+                        ) : (
+                          <div className="p-3 rounded-xl border border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/40 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                              <img src={closingImage} alt="Vista previa" className="w-12 h-12 object-cover rounded-lg border border-emerald-400/50 shadow-sm" />
+                              <div>
+                                <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                  <CheckCircle size={13} className="text-emerald-500" /> Imagen comprimida y lista
+                                </div>
+                                {compressionInfo && (
+                                  <div className="text-[11px] text-gray-600 dark:text-gray-300">
+                                    <span className="font-medium">{compressionInfo.fileName}</span> • De <span className="line-through opacity-70">{compressionInfo.originalSize}</span> a <span className="font-bold text-emerald-600 dark:text-emerald-400">{compressionInfo.compressedSize}</span> ({compressionInfo.reductionPercentage}% reducción)
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <button 
+                              type="button"
+                              onClick={handleRemoveClosingImage}
+                              className="text-xs text-red-500 hover:text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-500/10 transition-colors font-medium"
+                            >
+                              Quitar
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
-                    {isSentSuccess ? 'ENVIADO' : (selectedTicket.status === 'CERRADO' && newStatus !== 'CERRADO' ? 'Desarchivar y Guardar' : 'Guardar y Enviar')}
-                  </button>
+
+                    <div className="flex flex-col flex-1 mb-6 relative z-10">
+                      <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-2">
+                        Acciones de Resolución o del Proceso del Caso
+                      </label>
+                      <textarea 
+                        value={internalNote}
+                        onChange={(e) => setInternalNote(e.target.value)}
+                        disabled={!selectedTicket.isRead && !isMainAdmin}
+                        className="glass-input w-full resize-none flex-1 min-h-[100px] p-4 text-sm"
+                        placeholder="Escribe aquí instrucciones, detalles de derivación o cómo se solucionó el problema..."
+                      />
+                      <span className="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+                        <CheckCircle size={12} /> Esta nota se registrará en el historial y quedará documentada.
+                      </span>
+                    </div>
+                    
+                    <button 
+                      onClick={handleSaveChanges}
+                      disabled={isSending || isSentSuccess || (!selectedTicket.isRead && !isMainAdmin)}
+                      className={`w-full text-white font-bold py-3.5 px-4 rounded-xl transition-all flex items-center justify-center gap-3 mt-auto text-sm uppercase tracking-widest relative z-10 ${
+                        isSentSuccess 
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 shadow-[0_0_15px_rgba(59,130,246,0.5)] border border-blue-400/50' 
+                          : 'bg-gradient-to-r from-emerald-500 to-brand-green hover:from-emerald-400 hover:to-emerald-600 shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:shadow-[0_0_20px_rgba(16,185,129,0.5)] border border-emerald-400/30'
+                      }`}
+                    >
+                      {isSending ? (
+                        <span className="animate-spin text-xl">⏳</span>
+                      ) : (
+                        <CheckCircle size={20} />
+                      )}
+                      {isSentSuccess ? 'ENVIADO' : (selectedTicket.status === 'CERRADO' && newStatus !== 'CERRADO' ? 'Desarchivar y Guardar' : 'Guardar y Enviar')}
+                    </button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -1549,6 +1593,127 @@ export const PqrsDashboard: React.FC = () => {
       {/* WhatsApp Modal */}
       {showWaModal && (
         <WhatsAppConnectorModal onClose={() => setShowWaModal(false)} />
+      )}
+
+      {/* Confirmation Modal for Closing Ticket */}
+      {showCloseConfirmModal && selectedTicket && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="max-w-md w-full rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-emerald-500/40 shadow-[0_0_50px_rgba(16,185,129,0.25)] overflow-hidden text-white p-6 relative">
+            
+            {/* Ambient Background Glow */}
+            <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/20 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+            {/* Header Icon */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+                <CheckCircle size={26} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white tracking-wide">¿Cerrar y Solucionar Caso?</h3>
+                <span className="text-xs text-emerald-400 font-semibold uppercase tracking-wider">
+                  Ticket {selectedTicket.code}
+                </span>
+              </div>
+            </div>
+
+            <p className="text-sm text-slate-300 mb-4 leading-relaxed">
+              Estás a punto de marcar como <span className="text-emerald-400 font-bold">Cerrado / Resuelto</span> este caso.
+            </p>
+
+            {/* Summary Box */}
+            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 space-y-2.5 mb-5 text-xs text-slate-300">
+              <div className="flex items-start gap-2">
+                <span className="text-emerald-400 font-bold">📲</span>
+                <div>
+                  <span className="font-semibold text-white">Notificación automática por WhatsApp:</span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Se enviará el mensaje de confirmación al socio <strong className="text-slate-200">{selectedTicket.fullName}</strong> ({selectedTicket.phone}).</p>
+                </div>
+              </div>
+
+              {internalNote.trim() && (
+                <div className="flex items-start gap-2 pt-1 border-t border-white/5">
+                  <span className="text-blue-400 font-bold">📝</span>
+                  <div className="flex-1">
+                    <span className="font-semibold text-white">Detalle de Resolución incluido:</span>
+                    <p className="text-[11px] text-slate-300 italic line-clamp-2 mt-0.5">"{internalNote.trim()}"</p>
+                  </div>
+                </div>
+              )}
+
+              {closingImage && (
+                <div className="flex items-center gap-2 pt-1 border-t border-white/5">
+                  <span className="text-emerald-400 font-bold">📷</span>
+                  <div className="flex items-center gap-2">
+                    <img src={closingImage} alt="Adjunto" className="w-8 h-8 rounded object-cover border border-emerald-500/40" />
+                    <span className="text-[11px] text-emerald-400 font-medium">Foto de respaldo optimizada adjunta</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-start gap-2 pt-1 border-t border-white/5">
+                <span className="text-amber-400 font-bold">⭐</span>
+                <div>
+                  <span className="font-semibold text-white">Encuesta de Satisfacción:</span>
+                  <p className="text-[11px] text-slate-400 mt-0.5">Se solicitará calificación del 1 al 5 al socio.</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setShowCloseConfirmModal(false)}
+                disabled={isSending}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={executeSaveChanges}
+                disabled={isSending}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white text-xs font-bold transition-all shadow-[0_0_20px_rgba(16,185,129,0.4)] flex items-center justify-center gap-2 cursor-pointer"
+              >
+                {isSending ? (
+                  <span className="animate-spin text-sm">⏳</span>
+                ) : (
+                  <CheckCircle size={15} />
+                )}
+                {isSending ? 'Cerrando...' : 'Sí, Cerrar y Notificar'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox / Fullscreen Image Viewer Modal */}
+      {previewModalImage && (
+        <div 
+          className="fixed inset-0 z-[150] bg-black/90 backdrop-blur-md flex flex-col items-center justify-center p-4 animate-in fade-in duration-200"
+          onClick={() => setPreviewModalImage(null)}
+        >
+          <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between w-full mb-3 text-white">
+              <span className="text-sm font-semibold flex items-center gap-2 text-emerald-400">
+                📷 Foto de Respaldo del Caso ({selectedTicket?.code})
+              </span>
+              <button 
+                onClick={() => setPreviewModalImage(null)}
+                className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-medium text-white transition-colors cursor-pointer"
+              >
+                ✕ Cerrar
+              </button>
+            </div>
+            <img 
+              src={previewModalImage} 
+              alt="Foto de Respaldo" 
+              className="max-h-[80vh] w-auto max-w-full rounded-2xl border border-white/20 shadow-2xl object-contain bg-black/40"
+            />
+          </div>
+        </div>
       )}
       </div>
     </div>

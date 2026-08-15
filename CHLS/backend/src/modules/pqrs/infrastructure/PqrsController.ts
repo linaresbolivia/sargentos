@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import fs from 'fs';
+import path from 'path';
 import { whatsappManager } from '../../whatsapp/infrastructure/whatsappService';
 
 const prisma = new PrismaClient();
@@ -236,6 +238,23 @@ export class PqrsController {
         data: updateData,
       });
 
+      let mediaUrl: string | null = null;
+      if (mediaBase64) {
+        try {
+          const uploadsDir = path.join(process.cwd(), 'uploads', 'pqrs');
+          if (!fs.existsSync(uploadsDir)) {
+            fs.mkdirSync(uploadsDir, { recursive: true });
+          }
+          const base64Data = mediaBase64.replace(/^data:image\/\w+;base64,/, '');
+          const fileName = `res_${ticket.code}_${Date.now()}.jpg`;
+          const filePath = path.join(uploadsDir, fileName);
+          fs.writeFileSync(filePath, Buffer.from(base64Data, 'base64'));
+          mediaUrl = `/uploads/pqrs/${fileName}`;
+        } catch (err) {
+          console.error('Error saving resolution image file:', err);
+        }
+      }
+
       if (isClosing && ticket.phone) {
         const whatsappService = whatsappManager.getInstance('chls-pqrs');
         let surveyMsg = `Tu caso *${ticket.code}* ha sido solucionado.`;
@@ -249,6 +268,7 @@ export class PqrsController {
 
       let desc = `El estado del ticket cambió a ${status}.`;
       if (resolution) desc += `\nNota de Resolución: ${resolution}`;
+      if (mediaUrl) desc += `\n[IMAGEN_RESPALDO]:${mediaUrl}`;
 
       let performedBy = 'Administrador';
       if (req.user?.userId) {
