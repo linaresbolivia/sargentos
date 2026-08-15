@@ -152,7 +152,7 @@ export const LiveClubOccupancy: React.FC = () => {
               Club Hípico Los Sargentos
             </span>
             <h1 className="text-lg sm:text-xl font-black text-gray-900 dark:text-white tracking-tight">
-              Semáforo de Ocupación en Vivo
+              Semáforo: Piscina y Gimnasio (En Vivo)
             </h1>
           </div>
         </div>
@@ -375,49 +375,22 @@ export const LiveClubOccupancy: React.FC = () => {
 
         </div>
 
-        {/* OTHER FACILITIES QUICK STATUS */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          
-          {/* Canchas Deportivas */}
-          <div 
-            onClick={() => navigate('/member/reservations')}
-            className="p-4.5 rounded-2xl bg-white dark:bg-[#0a120e] border border-gray-200 dark:border-white/10 hover:border-brand-gold/40 transition-all cursor-pointer flex items-center justify-between group shadow-sm"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-brand-gold/15 text-brand-gold flex items-center justify-center font-bold">
-                <CalendarCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-xs text-gray-900 dark:text-white group-hover:text-brand-gold transition-colors">
-                  Canchas de Tenis & Pádel
-                </h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Reserva tu turno antes de venir al club</p>
-              </div>
+        {/* CASETA PRINCIPAL STATUS */}
+        <div className="p-4.5 rounded-2xl bg-white dark:bg-[#0a120e] border border-gray-200 dark:border-white/10 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold">
+              <Car className="w-5 h-5" />
             </div>
-            <div className="flex items-center gap-1 text-xs font-bold text-brand-gold">
-              <span>Reservar</span>
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <div>
+              <h4 className="font-extrabold text-xs text-gray-900 dark:text-white">
+                Portería & Caseta Principal
+              </h4>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Acceso vehicular y peatonal fluido &bull; Total ingresos hoy: {data?.gatehouse.todayTotal || 0} personas</p>
             </div>
           </div>
-
-          {/* Caseta Principal */}
-          <div className="p-4.5 rounded-2xl bg-white dark:bg-[#0a120e] border border-gray-200 dark:border-white/10 flex items-center justify-between shadow-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold">
-                <Car className="w-5 h-5" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-xs text-gray-900 dark:text-white">
-                  Portería & Caseta Principal
-                </h4>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">Acceso vehicular y peatonal fluido</p>
-              </div>
-            </div>
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              🟢 Tráfico Fluido
-            </span>
-          </div>
-
+          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            🟢 Tráfico Fluido
+          </span>
         </div>
 
         {/* HOURLY RECOMMENDED VISITING CURVE */}

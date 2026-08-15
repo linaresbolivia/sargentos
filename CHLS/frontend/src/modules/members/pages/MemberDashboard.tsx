@@ -104,14 +104,14 @@ export const MemberDashboard: React.FC = () => {
                     EN VIVO
                   </span>
                   <span className="text-xs text-brand-gold font-bold uppercase tracking-wider">
-                    Semáforo de Aforo
+                    Semáforo: Piscina y Gimnasio (En Vivo)
                   </span>
                 </div>
                 <h3 className="text-base font-extrabold theme-text group-hover:text-brand-gold transition-colors">
                   ¿Cuan lleno está el Club ahora?
                 </h3>
                 <p className="text-xs theme-subtitle">
-                  Consulta el aforo en tiempo real de Piscina, Gimnasio y Canchas antes de venir.
+                  Consulta el aforo en tiempo real de Piscina y Gimnasio antes de venir.
                 </p>
               </div>
             </div>

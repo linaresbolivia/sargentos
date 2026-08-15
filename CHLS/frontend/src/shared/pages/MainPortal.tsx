@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -195,22 +195,27 @@ export const MainPortal: React.FC = () => {
             {/* Semáforo de Aforo en Tiempo Real */}
             <Link 
               to="/member/occupancy"
-              className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-cyan-500/20 dark:border-cyan-500/30 rounded-2xl hover:border-cyan-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]"
+              className="group flex items-center p-5 sm:p-6 bg-white dark:bg-[#0a100d] border border-cyan-500/20 dark:border-cyan-500/30 rounded-2xl hover:border-cyan-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]"
             >
-              <div className="w-14 h-14 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 group-hover:scale-110 transition-transform duration-300 mr-6">
-                <Waves className="w-7 h-7" />
+              <div className="w-14 h-14 shrink-0 rounded-xl bg-gradient-to-br from-cyan-500/15 to-emerald-500/15 border border-cyan-500/30 flex items-center justify-center gap-1 group-hover:scale-110 transition-transform duration-300 mr-5 shadow-sm">
+                <Waves className="w-5 h-5 text-cyan-400" />
+                <Dumbbell className="w-5 h-5 text-emerald-400" />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-cyan-400 transition-colors">
-                    Semáforo de Aforo (En Vivo)
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 mb-1 flex-wrap sm:flex-nowrap">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white group-hover:text-cyan-400 transition-colors whitespace-nowrap">
+                    Semáforo: Piscina y Gimnasio
                   </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-[#00ff87] border border-[#00ff87]/50 shadow-[0_0_10px_rgba(0,255,135,0.4)] animate-pulse shrink-0 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
+                    (En Vivo)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
                     SOCIOS
                   </span>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Consulta cuán lleno está el club (Piscina, Gimnasio y Canchas) antes de asistir.
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                  Consulta cuán lleno está el club (Piscina y Gimnasio) antes de asistir.
                 </p>
               </div>
             </Link>
