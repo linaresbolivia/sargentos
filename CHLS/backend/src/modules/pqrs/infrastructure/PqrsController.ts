@@ -215,7 +215,7 @@ export class PqrsController {
   async updateTicketStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { status, resolution } = req.body;
+      const { status, resolution, mediaBase64 } = req.body;
 
       const currentTicket = await prisma.pqrsTicket.findUnique({ where: { id } });
       
@@ -238,9 +238,13 @@ export class PqrsController {
 
       if (isClosing && ticket.phone) {
         const whatsappService = whatsappManager.getInstance('chls-pqrs');
-        const surveyMsg = `Tu caso *${ticket.code}* ha sido solucionado.\n\nDel *1 al 5*, ¿qué tan satisfecho estás con nuestra atención al resolver tu PQRS?\n_(Responde únicamente con un número)_\n\n*Atención al socio - Club Hípico Los Sargentos*`;
+        let surveyMsg = `Tu caso *${ticket.code}* ha sido solucionado.`;
+        if (resolution && resolution.trim()) {
+          surveyMsg += `\n\n📝 *Detalle de la resolución:*\n${resolution.trim()}`;
+        }
+        surveyMsg += `\n\nDel *1 al 5*, ¿qué tan satisfecho estás con nuestra atención al resolver tu PQRS?\n_(Responde únicamente con un número)_\n\n*Atención al socio - Club Hípico Los Sargentos*`;
         const formattedPhone = ticket.phone.startsWith('591') ? ticket.phone : `591${ticket.phone}`;
-        await whatsappService.sendMessage(formattedPhone, surveyMsg);
+        await whatsappService.sendMessage(formattedPhone, surveyMsg, mediaBase64);
       }
 
       let desc = `El estado del ticket cambió a ${status}.`;

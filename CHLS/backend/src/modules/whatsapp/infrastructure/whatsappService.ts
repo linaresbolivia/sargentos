@@ -1,6 +1,7 @@
 import { Client, LocalAuth, MessageMedia, Message } from 'whatsapp-web.js';
 import qrcode from 'qrcode';
 import fs from 'fs';
+import path from 'path';
 import { prisma } from '@shared/infrastructure/prisma';
 import { socketService } from '@config/socket';
 
@@ -67,9 +68,17 @@ export class WhatsappClientInstance {
     });
 
     this.client.on('disconnected', (reason) => {
-      console.log(`[${this.clientId}] WhatsApp Client was disconnected`, reason);
+      console.log(`[${this.clientId}] WhatsApp Client was disconnected:`, reason);
       this.status = 'DISCONNECTED';
       this.qrCodeUrl = null;
+      // Auto-recuperación inteligente tras desconexión accidental
+      setTimeout(async () => {
+        console.log(`[${this.clientId}] Auto-recuperación: Reestableciendo cliente tras desconexión...`);
+        try { await this.client.destroy(); } catch (e) {}
+        this.cleanStaleLocks();
+        this.initClient();
+        await this.start();
+      }, 5000);
     });
 
     // Only process Chat/Inbox events for the "masivo" client for now, or distinguish them if needed.
@@ -249,28 +258,45 @@ export class WhatsappClientInstance {
     }
   }
 
-  public async sendMessage(to: string, content: string) {
+  public async sendMessage(to: string, content: string, mediaBase64?: string) {
     if (this.status !== 'CONNECTED' || !this.client) {
       console.error('WhatsApp client is not connected');
       return;
     }
     const chatId = to.includes('@') ? to : `${to}@c.us`;
     try {
-      // Medida anti-ban: Simular que se está escribiendo "escribiendo..."
+      // Medida anti-ban: Simular presencia de escritura si el chat ya existe
       try {
         const chat = await this.client.getChatById(chatId);
-        await chat.sendStateTyping();
-        
-        // Añadir un retraso humano aleatorio (entre 1.5 y 3 segundos)
-        const typingDelay = 1500 + Math.random() * 1500;
-        await new Promise(resolve => setTimeout(resolve, typingDelay));
-        
-        await chat.clearState();
+        if (chat) {
+          await chat.sendStateTyping();
+        }
       } catch (typingError) {
-        console.warn(`[${this.clientId}] No se pudo simular escritura para ${chatId}`);
+        // Si el chat es nuevo y no está abierto aún, se continúa sin advertencia
       }
       
-      await this.client.sendMessage(chatId, content);
+      // Añadir retraso humano aleatorio (entre 1.2 y 2.5 segundos)
+      const typingDelay = 1200 + Math.random() * 1300;
+      await new Promise(resolve => setTimeout(resolve, typingDelay));
+      
+      try {
+        const chat = await this.client.getChatById(chatId);
+        if (chat) await chat.clearState();
+      } catch (e) {}
+      
+      let mediaToSend: MessageMedia | undefined;
+      if (mediaBase64) {
+        const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
+        if (match) {
+          mediaToSend = new MessageMedia(match[1], match[2]);
+        }
+      }
+
+      if (mediaToSend) {
+        await this.client.sendMessage(chatId, mediaToSend, { caption: content });
+      } else {
+        await this.client.sendMessage(chatId, content);
+      }
     } catch (e) {
       console.error(`[${this.clientId}] Error sending direct message`, e);
     }
@@ -348,18 +374,43 @@ export class WhatsappClientInstance {
     } catch (e) {}
   }
 
-  public async start() {
-    if (this.status !== 'DISCONNECTED' && this.status !== 'INITIALIZING') {
-      return;
-    }
+  private cleanStaleLocks() {
+    try {
+      const sessionDir = path.join(process.cwd(), '.wwebjs_auth', `session-${this.clientId}`);
+      if (fs.existsSync(sessionDir)) {
+        const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'DevToolsActivePort'];
+        for (const file of lockFiles) {
+          const filePath = path.join(sessionDir, file);
+          if (fs.existsSync(filePath)) {
+            try { fs.unlinkSync(filePath); } catch (e) {}
+          }
+        }
+      }
+    } catch (e) {}
+  }
+
+  public async start(retryCount = 0) {
+    if (this.status === 'CONNECTED') return;
+    if (this.status === 'INITIALIZING' && retryCount === 0) return;
+
     this.status = 'INITIALIZING';
+    this.cleanStaleLocks();
     try {
       await this.client.initialize();
-    } catch (error) {
-      console.error(`[${this.clientId}] Error initializing WhatsApp client:`, error);
+    } catch (error: any) {
+      console.error(`[${this.clientId}] Error initializing WhatsApp client (Intento ${retryCount + 1}):`, error?.message || error);
       this.status = 'DISCONNECTED';
       try { await this.client.destroy(); } catch(e) {}
+      this.cleanStaleLocks();
       this.initClient(); // Recrear la instancia limpia para el siguiente intento
+
+      // Auto-recuperación: reintentar automáticamente hasta 3 veces con pausas progresivas
+      if (retryCount < 3) {
+        console.log(`[${this.clientId}] Auto-recuperación: Reintentando conexión en 3 segundos...`);
+        setTimeout(() => {
+          this.start(retryCount + 1);
+        }, 3000);
+      }
     }
   }
 

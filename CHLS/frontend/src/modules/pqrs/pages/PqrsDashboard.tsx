@@ -155,6 +155,14 @@ export const PqrsDashboard: React.FC = () => {
   const [newPriority, setNewPriority] = useState('');
   const [newAssignedTo, setNewAssignedTo] = useState('');
   const [internalNote, setInternalNote] = useState('');
+  const [closingImage, setClosingImage] = useState<string | null>(null);
+  const [compressionInfo, setCompressionInfo] = useState<{
+    originalSize: string;
+    compressedSize: string;
+    reductionPercentage: number;
+    fileName: string;
+  } | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isSentSuccess, setIsSentSuccess] = useState(false);
   const navigate = useNavigate();
@@ -290,6 +298,9 @@ export const PqrsDashboard: React.FC = () => {
     setNewPriority(ticket.priority || 'MEDIA');
     setNewAssignedTo(ticket.assignedToId || '');
     setInternalNote('');
+    setClosingImage(null);
+    setCompressionInfo(null);
+    setIsCompressing(false);
   };
 
   const handleCloseModal = () => {
@@ -338,13 +349,92 @@ export const PqrsDashboard: React.FC = () => {
   // Removed WhatsApp responder handlers
 
 
+  const handleImageFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor, selecciona un archivo de imagen válido.');
+      return;
+    }
+
+    const originalSizeKb = file.size / 1024;
+    const originalSizeStr = originalSizeKb > 1024 
+      ? `${(originalSizeKb / 1024).toFixed(2)} MB` 
+      : `${originalSizeKb.toFixed(1)} KB`;
+
+    setIsCompressing(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height = Math.round(height * (MAX_WIDTH / width));
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width = Math.round(width * (MAX_HEIGHT / height));
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75);
+          
+          const base64Length = compressedDataUrl.length - (compressedDataUrl.indexOf(',') + 1);
+          const compressedSizeKb = (base64Length * 0.75) / 1024;
+          const compressedSizeStr = `${compressedSizeKb.toFixed(1)} KB`;
+          const reduction = Math.max(0, Math.round(((originalSizeKb - compressedSizeKb) / originalSizeKb) * 100));
+
+          setClosingImage(compressedDataUrl);
+          setCompressionInfo({
+            originalSize: originalSizeStr,
+            compressedSize: compressedSizeStr,
+            reductionPercentage: reduction,
+            fileName: file.name
+          });
+          toast.success('Imagen cargada y comprimida correctamente');
+        }
+        setIsCompressing(false);
+      };
+      img.onerror = () => {
+        toast.error('Error al procesar la imagen.');
+        setIsCompressing(false);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveClosingImage = () => {
+    setClosingImage(null);
+    setCompressionInfo(null);
+  };
+
   const handleSaveChanges = async () => {
     if (!selectedTicket) return;
+
+    if (isCompressing) {
+      toast.error('Por favor, espera a que termine la compresión de la imagen.');
+      return;
+    }
 
     const isClosing = (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && selectedTicket.status !== 'CERRADO' && selectedTicket.status !== 'RESUELTO';
     
     if (isClosing) {
-      const confirmClose = window.confirm("¿Estás seguro de que deseas cerrar este ticket?\nSe enviará automáticamente un mensaje de WhatsApp al socio para pedir su calificación.");
+      const confirmClose = window.confirm("¿Estás seguro de que deseas cerrar este ticket?\nSe enviará automáticamente el mensaje de resolución y encuesta de satisfacción al socio por WhatsApp.");
       if (!confirmClose) return;
     }
 
@@ -371,11 +461,12 @@ export const PqrsDashboard: React.FC = () => {
         madeChanges = true;
       }
       // 2. Status or Resolution changes
-      const hasStatusChanges = finalStatus !== selectedTicket.status || (!noteSent && internalNote.trim());
+      const hasStatusChanges = finalStatus !== selectedTicket.status || (!noteSent && internalNote.trim()) || closingImage;
       if (hasStatusChanges) {
         await api.put(`/pqrs/${selectedTicket.id}/status`, {
           status: finalStatus,
-          resolution: !noteSent ? internalNote.trim() : undefined
+          resolution: !noteSent ? internalNote.trim() : undefined,
+          mediaBase64: isClosing ? closingImage || undefined : undefined
         });
         if (!noteSent && internalNote.trim()) noteSent = true;
         madeChanges = true;
@@ -1366,7 +1457,55 @@ export const PqrsDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && null }
+                  { (newStatus === 'CERRADO' || newStatus === 'RESUELTO') && (
+                    <div className="mb-4 relative z-10">
+                      {!closingImage ? (
+                        <div className="p-3.5 rounded-xl border border-dashed border-emerald-500/40 bg-emerald-500/5 dark:bg-emerald-950/20">
+                          <label className="block text-xs uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400 mb-1 flex items-center gap-1.5">
+                            📷 Foto de Respaldo / Solución (Adjunto para WhatsApp)
+                          </label>
+                          <p className="text-[11px] text-gray-500 dark:text-gray-400 mb-2">
+                            Adjunta una imagen de respaldo. El sistema la optimizará automáticamente para enviarla junto al mensaje.
+                          </p>
+                          <input 
+                            type="file" 
+                            accept="image/*"
+                            onChange={handleImageFileSelected}
+                            disabled={isCompressing || (!selectedTicket.isRead && !isMainAdmin)}
+                            className="w-full text-xs text-gray-600 dark:text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-700 cursor-pointer"
+                          />
+                          {isCompressing && (
+                            <div className="mt-2 text-xs text-blue-500 flex items-center gap-1.5 animate-pulse">
+                              ⏳ Optimizando y comprimiendo imagen...
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-xl border border-emerald-500/50 bg-emerald-500/10 dark:bg-emerald-950/40 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <img src={closingImage} alt="Vista previa" className="w-12 h-12 object-cover rounded-lg border border-emerald-400/50 shadow-sm" />
+                            <div>
+                              <div className="text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                                <CheckCircle size={13} className="text-emerald-500" /> Imagen comprimida y lista
+                              </div>
+                              {compressionInfo && (
+                                <div className="text-[11px] text-gray-600 dark:text-gray-300">
+                                  <span className="font-medium">{compressionInfo.fileName}</span> • De <span className="line-through opacity-70">{compressionInfo.originalSize}</span> a <span className="font-bold text-emerald-600 dark:text-emerald-400">{compressionInfo.compressedSize}</span> ({compressionInfo.reductionPercentage}% reducción)
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <button 
+                            type="button"
+                            onClick={handleRemoveClosingImage}
+                            className="text-xs text-red-500 hover:text-red-700 px-2.5 py-1 rounded-lg hover:bg-red-500/10 transition-colors font-medium"
+                          >
+                            Quitar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="flex flex-col flex-1 mb-6 relative z-10">
                     <label className="block text-xs uppercase tracking-wider font-semibold text-gray-500 dark:text-gray-400 mb-2">
