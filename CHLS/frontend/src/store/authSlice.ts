@@ -5,6 +5,8 @@ interface User {
   email: string;
   firstName?: string;
   lastName?: string;
+  documentId?: string;
+  phone?: string;
   roles: string[];
   permissions: string[];
   createdAt: string;

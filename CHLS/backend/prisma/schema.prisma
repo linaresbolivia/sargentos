@@ -449,27 +449,38 @@ model PqrsHistory {
 // ------------------------------------------------------
 
 model Court {
-  id           String             @id @default(uuid())
-  name         String
-  sport        String             // e.g. "Tenis", "Padel", "Wally"
-  isActive     Boolean            @default(true)
-  reservations CourtReservation[]
+  id                  String             @id @default(uuid())
+  name                String
+  sport               String             // e.g. "Frontón", "Tenis", "Pádel", "Polifuncional", "Raquet / Wally", "Ping Pong", "Fútbol"
+  description         String?
+  isActive            Boolean            @default(true)
+  openingTime         String             @default("06:00")
+  closingTime         String             @default("22:00")
+  slotDurationMinutes Int                @default(60)
+  reservations        CourtReservation[]
 
   @@map("courts")
 }
 
 model CourtReservation {
-  id           String   @id @default(uuid())
-  courtId      String
-  court        Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
-  date         String   // YYYY-MM-DD
-  startTime    String   // HH:mm
-  endTime      String   // HH:mm
-  memberCode   String
-  memberName   String
-  status       String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id               String   @id @default(uuid())
+  courtId          String
+  court            Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  date             String   // YYYY-MM-DD
+  startTime        String   // HH:mm
+  endTime          String   // HH:mm
+  memberCode       String?
+  memberName       String
+  memberPhone      String?
+  reservationType  String   @default("MEMBER") // MEMBER, CLASS, MAINTENANCE, TOURNAMENT, ESCUELA_DEPORTIVA, EVENTO_CLUB
+  title            String?  // Title for class, tournament or maintenance
+  notes            String?  // Additional details or instructor name
+  isRecurring      Boolean  @default(false)
+  recurringGroupId String?  // Group identifier for recurring date/time range series
+  adminCreatedBy   String?  // Admin username or ID
+  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@map("court_reservations")
 }

@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -178,11 +178,11 @@ export const MainPortal: React.FC = () => {
                 to="/admin/reservations"
                 className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
               >
-                <div className="w-14 h-14 rounded-xl bg-brand-green/10 flex items-center justify-center text-brand-green group-hover:scale-110 transition-transform duration-300 mr-6">
+                <div className="w-14 h-14 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300 mr-6 shadow-sm">
                   <CalendarDays className="w-7 h-7" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-brand-green transition-colors">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-emerald-400 transition-colors">
                     Gestión de Canchas
                   </h3>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -191,6 +191,33 @@ export const MainPortal: React.FC = () => {
                 </div>
               </Link>
             )}
+
+            {/* Reserva de Canchas para Socios (En Vivo) */}
+            <Link 
+              to="/member/reservations"
+              className="group flex items-center p-5 sm:p-6 bg-white dark:bg-[#0a100d] border border-emerald-500/30 rounded-2xl hover:border-emerald-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+            >
+              <div className="w-14 h-14 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500/20 to-brand-gold/20 border border-emerald-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 mr-5 shadow-sm text-emerald-400">
+                <CalendarCheck className="w-7 h-7" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2.5 mb-1 flex-wrap sm:flex-nowrap">
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white group-hover:text-emerald-400 transition-colors whitespace-nowrap">
+                    Reserva de Canchas
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-[#00ff87] border border-[#00ff87]/50 shadow-[0_0_10px_rgba(0,255,135,0.4)] animate-pulse shrink-0 whitespace-nowrap">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
+                    (En Vivo)
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
+                    SOCIOS
+                  </span>
+                </div>
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                  Reserva tu turno deportivo (Tenis, Pádel, Frontón, Fútbol) en tiempo real.
+                </p>
+              </div>
+            </Link>
 
             {/* Semáforo de Aforo en Tiempo Real */}
             <Link 

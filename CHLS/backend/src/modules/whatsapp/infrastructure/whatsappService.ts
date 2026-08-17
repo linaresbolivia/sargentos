@@ -13,6 +13,7 @@ export class WhatsappClientInstance {
   public isBotActive: boolean = true;
   private lastQueryTimestamps: Map<string, number> = new Map();
   private isExplicitlyLoggedOut: boolean = false;
+  private isInitializing: boolean = false;
   private initWatchdogTimer: NodeJS.Timeout | null = null;
 
   constructor(clientId: string) {
@@ -33,7 +34,8 @@ export class WhatsappClientInstance {
           '--no-first-run',
           '--no-zygote',
           '--disable-gpu',
-          '--disable-blink-features=AutomationControlled'
+          '--disable-blink-features=AutomationControlled',
+          '--disable-extensions'
         ],
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         bypassCSP: true,
@@ -45,46 +47,67 @@ export class WhatsappClientInstance {
     this.initializeEvents();
   }
 
+  private emitStatusChange() {
+    try {
+      socketService.getIo()?.emit('whatsapp:status_change', {
+        clientId: this.clientId,
+        status: this.status,
+        qr: this.qrCodeUrl,
+        isBotActive: this.isBotActive
+      });
+    } catch (e) { }
+  }
+
   private initializeEvents() {
     this.client.on('qr', async (qr) => {
       console.log(`[${this.clientId}] QR Code received, scan it!`);
       this.clearWatchdog();
       this.status = 'QR_READY';
+      this.isInitializing = false;
       try {
         this.qrCodeUrl = await qrcode.toDataURL(qr);
       } catch (err) {
         console.error(`[${this.clientId}] Failed to generate QR data url`, err);
       }
+      this.emitStatusChange();
     });
 
     this.client.on('ready', () => {
       console.log(`[${this.clientId}] WhatsApp Client is ready!`);
       this.clearWatchdog();
       this.status = 'CONNECTED';
+      this.isInitializing = false;
       this.qrCodeUrl = null;
       this.isExplicitlyLoggedOut = false;
+      this.emitStatusChange();
     });
 
     this.client.on('authenticated', () => {
       console.log(`[${this.clientId}] WhatsApp Client Authenticated`);
       this.clearWatchdog();
+      this.isInitializing = false;
+      this.emitStatusChange();
     });
 
     this.client.on('auth_failure', async msg => {
       console.error(`[${this.clientId}] WhatsApp Authentication failure:`, msg);
       this.clearWatchdog();
       this.status = 'DISCONNECTED';
+      this.isInitializing = false;
       this.isExplicitlyLoggedOut = true;
-      this.purgeSessionDir();
-      try { await this.client.destroy(); } catch (e) { }
+      this.emitStatusChange();
+      await this.safeDestroyClient();
+      await this.purgeSessionDir();
       this.initClient();
     });
 
-    this.client.on('disconnected', (reason) => {
+    this.client.on('disconnected', async (reason) => {
       console.log(`[${this.clientId}] WhatsApp Client was disconnected:`, reason);
       this.clearWatchdog();
       this.status = 'DISCONNECTED';
+      this.isInitializing = false;
       this.qrCodeUrl = null;
+      this.emitStatusChange();
 
       const isManualLogout = String(reason).toUpperCase().includes('LOGOUT') || 
                              String(reason).toUpperCase().includes('NAVIGATION') || 
@@ -93,21 +116,16 @@ export class WhatsappClientInstance {
       if (isManualLogout) {
         console.log(`[${this.clientId}] Cierre de sesión definitivo. Purgando credenciales locales...`);
         this.isExplicitlyLoggedOut = true;
-        this.purgeSessionDir();
+        await this.safeDestroyClient();
+        await this.purgeSessionDir();
         setTimeout(() => {
           this.initClient();
         }, 1000);
       } else {
-        // Auto-recuperación únicamente para caídas de red o desconexiones imprevistas
-        console.log(`[${this.clientId}] Desconexión accidental detectada. Auto-recuperando en 5 segundos...`);
-        setTimeout(async () => {
-          if (!this.isExplicitlyLoggedOut) {
-            try { await this.client.destroy(); } catch (e) { }
-            this.cleanStaleLocks();
-            this.initClient();
-            await this.start();
-          }
-        }, 5000);
+        console.log(`[${this.clientId}] Desconexión detectada. Preparando cliente para reconexión...`);
+        await this.safeDestroyClient();
+        this.cleanStaleLocks();
+        this.initClient();
       }
     });
 
@@ -411,11 +429,36 @@ export class WhatsappClientInstance {
     }
   }
 
+  private async safeDestroyClient() {
+    this.clearWatchdog();
+    try {
+      if (this.client) {
+        const browser = (this.client as any)?.pupBrowser;
+        if (browser) {
+          try {
+            const proc = typeof browser.process === 'function' ? browser.process() : null;
+            if (proc && !proc.killed) {
+              proc.kill('SIGKILL');
+            }
+          } catch (e) { }
+          await browser.close().catch(() => { });
+        }
+        await this.client.destroy().catch(() => { });
+      }
+    } catch (e) { }
+  }
+
   private cleanStaleLocks() {
     try {
       const sessionDir = path.join(process.cwd(), '.wwebjs_auth', `session-${this.clientId}`);
       if (fs.existsSync(sessionDir)) {
-        const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'DevToolsActivePort'];
+        const lockFiles = [
+          'SingletonLock',
+          'SingletonCookie',
+          'SingletonSocket',
+          'DevToolsActivePort',
+          'lockfile'
+        ];
         for (const file of lockFiles) {
           const filePath = path.join(sessionDir, file);
           if (fs.existsSync(filePath)) {
@@ -426,13 +469,17 @@ export class WhatsappClientInstance {
     } catch (e) { }
   }
 
-  private purgeSessionDir() {
+  private async purgeSessionDir() {
     try {
       const sessionDir = path.join(process.cwd(), '.wwebjs_auth', `session-${this.clientId}`);
       if (fs.existsSync(sessionDir)) {
-        // Intento de borrado completo
-        fs.rmSync(sessionDir, { recursive: true, force: true });
-        console.log(`[${this.clientId}] Carpeta de sesión eliminada correctamente: ${sessionDir}`);
+        await new Promise(resolve => setTimeout(resolve, 500));
+        try {
+          fs.rmSync(sessionDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 400 });
+          console.log(`[${this.clientId}] Carpeta de sesión eliminada correctamente: ${sessionDir}`);
+        } catch (rmErr: any) {
+          console.warn(`[${this.clientId}] Aviso al limpiar carpeta de sesión (no fatal):`, rmErr?.message || rmErr);
+        }
       }
     } catch (e: any) {
       console.warn(`[${this.clientId}] Aviso al limpiar carpeta de sesión:`, e?.message || e);
@@ -440,67 +487,82 @@ export class WhatsappClientInstance {
   }
 
   public async start(retryCount = 0) {
-    if (this.status === 'CONNECTED') return;
-    if (this.status === 'INITIALIZING' && retryCount === 0) return;
+    if (this.status === 'CONNECTED' || this.status === 'QR_READY') {
+      return;
+    }
+    if (this.isInitializing) {
+      console.log(`[${this.clientId}] start() ya se encuentra en progreso. Ignorando llamada concurrente.`);
+      return;
+    }
 
+    this.isInitializing = true;
     this.isExplicitlyLoggedOut = false;
     this.status = 'INITIALIZING';
+    this.emitStatusChange();
     this.cleanStaleLocks();
     this.clearWatchdog();
 
-    // Watchdog de 45 segundos: si queda colgado en INITIALIZING sin responder, reiniciar limpiamente
+    // Watchdog de 60 segundos: si queda colgado en INITIALIZING sin responder, reiniciar limpiamente
     this.initWatchdogTimer = setTimeout(async () => {
       if (this.status === 'INITIALIZING') {
-        console.warn(`[${this.clientId}] Watchdog: Inicialización colgada tras 45s. Forzando reset...`);
+        console.warn(`[${this.clientId}] Watchdog: Inicialización colgada tras 60s. Forzando reset...`);
         this.status = 'DISCONNECTED';
-        try { await this.client.destroy(); } catch (e) { }
+        this.isInitializing = false;
+        this.emitStatusChange();
+        await this.safeDestroyClient();
         this.cleanStaleLocks();
         this.initClient();
       }
-    }, 45000);
+    }, 60000);
 
     try {
+      console.log(`[${this.clientId}] Inicializando cliente WhatsApp (Intento ${retryCount + 1})...`);
       await this.client.initialize();
     } catch (error: any) {
       this.clearWatchdog();
       console.error(`[${this.clientId}] Error initializing WhatsApp client (Intento ${retryCount + 1}):`, error?.message || error);
       this.status = 'DISCONNECTED';
-      try { await this.client.destroy(); } catch (e) { }
+      this.emitStatusChange();
+      await this.safeDestroyClient();
       this.cleanStaleLocks();
       this.initClient();
 
       if (retryCount < 2 && !this.isExplicitlyLoggedOut) {
-        console.log(`[${this.clientId}] Auto-recuperación: Reintentando conexión en 3 segundos...`);
+        console.log(`[${this.clientId}] Auto-recuperación: Reintentando conexión en 4 segundos...`);
         setTimeout(() => {
-          if (!this.isExplicitlyLoggedOut) {
+          if (!this.isExplicitlyLoggedOut && this.status === 'DISCONNECTED') {
             this.start(retryCount + 1);
           }
-        }, 3000);
+        }, 4000);
       }
+    } finally {
+      this.isInitializing = false;
     }
   }
 
   public async logout() {
     this.isExplicitlyLoggedOut = true;
     this.clearWatchdog();
+    this.isInitializing = false;
     console.log(`[${this.clientId}] Iniciando proceso de desconexión y logout forzoso...`);
 
     try {
-      if (this.status === 'CONNECTED') {
-        // Límite de 4 segundos para logout de WhatsApp Web antes de forzar el cierre
+      if (this.status === 'CONNECTED' && this.client) {
+        // Límite de 3 segundos para logout de WhatsApp Web antes de forzar el cierre
         await Promise.race([
           this.client.logout().catch(() => {}),
-          new Promise(resolve => setTimeout(resolve, 4000))
+          new Promise(resolve => setTimeout(resolve, 3000))
         ]);
       }
     } catch (error) {
       console.warn(`[${this.clientId}] Aviso durante client.logout():`, error);
     } finally {
-      try { await this.client.destroy(); } catch (e) { }
+      await this.safeDestroyClient();
       this.cleanStaleLocks();
-      this.purgeSessionDir();
+      await this.purgeSessionDir();
       this.status = 'DISCONNECTED';
       this.qrCodeUrl = null;
+      this.emitStatusChange();
       setTimeout(() => this.initClient(), 1000);
       console.log(`[${this.clientId}] Sesión cerrada y reseteada completamente.`);
     }
@@ -508,25 +570,11 @@ export class WhatsappClientInstance {
 
   public async destroy() {
     this.clearWatchdog();
-    try {
-      if (this.client) {
-        await this.client.destroy();
-      }
-    } catch (e) {
-      console.error(`[${this.clientId}] Error during destroy:`, e);
-    }
+    this.isInitializing = false;
+    await this.safeDestroyClient();
   }
 
   public getStatus() {
-    // Si está desconectado y NO se ha hecho logout explícito, intentar reconectar si hay sesión en disco
-    if (this.status === 'DISCONNECTED' && !this.isExplicitlyLoggedOut) {
-      const sessionDir = path.join(process.cwd(), '.wwebjs_auth', `session-${this.clientId}`);
-      if (fs.existsSync(sessionDir)) {
-        console.log(`[${this.clientId}] getStatus: Sesión previa en disco detectada. Auto-conectando...`);
-        this.start().catch(() => { });
-      }
-    }
-
     return {
       status: this.status,
       qr: this.qrCodeUrl,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { RefreshCw, MessageSquare, LogOut, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { api } from '../../../config/api';
 import MassiveWhatsAppForm from '../components/MassiveWhatsAppForm';
@@ -18,28 +19,46 @@ export default function WhatsAppDashboard() {
 
   const fetchStatus = async () => {
     try {
-      const res = await api.get('/whatsapp/status');
+      const res = await api.get('/whatsapp/chls-masivo/status');
       if (res.data && res.data.success) {
         setWaStatus(res.data.data);
       }
     } catch (err) {
-      console.error('Error fetching WA status', err);
+      console.error('Error fetching WA Masivo status', err);
     }
   };
 
   useEffect(() => {
     fetchStatus();
-    const pollInterval = waStatus.status === 'CONNECTED' ? 6000 : 3000;
+
+    // Conectar WebSocket para recibir actualizaciones instantáneas de estado
+    const socket = io(import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`, { 
+      withCredentials: true 
+    });
+
+    socket.on('whatsapp:status_change', (data: { clientId: string; status: WhatsAppStatus['status']; qr: string | null }) => {
+      if (data.clientId === 'chls-masivo') {
+        setWaStatus({ status: data.status, qr: data.qr });
+      }
+    });
+
+    // Polling de respaldo cada 5 segundos únicamente si no está conectado
     const interval = setInterval(() => {
-      fetchStatus();
-    }, pollInterval);
-    return () => clearInterval(interval);
+      if (waStatus.status !== 'CONNECTED') {
+        fetchStatus();
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+      socket.disconnect();
+    };
   }, [waStatus.status]);
 
   const handleStartSession = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/start');
+      await api.post('/whatsapp/chls-masivo/start');
       await fetchStatus();
     } catch (err) {
       console.error(err);
@@ -51,7 +70,7 @@ export default function WhatsAppDashboard() {
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/logout');
+      await api.post('/whatsapp/chls-masivo/logout');
       await fetchStatus();
     } catch (err) {
       console.error(err);
@@ -63,9 +82,9 @@ export default function WhatsAppDashboard() {
   const handleRefreshQR = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/logout');
-      await new Promise(resolve => setTimeout(resolve, 500));
-      await api.post('/whatsapp/start');
+      await api.post('/whatsapp/chls-masivo/logout');
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      await api.post('/whatsapp/chls-masivo/start');
       await fetchStatus();
     } catch (err) {
       console.error(err);
