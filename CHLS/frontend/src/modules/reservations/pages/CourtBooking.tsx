@@ -841,10 +841,22 @@ export const CourtBooking: React.FC = () => {
 
 
       {/* 1. Selector de Deportes (Tarjetas Táctiles) */}
-      <div className="space-y-2">
-        <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
-          1. Selecciona el Deporte / Disciplina
-        </label>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 border-b border-emerald-500/20 pb-2.5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-gold to-[#9a762c] text-black font-black text-sm flex items-center justify-center shadow-[0_0_12px_rgba(204,161,75,0.35)] shrink-0">
+              1
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight serif-brand flex items-center gap-2">
+                Elige tu <span className="text-brand-gold">Disciplina Deportiva</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400">
+                Selecciona la disciplina para ver los espacios y canchas disponibles
+              </p>
+            </div>
+          </div>
+        </div>
         
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
           {sports.map(sport => {
@@ -898,15 +910,36 @@ export const CourtBooking: React.FC = () => {
       </div>
 
       {/* 2. Selector de Cancha / Espacio / Mesa Específica */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-            <MapPin className="w-4 h-4 text-emerald-400" />
-            2. SELECCIONA {unitSingularUpper === 'MESA' ? 'LA MESA' : unitSingularUpper === 'ESPACIO' ? 'EL ESPACIO' : 'LA CANCHA'} <span className="text-emerald-400 text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">({filteredCourts.length} {filteredCourts.length === 1 ? 'disponible' : 'disponibles'})</span>
-          </label>
-          <span className="text-[11px] text-gray-400">
-            {unitSingularCap} actual: <strong className="text-emerald-400 font-bold">{selectedCourt?.name || 'Ninguno'}</strong>
-          </span>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-700 text-black font-black text-sm flex items-center justify-center shadow-[0_0_12px_rgba(52,211,153,0.35)] shrink-0">
+              2
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight serif-brand">
+                  Selecciona {unitSingularUpper === 'MESA' ? 'la Mesa' : unitSingularUpper === 'ESPACIO' ? 'el Espacio' : 'la Cancha'}
+                </h2>
+                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                  {filteredCourts.length} {filteredCourts.length === 1 ? 'disponible' : 'disponibles'}
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-gray-400">
+                Superficie, iluminación y características de cada área de juego
+              </p>
+            </div>
+          </div>
+
+          {selectedCourt && (
+            <div className="flex items-center gap-2 self-start sm:self-auto bg-black/50 px-3.5 py-2 rounded-xl border border-emerald-500/30 text-xs sm:text-sm shadow-inner">
+              <span className="text-gray-400">{unitSingularCap} elegida:</span>
+              <strong className="text-emerald-400 font-bold flex items-center gap-1.5">
+                <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+                {selectedCourt.name}
+              </strong>
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
@@ -955,17 +988,29 @@ export const CourtBooking: React.FC = () => {
       </div>
 
       {/* 3. Selector de Fecha (Carrusel de 7 Días Rápidos) */}
-      <div className="space-y-2">
-        <div className="flex justify-between items-center">
-          <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
-            3. Selecciona la Fecha (Próximos 7 días)
-          </label>
-          <span className="text-[11px] text-gray-400 capitalize">
-            {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}
-          </span>
+      <div className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-gold to-[#9a762c] text-black font-black text-sm flex items-center justify-center shadow-[0_0_12px_rgba(204,161,75,0.35)] shrink-0">
+              3
+            </div>
+            <div>
+              <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight serif-brand">
+                Elige el Día de tu <span className="text-brand-gold">Turno</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400">
+                Agenda tu juego con hasta 7 días de anticipación
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start sm:self-auto bg-brand-gold/15 px-3.5 py-2 rounded-xl border border-brand-gold/40 text-xs sm:text-sm text-brand-gold font-bold capitalize shadow-sm">
+            <CalendarIcon className="w-4 h-4 text-brand-gold shrink-0" />
+            <span>{format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}</span>
+          </div>
         </div>
 
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
           {next7Days.map((d, index) => {
             const isSelected = isSameDay(d, selectedDate);
             const isTodayDay = isSameDay(d, today);
@@ -974,19 +1019,19 @@ export const CourtBooking: React.FC = () => {
               <button
                 key={d.toISOString()}
                 onClick={() => setSelectedDate(d)}
-                className={`flex-1 min-w-[80px] sm:min-w-[95px] p-2.5 sm:p-3 rounded-2xl border text-center transition-all flex flex-col items-center justify-center ${
+                className={`flex-1 min-w-[85px] sm:min-w-[105px] p-3 sm:p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center ${
                   isSelected
-                    ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_15px_rgba(204,161,75,0.35)] font-bold scale-[1.03]'
-                    : 'bg-[#09120c] border-white/10 text-gray-400 hover:text-white hover:border-white/20'
+                    ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_18px_rgba(204,161,75,0.4)] font-bold scale-[1.03]'
+                    : 'bg-[#09120c] border-white/10 text-gray-400 hover:text-white hover:border-white/20 hover:bg-[#0e1c13]'
                 }`}
               >
-                <span className={`text-[10px] uppercase tracking-wider ${isSelected ? 'text-black/80 font-black' : isTodayDay ? 'text-brand-gold' : 'text-gray-400'}`}>
+                <span className={`text-[10px] sm:text-xs uppercase tracking-wider font-semibold ${isSelected ? 'text-black/80 font-black' : isTodayDay ? 'text-brand-gold' : 'text-gray-400'}`}>
                   {isTodayDay ? 'Hoy' : format(d, 'EEE', { locale: es })}
                 </span>
-                <span className={`text-base sm:text-lg font-bold font-mono my-0.5 ${isSelected ? 'text-black' : 'text-white'}`}>
+                <span className={`text-lg sm:text-xl font-bold font-mono my-1 ${isSelected ? 'text-black' : 'text-white'}`}>
                   {format(d, 'd')}
                 </span>
-                <span className={`text-[9px] uppercase ${isSelected ? 'text-black/70' : 'text-gray-500'}`}>
+                <span className={`text-[10px] sm:text-xs uppercase font-medium ${isSelected ? 'text-black/70' : 'text-gray-400'}`}>
                   {format(d, 'MMM', { locale: es })}
                 </span>
               </button>
@@ -996,31 +1041,35 @@ export const CourtBooking: React.FC = () => {
       </div>
 
       {/* 4. Grilla de Horarios en Vivo */}
-      <div className="bg-[#09120c] border border-brand-gold/20 rounded-3xl p-5 sm:p-7 space-y-5 shadow-2xl">
+      <div className="bg-[#09120c] border border-brand-gold/25 rounded-3xl p-5 sm:p-7 space-y-6 shadow-2xl">
         
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-white/10 pb-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-brand-gold" />
-              <h2 className="text-base sm:text-lg font-bold text-white serif-brand">
-                Horarios Disponibles — <span className="text-brand-gold">{selectedCourt?.name}</span>
-              </h2>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-5">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-700 text-black font-black text-base flex items-center justify-center shadow-[0_0_15px_rgba(52,211,153,0.4)] shrink-0">
+              4
             </div>
-            {selectedCourt?.description && (
-              <p className="text-xs text-gray-400 mt-0.5">{selectedCourt.description}</p>
-            )}
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white serif-brand tracking-tight flex items-center gap-2 flex-wrap">
+                Horarios & Turnos Disponibles — <span className="text-brand-gold">{selectedCourt?.name}</span>
+              </h2>
+              {selectedCourt?.description ? (
+                <p className="text-xs sm:text-sm text-emerald-400/90 mt-0.5">{selectedCourt.description}</p>
+              ) : (
+                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Selecciona el horario que prefieras para ingresar a la cancha</p>
+              )}
+            </div>
           </div>
 
           {/* Quick Legend */}
-          <div className="flex flex-wrap items-center gap-2 text-[11px]">
-            <span className="flex items-center gap-1 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400"></span> Disponible
+          <div className="flex flex-wrap items-center gap-2.5 text-xs">
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></span> Disponible
             </span>
-            <span className="flex items-center gap-1 text-amber-300">
-              <span className="w-2 h-2 rounded-full bg-amber-400"></span> En Clase / Bloqueo
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span> En Clase / Bloqueo
             </span>
-            <span className="flex items-center gap-1 text-gray-400">
-              <span className="w-2 h-2 rounded-full bg-gray-500"></span> Ocupado
+            <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-500/15 border border-white/10 text-gray-400 font-semibold">
+              <span className="w-2.5 h-2.5 rounded-full bg-gray-500"></span> Ocupado
             </span>
           </div>
         </div>
