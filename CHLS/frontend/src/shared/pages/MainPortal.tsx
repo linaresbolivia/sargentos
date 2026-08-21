@@ -247,6 +247,30 @@ export const MainPortal: React.FC = () => {
               </div>
             </Link>
 
+            {isAdmin && (
+              <Link 
+                to="/admin/members"
+                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-brand-gold/30 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.2)]"
+              >
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-gold/20 to-yellow-600/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold group-hover:scale-110 transition-transform duration-300 mr-6 shadow-sm">
+                  <Users className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-brand-gold transition-colors">
+                      Gestión de Socios & Cobranzas
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
+                      ADMIN & CAJA
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Directorio 360°, Ventas & Auditoría CDP (60/40), Caja Unificada, Asambleas y Cartera Saneada.
+                  </p>
+                </div>
+              </Link>
+            )}
+
             <Link 
               to="/member"
               className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
@@ -259,7 +283,7 @@ export const MainPortal: React.FC = () => {
                   Portal del Socio
                 </h3>
                 <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Visualiza tu membresía, credencial digital, historial y estados de cuenta.
+                  Visualiza tu membresía, credencial digital QR, avance CDP y estados de cuenta.
                 </p>
               </div>
             </Link>

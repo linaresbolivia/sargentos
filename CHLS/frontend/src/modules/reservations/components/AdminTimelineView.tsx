@@ -27,6 +27,7 @@ interface Court {
 
 interface Reservation {
   id: string;
+  code?: string | null;
   courtId: string;
   court: Court;
   date: string;
@@ -36,6 +37,12 @@ interface Reservation {
   memberName: string;
   memberPhone?: string | null;
   reservationType: string;
+  playerType?: string;
+  guestsCount?: number;
+  playerNames?: string | null;
+  totalPrice?: number;
+  paymentStatus?: 'PENDING_PAYMENT' | 'PAID' | 'VERIFIED' | 'EXEMPT';
+  paymentReceiptUrl?: string | null;
   title?: string | null;
   notes?: string | null;
   isRecurring?: boolean;
@@ -371,6 +378,12 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                 <span className="font-bold text-brand-gold">{selectedSlotDetails.court?.sport}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Código de Reserva:</span>
+                <span className="font-mono font-bold text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded border border-brand-gold/30">
+                  #{selectedSlotDetails.code || selectedSlotDetails.id.slice(0, 8).toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Fecha:</span>
                 <span className="font-bold text-white">{selectedSlotDetails.date}</span>
               </div>
@@ -398,12 +411,18 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
               )}
               <div className="flex justify-between py-1">
                 <span className="text-gray-400">Estado:</span>
-                <span className={`font-bold px-2 py-0.5 rounded-full text-[10px] ${
-                  selectedSlotDetails.status === 'APPROVED' ? 'bg-emerald-500/20 text-emerald-400' :
-                  selectedSlotDetails.status === 'PENDING' ? 'bg-yellow-500/20 text-yellow-300' :
-                  'bg-rose-500/20 text-rose-400'
+                <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${
+                  selectedSlotDetails.paymentStatus === 'VERIFIED' || selectedSlotDetails.status === 'APPROVED'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                    : selectedSlotDetails.paymentStatus === 'PAID'
+                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                    : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 animate-pulse'
                 }`}>
-                  {selectedSlotDetails.status}
+                  {selectedSlotDetails.paymentStatus === 'VERIFIED' || selectedSlotDetails.status === 'APPROVED'
+                    ? '🟢 Reserva Consolidada' 
+                    : selectedSlotDetails.paymentStatus === 'PAID'
+                    ? '🟡 En Proceso (Validando Pago)'
+                    : '🟠 Reserva en Proceso'}
                 </span>
               </div>
             </div>

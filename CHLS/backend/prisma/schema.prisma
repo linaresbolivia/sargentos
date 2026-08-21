@@ -79,23 +79,47 @@ model Person {
   user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   documentId          String    @unique
+  docType             String    @default("CI") // CI, PASAPORTE, EXTRANJERO
+  docExtension        String?   // LP, CB, SC, OR, PT, TJ, CH, BE, PA
   firstName           String
-  lastName            String
+  secondName          String?
+  lastName            String?
+  paternalSurname     String?
+  maternalSurname     String?
+  marriedSurname      String?   // Casada de
+  alphaCode           String?   // GON-DUR-M-L
   birthDate           DateTime?
   gender              String?
-  maritalStatus       String?
-  nationality         String?
+  maritalStatus       String?   // SOLTERO, CASADO, DIVORCIADO, CONCUBINO, VIUDO
+  nationality         String?   @default("BOLIVIANA")
   profession          String?
+  occupation          String?
   company             String?
   address             String?
-  city                String?
+  city                String?   @default("LP")
   phone               String?
   mobile              String?
   email               String?
   photoUrl            String?
   digitalSignatureUrl String?
-  status              String    @default("ACTIVO") // Activo, Suspendido, Fallecido, Retirado
-  personType          String    @default("SOCIO") // SOCIO, RECIPROCITY, EXTERNAL
+  status              String    @default("ACTIVO") // ACTIVO, SUSPENDIDO, FALLECIDO, RETIRADO, AUSENTE, HONORARIO
+  personType          String    @default("SOCIO") // SOCIO, RECIPROCITY, EXTERNAL, PRE_ASOCIADO, JUNIOR_MAYOR, DEPORTIVO, HONORARIO
+
+  // Fiscal & Invoicing
+  fiscalNit           String?
+  fiscalCompanyName   String?
+
+  // Deposit voucher official entry rule
+  depositVoucherNumber String?
+  depositVoucherDate   DateTime? // Official entry date according to bank voucher
+  depositVoucherAmount Decimal?  @default(0)
+
+  // Financial info
+  bankName            String?
+  bankAccount         String?
+  creditLimit         Decimal   @default(0)
+  allowsDirectDebit   Boolean   @default(false)
+  allowsMoraGrace     Boolean   @default(false)
 
   // Memberships where this person is the TITULAR
   titularMemberships Membership[] @relation("TitularMemberships")
@@ -113,6 +137,13 @@ model Person {
   // Occasional Guests hosted by this person
   guests Guest[]
 
+  // Financial Plans, Accruals, Charges & Payments
+  membershipPlans       MembershipPlan[]
+  socialFeeAccruals     SocialFeeAccrual[]
+  extraordinaryCharges  ExtraordinaryCharge[]
+  paymentTransactions   MemberPaymentTransaction[]
+  refundRequests        MembershipRefundRequest[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -124,11 +155,14 @@ model Person {
 // ------------------------------------------------------
 model Guest {
   id           String   @id @default(uuid())
-  hostId       String   // Socio que invitó
-  host         Person   @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  hostId       String?  // Socio que invitó (opcional)
+  host         Person?  @relation(fields: [hostId], references: [id], onDelete: SetNull)
   firstName    String
   lastName     String
   documentId   String?
+  phone        String?
+  email        String?
+  notes        String?
   status       String   @default("ACTIVO")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -141,11 +175,12 @@ model Guest {
 // 3. Tipos de Membresía
 model MembershipType {
   id               String  @id @default(uuid())
-  code             String  @unique // TIT, FAM, HON, VIT
+  code             String  @unique // TIT, FAM, HON, VIT, IND, JUN, JMA, TRN, TRE, PRE, DEP, MEN
   name             String
   monthlyFee       Decimal @default(0)
   maxBeneficiaries Int     @default(0)
   votingRights     Boolean @default(false)
+  hasCdp           Boolean @default(true) // Vínculo Patrimonial
   benefits         String?
   accessRules      String?
 
@@ -165,24 +200,26 @@ model Membership {
   titularId String
   titular   Person @relation("TitularMemberships", fields: [titularId], references: [id])
 
-  status             String    @default("ACTIVA") // Activa, Suspendida, Bloqueada, En Venta, Transferida, Cancelada
+  status             String    @default("ACTIVA") // ACTIVA, SUSPENDIDA, BLOQUEADA, EN_VENTA, TRANSFERIDA, CANCELADA
   admissionDate      DateTime  @default(now())
   activationDate     DateTime?
   purchaseValue      Decimal   @default(0)
   currentValue       Decimal   @default(0)
-  acquisitionMethod  String?
+  acquisitionMethod  String?   // COMPRA_DIRECTA, TRANSFERENCIA, HERENCIA
   isTransferable     Boolean   @default(true)
   hasShares          Boolean   @default(false)
   sharesQuantity     Int       @default(0)
+  folioNumber        String?
   physicalDossierLoc String?
   observations       String?
-  totalDebt          Decimal   @default(0) // Financial state caching
+  totalDebt          Decimal   @default(0) // Financial state caching (real mora devengada)
 
   beneficiaries Beneficiary[]
   history       MembershipHistory[]
   vehicles      Vehicle[]
   horses        Horse[]
   pets          Pet[]
+  plans         MembershipPlan[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -198,14 +235,315 @@ model Beneficiary {
   personId     String
   person       Person     @relation(fields: [personId], references: [id], onDelete: Cascade)
 
-  relationship String // Cónyuge, Hijo, Padre, Invitado Permanente
-  status       String @default("ACTIVO")
+  relationship            String    // CONYUGE, HIJO, PADRE_MADRE, NIETO, INVITADO_PERMANENTE, NANA, CHOFER
+  birthDate               DateTime? // For < 25 years rule
+  isUnder25               Boolean   @default(true)
+  docId                   String?
+  docExtension            String?
+  photoUrl                String?
+  status                  String    @default("ACTIVO") // ACTIVO, INACTIVO, BLOQUEADO_EDAD
+  specialRelationshipNote String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@unique([membershipId, personId])
   @@map("beneficiaries")
+}
+
+// ------------------------------------------------------
+// FINANCIAL & OPERATIONAL CDP MODELS (MÓDULO DE GESTIÓN DE SOCIOS)
+// ------------------------------------------------------
+
+model MembershipPlan {
+  id                      String   @id @default(uuid())
+  membershipId            String
+  membership              Membership @relation(fields: [membershipId], references: [id], onDelete: Cascade)
+  titularId               String
+  titular                 Person   @relation(fields: [titularId], references: [id])
+  
+  transactionNumber       String   @unique // ej. AME-2026-001
+  acquisitionType         String   @default("COMPRA_DIRECTA") // COMPRA_DIRECTA, TRANSFERENCIA, HERENCIA
+  status                  String   @default("EN_REVISION") // EN_REVISION, APROBADO, OBSERVADO, CANCELADO
+  
+  sellerName              String?  // ej. "Eduardo (Comercial)"
+  auditedBy               String?  // ej. "Mónica (Recaudaciones)"
+  auditDate               DateTime?
+  auditNotes              String?
+  
+  totalAmount             Decimal  // Monto total acordado
+  incomeFeeAmount         Decimal  // 60% Derecho de Ingreso (Sujeto a Factura)
+  cdpAmount               Decimal  // 40% Cuota de Participación (Sujeto a Recibo)
+  downPayment             Decimal  // Cuota inicial abonada
+  financedAmount          Decimal  // Saldo financiado
+  monthsTerm              Int      @default(60) // 1 a 60 meses
+  monthlyInterestRate     Decimal  @default(0)  // Tasa de interés mensual
+  fixedMonthlyInstallment Decimal  // Cuota fija mensual
+  paymentMethodType       String   @default("CREDITO") // CREDITO, CONTADO
+  
+  startDate               DateTime @default(now())
+  firstDueDate            DateTime?
+  originalSocioId         String?  // En caso de herencia/transferencia
+  folioNumber             String?  // Número de folio del título
+  shareCertificateNumber  String?  // Certificado impreso al liquidar 60/60
+  isFullyPaid             Boolean  @default(false)
+  
+  installments            MembershipInstallment[]
+  
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("membership_plans")
+}
+
+model MembershipInstallment {
+  id                String   @id @default(uuid())
+  planId            String
+  plan              MembershipPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  
+  installmentNumber Int      // 1 to 60
+  dueDate           DateTime
+  incomeFeePart     Decimal  // 60% Derecho de Ingreso
+  cdpPart           Decimal  // 40% Cuota de Participación
+  capitalAmount     Decimal
+  interestAmount    Decimal  @default(0)
+  totalInstallment  Decimal
+  
+  amountPaid        Decimal  @default(0)
+  balanceRemaining  Decimal
+  status            String   @default("PENDIENTE") // PENDIENTE, PARCIAL, PAGADO
+  paidAt            DateTime?
+  
+  receiptNumber     String?
+  invoiceNumber     String?
+  
+  allocations       PaymentAllocation[]
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("membership_installments")
+}
+
+model SocialFeeAccrual {
+  id               String   @id @default(uuid())
+  personId         String
+  person           Person   @relation(fields: [personId], references: [id])
+  membershipId     String?
+  
+  periodMonth      Int      // 1 - 12
+  periodYear       Int      // 2026
+  periodLabel      String   // "Enero 2026"
+  feeType          String   @default("PRESENTE") // PRESENTE (880), AUSENTE (440), HONORARIO (0), MENOR (103), PRE_ASOCIADO (880), DEPORTIVO (400)
+  
+  baseAmount       Decimal
+  paidAmount       Decimal  @default(0)
+  residualBalance  Decimal  // Saldo pendiente (ej. arrastre de 80 Bs)
+  dueDate          DateTime
+  status           String   @default("PENDIENTE") // PENDIENTE, PARCIAL, PAGADO
+  
+  invoiceNumber    String?
+  allocations      PaymentAllocation[]
+  
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("social_fee_accruals")
+}
+
+model ExtraordinaryCharge {
+  id                 String   @id @default(uuid())
+  personId           String?
+  person             Person?  @relation(fields: [personId], references: [id])
+  
+  clientType         String   @default("SOCIO") // SOCIO, CLIENTE_EXTERNO
+  externalClientName String?
+  externalClientNit  String?
+  
+  serviceCategory    String   // BOX_HIPICO, VETERINARIA, ESCUELA_DEPORTIVA, EVENTO, OTRO
+  serviceName        String   // "Box Caballo Sultán", "Escuela Tenis Básico", "Atención Clínica Equina"
+  clinicalNoteNumber String?  // Nro de Nota Médica Veterinaria
+  
+  periodMonth        Int
+  periodYear         Int
+  amount             Decimal
+  paidAmount         Decimal  @default(0)
+  residualBalance    Decimal
+  dueDate            DateTime
+  status             String   @default("PENDIENTE") // PENDIENTE, PARCIAL, PAGADO
+  notes              String?
+  invoiceNumber      String?
+  
+  veterinaryDetails  VeterinaryNoteDetail[]
+  allocations        PaymentAllocation[]
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("extraordinary_charges")
+}
+
+model VeterinaryNoteDetail {
+  id              String   @id @default(uuid())
+  chargeId        String
+  charge          ExtraordinaryCharge @relation(fields: [chargeId], references: [id], onDelete: Cascade)
+  
+  horseName       String
+  boxNumber       String?
+  itemDescription String   // ej. "Antibiótico Equino 50ml", "Desparasitante masivo", "Honorario Médico"
+  quantity        Float    @default(1)
+  unitPrice       Decimal
+  subtotal        Decimal
+  
+  createdAt       DateTime @default(now())
+
+  @@map("veterinary_note_details")
+}
+
+model MemberPaymentTransaction {
+  id                 String   @id @default(uuid())
+  transactionCode    String   @unique // ej. CSO-2026-00042
+  personId           String
+  person             Person   @relation(fields: [personId], references: [id])
+  
+  paymentDate        DateTime @default(now())
+  paymentMethod      String   @default("EFECTIVO") // EFECTIVO, TARJETA, TRANSFERENCIA, DEBITO, CHEQUE
+  currency           String   @default("BOB")      // BOB, USD
+  exchangeRate       Decimal  @default(6.96)
+  
+  totalAmount        Decimal
+  invoicedAmount     Decimal  @default(0) // Cuotas sociales, derecho de ingreso 60%, servicios gravados
+  cdpReceiptAmount   Decimal  @default(0) // 40% Cuota de participación CDP (Recibo Oficial no gravado)
+  
+  invoiceNumber      String?
+  invoiceAuthCode    String?
+  fiscalNit          String?
+  fiscalRazonSocial  String?
+  receiptNumber      String?
+  
+  cashRegisterRef    String   @default("CAJA_CENTRAL")
+  cashierUsername    String   // Cajero de turno
+  shiftNumber        String?
+  notes              String?
+  status             String   @default("APROBADO") // APROBADO, ANULADO
+  
+  allocations        PaymentAllocation[]
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("member_payment_transactions")
+}
+
+model PaymentAllocation {
+  id                    String   @id @default(uuid())
+  paymentId             String
+  payment               MemberPaymentTransaction @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  
+  conceptType           String   // SOCIAL_FEE, CDP_INSTALLMENT, EXTRAORDINARY_CHARGE
+  allocatedAmount       Decimal
+  
+  socialFeeId           String?
+  socialFee             SocialFeeAccrual? @relation(fields: [socialFeeId], references: [id])
+  
+  installmentId         String?
+  installment           MembershipInstallment? @relation(fields: [installmentId], references: [id])
+  
+  extraordinaryChargeId String?
+  extraordinaryCharge   ExtraordinaryCharge? @relation(fields: [extraordinaryChargeId], references: [id])
+  
+  notes                 String?
+  createdAt             DateTime @default(now())
+
+  @@map("payment_allocations")
+}
+
+model AssemblySession {
+  id                          String   @id @default(uuid())
+  title                       String   // "Asamblea General Ordinaria de Socios 2026"
+  sessionDate                 DateTime
+  cutoffTime                  DateTime // 15:00 hrs
+  isCensusFrozen              Boolean  @default(false)
+  maxDebtToleranceMonths      Int      @default(1) // 1 mes de mora permitido
+  status                      String   @default("PROGRAMADA") // PROGRAMADA, EN_CURSO, FINALIZADA, CANCELADA
+  
+  totalEligiblePropietarios   Int      @default(0)
+  totalEligibleInstitucionales Int     @default(0)
+  totalPresent                Int      @default(0)
+  quorumPercentage            Float    @default(0)
+  notes                       String?
+  
+  attendees                   AssemblyAttendee[]
+  
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  @@map("assembly_sessions")
+}
+
+model AssemblyAttendee {
+  id                  String   @id @default(uuid())
+  sessionId           String
+  session             AssemblySession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  
+  personId            String
+  membershipNumber    String
+  fullName            String
+  documentId          String
+  attendeeCategory    String   // TITULAR_PROPIETARIO, INSTITUCIONAL
+  eligibleAtCutoff    Boolean  @default(true)
+  registeredInSitu    Boolean  @default(false) // Si pagó en caja express de puerta
+  inSituReceiptNumber String?
+  hasSigned           Boolean  @default(false)
+  signatureTimestamp  DateTime?
+  signatureType       String   @default("MANUAL") // MANUAL, DIGITAL
+  
+  createdAt           DateTime @default(now())
+
+  @@map("assembly_attendees")
+}
+
+model SystemFinancialParameter {
+  id             String   @id @default(uuid())
+  parameterKey   String   @unique // CUOTA_SOCIAL_PRESENTE, CUOTA_SOCIAL_AUSENTE, BOX_HIPICO_MENSUAL, etc.
+  parameterValue String   // "880.00", "195.00", "60", "40"
+  numericValue   Decimal?
+  description    String
+  category       String   @default("TARIFAS") // TARIFAS, PORCENTAJES, REGLAS, MORA
+  updatedBy      String?
+  updatedAt      DateTime @updatedAt
+
+  @@map("system_financial_parameters")
+}
+
+model MembershipRefundRequest {
+  id                     String   @id @default(uuid())
+  requestCode            String   @unique // REF-2026-001
+  personId               String
+  person                 Person   @relation(fields: [personId], references: [id])
+  
+  reason                 String   // "Prorrateo Anualidad por Pase a Socio Honorario"
+  monthsInFavor          Int      // ej. 7 meses
+  monthlyFee             Decimal  // ej. 880.00
+  grossRefundAmount      Decimal  // ej. 6160.00
+  taxRetentionPercentage Decimal  @default(12.5) // Retención impositiva de ley
+  taxRetentionAmount     Decimal
+  netRefundAmount        Decimal
+  
+  bankName               String
+  bankAccountNumber      String
+  bankAccountType        String   @default("CUENTA_CORRIENTE") // CUENTA_CORRIENTE, CAJA_AHORRO
+  beneficiaryName        String
+  
+  status                 String   @default("PENDIENTE_TESORERIA") // PENDIENTE_TESORERIA, APROBADO_TESORERIA, PAGADO, RECHAZADO
+  treasuryApprovedBy     String?
+  treasuryPaymentRef     String?
+  supportingDocUrl       String?
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("membership_refund_requests")
 }
 
 // 6. Historial de la Membresía
@@ -457,30 +795,47 @@ model Court {
   openingTime         String             @default("06:00")
   closingTime         String             @default("22:00")
   slotDurationMinutes Int                @default(60)
+  hourlyRate          Float              @default(30.0) // Base court fee per hour
+  guestRate           Float              @default(25.0) // Fee per external non-member guest
   reservations        CourtReservation[]
 
   @@map("courts")
 }
 
 model CourtReservation {
-  id               String   @id @default(uuid())
-  courtId          String
-  court            Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
-  date             String   // YYYY-MM-DD
-  startTime        String   // HH:mm
-  endTime          String   // HH:mm
-  memberCode       String?
-  memberName       String
-  memberPhone      String?
-  reservationType  String   @default("MEMBER") // MEMBER, CLASS, MAINTENANCE, TOURNAMENT, ESCUELA_DEPORTIVA, EVENTO_CLUB
-  title            String?  // Title for class, tournament or maintenance
-  notes            String?  // Additional details or instructor name
-  isRecurring      Boolean  @default(false)
-  recurringGroupId String?  // Group identifier for recurring date/time range series
-  adminCreatedBy   String?  // Admin username or ID
-  status           String   @default("PENDING") // PENDING, APPROVED, REJECTED, CANCELLED
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(uuid())
+  code              String?  @unique // ej. RES-84920 o RES-TEN-0042
+  courtId           String
+  court             Court    @relation(fields: [courtId], references: [id], onDelete: Cascade)
+  date              String   // YYYY-MM-DD
+  startTime         String   // HH:mm
+  endTime           String   // HH:mm
+  memberCode        String?
+  memberName        String
+  memberPhone       String?
+  reservationType   String   @default("MEMBER") // MEMBER, CLASS, MAINTENANCE, TOURNAMENT, ESCUELA_DEPORTIVA, EVENTO_CLUB
+  
+  // Players & Modality details
+  playerType        String   @default("FAMILY") // FAMILY, GUESTS, MEMBERS
+  guestsCount       Int      @default(0)
+  playerNames       String?  // Family members or Guest names or other Member names
+  
+  // Pricing & Payment
+  courtFee          Float    @default(0.0)
+  guestFee          Float    @default(0.0)
+  totalPrice        Float    @default(0.0)
+  paymentStatus     String   @default("PENDING_PAYMENT") // PENDING_PAYMENT, PAID, VERIFIED, EXEMPT
+  paymentReceiptUrl String?  // Receipt image URL if uploaded
+
+  title             String?  // Title for class, tournament or maintenance
+  notes             String?  // Additional details or instructor name
+  isRecurring       Boolean  @default(false)
+  recurringGroupId  String?  // Group identifier for recurring date/time range series
+  adminCreatedBy    String?  // Admin username or ID
+  status            String   @default("APPROVED") // PENDING, APPROVED, REJECTED, CANCELLED
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("court_reservations")
 }
+

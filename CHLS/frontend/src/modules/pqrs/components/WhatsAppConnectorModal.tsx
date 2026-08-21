@@ -9,20 +9,28 @@ interface WhatsAppStatus {
 
 interface WhatsAppConnectorModalProps {
   onClose: () => void;
+  clientId?: string;
+  title?: string;
+  subtitle?: string;
 }
 
-export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorModalProps) {
+export default function WhatsAppConnectorModal({ 
+  onClose,
+  clientId = 'chls-pqrs',
+  title = 'Conexión WhatsApp',
+  subtitle
+}: WhatsAppConnectorModalProps) {
   const [waStatus, setWaStatus] = useState<WhatsAppStatus>({ status: 'DISCONNECTED', qr: null });
   const [loading, setLoading] = useState(false);
 
   const fetchStatus = async () => {
     try {
-      const res = await api.get('/whatsapp/chls-pqrs/status');
+      const res = await api.get(`/whatsapp/${clientId}/status`);
       if (res.data && res.data.success) {
         setWaStatus(res.data.data);
       }
     } catch (err) {
-      console.error('Error fetching WA PQRS status', err);
+      console.error(`Error fetching WA ${clientId} status`, err);
     }
   };
 
@@ -35,12 +43,12 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [waStatus.status]);
+  }, [waStatus.status, clientId]);
 
   const handleStartSession = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/chls-pqrs/start');
+      await api.post(`/whatsapp/${clientId}/start`);
       await fetchStatus();
     } catch (err) {
       console.error(err);
@@ -52,7 +60,7 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
   const handleLogout = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/chls-pqrs/logout');
+      await api.post(`/whatsapp/${clientId}/logout`);
       await fetchStatus();
     } catch (err) {
       console.error(err);
@@ -64,9 +72,9 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
   const handleRefreshQR = async () => {
     setLoading(true);
     try {
-      await api.post('/whatsapp/chls-pqrs/logout');
+      await api.post(`/whatsapp/${clientId}/logout`);
       await new Promise(resolve => setTimeout(resolve, 2500));
-      await api.post('/whatsapp/chls-pqrs/start');
+      await api.post(`/whatsapp/${clientId}/start`);
       await fetchStatus();
     } catch (err) {
       console.error(err);
@@ -76,8 +84,8 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-glass-bg border border-glass-border shadow-2xl rounded-2xl w-full max-w-md p-6 relative flex flex-col">
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+      <div className="bg-glass-bg border border-brand-gold/40 shadow-2xl rounded-2xl w-full max-w-md p-6 relative flex flex-col">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
@@ -85,24 +93,25 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
           <X className="w-6 h-6" />
         </button>
 
-        <h2 className="text-xl font-bold text-brand-gold mb-6 flex items-center gap-2">
+        <h2 className="text-xl font-bold text-brand-gold mb-1 flex items-center gap-2">
           <MessageSquare className="w-5 h-5" />
-          Conexión WhatsApp PQRS
+          {title}
         </h2>
+        {subtitle && <p className="text-xs text-gray-400 mb-5">{subtitle}</p>}
 
         {waStatus.status === 'DISCONNECTED' && (
           <div className="text-center py-8">
             <MessageSquare className="w-12 h-12 text-brand-gold mb-4 mx-auto opacity-80" />
             <h3 className="text-lg font-bold text-brand-green dark:text-white mb-2">Servicio Apagado</h3>
             <p className="theme-text-muted mb-6 text-sm">
-              Inicia la sesión para generar el código QR y conectar el número exclusivo para PQRS.
+              Inicia la sesión para generar el código QR y conectar el número exclusivo para {title}.
             </p>
             <button
               onClick={handleStartSession}
               disabled={loading}
               className="w-full bg-brand-gold hover:bg-brand-gold-light text-brand-green font-bold py-3 px-4 rounded-xl transition-all shadow-goldGlow flex items-center justify-center gap-2 disabled:opacity-50"
             >
-              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Iniciar Sesión PQRS'}
+              {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : `Iniciar Sesión ${title}`}
             </button>
           </div>
         )}
@@ -111,7 +120,7 @@ export default function WhatsAppConnectorModal({ onClose }: WhatsAppConnectorMod
           <div className="text-center py-12">
             <RefreshCw className="w-12 h-12 text-brand-gold mb-4 mx-auto animate-spin opacity-80" />
             <h3 className="text-lg font-bold text-brand-green dark:text-white mb-2">Inicializando...</h3>
-            <p className="theme-text-muted text-sm">Preparando el cliente de WhatsApp para PQRS, por favor espera.</p>
+            <p className="theme-text-muted text-sm">Preparando el cliente de WhatsApp para {title}, por favor espera.</p>
           </div>
         )}
 

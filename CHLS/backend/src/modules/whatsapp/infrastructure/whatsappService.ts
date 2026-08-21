@@ -234,8 +234,61 @@ export class WhatsappClientInstance {
         return; // Detener flujo para no activar otras respuestas del bot
       }
 
+      // Check for Reservation Code Query (e.g. RES-TEN-8942, RES-84920)
+      const resCodeMatch = bodyStr.match(/RES-[A-Z0-9\-]+/i) || bodyStr.match(/\bRES\d+\b/i);
+
+      if (resCodeMatch) {
+        const rawCode = resCodeMatch[0].toUpperCase();
+        try {
+          const reservation = await prisma.courtReservation.findFirst({
+            where: {
+              OR: [
+                { code: rawCode },
+                { code: { contains: rawCode } },
+                { id: { startsWith: rawCode.replace('RES-', '').toLowerCase() } }
+              ]
+            },
+            include: { court: true }
+          });
+
+          if (reservation) {
+            const isVerified = reservation.paymentStatus === 'VERIFIED';
+            const isPaid = reservation.paymentStatus === 'PAID';
+            
+            let statusBadge = isVerified 
+              ? '🟢 RESERVA CONSOLIDADA (Pago Validado)' 
+              : isPaid 
+              ? '🟡 EN PROCESO (Comprobante en Validación)' 
+              : '🟠 EN PROCESO (Pendiente de Pago)';
+
+            let botReply = `🏆 *CLUB HÍPICO LOS SARGENTOS*\n🎾 *Consulta de Reserva: ${reservation.code || rawCode}*\n\n`;
+            botReply += `👤 *Titular:* ${reservation.memberName}\n`;
+            botReply += `🏟️ *Espacio:* ${reservation.court.name} (${reservation.court.sport})\n`;
+            botReply += `📅 *Fecha:* ${reservation.date}\n`;
+            botReply += `⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}\n`;
+            botReply += `💰 *Monto:* Bs. ${reservation.totalPrice}\n`;
+            botReply += `📊 *Estado:* ${statusBadge}\n\n`;
+
+            if (isVerified) {
+              botReply += `✅ *Tu turno está 100% confirmado y aprobado.* ¡Que disfrutes tu partido! 🥇✨`;
+            } else if (isPaid) {
+              botReply += `⏳ *Tu comprobante está en revisión por Administración.* Recibirás la validación en breve.`;
+            } else {
+              botReply += `📌 *Para consolidar tu turno:* Realiza la transferencia QR indicando el código *${reservation.code || rawCode}* en la glosa y adjunta tu comprobante.`;
+            }
+
+            await this.sendMessage(msg.from, botReply);
+            return;
+          }
+        } catch (resQueryErr) {
+          console.warn(`[${this.clientId}] Error consultando código de reserva:`, resQueryErr);
+        }
+      }
+
       if (bodyStr.toLowerCase() === 'hola' || bodyStr.toLowerCase() === 'estado') {
-        const botReply = 'Hola, soy Horse 🐴, el asistente virtual del Club Hípico Los Sargentos. Si deseas saber el estado de tu PQRS, por favor escribe tu código de seguimiento (Ej: MLG1). De lo contrario, continúa con la conversación y en breve te atenderá un asistente humano.';
+        const botReply = this.clientId === 'chls-reservas'
+          ? 'Hola, soy el asistente virtual de Reservas Deportivas del Club Hípico Los Sargentos 🐴🎾. Si deseas consultar el estado de tu reserva de cancha o pago, escribe tu código de reserva (Ej: RES-TEN-1042). ¡Estamos a tu servicio!'
+          : 'Hola, soy Horse 🐴, el asistente virtual del Club Hípico Los Sargentos. Si deseas saber el estado de tu PQRS, por favor escribe tu código de seguimiento (Ej: MLG1). De lo contrario, continúa con la conversación y en breve te atenderá un asistente humano.';
         await this.sendMessage(msg.from, botReply);
       } else if (codeMatch) {
         // Rate limiting: 5 minutes per user
@@ -308,7 +361,7 @@ export class WhatsappClientInstance {
 
   public async sendMessage(to: string, content: string, mediaBase64?: string) {
     if (this.status !== 'CONNECTED' || !this.client) {
-      console.error('WhatsApp client is not connected');
+      console.error(`[${this.clientId}] WhatsApp client is not connected`);
       return;
     }
     const chatId = to.includes('@') ? to : `${to}@c.us`;
@@ -334,9 +387,20 @@ export class WhatsappClientInstance {
 
       let mediaToSend: MessageMedia | undefined;
       if (mediaBase64) {
-        const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
-        if (match) {
-          mediaToSend = new MessageMedia(match[1], match[2]);
+        try {
+          if (mediaBase64.startsWith('data:')) {
+            const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
+            if (match) {
+              mediaToSend = new MessageMedia(match[1], match[2], 'comprobante-pago.jpg');
+            }
+          } else if (fs.existsSync(mediaBase64)) {
+            mediaToSend = MessageMedia.fromFilePath(mediaBase64);
+          } else if (mediaBase64.length > 100) {
+            // Raw base64 string without data prefix
+            mediaToSend = new MessageMedia('image/jpeg', mediaBase64, 'comprobante-pago.jpg');
+          }
+        } catch (mediaErr) {
+          console.warn(`[${this.clientId}] Error parseando media para WhatsApp:`, mediaErr);
         }
       }
 
@@ -715,6 +779,7 @@ class WhatsappManager {
     // Initialize default instances
     this.instances.set('chls-masivo', new WhatsappClientInstance('chls-masivo'));
     this.instances.set('chls-pqrs', new WhatsappClientInstance('chls-pqrs'));
+    this.instances.set('chls-reservas', new WhatsappClientInstance('chls-reservas'));
 
     // Auto-connect existing saved sessions in .wwebjs_auth
     setTimeout(() => {

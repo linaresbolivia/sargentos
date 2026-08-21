@@ -9,6 +9,7 @@ import { Login } from '@modules/auth/pages/Login';
 import { Register } from '@modules/auth/pages/Register';
 import { MemberDashboard } from '@modules/members/pages/MemberDashboard';
 import { AccessControl } from '@modules/members/pages/AccessControl';
+import { MemberAdminHub } from './modules/members/pages/MemberAdminHub';
 import { SuperAdminDashboard } from '@modules/admin/pages/SuperAdminDashboard';
 import { GatehouseDashboard } from './modules/gatehouse/pages/GatehouseDashboard';
 import WhatsAppDashboard from './modules/whatsapp/pages/WhatsAppDashboard';
@@ -105,6 +106,8 @@ export const App: React.FC = () => {
           <Route path="/access/gimnasio/reports" element={<AreaReports defaultArea="GIMNASIO" />} />
           <Route path="/access/analytics" element={<AreaManagementAnalytics />} />
           <Route path="/admin/access" element={<AccessControl />} />
+          <Route path="/admin/members" element={<MemberAdminHub />} />
+          <Route path="/admin/socios" element={<MemberAdminHub />} />
           <Route path="/admin/reservations" element={<CourtAdminDashboard />} />
         </Route>
 
