@@ -198,7 +198,7 @@ export const CourtAdminDashboard: React.FC = () => {
   const verifiedPaymentsCount = reservations.filter(r => r.paymentStatus === 'VERIFIED').length;
   const pendingPaymentsCount = reservations.filter(r => (!r.paymentStatus || r.paymentStatus === 'PENDING_PAYMENT') && r.reservationType === 'MEMBER').length;
   const classesAndBlocksCount = reservations.filter(r => 
-    ['CLASS', 'MAINTENANCE', 'TOURNAMENT', 'ESCUELA_DEPORTIVA', 'EVENTO_CLUB'].includes(r.reservationType) &&
+    ['CIERRE_CANCHA', 'CLASS', 'MAINTENANCE', 'TOURNAMENT', 'ESCUELA_DEPORTIVA', 'EVENTO_CLUB'].includes(r.reservationType) &&
     r.status === 'APPROVED'
   ).length;
 
@@ -475,6 +475,7 @@ export const CourtAdminDashboard: React.FC = () => {
                   className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-brand-gold"
                 >
                   <option value="ALL">Todos los Tipos</option>
+                  <option value="CIERRE_CANCHA">🚫 Cierre de Canchas</option>
                   <option value="MEMBER">Reserva de Socio</option>
                   <option value="CLASS">Clases Deportivas</option>
                   <option value="MAINTENANCE">Mantenimiento</option>
@@ -554,7 +555,7 @@ export const CourtAdminDashboard: React.FC = () => {
                             {res.memberCode && res.memberCode !== 'ADMIN_BLOCK' && (
                               <div className="text-[10px] text-gray-400">Socio: {res.memberCode} {res.memberPhone ? `• ${res.memberPhone}` : ''}</div>
                             )}
-                            {/* Modalidad Badge */}
+                            {/* Modalidad Badge para Socios */}
                             {res.reservationType === 'MEMBER' && (
                               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
@@ -569,6 +570,27 @@ export const CourtAdminDashboard: React.FC = () => {
                                 {res.playerNames && (
                                   <span className="text-[10px] text-gray-400 italic truncate max-w-xs" title={res.playerNames}>
                                     ({res.playerNames})
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {/* Badge para Bloqueos y Cierres Administrativos */}
+                            {res.reservationType !== 'MEMBER' && (
+                              <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                  res.reservationType === 'CIERRE_CANCHA'
+                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                    : res.reservationType === 'MAINTENANCE'
+                                    ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                                    : res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA'
+                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                                }`}>
+                                  {res.reservationType === 'CIERRE_CANCHA' ? '🚫 Cierre de Canchas' : res.reservationType === 'MAINTENANCE' ? '🛠️ Mantenimiento' : res.reservationType === 'CLASS' ? '🎾 Clases Deportivas' : res.reservationType === 'ESCUELA_DEPORTIVA' ? '🎓 Escuela Deportiva' : '🏆 Torneo'}
+                                </span>
+                                {res.notes && (
+                                  <span className="text-[10px] text-gray-300 italic truncate max-w-xs" title={res.notes}>
+                                    • {res.notes}
                                   </span>
                                 )}
                               </div>

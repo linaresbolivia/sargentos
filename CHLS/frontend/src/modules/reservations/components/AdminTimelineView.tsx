@@ -3,6 +3,7 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon, 
+  CalendarX,
   Clock, 
   CheckCircle, 
   XCircle, 
@@ -299,15 +300,19 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                       const isClass = res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA';
                       const isMaintenance = res.reservationType === 'MAINTENANCE';
                       const isTournament = res.reservationType === 'TOURNAMENT';
+                      const isCierre = res.reservationType === 'CIERRE_CANCHA' || res.reservationType === 'EVENTO_CLUB';
 
                       let badgeBg = 'bg-brand-gold/20 border-brand-gold/50 text-brand-gold';
                       let icon = <User className="w-3 h-3 shrink-0" />;
 
-                      if (isClass) {
+                      if (isCierre) {
+                        badgeBg = 'bg-rose-500/25 border-rose-500/60 text-rose-200 shadow-[0_0_8px_rgba(244,63,94,0.25)]';
+                        icon = <CalendarX className="w-3 h-3 shrink-0 text-rose-400" />;
+                      } else if (isClass) {
                         badgeBg = 'bg-amber-500/20 border-amber-500/50 text-amber-300';
                         icon = <Dumbbell className="w-3 h-3 shrink-0" />;
                       } else if (isMaintenance) {
-                        badgeBg = 'bg-rose-500/20 border-rose-500/50 text-rose-300';
+                        badgeBg = 'bg-orange-500/20 border-orange-500/50 text-orange-300';
                         icon = <Wrench className="w-3 h-3 shrink-0" />;
                       } else if (isTournament) {
                         badgeBg = 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300';

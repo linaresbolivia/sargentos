@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
@@ -14,7 +14,10 @@ import {
   Wrench,
   Trophy,
   GraduationCap,
-  Bookmark
+  Bookmark,
+  ShieldAlert,
+  CalendarX,
+  Check
 } from 'lucide-react';
 import { format, addDays, addMonths } from 'date-fns';
 
@@ -59,26 +62,75 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 }) => {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   
-  const [reservationType, setReservationType] = useState<'CLASS' | 'MAINTENANCE' | 'TOURNAMENT' | 'ESCUELA_DEPORTIVA' | 'EVENTO_CLUB'>('CLASS');
-  const [title, setTitle] = useState('Clases de Tenis');
+  const [reservationType, setReservationType] = useState<'CIERRE_CANCHA' | 'CLASS' | 'MAINTENANCE' | 'TOURNAMENT' | 'ESCUELA_DEPORTIVA' | 'EVENTO_CLUB'>('CIERRE_CANCHA');
+  const [title, setTitle] = useState('Cierre de Canchas - Mantenimiento y Adecuación');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState(initialDate || todayStr);
-  const [endDate, setEndDate] = useState(initialDate || format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
-  const [startTime, setStartTime] = useState('08:00');
-  const [endTime, setEndTime] = useState('10:00');
-  const [selectedDays, setSelectedDays] = useState<number[]>([1, 3, 5]); // L, M, V default
+  const [endDate, setEndDate] = useState(initialDate || format(addDays(new Date(), 2), 'yyyy-MM-dd'));
+  const [startTime, setStartTime] = useState('06:00');
+  const [endTime, setEndTime] = useState('22:00');
+  // Por defecto: todos los 7 días seleccionados para cubrir el rango completo automáticamente
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [selectedCourtIds, setSelectedCourtIds] = useState<string[]>([]);
   const [selectedSportFilter, setSelectedSportFilter] = useState<string>(initialSport || 'ALL');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper para calcular días de la semana en el rango seleccionado
+  const computeDaysInRange = (startStr: string, endStr: string): number[] => {
+    try {
+      const [sY, sM, sD] = startStr.split('-').map(Number);
+      const [eY, eM, eD] = endStr.split('-').map(Number);
+      const s = new Date(sY, sM - 1, sD);
+      const e = new Date(eY, eM - 1, eD);
+      if (s > e) return [0, 1, 2, 3, 4, 5, 6];
+      const days = new Set<number>();
+      let cur = new Date(s);
+      let count = 0;
+      while (cur <= e && count < 365) {
+        days.add(cur.getDay());
+        cur.setDate(cur.getDate() + 1);
+        count++;
+      }
+      return Array.from(days);
+    } catch {
+      return [0, 1, 2, 3, 4, 5, 6];
+    }
+  };
+
+  // Auto-seleccionar los días del rango cuando cambian las fechas
+  const handleStartDateChange = (newStart: string) => {
+    setStartDate(newStart);
+    if (newStart > endDate) {
+      setEndDate(newStart);
+      setSelectedDays(computeDaysInRange(newStart, newStart));
+    } else {
+      setSelectedDays(computeDaysInRange(newStart, endDate));
+    }
+  };
+
+  const handleEndDateChange = (newEnd: string) => {
+    setEndDate(newEnd);
+    if (startDate > newEnd) {
+      setStartDate(newEnd);
+      setSelectedDays(computeDaysInRange(newEnd, newEnd));
+    } else {
+      setSelectedDays(computeDaysInRange(startDate, newEnd));
+    }
+  };
+
   // Set default title depending on activity type
   const handleTypeChange = (type: any) => {
     setReservationType(type);
-    if (type === 'CLASS') setTitle('Clases de Tenis - Academia');
+    if (type === 'CIERRE_CANCHA') {
+      setTitle('Cierre de Canchas - Mantenimiento y Adecuación');
+      setStartTime('06:00');
+      setEndTime('22:00');
+    }
+    else if (type === 'CLASS') setTitle('Clases de Tenis / Pádel - Academia');
     else if (type === 'MAINTENANCE') setTitle('Mantenimiento Técnico y Limpieza');
-    else if (type === 'TOURNAMENT') setTitle('Torneo Abierto CHLS');
+    else if (type === 'TOURNAMENT') setTitle('Torneo Oficial CHLS');
     else if (type === 'ESCUELA_DEPORTIVA') setTitle('Escuela Deportiva de Menores');
-    else if (type === 'EVENTO_CLUB') setTitle('Evento Institucional');
+    else if (type === 'EVENTO_CLUB') setTitle('Evento Institucional del Club');
   };
 
   const sports = useMemo(() => {
@@ -112,8 +164,9 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
     );
   };
 
-  const setDaysPreset = (preset: 'ALL' | 'MWF' | 'TT' | 'WEEKDAYS' | 'WEEKENDS') => {
+  const setDaysPreset = (preset: 'ALL' | 'RANGE' | 'MWF' | 'TT' | 'WEEKDAYS' | 'WEEKENDS') => {
     if (preset === 'ALL') setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+    else if (preset === 'RANGE') setSelectedDays(computeDaysInRange(startDate, endDate));
     else if (preset === 'MWF') setSelectedDays([1, 3, 5]);
     else if (preset === 'TT') setSelectedDays([2, 4]);
     else if (preset === 'WEEKDAYS') setSelectedDays([1, 2, 3, 4, 5]);
@@ -128,7 +181,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
       return;
     }
     if (!title.trim()) {
-      toast.error('Ingresa un título o nombre para la ocupación');
+      toast.error('Ingresa un título o concepto para la ocupación / cierre');
       return;
     }
     if (startDate > endDate) {
@@ -139,10 +192,9 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
       toast.error('La hora de inicio debe ser anterior a la hora de fin');
       return;
     }
-    if (selectedDays.length === 0) {
-      toast.error('Debes seleccionar al menos un día de la semana');
-      return;
-    }
+
+    // Si no seleccionó días explícitos, usar automáticamente todos los días del rango
+    const finalDays = selectedDays.length > 0 ? selectedDays : computeDaysInRange(startDate, endDate);
 
     setIsSubmitting(true);
     try {
@@ -152,18 +204,18 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
         endDate,
         startTime,
         endTime,
-        daysOfWeek: selectedDays,
+        daysOfWeek: finalDays,
         reservationType,
-        title,
-        notes,
+        title: title.trim(),
+        notes: notes.trim() || undefined,
         adminCreatedBy: 'Administración CHLS'
       });
 
-      toast.success(res.data.message || 'Bloques creados exitosamente');
+      toast.success(res.data.message || 'Cierre / Ocupación programado exitosamente');
       onSuccess();
       onClose();
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al programar ocupación continua');
+      toast.error(err.response?.data?.error || 'Error al programar ocupación');
     } finally {
       setIsSubmitting(false);
     }
@@ -183,10 +235,10 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
             </div>
             <div>
               <h2 className="text-xl font-bold text-white serif-brand tracking-tight">
-                Programar <span className="text-brand-gold">Ocupación / Clases / Bloqueo</span>
+                Programar <span className="text-brand-gold">Cierre de Canchas / Clases / Bloqueo</span>
               </h2>
               <p className="text-xs text-gray-400">
-                Define rangos de fechas, horarios continuos y días de repetición.
+                El concepto y título se registrarán automáticamente en el cronograma y en las vistas de socios.
               </p>
             </div>
           </div>
@@ -204,13 +256,14 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           {/* Tipo de Actividad */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-2">
-              Tipo de Actividad
+              Tipo de Actividad / Cierre
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
               {[
+                { id: 'CIERRE_CANCHA', label: 'Cierre de Canchas', icon: CalendarX, color: 'text-rose-400 border-rose-500/50 bg-rose-500/15' },
                 { id: 'CLASS', label: 'Clase Deportiva', icon: Dumbbell, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
+                { id: 'MAINTENANCE', label: 'Mantenimiento', icon: Wrench, color: 'text-orange-400 border-orange-500/40 bg-orange-500/10' },
                 { id: 'TOURNAMENT', label: 'Torneo', icon: Trophy, color: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/10' },
-                { id: 'MAINTENANCE', label: 'Mantenimiento', icon: Wrench, color: 'text-rose-400 border-rose-500/40 bg-rose-500/10' },
                 { id: 'ESCUELA_DEPORTIVA', label: 'Escuela / Menores', icon: GraduationCap, color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' },
                 { id: 'EVENTO_CLUB', label: 'Evento Club', icon: Bookmark, color: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10' },
               ].map(item => {
@@ -228,76 +281,95 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     }`}
                   >
                     <Icon className="w-5 h-5 mb-1" />
-                    <span className="text-[11px] leading-tight">{item.label}</span>
+                    <span className="text-[11px] leading-tight font-bold">{item.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
 
-          {/* Título y Notas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Título / Concepto y Notas */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-black/40 border border-brand-gold/25">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
-                Título / Actividad <span className="text-rose-400">*</span>
+              <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-1 flex items-center justify-between">
+                <span>Título / Concepto del Cierre *</span>
+                <span className="text-[10px] text-emerald-400 font-normal">Visible en horarios</span>
               </label>
               <input 
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="Ej. Clases de Tenis - Academia Juvenil"
-                className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
+                placeholder="Ej. Cierre de Canchas por Mantenimiento General / Torneo CHLS"
+                className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
                 required
               />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Este concepto se mostrará exactamente a los socios en la grilla y cronograma.
+              </p>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
-                Profesor / Notas Adicionales
+              <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+                Detalles / Observaciones / Profesor
               </label>
               <input 
                 type="text"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
-                placeholder="Ej. Prof. Marcelo Soto - Cancha Principal"
-                className="w-full bg-black/40 border border-white/15 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
+                placeholder="Ej. Trabajos de pintura y luminarias / Prof. Marcelo"
+                className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
               />
+              <p className="text-[10px] text-gray-400 mt-1">
+                Información interna adicional sobre la actividad o motivo del cierre.
+              </p>
             </div>
           </div>
 
           {/* Rango de Fechas */}
           <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" /> Rango de Fechas
+                <Calendar className="w-4 h-4" /> Rango de Fechas para el Cierre / Ocupación
               </label>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
-                  onClick={() => { setStartDate(todayStr); setEndDate(todayStr); }}
+                  onClick={() => {
+                    handleStartDateChange(todayStr);
+                    handleEndDateChange(todayStr);
+                  }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
                   Solo Hoy
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartDate(todayStr); setEndDate(format(addDays(new Date(), 7), 'yyyy-MM-dd')); }}
+                  onClick={() => {
+                    handleStartDateChange(todayStr);
+                    handleEndDateChange(format(addDays(new Date(), 2), 'yyyy-MM-dd'));
+                  }}
+                  className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
+                >
+                  3 Días (Hoy + 2)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleStartDateChange(todayStr);
+                    handleEndDateChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+                  }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
                   7 Días
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartDate(todayStr); setEndDate(format(addMonths(new Date(), 1), 'yyyy-MM-dd')); }}
+                  onClick={() => {
+                    handleStartDateChange(todayStr);
+                    handleEndDateChange(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
+                  }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
                   1 Mes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setStartDate(todayStr); setEndDate(format(addMonths(new Date(), 3), 'yyyy-MM-dd')); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
-                >
-                  3 Meses
                 </button>
               </div>
             </div>
@@ -308,7 +380,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 <input 
                   type="date"
                   value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
+                  onChange={e => handleStartDateChange(e.target.value)}
                   className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
                   required
                 />
@@ -318,7 +390,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 <input 
                   type="date"
                   value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
+                  onChange={e => handleEndDateChange(e.target.value)}
                   className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
                   required
                 />
@@ -328,24 +400,31 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
           {/* Rango de Horarios */}
           <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
-            <div className="flex justify-between items-center">
+            <div className="flex justify-between items-center flex-wrap gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-                <Clock className="w-4 h-4" /> Rango y Franja de Horarios
+                <Clock className="w-4 h-4" /> Horario del Cierre / Bloqueo
               </label>
-              <div className="flex gap-1.5">
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => { setStartTime('06:00'); setEndTime('22:00'); }}
+                  className="px-2 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold transition-colors"
+                >
+                  Todo el Día (06-22)
+                </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('07:00'); setEndTime('09:00'); }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
-                  07-09
+                  07-09 (Mañana)
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartTime('08:00'); setEndTime('11:00'); }}
+                  onClick={() => { setStartTime('08:00'); setEndTime('12:00'); }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
-                  08-11 (Mañana)
+                  08-12
                 </button>
                 <button
                   type="button"
@@ -393,12 +472,45 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           </div>
 
           {/* Días de la Semana */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-gray-400">
-                Días de Repetición en el Rango
-              </label>
-              <div className="flex gap-1.5">
+          <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
+            <div className="flex justify-between items-center flex-wrap gap-2 mb-1">
+              <div>
+                <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
+                  Días de Repetición en el Rango
+                </label>
+                <span className="text-[10px] text-emerald-400">
+                  * Se programará y cerrará automáticamente en los días marcados
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setDaysPreset('RANGE')}
+                  className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold hover:bg-emerald-500/30 transition-colors"
+                >
+                  ✓ Días del Rango
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDaysPreset('ALL')}
+                  className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold hover:bg-white/20 transition-colors"
+                >
+                  Todos (7 días)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDaysPreset('WEEKDAYS')}
+                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                >
+                  Lun a Vie
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDaysPreset('WEEKENDS')}
+                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                >
+                  Sáb y Dom
+                </button>
                 <button
                   type="button"
                   onClick={() => setDaysPreset('MWF')}
@@ -413,20 +525,6 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 >
                   M-J
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('WEEKDAYS')}
-                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
-                >
-                  Lunes a Viernes
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('ALL')}
-                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
-                >
-                  Todos
-                </button>
               </div>
             </div>
 
@@ -438,13 +536,14 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     key={d.value}
                     type="button"
                     onClick={() => toggleDay(d.value)}
-                    className={`py-2.5 rounded-xl border text-center font-bold text-xs transition-all ${
+                    className={`py-2.5 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center justify-center gap-0.5 ${
                       isSelected
-                        ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_12px_rgba(204,161,75,0.3)]'
+                        ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_12px_rgba(204,161,75,0.3)] scale-[1.02]'
                         : 'border-white/10 bg-black/40 text-gray-400 hover:border-white/20'
                     }`}
                   >
-                    {d.label}
+                    <span>{d.label}</span>
+                    <span className="text-[8px] font-normal opacity-80">{d.full.slice(0, 3)}</span>
                   </button>
                 );
               })}

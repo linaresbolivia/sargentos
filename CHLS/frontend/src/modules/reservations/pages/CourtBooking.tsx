@@ -42,9 +42,11 @@ import {
   Search,
   X,
   Plus,
-  BadgeCheck
+  BadgeCheck,
+  Phone,
+  PhoneCall
 } from 'lucide-react';
-import { format, addDays, startOfToday, parseISO, isSameDay, isBefore } from 'date-fns';
+import { format, addDays, startOfToday, parseISO, isSameDay, isBefore, isSaturday, isSunday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import CrestLogo from '@shared/components/CrestLogo';
 
@@ -82,21 +84,95 @@ interface Reservation {
   memberPhone?: string | null;
 }
 
-
-const TIME_SLOTS = [
+// Horarios de atención:
+// Lunes a Viernes: 06:00 a 21:00 (último turno 21:00 - 22:00)
+// Fines de semana y feriados: 06:00 a 19:00 (último turno 19:00 - 20:00, atención solo hasta las 20:00 hrs)
+const WEEKDAY_TIME_SLOTS = [
   '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', 
   '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', 
   '18:00', '19:00', '20:00', '21:00'
 ];
 
-const SPORT_META: Record<string, { label: string; desc: string; unitSingular: string; unitPlural: string }> = {
-  'Tenis': { label: 'Tenis', desc: '6 Canchas de Arcilla', unitSingular: 'cancha', unitPlural: 'canchas' },
-  'Pádel': { label: 'Pádel', desc: '2 Canchas Panorámicas', unitSingular: 'cancha', unitPlural: 'canchas' },
-  'Frontón': { label: 'Frontón', desc: '2 Espacios Oficiales', unitSingular: 'espacio', unitPlural: 'espacios' },
-  'Polifuncional': { label: 'Polifuncional', desc: 'Volley / Básquet / Futsal', unitSingular: 'cancha', unitPlural: 'canchas' },
-  'Raquet / Wally': { label: 'Raquet / Wally', desc: '2 Espacios de Madera', unitSingular: 'espacio', unitPlural: 'espacios' },
-  'Ping Pong': { label: 'Ping Pong', desc: '2 Mesas de Tenis de Mesa', unitSingular: 'mesa', unitPlural: 'mesas' },
-  'Fútbol': { label: 'Fútbol', desc: '1 Cancha Césped Natural', unitSingular: 'cancha', unitPlural: 'canchas' },
+const WEEKEND_TIME_SLOTS = [
+  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', 
+  '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', 
+  '18:00', '19:00'
+];
+
+const SPORT_META: Record<string, { 
+  label: string; 
+  desc: string; 
+  unitSingular: string; 
+  unitPlural: string;
+  guestRate: number;
+  contactPhones: string[];
+  contactDesc: string;
+  isFixedCourtRate?: boolean;
+  fixedRate?: number;
+  notes: string;
+}> = {
+  'Tenis': { 
+    label: 'Tenis', 
+    desc: '6 Canchas de Arcilla', 
+    unitSingular: 'cancha', 
+    unitPlural: 'canchas',
+    guestRate: 50,
+    contactPhones: ['+591 76753734', '+591 76753758'],
+    contactDesc: 'Caseta y Atención al Socio',
+    notes: 'Solo cubre 1 hora. Arancel Bs. 50 por invitado. Reserva con 48 hrs de anticipación.'
+  },
+  'Pádel': { 
+    label: 'Pádel', 
+    desc: '2 Canchas Panorámicas', 
+    unitSingular: 'cancha', 
+    unitPlural: 'canchas',
+    guestRate: 80,
+    contactPhones: ['+591 76753758', '+591 76753744'],
+    contactDesc: 'Caseta y Atención al Socio',
+    notes: 'Solo cubre 1 hora. Arancel Bs. 80 por invitado.'
+  },
+  'Frontón': { 
+    label: 'Frontón', 
+    desc: '2 Espacios Oficiales', 
+    unitSingular: 'espacio', 
+    unitPlural: 'espacios',
+    guestRate: 50,
+    contactPhones: ['+591 76753758', '+591 76753734'],
+    contactDesc: 'Caseta y Atención al Socio',
+    notes: 'Solo cubre 1 hora. Arancel Bs. 50 por invitado.'
+  },
+  'Polifuncional': { 
+    label: 'Polifuncional', 
+    desc: 'Futsal / Volleyball / Basketball', 
+    unitSingular: 'cancha', 
+    unitPlural: 'canchas',
+    guestRate: 0,
+    isFixedCourtRate: true,
+    fixedRate: 100,
+    contactPhones: ['+591 76753758', '+591 76753744'],
+    contactDesc: 'Caseta y Personal de Atención al Socio',
+    notes: 'Arancel fijo de Bs. 100 por la reserva de cancha con lista de invitados. Solo cubre 1 hora.'
+  },
+  'Raquet / Wally': { 
+    label: 'Raquet / Wally', 
+    desc: '2 Espacios de Madera', 
+    unitSingular: 'espacio', 
+    unitPlural: 'espacios',
+    guestRate: 50,
+    contactPhones: ['+591 76753743'],
+    contactDesc: 'Recepción de Gimnasio',
+    notes: 'Solo cubre 1 hora. Arancel Bs. 50 por invitado.'
+  },
+  'Ping Pong': { 
+    label: 'Ping Pong', 
+    desc: '2 Mesas de Tenis de Mesa', 
+    unitSingular: 'mesa', 
+    unitPlural: 'mesas',
+    guestRate: 50,
+    contactPhones: ['+591 76753758'],
+    contactDesc: 'Atención al Socio',
+    notes: 'Solo cubre 1 hora. Arancel Bs. 50 por invitado.'
+  },
 };
 
 // Modern Monochrome Laser-Etched Backlit Sport Icon Component
@@ -177,19 +253,6 @@ const SportIcon: React.FC<{ sport: string; isSelected?: boolean }> = ({ sport, i
           </>
         );
 
-      case 'Fútbol':
-        return (
-          <>
-            <circle cx="12" cy="12" r="9" />
-            <polygon points="12,8 15,10 14,14 10,14 9,10" fill="currentColor" fillOpacity="0.2" />
-            <line x1="12" y1="3" x2="12" y2="8" />
-            <line x1="15" y1="10" x2="20" y2="8" />
-            <line x1="14" y1="14" x2="17" y2="19" />
-            <line x1="10" y1="14" x2="7" y2="19" />
-            <line x1="9" y1="10" x2="4" y2="8" />
-          </>
-        );
-
       default:
         return <circle cx="12" cy="12" r="9" />;
     }
@@ -243,6 +306,9 @@ export const CourtBooking: React.FC = () => {
   const [selectedSport, setSelectedSport] = useState<string>('Tenis');
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
 
+  // Sub-disciplina para Polifuncional (Futsal, Volleyball, Basketball)
+  const [polifunctionalSport, setPolifunctionalSport] = useState<'Futsal' | 'Volleyball' | 'Basketball'>('Futsal');
+
   const today = startOfToday();
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   
@@ -266,6 +332,9 @@ export const CourtBooking: React.FC = () => {
   const [guestsCount, setGuestsCount] = useState<number>(1);
   const [playerNames, setPlayerNames] = useState<string>('');
   
+  // Pases de Invitado (Promoción Pronto Pago Anual)
+  const [hasGuestPasses, setHasGuestPasses] = useState<boolean>(false);
+  
   // Guest registry in database states
   const [selectedGuests, setSelectedGuests] = useState<GuestItem[]>([]);
   const [guestSearchQuery, setGuestSearchQuery] = useState('');
@@ -287,10 +356,17 @@ export const CourtBooking: React.FC = () => {
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Generate 7-day quick date picker items
-  const next7Days = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => addDays(today, i));
+  // Selector de 2 días rápidos (Toda reserva es con 48 hrs de anticipación: Hoy y Mañana)
+  // 3 Días: Hoy + 2 días adicionales
+  const next3Days = useMemo(() => {
+    return Array.from({ length: 3 }, (_, i) => addDays(today, i));
   }, [today]);
+
+  // Dynamic Time Slots: Fines de semana y feriados atención solo hasta las 20:00 hrs
+  const currentTimeSlots = useMemo(() => {
+    const isWeekendDay = isSaturday(selectedDate) || isSunday(selectedDate);
+    return isWeekendDay ? WEEKEND_TIME_SLOTS : WEEKDAY_TIME_SLOTS;
+  }, [selectedDate]);
 
   useEffect(() => {
     fetchCourts();
@@ -466,12 +542,20 @@ export const CourtBooking: React.FC = () => {
     }
   }, [filteredCourts, selectedSport]);
 
-  // Dynamic fee calculations
-  const hourlyRate = selectedCourt?.hourlyRate ?? 30;
-  const guestRate = selectedCourt?.guestRate ?? 25;
-  const currentCourtFee = hourlyRate * durationHours;
-  const currentGuestFee = playerType === 'GUESTS' ? guestsCount * guestRate : 0;
-  const currentTotalPrice = currentCourtFee + currentGuestFee;
+  // Dynamic fee calculations (Normativa CHLS: El socio NO paga por uso de cancha)
+  const currentCourtFee = 0; // Gratuito para socios del Club
+  const sportMeta = SPORT_META[selectedSport] || { guestRate: 50, contactPhones: [], contactDesc: '', notes: '' };
+
+  let currentGuestFee = 0;
+  if (playerType === 'GUESTS' && !hasGuestPasses) {
+    if (sportMeta.isFixedCourtRate) {
+      currentGuestFee = sportMeta.fixedRate || 100;
+    } else {
+      currentGuestFee = guestsCount * (sportMeta.guestRate || 50);
+    }
+  }
+
+  const currentTotalPrice = currentGuestFee;
 
   // Find slot reservation
   const getSlotInfo = (time: string) => {
@@ -502,13 +586,16 @@ export const CourtBooking: React.FC = () => {
       setPlayerType('FAMILY');
       setGuestsCount(1);
       setPlayerNames('');
+      setHasGuestPasses(false);
       setIsModalOpen(true);
     } else if (res.memberCode === currentMemberCode) {
       setSelectedForQrModal(res);
-    } else if (res.reservationType === 'CLASS') {
-      toast.error(`Horario reservado para Clases Deportivas (${res.title || 'Academia'}).`);
-    } else if (res.reservationType === 'MAINTENANCE') {
-      toast.error('Cancha en mantenimiento técnico en este horario.');
+    } else if (res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA') {
+      toast.error(`Horario reservado: ${res.title || 'Clases Deportivas'}`);
+    } else if (res.reservationType === 'MAINTENANCE' || res.reservationType === 'CIERRE_CANCHA') {
+      toast.error(`Cancha no disponible: ${res.title || 'Cierre de Cancha'}`);
+    } else if (res.title && res.title !== 'Reserva de Socio') {
+      toast.error(`Horario no disponible: ${res.title}`);
     } else {
       toast.error('Este horario ya se encuentra ocupado por otro socio.');
     }
@@ -536,6 +623,18 @@ export const CourtBooking: React.FC = () => {
       const hour = parseInt(selectedTime.split(':')[0]);
       const endTime = `${(hour + durationHours).toString().padStart(2, '0')}:00`;
 
+      const reservationTitle = selectedSport === 'Polifuncional'
+        ? `Polifuncional - ${polifunctionalSport}`
+        : `Reserva de ${selectedSport}`;
+
+      let reservationNotes = selectedSport === 'Polifuncional'
+        ? `Disciplina: ${polifunctionalSport}`
+        : '';
+
+      if (hasGuestPasses) {
+        reservationNotes += (reservationNotes ? ' | ' : '') + 'Pases de invitado pronto pago anual aplicados (Exento)';
+      }
+
       const res = await api.post('/reservations', {
         courtId: selectedCourt.id,
         date: dateStr,
@@ -550,32 +649,41 @@ export const CourtBooking: React.FC = () => {
         courtFee: currentCourtFee,
         guestFee: currentGuestFee,
         totalPrice: currentTotalPrice,
+        title: reservationTitle,
+        notes: reservationNotes || undefined,
+        guestsList: playerType === 'GUESTS' ? selectedGuests : undefined
       });
 
       const newReservation = res.data.reservation;
 
-      setBookingSuccess({
-        id: newReservation?.id || 'res-' + Date.now(),
-        code: newReservation?.code,
-        courtName: selectedCourt.name,
-        sport: selectedCourt.sport,
-        date: format(selectedDate, "EEEE d 'de' MMMM", { locale: es }),
-        dateRaw: dateStr,
-        time: `${selectedTime} - ${endTime}`,
-        startTime: selectedTime,
-        endTime,
-        memberName: formData.memberName,
-        memberPhone: formData.memberPhone.trim(),
-        playerType,
-        guestsCount: playerType === 'GUESTS' ? guestsCount : 0,
-        playerNames: playerNames.trim(),
-        courtFee: currentCourtFee,
-        guestFee: currentGuestFee,
-        totalPrice: currentTotalPrice,
-        paymentStatus: 'PENDING_PAYMENT'
-      });
+      if (currentTotalPrice <= 0) {
+        toast.success('🎉 ¡Reserva confirmada con éxito! Como socio del Club, el uso de cancha es gratuito.');
+        setBookingSuccess(null);
+        setSelectedForQrModal(null);
+      } else {
+        setBookingSuccess({
+          id: newReservation?.id || 'res-' + Date.now(),
+          code: newReservation?.code,
+          courtName: selectedCourt.name,
+          sport: selectedCourt.sport,
+          date: format(selectedDate, "EEEE d 'de' MMMM", { locale: es }),
+          dateRaw: dateStr,
+          time: `${selectedTime} - ${endTime}`,
+          startTime: selectedTime,
+          endTime,
+          memberName: formData.memberName,
+          memberPhone: formData.memberPhone.trim(),
+          playerType,
+          guestsCount: playerType === 'GUESTS' ? guestsCount : 0,
+          playerNames: playerNames.trim(),
+          courtFee: currentCourtFee,
+          guestFee: currentGuestFee,
+          totalPrice: currentTotalPrice,
+          paymentStatus: 'PENDING_PAYMENT'
+        });
+        toast.success('¡Reserva registrada! Por favor efectúa el pago por QR.');
+      }
 
-      toast.success('¡Reserva registrada con éxito!');
       fetchReservations();
       fetchMyReservations();
       setIsModalOpen(false);
@@ -852,15 +960,15 @@ export const CourtBooking: React.FC = () => {
                 Elige tu <span className="text-brand-gold">Disciplina Deportiva</span>
               </h2>
               <p className="text-xs sm:text-sm text-gray-400">
-                Selecciona la disciplina para ver los espacios y canchas disponibles
+                Uso de cancha sin costo para socios • Arancel exclusivo para invitados externos
               </p>
             </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
           {sports.map(sport => {
-            const meta = SPORT_META[sport] || { icon: '🏅', label: sport, desc: 'Canchas del Club' };
+            const meta = SPORT_META[sport] || { label: sport, desc: 'Canchas del Club', guestRate: 50, notes: '', contactPhones: [], contactDesc: '' };
             const isSelected = selectedSport === sport;
             const courtsInSport = courts.filter(c => c.sport === sport);
 
@@ -897,11 +1005,14 @@ export const CourtBooking: React.FC = () => {
                   }`}>
                     {meta.label}
                   </h3>
-                  <p className={`text-[10px] mt-0.5 truncate transition-colors ${
-                    isSelected ? 'text-emerald-400 font-semibold' : 'text-gray-500 group-hover:text-emerald-500/70'
-                  }`}>
-                    {courtsInSport.length} {courtsInSport.length === 1 ? (meta.unitSingular || 'espacio') : (meta.unitPlural || 'canchas')}
-                  </p>
+                  <div className="flex items-center justify-between mt-1 text-[10px]">
+                    <span className={`truncate ${isSelected ? 'text-emerald-400 font-semibold' : 'text-gray-500'}`}>
+                      {courtsInSport.length} {courtsInSport.length === 1 ? (meta.unitSingular || 'espacio') : (meta.unitPlural || 'canchas')}
+                    </span>
+                    <span className="font-mono text-brand-gold font-bold">
+                      {meta.isFixedCourtRate ? `Bs. ${meta.fixedRate}/res.` : `Bs. ${meta.guestRate}/inv.`}
+                    </span>
+                  </div>
                 </div>
               </button>
             );
@@ -941,6 +1052,46 @@ export const CourtBooking: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Sub-selector de Disciplina si es Polifuncional */}
+        {selectedSport === 'Polifuncional' && (
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/60 via-[#07130b] to-emerald-950/60 border border-emerald-500/40 space-y-2.5 animate-fade-in shadow-lg">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <label className="text-xs sm:text-sm font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-2">
+                <span>⚽🏐🏀 Especifica la Disciplina Deportiva a Jugar:</span>
+              </label>
+              <span className="text-[10px] text-brand-gold font-bold bg-brand-gold/15 px-2.5 py-0.5 rounded-full border border-brand-gold/30 self-start sm:self-auto">
+                Cancha Polifuncional (Bs. 100 con invitados)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              {[
+                { id: 'Futsal', label: 'Futsal', icon: '⚽', desc: 'Fútbol de Salón' },
+                { id: 'Volleyball', label: 'Volleyball', icon: '🏐', desc: 'Voleibol Oficial' },
+                { id: 'Basketball', label: 'Basketball', icon: '🏀', desc: 'Básquetbol' },
+              ].map(sub => {
+                const isSelectedSub = polifunctionalSport === sub.id;
+                return (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => setPolifunctionalSport(sub.id as any)}
+                    className={`p-3 rounded-xl border text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                      isSelectedSub
+                        ? 'bg-emerald-500/25 border-emerald-400 text-white shadow-[0_0_18px_rgba(16,185,129,0.4)] scale-[1.03] font-bold'
+                        : 'bg-black/50 border-white/10 text-gray-400 hover:border-emerald-500/40 hover:text-white'
+                    }`}
+                  >
+                    <span className="text-2xl">{sub.icon}</span>
+                    <span className="text-xs sm:text-sm font-bold block">{sub.label}</span>
+                    <span className="text-[9px] text-emerald-400/90 hidden sm:block">{sub.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {filteredCourts.map(court => {
@@ -987,7 +1138,7 @@ export const CourtBooking: React.FC = () => {
         </div>
       </div>
 
-      {/* 3. Selector de Fecha (Carrusel de 7 Días Rápidos) */}
+      {/* 3. Selector de Fecha (2 Días - 48 hrs de Anticipación) */}
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
           <div className="flex items-center gap-3">
@@ -998,8 +1149,8 @@ export const CourtBooking: React.FC = () => {
               <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white tracking-tight serif-brand">
                 Elige el Día de tu <span className="text-brand-gold">Turno</span>
               </h2>
-              <p className="text-xs sm:text-sm text-gray-400">
-                Agenda tu juego con hasta 7 días de anticipación
+              <p className="text-xs sm:text-sm text-amber-400/90 font-medium">
+                ⏱️ Turnos habilitados para Hoy y los próximos 2 días
               </p>
             </div>
           </div>
@@ -1010,29 +1161,30 @@ export const CourtBooking: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-none">
-          {next7Days.map((d, index) => {
+        <div className="grid grid-cols-3 gap-2.5 sm:gap-4 max-w-xl">
+          {next3Days.map((d, index) => {
             const isSelected = isSameDay(d, selectedDate);
             const isTodayDay = isSameDay(d, today);
+            const dayLabel = index === 0 ? '⭐ Hoy' : index === 1 ? '📅 Mañana' : `📅 ${format(d, 'EEEE', { locale: es })}`;
             
             return (
               <button
                 key={d.toISOString()}
                 onClick={() => setSelectedDate(d)}
-                className={`flex-1 min-w-[85px] sm:min-w-[105px] p-3 sm:p-3.5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center ${
+                className={`p-3.5 sm:p-5 rounded-2xl border text-center transition-all flex flex-col items-center justify-center ${
                   isSelected
-                    ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_18px_rgba(204,161,75,0.4)] font-bold scale-[1.03]'
-                    : 'bg-[#09120c] border-white/10 text-gray-400 hover:text-white hover:border-white/20 hover:bg-[#0e1c13]'
+                    ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_20px_rgba(204,161,75,0.45)] font-bold scale-[1.02]'
+                    : 'bg-[#09120c] border-white/10 text-gray-400 hover:text-white hover:border-brand-gold/40 hover:bg-[#0e1c13]'
                 }`}
               >
-                <span className={`text-[10px] sm:text-xs uppercase tracking-wider font-semibold ${isSelected ? 'text-black/80 font-black' : isTodayDay ? 'text-brand-gold' : 'text-gray-400'}`}>
-                  {isTodayDay ? 'Hoy' : format(d, 'EEE', { locale: es })}
+                <span className={`text-[10px] sm:text-xs uppercase tracking-wider font-semibold capitalize ${isSelected ? 'text-black/80 font-black' : isTodayDay ? 'text-brand-gold' : 'text-gray-400'}`}>
+                  {dayLabel}
                 </span>
-                <span className={`text-lg sm:text-xl font-bold font-mono my-1 ${isSelected ? 'text-black' : 'text-white'}`}>
+                <span className={`text-xl sm:text-3xl font-bold font-mono my-1 ${isSelected ? 'text-black' : 'text-white'}`}>
                   {format(d, 'd')}
                 </span>
-                <span className={`text-[10px] sm:text-xs uppercase font-medium ${isSelected ? 'text-black/70' : 'text-gray-400'}`}>
-                  {format(d, 'MMM', { locale: es })}
+                <span className={`text-[10px] sm:text-xs uppercase font-medium capitalize ${isSelected ? 'text-black/80 font-bold' : 'text-gray-400'}`}>
+                  {format(d, 'EEEE, MMM', { locale: es })}
                 </span>
               </button>
             );
@@ -1052,11 +1204,14 @@ export const CourtBooking: React.FC = () => {
               <h2 className="text-xl sm:text-2xl font-bold text-white serif-brand tracking-tight flex items-center gap-2 flex-wrap">
                 Horarios & Turnos Disponibles — <span className="text-brand-gold">{selectedCourt?.name}</span>
               </h2>
-              {selectedCourt?.description ? (
-                <p className="text-xs sm:text-sm text-emerald-400/90 mt-0.5">{selectedCourt.description}</p>
-              ) : (
-                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">Selecciona el horario que prefieras para ingresar a la cancha</p>
-              )}
+              <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400 flex-wrap">
+                <span>{selectedCourt?.description || 'Selecciona el horario que prefieras'}</span>
+                <span className="text-amber-400 font-medium bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                  {isSaturday(selectedDate) || isSunday(selectedDate)
+                    ? '⚠️ Fin de semana: Atención hasta las 20:00 hrs'
+                    : '🕒 Atención Lunes a Viernes hasta las 22:00 hrs'}
+                </span>
+              </div>
             </div>
           </div>
 
@@ -1076,12 +1231,13 @@ export const CourtBooking: React.FC = () => {
 
         {/* Grid Slots */}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4">
-          {TIME_SLOTS.map(time => {
+          {currentTimeSlots.map(time => {
             const res = getSlotInfo(time);
             const isMine = res && res.memberCode === currentMemberCode;
             const isClass = res && (res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA');
             const isMaintenance = res && res.reservationType === 'MAINTENANCE';
-            const isOccupied = !!res && !isMine && !isClass && !isMaintenance;
+            const isCierre = res && (res.reservationType === 'CIERRE_CANCHA' || res.reservationType === 'EVENTO_CLUB' || res.reservationType === 'TOURNAMENT');
+            const isOccupied = !!res && !isMine && !isClass && !isMaintenance && !isCierre;
 
             if (isMine) {
               return (
@@ -1102,7 +1258,7 @@ export const CourtBooking: React.FC = () => {
               return (
                 <div
                   key={time}
-                  className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-300 flex flex-col justify-between opacity-85 cursor-not-allowed"
+                  className="p-3.5 rounded-2xl border border-amber-500/30 bg-amber-500/10 text-amber-300 flex flex-col justify-between opacity-90 cursor-not-allowed"
                   title={res.title || 'Clase Deportiva'}
                 >
                   <div className="flex justify-between items-center">
@@ -1110,8 +1266,12 @@ export const CourtBooking: React.FC = () => {
                     <Dumbbell className="w-3.5 h-3.5 text-amber-400" />
                   </div>
                   <div className="mt-2">
-                    <span className="text-[10px] font-bold block truncate">{res.title || 'Clases de Tenis'}</span>
-                    <span className="text-[9px] text-amber-400/75 block">No disponible</span>
+                    <span className="text-[10px] font-bold block truncate" title={res.title || 'Clases Deportivas'}>
+                      {res.title || 'Clases Deportivas'}
+                    </span>
+                    <span className="text-[9px] text-amber-400/75 block truncate">
+                      {res.notes || 'No disponible'}
+                    </span>
                   </div>
                 </div>
               );
@@ -1121,13 +1281,44 @@ export const CourtBooking: React.FC = () => {
               return (
                 <div
                   key={time}
-                  className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 flex flex-col justify-between opacity-85 cursor-not-allowed"
+                  className="p-3.5 rounded-2xl border border-rose-500/30 bg-rose-500/10 text-rose-300 flex flex-col justify-between opacity-90 cursor-not-allowed"
+                  title={res.title || 'Mantenimiento Técnico'}
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-mono font-bold text-base text-rose-200">{time}</span>
                     <Wrench className="w-3.5 h-3.5 text-rose-400" />
                   </div>
-                  <span className="text-[10px] text-rose-300 mt-2 truncate">Mantenimiento</span>
+                  <div className="mt-2">
+                    <span className="text-[10px] font-bold block truncate" title={res.title || 'Mantenimiento'}>
+                      {res.title || 'Mantenimiento'}
+                    </span>
+                    <span className="text-[9px] text-rose-400/75 block truncate">
+                      {res.notes || 'Cancha cerrada'}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+
+            if (isCierre) {
+              return (
+                <div
+                  key={time}
+                  className="p-3.5 rounded-2xl border border-rose-500/40 bg-rose-950/20 text-rose-300 flex flex-col justify-between opacity-90 cursor-not-allowed shadow-inner"
+                  title={res.title || 'Cierre de Cancha'}
+                >
+                  <div className="flex justify-between items-center">
+                    <span className="font-mono font-bold text-base text-rose-200">{time}</span>
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold border border-rose-500/40">CIERRE</span>
+                  </div>
+                  <div className="mt-2">
+                    <span className="text-[10px] font-bold block truncate text-rose-200" title={res.title || 'Cierre Programado'}>
+                      {res.title || 'Cierre Programado'}
+                    </span>
+                    <span className="text-[9px] text-rose-400/75 block truncate">
+                      {res.notes || 'Actividad Especial'}
+                    </span>
+                  </div>
                 </div>
               );
             }
@@ -1142,7 +1333,11 @@ export const CourtBooking: React.FC = () => {
                     <span className="font-mono font-bold text-base text-gray-400">{time}</span>
                     <span className="w-2 h-2 rounded-full bg-gray-600"></span>
                   </div>
-                  <span className="text-[10px] text-gray-500 mt-2">Reservado</span>
+                  <div className="mt-2">
+                    <span className="text-[10px] text-gray-400 font-medium truncate block">
+                      {res.title && res.title !== 'Reserva de Socio' ? res.title : 'Reservado'}
+                    </span>
+                  </div>
                 </div>
               );
             }
@@ -1203,6 +1398,37 @@ export const CourtBooking: React.FC = () => {
                   ✕
                 </button>
               </div>
+
+              {/* Selector de Subdisciplina si es Polifuncional */}
+              {selectedSport === 'Polifuncional' && (
+                <div className="space-y-1.5 p-3 rounded-2xl bg-emerald-950/30 border border-emerald-500/30 animate-fade-in">
+                  <label className="block text-[11px] font-bold text-emerald-300 uppercase tracking-wider flex items-center justify-between">
+                    <span>Disciplina Polifuncional</span>
+                    <span className="text-brand-gold text-[10px] font-bold">Futsal / Volley / Básquet</span>
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: 'Futsal', label: 'Futsal', icon: '⚽' },
+                      { id: 'Volleyball', label: 'Volleyball', icon: '🏐' },
+                      { id: 'Basketball', label: 'Basketball', icon: '🏀' },
+                    ].map(sub => (
+                      <button
+                        key={sub.id}
+                        type="button"
+                        onClick={() => setPolifunctionalSport(sub.id as any)}
+                        className={`py-2 px-2 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
+                          polifunctionalSport === sub.id
+                            ? 'bg-emerald-500/25 border-emerald-400 text-white shadow-[0_0_12px_rgba(16,185,129,0.35)] scale-[1.02]'
+                            : 'bg-black/50 border-white/10 text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        <span>{sub.icon}</span>
+                        <span>{sub.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Selector de Duración (1 o 2 Horas) */}
               <div className="space-y-1.5">
@@ -1266,7 +1492,10 @@ export const CourtBooking: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setPlayerType('FAMILY')}
+                    onClick={() => {
+                      setPlayerType('FAMILY');
+                      setHasGuestPasses(false);
+                    }}
                     className={`p-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
                       playerType === 'FAMILY'
                         ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] font-bold scale-[1.02]'
@@ -1278,7 +1507,7 @@ export const CourtBooking: React.FC = () => {
                       <span className="text-xs font-bold block text-white">Familia</span>
                       <span className="text-[9px] text-gray-400 block">Socio + Fam.</span>
                     </div>
-                    <span className="text-[9px] text-emerald-400 mt-1 font-mono">Uso Cancha</span>
+                    <span className="text-[9px] text-emerald-400 mt-1 font-mono font-bold">Sin Costo</span>
                   </button>
 
                   <button
@@ -1295,12 +1524,17 @@ export const CourtBooking: React.FC = () => {
                       <span className="text-xs font-bold block text-white">Invitados</span>
                       <span className="text-[9px] text-gray-400 block">No socios</span>
                     </div>
-                    <span className="text-[9px] text-amber-400 mt-1 font-mono">+Bs. {guestRate}/inv.</span>
+                    <span className="text-[9px] text-amber-400 mt-1 font-mono font-bold">
+                      {sportMeta.isFixedCourtRate ? `Bs. ${sportMeta.fixedRate}` : `+Bs. ${sportMeta.guestRate}/inv.`}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setPlayerType('MEMBERS')}
+                    onClick={() => {
+                      setPlayerType('MEMBERS');
+                      setHasGuestPasses(false);
+                    }}
                     className={`p-2.5 rounded-2xl border text-left flex flex-col justify-between transition-all ${
                       playerType === 'MEMBERS'
                         ? 'bg-emerald-500/20 border-emerald-400 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] font-bold scale-[1.02]'
@@ -1312,7 +1546,7 @@ export const CourtBooking: React.FC = () => {
                       <span className="text-xs font-bold block text-white">Entre Socios</span>
                       <span className="text-[9px] text-gray-400 block">Del Club</span>
                     </div>
-                    <span className="text-[9px] text-emerald-400 mt-1 font-mono">Uso Cancha</span>
+                    <span className="text-[9px] text-emerald-400 mt-1 font-mono font-bold">Sin Costo</span>
                   </button>
                 </div>
 
@@ -1320,6 +1554,30 @@ export const CourtBooking: React.FC = () => {
                 {playerType === 'GUESTS' && (
                   <div className="p-3.5 bg-gradient-to-b from-amber-500/15 to-amber-950/20 border border-amber-500/30 rounded-2xl space-y-3 animate-fade-in">
                     
+                    {/* Toggle de Pases de Invitado (Pronto Pago Anual) */}
+                    <div className="p-2.5 bg-black/60 border border-brand-gold/40 rounded-xl flex items-center justify-between gap-3 shadow-inner">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">🎟️</span>
+                        <div>
+                          <span className="text-xs font-bold text-brand-gold block">
+                            Pases de Invitado (Promoción Pronto Pago)
+                          </span>
+                          <span className="text-[10px] text-gray-400 leading-tight block">
+                            Si tienes pases de la promoción anual, tus invitados están exentos de pago.
+                          </span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={hasGuestPasses}
+                          onChange={e => setHasGuestPasses(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-10 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-brand-gold"></div>
+                      </label>
+                    </div>
+
                     {/* Selector de Cantidad de Invitados */}
                     <div className="flex items-center justify-between border-b border-amber-500/20 pb-2.5">
                       <div>
@@ -1327,11 +1585,15 @@ export const CourtBooking: React.FC = () => {
                           Cantidad de Invitados Externos:
                         </label>
                         <span className="text-[10px] text-gray-400">
-                          Arancel: Bs. {guestRate}/invitado ({guestsCount} × Bs. {guestRate} = Bs. {guestsCount * guestRate})
+                          {hasGuestPasses 
+                            ? '🎟️ Pases aplicados: Arancel exento (Bs. 0)' 
+                            : sportMeta.isFixedCourtRate
+                            ? `Tarifa fija de cancha: Bs. ${sportMeta.fixedRate} (con lista de invitados)`
+                            : `Arancel: Bs. ${sportMeta.guestRate}/invitado (${guestsCount} × Bs. ${sportMeta.guestRate} = Bs. ${guestsCount * (sportMeta.guestRate || 50)})`}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        {[1, 2, 3, 4].map(num => (
+                        {[1, 2, 3, 4, 5, 6].map(num => (
                           <button
                             key={num}
                             type="button"
@@ -1357,11 +1619,11 @@ export const CourtBooking: React.FC = () => {
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[11px]">
                         <span className="font-bold text-gray-300">
-                          Invitados Registrados ({selectedGuests.length} de {guestsCount}):
+                          Lista de Invitados ({selectedGuests.length} de {guestsCount}):
                         </span>
                         {selectedGuests.length < guestsCount && (
                           <span className="text-amber-400 font-bold text-[10px]">
-                            * Faltan {guestsCount - selectedGuests.length} por registrar
+                            * Registra a tus {guestsCount - selectedGuests.length} invitado{guestsCount - selectedGuests.length !== 1 ? 's' : ''}
                           </span>
                         )}
                       </div>
@@ -1430,7 +1692,7 @@ export const CourtBooking: React.FC = () => {
                                 </span>
                                 <div className="max-h-32 overflow-y-auto space-y-1.5 pr-1">
                                   {dbGuests.map(g => {
-                                    const isAlreadyAdded = selectedGuests.some(sel => sel.fullName.toLowerCase() === g.fullName.toLowerCase());
+                                    const isAlreadyAdded = selectedGuests.some(sel => (sel.documentId && sel.documentId === g.documentId) || sel.fullName.toLowerCase() === g.fullName.toLowerCase());
                                     return (
                                       <div
                                         key={g.id}
@@ -1583,8 +1845,8 @@ export const CourtBooking: React.FC = () => {
                       placeholder="Ej: Esposa e hijos / Andrea Mendoza (Hija)"
                       className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder:text-gray-500 focus:outline-none focus:border-emerald-400"
                     />
-                    <p className="text-[10px] text-emerald-400/80">
-                      * El socio y su grupo familiar pagan únicamente el costo regular de uso de la cancha.
+                    <p className="text-[10px] text-emerald-400/90 font-semibold">
+                      ✨ El socio y su grupo familiar disfrutan del uso de cancha sin costo adicional.
                     </p>
                   </div>
                 )}
@@ -1652,8 +1914,8 @@ export const CourtBooking: React.FC = () => {
                       </div>
                     )}
 
-                    <p className="text-[10px] text-gray-400 mt-1">
-                      * Registro de socios compañeros para control deportivo.
+                    <p className="text-[10px] text-emerald-400/90 font-semibold mt-1">
+                      ✨ El juego entre socios del Club no tiene costo de uso de cancha.
                     </p>
                   </div>
                 )}
@@ -1663,7 +1925,9 @@ export const CourtBooking: React.FC = () => {
               <div className="bg-black/60 p-3.5 rounded-2xl border border-brand-gold/30 space-y-2 text-xs text-gray-300">
                 <div className="flex justify-between py-0.5 border-b border-white/5">
                   <span className="text-gray-400">Espacio Deportivo:</span>
-                  <span className="font-bold text-white">{selectedCourt.name} ({selectedCourt.sport})</span>
+                  <span className="font-bold text-white">
+                    {selectedCourt.name} {selectedSport === 'Polifuncional' ? `(${polifunctionalSport})` : `(${selectedCourt.sport})`}
+                  </span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-white/5">
                   <span className="text-gray-400">Horario:</span>
@@ -1672,18 +1936,30 @@ export const CourtBooking: React.FC = () => {
                   </span>
                 </div>
                 <div className="flex justify-between py-0.5 border-b border-white/5">
-                  <span className="text-gray-400">Uso de Cancha ({durationHours}h):</span>
-                  <span className="font-mono text-white">Bs. {currentCourtFee}</span>
+                  <span className="text-gray-400">Uso de Cancha:</span>
+                  <span className="font-bold text-emerald-400">Gratuito (Cortesía de Socio)</span>
                 </div>
-                {currentGuestFee > 0 && (
+                {playerType === 'GUESTS' && !hasGuestPasses && (
                   <div className="flex justify-between py-0.5 border-b border-white/5 text-amber-300">
-                    <span>Arancel Invitados ({guestsCount} pers.):</span>
+                    <span>
+                      {sportMeta.isFixedCourtRate 
+                        ? 'Arancel Reserva con Invitados:' 
+                        : `Arancel Invitados (${guestsCount} pers. × Bs. ${sportMeta.guestRate}):`}
+                    </span>
                     <span className="font-mono font-bold">+Bs. {currentGuestFee}</span>
+                  </div>
+                )}
+                {playerType === 'GUESTS' && hasGuestPasses && (
+                  <div className="flex justify-between py-0.5 border-b border-white/5 text-brand-gold">
+                    <span>Pase de Invitado (Pronto Pago):</span>
+                    <span className="font-bold">Exento (Bs. 0)</span>
                   </div>
                 )}
                 <div className="flex justify-between pt-1 text-sm font-bold">
                   <span className="text-brand-gold">TOTAL A PAGAR:</span>
-                  <span className="text-brand-gold font-mono text-base">Bs. {currentTotalPrice}</span>
+                  <span className="text-brand-gold font-mono text-base">
+                    {currentTotalPrice === 0 ? 'Bs. 0 (Sin costo)' : `Bs. ${currentTotalPrice}`}
+                  </span>
                 </div>
               </div>
 
@@ -1692,7 +1968,7 @@ export const CourtBooking: React.FC = () => {
                 <div>
                   <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1 flex items-center justify-between">
                     <span>Celular / WhatsApp de Contacto</span>
-                    <span className="text-rose-400 font-black text-[10px] uppercase bg-rose-500/20 px-2 py-0.5 rounded-full border border-rose-500/40">* Para Comprobante</span>
+                    <span className="text-emerald-400 font-bold text-[10px] uppercase bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40">* Notificación</span>
                   </label>
                   <input
                     type="tel"
@@ -1703,7 +1979,7 @@ export const CourtBooking: React.FC = () => {
                     className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 placeholder:text-gray-600"
                   />
                   <p className="text-[10px] text-gray-400 mt-1">
-                    Recibirás un mensaje de WhatsApp automático con el resumen y el número para enviar el comprobante.
+                    Recibirás un mensaje de WhatsApp automático con el resumen y código de confirmación.
                   </p>
                 </div>
 
@@ -1722,6 +1998,11 @@ export const CourtBooking: React.FC = () => {
                   >
                     {isSubmitting ? (
                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    ) : currentTotalPrice === 0 ? (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                        <span>Confirmar Turno (Cortesía de Socio)</span>
+                      </>
                     ) : (
                       <>
                         <QrCode className="w-4 h-4" />
@@ -1952,6 +2233,107 @@ export const CourtBooking: React.FC = () => {
           </div>
         );
       })()}
+
+      {/* Pie de Información: Tarifario Oficial, Normativa & Casetas Deportivas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-brand-gold/20">
+        
+        {/* Card 1: Normativa & Tarifario Oficial */}
+        <div className="bg-[#08130c] p-4 sm:p-5 rounded-3xl border border-emerald-500/20 space-y-3 shadow-lg">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
+              📋
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-white serif-brand">
+                Normativa de Reservas & Tarifario Oficial
+              </h4>
+              <p className="text-[11px] text-gray-400">
+                Club Hípico Los Sargentos • Uso exclusivo de socios e invitados
+              </p>
+            </div>
+          </div>
+
+          <ul className="text-xs space-y-2 text-gray-300">
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Uso de Cancha:</strong> Gratuito y sin costo de alquiler para el socio y sus familiares directos.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Ventana de Reserva:</strong> Las reservas se habilitan para Hoy y los siguientes 2 días.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-emerald-400 font-bold shrink-0">✓</span>
+              <span><strong>Aranceles Oficiales de Invitados:</strong> Tenis (Bs. 50/h), Pádel (Bs. 80/h), Frontón (Bs. 50/h), Raquet/Wally (Bs. 50/h), Ping Pong (Bs. 50/h) y Polifuncional (Bs. 100/reserva).</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-brand-gold font-bold shrink-0">🎟️</span>
+              <span><strong>Pases de Invitados:</strong> Si el socio cuenta con pases de la promoción pronto pago anual, sus invitados están 100% exentos de pago.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span className="text-amber-400 font-bold shrink-0">⏰</span>
+              <span><strong>Horarios de Atención:</strong> Lunes a Viernes hasta las 22:00 | Sábados, Domingos y Feriados hasta las 20:00 hrs.</span>
+            </li>
+          </ul>
+        </div>
+
+        {/* Card 2: Contactos Directos de Casetas */}
+        <div className="bg-[#08130c] p-4 sm:p-5 rounded-3xl border border-brand-gold/25 space-y-3 shadow-lg flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-brand-gold/20 text-brand-gold flex items-center justify-center font-bold">
+                📞
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white serif-brand">
+                  Casetas Deportivas & Atención al Socio
+                </h4>
+                <p className="text-[11px] text-gray-400">
+                  Comunícate directamente con los encargados de disciplina
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-3 text-xs">
+              <div className="p-2.5 bg-black/40 rounded-xl border border-white/5 space-y-1">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  🎾 Caseta Tenis & Frontón
+                </span>
+                <div className="flex flex-col text-[11px] text-brand-gold font-mono font-bold">
+                  <a href="tel:+59176753734" className="hover:underline">📱 +591 76753734</a>
+                  <a href="tel:+59176753758" className="hover:underline">📱 +591 76753758</a>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-black/40 rounded-xl border border-white/5 space-y-1">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  🎾 Pádel & Polifuncional
+                </span>
+                <div className="flex flex-col text-[11px] text-brand-gold font-mono font-bold">
+                  <a href="tel:+59176753758" className="hover:underline">📱 +591 76753758</a>
+                  <a href="tel:+59176753744" className="hover:underline">📱 +591 76753744</a>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-black/40 rounded-xl border border-white/5 space-y-1 sm:col-span-2">
+                <span className="font-bold text-white flex items-center gap-1.5">
+                  🏸 Racquetball, Wally & Gimnasio
+                </span>
+                <div className="flex items-center gap-3 text-[11px] text-brand-gold font-mono font-bold">
+                  <span>Recepción Gimnasio:</span>
+                  <a href="tel:+59176753743" className="hover:underline">📱 +591 76753743</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-2 bg-emerald-500/10 rounded-xl border border-emerald-500/20 text-[10px] text-emerald-300 flex items-center gap-1.5 mt-2">
+            <span>✨</span>
+            <span>Atención deportiva personalizada para todos nuestros distinguidos socios.</span>
+          </div>
+        </div>
+
+      </div>
 
     </div>
   );

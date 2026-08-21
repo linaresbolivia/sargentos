@@ -256,6 +256,8 @@ export class ReservationsController {
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const reservationCode = `RES-${sportPrefix}-${randomSuffix}`;
 
+      const isExempt = computedTotalPrice <= 0;
+
       const reservation = await prisma.courtReservation.create({
         data: {
           code: reservationCode,
@@ -273,7 +275,7 @@ export class ReservationsController {
           courtFee: computedCourtFee,
           guestFee: computedGuestFee,
           totalPrice: computedTotalPrice,
-          paymentStatus: 'PENDING_PAYMENT',
+          paymentStatus: isExempt ? 'EXEMPT' : 'PENDING_PAYMENT',
           title: title || 'Reserva de Socio',
           notes: notes || null,
           status: 'APPROVED' // Instant approval with fair play limits
@@ -397,7 +399,31 @@ export class ReservationsController {
           const companionsText = playerNames ? `\n📝 *Acompañantes:* ${playerNames}` : '';
           const guestsLine = computedGuestFee > 0 ? `• Arancel Invitados (${numGuests} pers.): Bs. ${computedGuestFee}\n` : '';
 
-          const whatsappMessage = 
+          let whatsappMessage = '';
+
+          if (isExempt) {
+            whatsappMessage = 
+`🐴 *CLUB HÍPICO LOS SARGENTOS*
+🎾 *Confirmación de Turno Deportivo (Cortesía de Socio)*
+
+Estimado(a) *${memberName}*, tu turno ha sido reservado y confirmado exitosamente:
+
+🎫 *CÓDIGO DE RESERVA:* *#${reservationCode}*
+🏟️ *Espacio / Cancha:* ${court.name} (${court.sport})
+📅 *Fecha:* ${date}
+⏰ *Horario:* ${startTime} a ${endTime} (${durationHours}h)
+👥 *Modalidad:* ${modalityLabel}${companionsText}
+💰 *Total:* Bs. 0 (Sin costo / Cortesía de Socio)
+
+✅ *ESTADO:* *RESERVA CONSOLIDADA Y APROBADA*
+
+📌 *Indicaciones de Ingreso:*
+• Presentar tu carnet de socio en portería o caseta deportiva.
+• El acceso se habilita 10 minutos antes del inicio del turno.
+
+¡Que disfrutes tu jornada deportiva en el Club! 🥇✨`;
+          } else {
+            whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
 🎾 *Confirmación de Reserva de Cancha*
 
@@ -409,8 +435,8 @@ Estimado(a) *${memberName}*, tu solicitud de reserva ha sido registrada exitosam
 ⏰ *Horario:* ${startTime} a ${endTime} (${durationHours}h)
 👥 *Modalidad:* ${modalityLabel}${companionsText}
 
-💵 *Desglose de Pago:*
-• Uso de Cancha (${durationHours}h): Bs. ${computedCourtFee}
+💵 *Desglose de Aranceles:*
+• Uso de Cancha: Bs. ${computedCourtFee} (Cortesía de Socio)
 ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
 
 📌 *INSTRUCCIONES DE PAGO:*
@@ -419,6 +445,7 @@ ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
 3. *Adjunta tu comprobante de pago directamente desde el sistema* o envíalo a este número para la validación y consolidación de tu turno.
 
 ¡Te esperamos en el Club para disfrutar de tu deporte! 🏆✨`;
+          }
 
           await whatsappService.sendMessage(formattedPhone, whatsappMessage);
         } catch (wsErr) {
@@ -428,7 +455,9 @@ ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
 
       return res.status(201).json({ 
         success: true, 
-        message: 'Reserva confirmada con éxito. Por favor efectúa el pago por QR.',
+        message: isExempt 
+          ? '¡Reserva confirmada con éxito! Como socio del Club, el uso de cancha no tiene costo.' 
+          : 'Reserva registrada con éxito. Por favor efectúa el pago por QR de tus invitados.',
         reservation 
       });
     } catch (error) {
@@ -511,17 +540,19 @@ ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
               });
               // Continuar creando los no en conflicto o si es admin sobrescribir
             } else {
+              const randCode = `BLK-${Math.floor(1000 + Math.random() * 9000)}`;
               const resv = await prisma.courtReservation.create({
                 data: {
+                  code: randCode,
                   courtId,
                   date: currentFormatted,
                   startTime,
                   endTime,
-                  memberName: title,
+                  memberName: title.trim(),
                   memberCode: 'ADMIN_BLOCK',
-                  reservationType: reservationType || 'CLASS',
-                  title,
-                  notes: notes || null,
+                  reservationType: reservationType || 'CIERRE_CANCHA',
+                  title: title.trim(),
+                  notes: notes ? notes.trim() : null,
                   isRecurring: true,
                   recurringGroupId,
                   adminCreatedBy: adminCreatedBy || 'Administrador',

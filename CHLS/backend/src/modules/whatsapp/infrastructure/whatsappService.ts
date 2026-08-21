@@ -129,8 +129,6 @@ export class WhatsappClientInstance {
       }
     });
 
-    // Only process Chat/Inbox events for the "masivo" client for now, or distinguish them if needed.
-    // For simplicity, we'll run it for both but store under same DB tables (could be mixed, but fine for now).
     this.client.on('message', async (msg: Message) => {
       await this.handleIncomingMessage(msg);
     });
@@ -308,14 +306,11 @@ export class WhatsappClientInstance {
         if (!ticket) {
           const noTicketMsg = `Lo siento, no encontré un caso activo con el código *${trackingCode}*.\n\nPor favor, verifica que el código sea correcto.`;
           await this.sendMessage(msg.from, noTicketMsg);
-          // Rate limit only applies to valid tracking code queries to prevent spamming
           this.lastQueryTimestamps.set(msg.from, now);
           return;
         }
 
-        // Apply rate limiting for valid queries
         this.lastQueryTimestamps.set(msg.from, now);
-        // Filtrar acciones internas o del sistema que no aportan valor al cliente
         const relevantHistory = ticket.history.filter((h: any) =>
           !['RECIBIDO', 'WHATSAPP_ENVIADO', 'INFO_ACTUALIZADA', 'CREADO'].includes(h.action)
         );
@@ -352,8 +347,6 @@ export class WhatsappClientInstance {
 
         await this.sendMessage(msg.from, botReply);
       }
-      // --- END BOT LOGIC ---
-
     } catch (e) {
       console.error(`[${this.clientId}] Error handling incoming message`, e);
     }
@@ -366,17 +359,13 @@ export class WhatsappClientInstance {
     }
     const chatId = to.includes('@') ? to : `${to}@c.us`;
     try {
-      // Medida anti-ban: Simular presencia de escritura si el chat ya existe
       try {
         const chat = await this.client.getChatById(chatId);
         if (chat) {
           await chat.sendStateTyping();
         }
-      } catch (typingError) {
-        // Si el chat es nuevo y no está abierto aún, se continúa sin advertencia
-      }
+      } catch (typingError) { }
 
-      // Añadir retraso humano aleatorio (entre 1.2 y 2.5 segundos)
       const typingDelay = 1200 + Math.random() * 1300;
       await new Promise(resolve => setTimeout(resolve, typingDelay));
 
@@ -396,7 +385,6 @@ export class WhatsappClientInstance {
           } else if (fs.existsSync(mediaBase64)) {
             mediaToSend = MessageMedia.fromFilePath(mediaBase64);
           } else if (mediaBase64.length > 100) {
-            // Raw base64 string without data prefix
             mediaToSend = new MessageMedia('image/jpeg', mediaBase64, 'comprobante-pago.jpg');
           }
         } catch (mediaErr) {
@@ -427,7 +415,6 @@ export class WhatsappClientInstance {
         contactName = chat.name || phone;
       } catch (e) { }
 
-      // Try to resolve name from PQRS tickets if it's just the phone
       if (contactName === phone) {
         const cleanPhone = phone.replace(/^591/, '');
         const ticket = await prisma.pqrsTicket.findFirst({
@@ -566,7 +553,6 @@ export class WhatsappClientInstance {
     this.cleanStaleLocks();
     this.clearWatchdog();
 
-    // Watchdog de 60 segundos: si queda colgado en INITIALIZING sin responder, reiniciar limpiamente
     this.initWatchdogTimer = setTimeout(async () => {
       if (this.status === 'INITIALIZING') {
         console.warn(`[${this.clientId}] Watchdog: Inicialización colgada tras 60s. Forzando reset...`);
@@ -612,7 +598,6 @@ export class WhatsappClientInstance {
 
     try {
       if (this.status === 'CONNECTED' && this.client) {
-        // Límite de 3 segundos para logout de WhatsApp Web antes de forzar el cierre
         await Promise.race([
           this.client.logout().catch(() => {}),
           new Promise(resolve => setTimeout(resolve, 3000))
@@ -683,7 +668,6 @@ export class WhatsappClientInstance {
           formattedPhone = `${formattedPhone}@c.us`;
         }
 
-        // Anti-Ban 1: Validar si el número realmente tiene cuenta de WhatsApp activa antes de enviar
         try {
           const isRegistered = await this.client.isRegisteredUser(formattedPhone);
           if (!isRegistered) {
@@ -691,30 +675,24 @@ export class WhatsappClientInstance {
             failCount++;
             continue;
           }
-        } catch (regErr) {
-          // Si falla la verificación por red, continuar con precaución
-        }
+        } catch (regErr) { }
 
-        // Anti-Ban 2: Soporte de Spintax dinámico {Hola|Estimado|Saludos} para variar estructuras
         let messageText = text.replace(/\{([^{}]+)\}/g, (match, choices) => {
           if (match === '{nombre}' || match === '{codigo}') return match;
           const options = choices.split('|');
           return options[Math.floor(Math.random() * options.length)];
         });
 
-        // Reemplazo de variables del socio
         messageText = messageText.replace(/{nombre}/g, contact.nombre);
         messageText = messageText.replace(/{codigo}/g, contact.codigo || '');
         if (link) {
           messageText += `\n\n${link}`;
         }
 
-        // Anti-Ban 3: Caracteres invisibles aleatorios (Zero-Width) para que cada hash SHA de mensaje sea único
         const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
         const randomInvisible = invisibleChars[Math.floor(Math.random() * invisibleChars.length)].repeat(Math.floor(Math.random() * 3) + 1);
         messageText += randomInvisible;
 
-        // Anti-Ban 4: Simulación de presencia y tiempo de digitación humana
         let chat: any = null;
         try {
           chat = await this.client.getChatById(formattedPhone);
@@ -739,7 +717,6 @@ export class WhatsappClientInstance {
           await this.client.sendMessage(formattedPhone, messageText);
         }
 
-        // Limpiar estado de typing tras enviar
         if (chat) {
           try { await chat.clearState(); } catch (e) { }
         }
@@ -747,11 +724,9 @@ export class WhatsappClientInstance {
         successCount++;
         messagesSentInCurrentBatch++;
 
-        // Anti-Ban 5: Intervalo dinámico aleatorio entre mensajes (4 a 9 segundos)
         const delayBetweenMessages = 4000 + Math.random() * 5000;
         await new Promise(resolve => setTimeout(resolve, delayBetweenMessages));
 
-        // Anti-Ban 6: Pausa larga humana (30 a 60 segundos) cada lote de 15 a 20 mensajes
         if (messagesSentInCurrentBatch >= (15 + Math.floor(Math.random() * 5))) {
           const longPause = 30000 + Math.random() * 30000;
           console.log(`[Anti-Ban][${this.clientId}] Descanso humano preventivo: ${Math.round(longPause / 1000)}s.`);
@@ -776,12 +751,10 @@ class WhatsappManager {
   private instances: Map<string, WhatsappClientInstance> = new Map();
 
   constructor() {
-    // Initialize default instances
     this.instances.set('chls-masivo', new WhatsappClientInstance('chls-masivo'));
     this.instances.set('chls-pqrs', new WhatsappClientInstance('chls-pqrs'));
     this.instances.set('chls-reservas', new WhatsappClientInstance('chls-reservas'));
 
-    // Auto-connect existing saved sessions in .wwebjs_auth
     setTimeout(() => {
       this.autoStartExistingSessions();
     }, 1500);
@@ -800,7 +773,6 @@ class WhatsappManager {
   public getInstance(clientId: string = 'chls-masivo'): WhatsappClientInstance {
     let instance = this.instances.get(clientId);
     if (!instance) {
-      // Lazy load dynamically if needed
       instance = new WhatsappClientInstance(clientId);
       this.instances.set(clientId, instance);
     }
@@ -815,5 +787,4 @@ class WhatsappManager {
 }
 
 export const whatsappManager = new WhatsappManager();
-export const whatsappService = whatsappManager.getInstance('chls-masivo'); // For backwards compatibility
-
+export const whatsappService = whatsappManager.getInstance('chls-masivo');
