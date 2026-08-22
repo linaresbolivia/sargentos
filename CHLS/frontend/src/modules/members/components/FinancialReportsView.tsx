@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Download, Filter, TrendingUp, DollarSign, Calendar, ShieldCheck, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Download, Filter, TrendingUp, DollarSign, Calendar, ShieldCheck, AlertTriangle, RefreshCw, Printer, Search } from 'lucide-react';
 import { memberAdminApi } from '../services/memberAdminApi';
 import * as XLSX from 'xlsx';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
@@ -10,6 +10,8 @@ export const FinancialReportsView: React.FC = () => {
   const [carteraData, setCarteraData] = useState<any>(null);
   const [revenueData, setRevenueData] = useState<any>(null);
   const [categoryFilter, setCategoryFilter] = useState('ALL');
+  const [serviceFilter, setServiceFilter] = useState('ALL'); // ALL, 9901, 9907, 9908, 9909, 9931
+  const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -135,6 +137,48 @@ export const FinancialReportsView: React.FC = () => {
               <p className="text-2xl font-black text-red-600 dark:text-red-400 font-mono mt-1">
                 Bs {Number(carteraData?.summary?.totalCarteraMesMayor6 || 0).toLocaleString()}
               </p>
+            </div>
+          </div>
+
+          {/* Filter Bar (Págs 24-25 - Guía Socio) */}
+          <div className="p-4 rounded-2xl bg-white/90 dark:bg-[#0d1311]/90 border border-gray-200 dark:border-white/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div className="relative flex-1 w-full max-w-md">
+              <Search className="w-4 h-4 absolute left-3.5 top-3 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por socio, código alfa, membresía..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-xs text-gray-900 dark:text-white outline-none focus:border-brand-gold"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap w-full md:w-auto text-xs">
+              <Filter className="w-4 h-4 text-gray-400" />
+              <select
+                value={categoryFilter}
+                onChange={e => setCategoryFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-xs text-gray-900 dark:text-white outline-none"
+              >
+                <option value="ALL">Todas las Categorías</option>
+                <option value="REGULAR_ACTIVO">Socio Regular Activo</option>
+                <option value="DIPLOMATICO">Socio Diplomático</option>
+                <option value="JUVENIL">Socio Juvenil</option>
+                <option value="HONORARIO">Socio Honorario</option>
+              </select>
+
+              <select
+                value={serviceFilter}
+                onChange={e => setServiceFilter(e.target.value)}
+                className="px-3 py-2 rounded-xl bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-xs font-mono text-gray-900 dark:text-white outline-none"
+              >
+                <option value="ALL">Todos los Servicios</option>
+                <option value="9901">9901 - Cuotas Sociales</option>
+                <option value="9907">9907 - Manutención Hípica</option>
+                <option value="9908">9908 - Veterinaria Equina</option>
+                <option value="9909">9909 - Boxes Hípicos</option>
+                <option value="9931">9931 - Escuelas Deportivas</option>
+              </select>
             </div>
           </div>
 

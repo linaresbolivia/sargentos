@@ -30,12 +30,33 @@ import { FinancialReportsView } from '../components/FinancialReportsView';
 import { FinancialSettingsView } from '../components/FinancialSettingsView';
 import { MemberAnalyticsView } from '../components/MemberAnalyticsView';
 import { MemberReportsGeneratorView } from '../components/MemberReportsGeneratorView';
+import { VenueRentalsView } from '../components/VenueRentalsView';
+import { SportsSchoolsView } from '../components/SportsSchoolsView';
+import { ScheduledBillingGeneratorView } from '../components/ScheduledBillingGeneratorView';
+import { SalesCommissionsView } from '../components/SalesCommissionsView';
+import { MemberNotificationsRegistryView } from '../components/MemberNotificationsRegistryView';
+import { GateAttendanceConsoleView } from '../components/GateAttendanceConsoleView';
+import { Building, GraduationCap, Layers, Send, UserCheck, Percent } from 'lucide-react';
 
 export const MemberAdminHub: React.FC = () => {
   const navigate = useNavigate();
   
   const [activeTab, setActiveTab] = useState<
-    'DIRECTORIO' | 'VENTAS_CDP' | 'CAJA' | 'ASAMBLEAS' | 'ALERTAS' | 'REPORTES' | 'PARAMETROS' | 'ANALYTICS' | 'GENERADOR_REPORTES'
+    | 'DIRECTORIO' 
+    | 'VENTAS_CDP' 
+    | 'CAJA' 
+    | 'FACTURACION_MASIVA'
+    | 'GARITA_ASISTENCIAS'
+    | 'ALQUILERES' 
+    | 'ESCUELAS' 
+    | 'COMISIONES'
+    | 'NOTIFICACIONES_ENVIOS'
+    | 'ASAMBLEAS' 
+    | 'ALERTAS' 
+    | 'REPORTES' 
+    | 'PARAMETROS' 
+    | 'ANALYTICS' 
+    | 'GENERADOR_REPORTES'
   >('DIRECTORIO');
 
   // Modals / Drawers state
@@ -140,7 +161,49 @@ export const MemberAdminHub: React.FC = () => {
               onClick={() => setActiveTab('CAJA')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'CAJA' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
-              <DollarSign className="w-4 h-4" /> Caja & Facturación Integrada
+              <DollarSign className="w-4 h-4" /> Caja & Facturación
+            </button>
+
+            <button
+              onClick={() => setActiveTab('FACTURACION_MASIVA')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'FACTURACION_MASIVA' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <Layers className="w-4 h-4" /> Cobros Programados
+            </button>
+
+            <button
+              onClick={() => setActiveTab('GARITA_ASISTENCIAS')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'GARITA_ASISTENCIAS' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <UserCheck className="w-4 h-4" /> Garita & Asistencias
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ALQUILERES')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ALQUILERES' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <Building className="w-4 h-4" /> Salones / Picadero
+            </button>
+
+            <button
+              onClick={() => setActiveTab('ESCUELAS')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ESCUELAS' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <GraduationCap className="w-4 h-4" /> Escuelas Deportivas
+            </button>
+
+            <button
+              onClick={() => setActiveTab('COMISIONES')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'COMISIONES' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <Percent className="w-4 h-4" /> Comisiones
+            </button>
+
+            <button
+              onClick={() => setActiveTab('NOTIFICACIONES_ENVIOS')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'NOTIFICACIONES_ENVIOS' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <Send className="w-4 h-4" /> Envíos Estatutarios
             </button>
 
             <button
@@ -154,14 +217,14 @@ export const MemberAdminHub: React.FC = () => {
               onClick={() => setActiveTab('ALERTAS')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ALERTAS' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
-              <Award className="w-4 h-4" /> Alertas Predictivas & Ciclo
+              <Award className="w-4 h-4" /> Alertas Predictivas
             </button>
 
             <button
               onClick={() => setActiveTab('REPORTES')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'REPORTES' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
-              <BarChart3 className="w-4 h-4" /> Cartera Especial & Reportes
+              <BarChart3 className="w-4 h-4" /> Cartera Especial
             </button>
 
             <button
@@ -199,6 +262,30 @@ export const MemberAdminHub: React.FC = () => {
           <CashierUnifiedPaymentView initialPersonId={cashierTargetPersonId} />
         )}
 
+        {activeTab === 'FACTURACION_MASIVA' && (
+          <ScheduledBillingGeneratorView onOpenCashier={handleOpenCashier} />
+        )}
+
+        {activeTab === 'GARITA_ASISTENCIAS' && (
+          <GateAttendanceConsoleView />
+        )}
+
+        {activeTab === 'ALQUILERES' && (
+          <VenueRentalsView onOpenCashier={handleOpenCashier} />
+        )}
+
+        {activeTab === 'ESCUELAS' && (
+          <SportsSchoolsView onOpenCashier={handleOpenCashier} />
+        )}
+
+        {activeTab === 'COMISIONES' && (
+          <SalesCommissionsView />
+        )}
+
+        {activeTab === 'NOTIFICACIONES_ENVIOS' && (
+          <MemberNotificationsRegistryView />
+        )}
+
         {activeTab === 'ASAMBLEAS' && (
           <AssemblyProtocolView />
         )}
@@ -228,6 +315,7 @@ export const MemberAdminHub: React.FC = () => {
       <MemberRegistrationModal 
         isOpen={showRegisterModal}
         onClose={() => setShowRegisterModal(false)}
+        onOpenCashier={handleOpenCashier}
         onSuccess={() => {
           setShowRegisterModal(false);
           setActiveTab('DIRECTORIO');

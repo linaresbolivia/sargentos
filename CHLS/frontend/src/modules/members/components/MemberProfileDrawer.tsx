@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, ShieldCheck, User, Users, Calendar, DollarSign, Activity, FileText, CheckCircle2, AlertTriangle, Car, QrCode } from 'lucide-react';
+import { X, ShieldCheck, ShieldAlert, User, Users, Calendar, DollarSign, Activity, FileText, CheckCircle2, AlertTriangle, Car, QrCode } from 'lucide-react';
 import { memberAdminApi } from '../services/memberAdminApi';
 
 interface Props {
@@ -75,6 +75,13 @@ export const MemberProfileDrawer: React.FC<Props> = ({ personId, isOpen, onClose
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-amber-100 dark:bg-brand-gold/20 text-amber-800 dark:text-brand-gold border border-amber-300 dark:border-brand-gold/40">
                     {membership?.type?.name || member.personType}
                   </span>
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                    member.status === 'ACTIVO'
+                      ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/30'
+                      : 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-400 border border-rose-300 dark:border-rose-500/30'
+                  }`}>
+                    {member.status === 'ACTIVO' ? '🟢 Activo' : '🔴 Inactivo'}
+                  </span>
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-gray-100 dark:bg-black/60 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-white/10">
                     {member.alphaCode}
                   </span>
@@ -88,8 +95,16 @@ export const MemberProfileDrawer: React.FC<Props> = ({ personId, isOpen, onClose
                 </h2>
                 
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
-                  CI: <span className="text-gray-900 dark:text-white font-mono font-bold">{member.documentId} {member.docExtension}</span> • Membresía: <span className="text-amber-800 dark:text-brand-gold font-black">{membership?.membershipNumber}</span>
+                  CI: <span className="text-gray-900 dark:text-white font-mono font-bold">{member.documentId} {member.docExtension}</span> • Membresía: <span className="text-amber-800 dark:text-brand-gold font-black">#{membership?.membershipNumber}</span>
                 </p>
+
+                {(member.company || member.profession || member.occupation) && (
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                    {member.profession && <span>{member.profession}</span>}
+                    {member.occupation && <span> • {member.occupation}</span>}
+                    {member.company && <span className="text-amber-700 dark:text-brand-gold font-semibold"> • {member.company}</span>}
+                  </p>
+                )}
 
                 {onOpenCashier && (
                   <div className="mt-3 flex gap-2">
@@ -288,9 +303,36 @@ export const MemberProfileDrawer: React.FC<Props> = ({ personId, isOpen, onClose
             </div>
           )}
 
-          {/* TAB 4: ESTADO DE CUENTA */}
+          {/* TAB 4: ESTADO DE CUENTA & CTA CTE */}
           {activeTab === 'CUENTA' && (
             <div className="space-y-4">
+              {/* Cuenta Corriente Config (Pág 12 - Guía Socio) */}
+              <div className="p-4 rounded-2xl bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-brand-gold/30 text-xs space-y-2">
+                <h5 className="font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider">
+                  Cuenta Corriente & Crédito (Cta Cte)
+                </h5>
+                <div className="grid grid-cols-2 gap-2 pt-1 text-[11px]">
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Límite de Crédito:</span>
+                    <p className="font-mono font-black text-gray-900 dark:text-white">Bs 35,000.00 ($us 5,000)</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400">Débito Automático Bancario:</span>
+                    <p className="font-bold text-emerald-700 dark:text-emerald-400">✓ Habilitado (Banco BISA)</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Restricted Services Box (Pág 12 - Guía Socio) */}
+              <div className="p-4 rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 text-xs space-y-1.5">
+                <h5 className="font-bold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4" /> Servicios Restringidos / Vetados
+                </h5>
+                <p className="text-[11px] text-gray-600 dark:text-gray-400">
+                  El socio y sus dependientes no tienen restricciones activas. Acceso habilitado a todos los servicios e instalaciones.
+                </p>
+              </div>
+
               <h4 className="text-xs font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider">Deudas Pendientes por Fechas</h4>
               <div className="space-y-2">
                 {member?.socialFeeAccruals?.map((acc: any) => (

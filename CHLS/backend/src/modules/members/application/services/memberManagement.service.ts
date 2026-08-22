@@ -294,6 +294,9 @@ export class MemberManagementService {
     }
 
     // Create Person Titular
+    const finalAlphaCode = (data as any).customAlphaCode?.trim() || alphaCode;
+    const memberStatus = (data as any).status || 'ACTIVO';
+
     const person = await this.prisma.person.create({
       data: {
         documentId: data.documentId,
@@ -305,13 +308,14 @@ export class MemberManagementService {
         maternalSurname: data.maternalSurname,
         marriedSurname: data.marriedSurname,
         lastName: `${data.paternalSurname || ''} ${data.maternalSurname || ''}`.trim(),
-        alphaCode,
+        alphaCode: finalAlphaCode,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         gender: data.gender || 'M',
         maritalStatus: data.maritalStatus || 'SOLTERO',
         nationality: data.nationality || 'BOLIVIANA',
         profession: data.profession,
         occupation: data.occupation,
+        company: (data as any).company || null,
         address: data.address,
         city: data.city || 'LP',
         phone: data.phone,
@@ -325,34 +329,42 @@ export class MemberManagementService {
         depositVoucherAmount: data.depositVoucherAmount || 0,
         creditLimit: data.creditLimit || 0,
         allowsDirectDebit: data.allowsDirectDebit || false,
-        status: 'ACTIVO',
+        status: memberStatus,
         personType: data.membershipTypeCode === 'HON' ? 'HONORARIO' :
                     data.membershipTypeCode === 'PRE' ? 'PRE_ASOCIADO' :
                     data.membershipTypeCode === 'DEP' ? 'DEPORTIVO' : 'SOCIO'
       }
     });
 
-    // Create Membership
+    // Create Membership (membershipNumber must be numeric / clean)
+    const cleanMembershipNumber = String(data.membershipNumber).replace(/[^0-9]/g, '') || String(data.membershipNumber).trim();
+
     const membership = await this.prisma.membership.create({
       data: {
-        membershipNumber: data.membershipNumber,
+        membershipNumber: cleanMembershipNumber,
         typeId: mType.id,
         titularId: person.id,
-        status: 'ACTIVA',
+        status: memberStatus === 'INACTIVO' ? 'SUSPENDIDA' : 'ACTIVA',
         admissionDate: officialEntryDate,
         folioNumber: data.folioNumber,
         acquisitionMethod: data.acquisitionMethod || 'COMPRA_DIRECTA'
       }
     });
 
-    // Create Beneficiaries
+    // Create Beneficiaries (Regla de <25 años SOLO para hijos/pupilos)
     if (data.beneficiaries && data.beneficiaries.length > 0) {
       for (const b of data.beneficiaries) {
         const bBirth = b.birthDate ? new Date(b.birthDate) : null;
+        const relUpper = (b.relationship || '').toUpperCase();
+        const isChildRelationship = ['HIJO', 'HIJA', 'PUPILO', 'MENOR_CUSTODIA'].includes(relUpper);
+        
         let isUnder25 = true;
-        if (bBirth) {
+        if (isChildRelationship && bBirth) {
           const age = Math.floor((new Date().getTime() - bBirth.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
           isUnder25 = age < 25;
+        } else {
+          // Cónyuges, Padres, Suegros (+65), Estudiantes Extranjeros, Nanas, Choferes, etc. NO tienen límite de 25 años
+          isUnder25 = true;
         }
 
         const bPerson = await this.prisma.person.create({
@@ -385,34 +397,44 @@ export class MemberManagementService {
       }
     }
 
-    // Create Horses
+    // Create Horses (Multiple Horses with status Vivo/Fallecido and Motivo)
     if (data.horses && data.horses.length > 0) {
       for (const h of data.horses) {
-        await this.prisma.horse.create({
-          data: {
-            membershipId: membership.id,
-            name: h.name,
-            assignedBox: h.assignedBox,
-            feedingDiet: h.feedingDiet,
-            veterinarian: h.veterinarian
-          }
-        });
+        if (h.name && h.name.trim()) {
+          const horseStatus = (h as any).status || 'VIVO';
+          const deceasedReason = (h as any).deceasedReason || null;
+          const statusInfo = horseStatus === 'FALLECIDO' 
+            ? `[FALLECIDO] Motivo: ${deceasedReason || 'No especificado'}` 
+            : 'VIVO';
+
+          await this.prisma.horse.create({
+            data: {
+              membershipId: membership.id,
+              name: h.name.trim(),
+              assignedBox: h.assignedBox?.trim() || null,
+              feedingDiet: statusInfo,
+              medicalHistory: deceasedReason || null
+            }
+          });
+        }
       }
     }
 
-    // Create Vehicles
+    // Create Vehicles (Multiple Vehicles)
     if (data.vehicles && data.vehicles.length > 0) {
       for (const v of data.vehicles) {
-        await this.prisma.vehicle.create({
-          data: {
-            membershipId: membership.id,
-            type: (v as any).type || 'Auto',
-            plate: v.plate,
-            brand: v.brand,
-            model: v.model,
-            color: v.color
-          }
-        });
+        if (v.plate && v.plate.trim()) {
+          await this.prisma.vehicle.create({
+            data: {
+              membershipId: membership.id,
+              type: (v as any).type || 'Auto',
+              plate: v.plate.trim().toUpperCase(),
+              brand: v.brand?.trim() || null,
+              model: v.model?.trim() || null,
+              color: v.color?.trim() || null
+            }
+          });
+        }
       }
     }
 

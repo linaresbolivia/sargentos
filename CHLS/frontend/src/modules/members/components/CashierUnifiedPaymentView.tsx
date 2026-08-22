@@ -30,6 +30,7 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
   // Completed Payment / Receipt Modal
   const [completedPayment, setCompletedPayment] = useState<any>(null);
   const [viewingVetDetails, setViewingVetDetails] = useState<any>(null);
+  const [viewingAccountingEntry, setViewingAccountingEntry] = useState<any>(null);
 
   // Arqueo State
   const [closingData, setClosingData] = useState<any>(null);
@@ -477,6 +478,7 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                       <th className="p-3">Factura</th>
                       <th className="p-3">Recibo CDP</th>
                       <th className="p-3">Total (Bs)</th>
+                      <th className="p-3 text-right">Asiento</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200 dark:divide-white/5">
@@ -488,6 +490,14 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                         <td className="p-3 text-blue-600 dark:text-blue-400 font-mono font-bold">{t.invoiceNumber || '-'}</td>
                         <td className="p-3 text-emerald-600 dark:text-emerald-400 font-mono font-bold">{t.receiptNumber || '-'}</td>
                         <td className="p-3 font-black text-gray-900 dark:text-white">Bs {Number(t.totalAmount).toFixed(2)}</td>
+                        <td className="p-3 text-right">
+                          <button
+                            onClick={() => setViewingAccountingEntry(t)}
+                            className="px-2.5 py-1 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-[11px] font-bold inline-flex items-center gap-1"
+                          >
+                            <FileText className="w-3 h-3" /> Asiento
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -533,23 +543,194 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
               </div>
             </div>
 
-            <div className="flex justify-center gap-3 pt-2">
+            <div className="flex flex-wrap justify-center gap-2 pt-2">
+              <button 
+                onClick={() => setViewingAccountingEntry(completedPayment)}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-purple-500/20 transition-all"
+              >
+                <FileText className="w-4 h-4" /> Ver Asiento Contable
+              </button>
               <button 
                 onClick={() => window.print()}
-                className="px-5 py-2.5 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/20 flex items-center gap-1.5 border border-gray-300 dark:border-white/10"
+                className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-gray-200 text-xs font-bold hover:bg-gray-200 dark:hover:bg-white/20 flex items-center gap-1.5 border border-gray-300 dark:border-white/10"
               >
                 <Printer className="w-4 h-4" /> Imprimir Comprobantes
               </button>
               <button 
                 onClick={() => setCompletedPayment(null)}
-                className="px-6 py-2.5 rounded-xl bg-emerald-500 text-black text-xs font-extrabold hover:scale-105 transition-all"
+                className="px-5 py-2 rounded-xl bg-emerald-500 text-black text-xs font-extrabold hover:scale-105 transition-all"
               >
-                Listo / Siguiente Socio
+                Listo / Siguiente
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* MODAL: ASIENTO CONTABLE GENERADO (GUIA SOCIO PAG 15) */}
+      {viewingAccountingEntry && (() => {
+        const total = Number(viewingAccountingEntry.totalAmount || 0);
+        const invoiced = Number(viewingAccountingEntry.invoicedAmount || 0);
+        const cdp = Number(viewingAccountingEntry.cdpReceiptAmount || 0);
+
+        // Accounting breakdown calculations
+        const netRevenue = Number((invoiced * 0.87).toFixed(2));
+        const ivaDebit = Number((invoiced * 0.13).toFixed(2));
+        const itExpense = Number((invoiced * 0.03).toFixed(2));
+        const itPayable = Number((invoiced * 0.03).toFixed(2));
+
+        const totalDebit = Number((total + itExpense).toFixed(2));
+        const totalCredit = Number((netRevenue + ivaDebit + cdp + itPayable).toFixed(2));
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
+            <div className="relative w-full max-w-2xl bg-white dark:bg-[#0d1311] border border-purple-500/40 rounded-3xl p-6 shadow-2xl space-y-4 text-gray-900 dark:text-white max-h-[90vh] overflow-y-auto">
+              
+              <div className="flex justify-between items-center border-b border-gray-200 dark:border-white/10 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold serif-brand text-gray-900 dark:text-white">
+                      Comprobante de Diario (Asiento Contable)
+                    </h3>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                      Club Hípico Los Sargentos • Sistema Integrado de Contabilidad y Facturación
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setViewingAccountingEntry(null)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-white/10 text-gray-500">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Voucher Meta */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3.5 rounded-2xl bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-white/10 text-xs">
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Nro. Asiento:</span>
+                  <span className="font-mono font-bold text-purple-400">ASI-{viewingAccountingEntry.transactionCode?.replace(/[^0-9]/g, '').substring(0, 6) || '2026-01'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Fecha / Hora:</span>
+                  <span className="font-bold text-gray-200">{new Date().toLocaleDateString('es-BO')}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Tipo Asiento:</span>
+                  <span className="font-bold text-emerald-400">INGRESO DE CAJA</span>
+                </div>
+                <div>
+                  <span className="text-gray-400 block text-[10px]">Moneda:</span>
+                  <span className="font-mono font-bold text-brand-gold">BOB (Bolivianos)</span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-gray-50 dark:bg-black/30 border border-gray-200 dark:border-white/5 text-xs">
+                <span className="text-gray-400 font-bold block text-[10px] uppercase">Glosa Contable:</span>
+                <p className="text-gray-300 mt-0.5">
+                  Cobro unificado en ventanilla por cuotas sociales / aportes patrimoniales del socio titular según comprobante {viewingAccountingEntry.transactionCode}.
+                </p>
+              </div>
+
+              {/* Ledger Table */}
+              <div className="border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-gray-100 dark:bg-black/60 text-gray-500 uppercase font-bold text-[10px] border-b border-gray-200 dark:border-white/10">
+                    <tr>
+                      <th className="p-3">Código Cuenta</th>
+                      <th className="p-3">Nombre de la Cuenta Contable</th>
+                      <th className="p-3 text-right">Debe (Bs)</th>
+                      <th className="p-3 text-right">Haber (Bs)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200 dark:divide-white/5 font-mono">
+                    {/* 1. Caja General */}
+                    <tr className="hover:bg-white/5">
+                      <td className="p-3 text-purple-400 font-bold">1.1.1.01.01</td>
+                      <td className="p-3 font-sans text-gray-200">Caja Central Moneda Nacional</td>
+                      <td className="p-3 text-right font-bold text-emerald-400">{total.toFixed(2)}</td>
+                      <td className="p-3 text-right text-gray-500">0.00</td>
+                    </tr>
+
+                    {/* 2. IT Gasto */}
+                    {invoiced > 0 && (
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 text-purple-400 font-bold">5.1.1.01.03</td>
+                        <td className="p-3 font-sans text-gray-200">Impuesto a las Transacciones (3%)</td>
+                        <td className="p-3 text-right font-bold text-emerald-400">{itExpense.toFixed(2)}</td>
+                        <td className="p-3 text-right text-gray-500">0.00</td>
+                      </tr>
+                    )}
+
+                    {/* 3. Ingreso Neto Cuotas */}
+                    {invoiced > 0 && (
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 text-purple-400 font-bold">4.1.1.01.02</td>
+                        <td className="p-3 font-sans text-gray-200">Ingresos Cuotas Sociales (87% Factura)</td>
+                        <td className="p-3 text-right text-gray-500">0.00</td>
+                        <td className="p-3 text-right font-bold text-blue-400">{netRevenue.toFixed(2)}</td>
+                      </tr>
+                    )}
+
+                    {/* 4. Debito Fiscal IVA */}
+                    {invoiced > 0 && (
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 text-purple-400 font-bold">2.1.2.01.01</td>
+                        <td className="p-3 font-sans text-gray-200">Débito Fiscal IVA (13%)</td>
+                        <td className="p-3 text-right text-gray-500">0.00</td>
+                        <td className="p-3 text-right font-bold text-blue-400">{ivaDebit.toFixed(2)}</td>
+                      </tr>
+                    )}
+
+                    {/* 5. Aportes Patrimoniales CDP */}
+                    {cdp > 0 && (
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 text-purple-400 font-bold">2.1.1.01.05</td>
+                        <td className="p-3 font-sans text-gray-200">Aportes Patrimoniales CDP (Recibo Oficial)</td>
+                        <td className="p-3 text-right text-gray-500">0.00</td>
+                        <td className="p-3 text-right font-bold text-brand-gold">{cdp.toFixed(2)}</td>
+                      </tr>
+                    )}
+
+                    {/* 6. IT por Pagar */}
+                    {invoiced > 0 && (
+                      <tr className="hover:bg-white/5">
+                        <td className="p-3 text-purple-400 font-bold">2.1.3.01.02</td>
+                        <td className="p-3 font-sans text-gray-200">Impuesto a las Transacciones por Pagar (3%)</td>
+                        <td className="p-3 text-right text-gray-500">0.00</td>
+                        <td className="p-3 text-right font-bold text-rose-400">{itPayable.toFixed(2)}</td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot className="bg-gray-100 dark:bg-black/80 font-mono font-bold text-xs border-t-2 border-purple-500/40">
+                    <tr>
+                      <td colSpan={2} className="p-3 font-sans text-gray-300 uppercase">SUMAS TOTALES BALANCEADAS:</td>
+                      <td className="p-3 text-right text-emerald-400 font-black">Bs {totalDebit.toFixed(2)}</td>
+                      <td className="p-3 text-right text-emerald-400 font-black">Bs {totalCredit.toFixed(2)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 text-gray-900 dark:text-white text-xs font-bold flex items-center gap-1.5"
+                >
+                  <Printer className="w-4 h-4" /> Imprimir Asiento
+                </button>
+                <button
+                  onClick={() => setViewingAccountingEntry(null)}
+                  className="px-5 py-2 rounded-xl bg-purple-600 text-white text-xs font-extrabold hover:bg-purple-700"
+                >
+                  Cerrar
+                </button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
       {/* MODAL: VETERINARY CLINICAL NOTE BREAKDOWN */}
       {viewingVetDetails && (
