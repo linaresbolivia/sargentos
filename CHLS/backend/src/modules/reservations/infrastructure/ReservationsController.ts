@@ -400,69 +400,54 @@ export class ReservationsController {
 
           const formattedPhone = cleanPhone.startsWith('591') ? cleanPhone : `591${cleanPhone}`;
           
-          let modalityLabel = '👨‍👩‍👧‍👦 Familiar (Socio + Familiares)';
+          let modalityLabel = 'Familiar';
           if (playerType === 'GUESTS') {
-            modalityLabel = `👥 Con Invitados Externos (${numGuests} invitado${numGuests !== 1 ? 's' : ''})`;
+            modalityLabel = `Invitados (${numGuests})`;
           } else if (playerType === 'MEMBERS') {
-            modalityLabel = '🎾 Entre Socios del Club';
+            modalityLabel = 'Entre Socios';
           }
 
           const companionsText = playerNames ? `\n📝 *Acompañantes:* ${playerNames}` : '';
-          const guestsLine = computedGuestFee > 0 ? `• Arancel Invitados (${numGuests} pers.): Bs. ${computedGuestFee}\n` : '';
 
           let whatsappMessage = '';
+          let qrBase64: string | undefined = undefined;
 
           if (isExempt) {
+            // Confirmación directa sin QR ni solicitud de comprobante para Familia / Entre Socios
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Confirmación de Turno Deportivo*
+✅ *Turno Confirmado*
 
-Estimado(a) *${memberName}*, tu turno ha sido reservado y confirmado exitosamente:
+Hola *${memberName}*, tu reserva ha sido confirmada:
 
-🎫 *CÓDIGO DE RESERVA:* *#${reservationCode}*
-🏟️ *Espacio / Cancha:* ${court.name} (${court.sport})
+📌 *Cancha:* ${court.name} (${court.sport})
 📅 *Fecha:* ${date}
-⏰ *Horario:* ${startTime} a ${endTime} (${durationHours}h)
+⏰ *Horario:* ${startTime} a ${endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
-💰 *Total:* Bs. 0 (Sin costo / Cortesía de Socio)
+🎫 *Código:* *#${reservationCode}*
 
-✅ *ESTADO:* 🟢 *RESERVADO Y CONFIRMADO (CORTESÍA SOCIO)*
-
-📌 *Indicaciones de Ingreso:*
-• Presentar tu carnet de socio en Control de Entrada o caseta deportiva.
-• El acceso se habilita 10 minutos antes del inicio del turno.
-
-¡Que disfrutes tu jornada deportiva en el Club! 🥇✨`;
+Presenta tu carnet o código al ingresar. ¡Que disfrutes tu juego! 🥇✨`;
           } else {
+            // Pre-reserva con aranceles / invitados: requiere pago por QR y comprobante
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Pre-Reserva de Cancha Registrada*
+🟡 *Pre-Reserva Registrada*
 
-Estimado(a) *${memberName}*, tu solicitud de turno ha sido registrada:
+Hola *${memberName}*, registramos tu pre-reserva:
 
-🎫 *CÓDIGO DE RESERVA:* *#${reservationCode}*
-🏟️ *Espacio / Cancha:* ${court.name} (${court.sport})
+📌 *Cancha:* ${court.name} (${court.sport})
 📅 *Fecha:* ${date}
-⏰ *Horario:* ${startTime} a ${endTime} (${durationHours}h)
+⏰ *Horario:* ${startTime} a ${endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
+💰 *Total a Pagar:* *Bs. ${computedTotalPrice}*
+🎫 *Código / Glosa:* *#${reservationCode}*
 
-💵 *Desglose de Aranceles:*
-• Uso de Cancha: Bs. ${computedCourtFee} (Cortesía de Socio)
-${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
+*Instrucciones de Pago:*
+1. Escanea el QR adjunto y realiza la transferencia.
+2. ⚠️ Coloca en la glosa: *#${reservationCode}*
+3. Adjunta tu comprobante en el sistema para consolidar tu turno.`;
 
-⏳ *ESTADO:* 🟡 *PRE-RESERVA (PENDIENTE DE PAGO)*
-
-📌 *INSTRUCCIONES DE PAGO:*
-1. Realiza la transferencia escaneando el *QR Oficial de Pagos* del Club adjunto a este mensaje.
-2. ⚠️ *Coloca en la glosa de tu transferencia tu código: #${reservationCode}*
-3. *Adjunta tu comprobante desde el sistema* o responde a este chat para validar y consolidar tu turno.
-
-¡Te esperamos en el Club! 🏆✨`;
-          }
-
-          // Cargar imagen QR oficial en base64 si requiere pago
-          let qrBase64: string | undefined = undefined;
-          if (!isExempt) {
+            // Cargar imagen QR oficial en base64 solo para turnos que requieren pago
             try {
               const possiblePaths = [
                 path.resolve(process.cwd(), '../frontend/src/assets/qr-pagos.jpg'),

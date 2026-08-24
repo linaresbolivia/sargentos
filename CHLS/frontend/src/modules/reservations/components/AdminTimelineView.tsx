@@ -259,10 +259,10 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
       <div className="overflow-x-auto border border-gray-200 dark:border-white/10 rounded-2xl bg-white/5 dark:bg-black/20">
         
         {/* Timeline Matrix */}
-        <div className="min-w-[1000px]">
+        <div className="min-w-[1360px]">
           
           {/* Header Row: Hours */}
-          <div className="grid grid-cols-[180px_repeat(16,1fr)] border-b border-gray-200 dark:border-white/10 bg-black/40 text-xs font-bold text-gray-400 sticky top-0 z-10">
+          <div className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-gray-200 dark:border-white/10 bg-black/40 text-xs font-bold text-gray-400 sticky top-0 z-10">
             <div className="p-3 border-r border-white/10 text-brand-gold flex items-center justify-between">
               <span>Cancha / Espacio</span>
               <Layers className="w-3.5 h-3.5" />
@@ -288,7 +288,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
             filteredCourts.map(court => (
               <div 
                 key={court.id}
-                className="grid grid-cols-[180px_repeat(16,1fr)] border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+                className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
               >
                 {/* Court Name Column */}
                 <div className="p-3 border-r border-white/10 bg-black/30 flex flex-col justify-center">
@@ -316,7 +316,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                       <div
                         key={hour}
                         onClick={() => onOpenCreateBlock(court.id, court.sport)}
-                        className="border-r border-white/5 p-1 min-h-[55px] cursor-pointer hover:bg-brand-gold/10 transition-colors flex items-center justify-center group/slot"
+                        className="border-r border-white/5 p-1 min-h-[66px] cursor-pointer hover:bg-brand-gold/10 transition-colors flex items-center justify-center group/slot"
                         title={`Disponible: Clic para programar clase/bloqueo a las ${hour}`}
                       >
                         <span className="opacity-0 group-hover/slot:opacity-100 text-[10px] text-brand-gold font-bold">
@@ -326,42 +326,81 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     );
                   }
 
+                  const isMember = res.reservationType === 'MEMBER';
                   const isClass = res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA';
                   const isMaintenance = res.reservationType === 'MAINTENANCE';
                   const isTournament = res.reservationType === 'TOURNAMENT';
                   const isClubEvent = res.reservationType === 'EVENTO_CLUB' || res.reservationType === 'CIERRE_CANCHA';
 
-                  let badgeColor = 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
-                  let Icon = User;
-
+                  let badgeColor = 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300';
                   if (isClass) {
-                    badgeColor = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
-                    Icon = Dumbbell;
+                    badgeColor = 'bg-amber-950/80 border-amber-500/40 text-amber-300';
                   } else if (isMaintenance) {
-                    badgeColor = 'bg-rose-500/20 border-rose-500/40 text-rose-300';
-                    Icon = Wrench;
+                    badgeColor = 'bg-rose-950/80 border-rose-500/40 text-rose-300';
                   } else if (isTournament) {
-                    badgeColor = 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300';
-                    Icon = Trophy;
+                    badgeColor = 'bg-indigo-950/80 border-indigo-500/40 text-indigo-300';
                   } else if (isClubEvent) {
-                    badgeColor = 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300';
-                    Icon = Sparkles;
+                    badgeColor = 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300';
                   }
+
+                  const rawCode = res.code || (res.id ? res.id.slice(0, 8).toUpperCase() : 'RES');
+                  const formattedCode = rawCode.startsWith('#') ? rawCode : `#${rawCode}`;
+
+                  // Dividir el código en dos filas para que se lea completo (Ej: #RES-FRO y 9918)
+                  const codeParts = formattedCode.split('-');
+                  let codeLine1 = formattedCode;
+                  let codeLine2 = '';
+
+                  if (codeParts.length >= 3) {
+                    codeLine1 = `${codeParts[0]}-${codeParts[1]}`;
+                    codeLine2 = codeParts.slice(2).join('-');
+                  } else if (codeParts.length === 2) {
+                    codeLine1 = codeParts[0];
+                    codeLine2 = codeParts[1];
+                  } else if (formattedCode.length > 7) {
+                    codeLine1 = formattedCode.slice(0, 5);
+                    codeLine2 = formattedCode.slice(5);
+                  }
+
+                  const displayTitle = isMember ? (res.memberName || res.title || 'Socio') : (res.title || 'Ocupación');
 
                   return (
                     <div
                       key={hour}
                       onClick={() => setSelectedSlotDetails(res)}
-                      className="border-r border-white/5 p-1 min-h-[55px] cursor-pointer"
+                      className="border-r border-white/5 p-1 min-h-[66px] cursor-pointer"
+                      title={
+                        isMember 
+                          ? `Código: ${formattedCode}\nSocio: ${res.memberName} (${res.memberCode ? '#' + res.memberCode : ''})\nModalidad: ${res.playerType === 'GUESTS' ? 'Con Invitados' : res.playerType === 'MEMBERS' ? 'Entre Socios' : 'Familiar'}\nAcompañantes: ${res.playerNames || 'Ninguno'}\nHorario: ${res.startTime} - ${res.endTime}`
+                          : `${res.title || 'Ocupado'} (${formattedCode}) - (${res.startTime} - ${res.endTime})`
+                      }
                     >
-                      <div className={`h-full w-full rounded-lg border p-1.5 flex flex-col justify-between transition-all hover:scale-105 shadow-sm ${badgeColor}`}>
-                        <div className="flex items-center justify-between gap-1">
-                          <Icon className="w-3 h-3 shrink-0" />
-                          <span className="text-[9px] font-mono opacity-80">{res.startTime}</span>
+                      <div className={`h-full w-full rounded-xl border p-1.5 flex flex-col justify-between transition-all hover:scale-105 shadow-sm overflow-hidden ${badgeColor}`}>
+                        {/* Nivel 1: Código de Reserva en 2 filas completas */}
+                        <div className="border-b border-white/10 pb-0.5">
+                          <div className="flex items-center justify-between gap-0.5">
+                            <span className="font-mono text-[9px] font-black text-brand-gold tracking-tight leading-none">
+                              {codeLine1}
+                            </span>
+                            {res.status === 'PENDING' ? (
+                              <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-ping shrink-0" title="Pendiente de confirmación" />
+                            ) : (
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 opacity-80" />
+                            )}
+                          </div>
+                          {codeLine2 && (
+                            <div className="font-mono text-[9px] font-black text-amber-300 tracking-tight leading-tight mt-0.5">
+                              {codeLine2}
+                            </div>
+                          )}
                         </div>
-                        <p className="text-[10px] font-bold truncate leading-tight mt-0.5">
-                          {res.title || res.memberName}
-                        </p>
+
+                        {/* Nivel 2: Nombre del Socio o Título */}
+                        <div className="pt-0.5">
+                          <p className="text-[10px] font-black truncate leading-tight text-white tracking-tight" title={displayTitle}>
+                            {displayTitle}
+                          </p>
+                        </div>
                       </div>
                     </div>
                   );
@@ -395,7 +434,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
             <div className="space-y-2 text-xs text-gray-300">
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Espacio / Cancha:</span>
-                <strong className="text-white">{selectedSlotDetails.court?.name}</strong>
+                <strong className="text-white">{selectedSlotDetails.court?.name} ({selectedSlotDetails.court?.sport})</strong>
               </div>
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Fecha:</span>
@@ -405,32 +444,67 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                 <span className="text-gray-400">Horario:</span>
                 <span className="text-brand-gold font-mono font-bold">{selectedSlotDetails.startTime} - {selectedSlotDetails.endTime}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Actividad / Socio:</span>
-                <strong className="text-white">{selectedSlotDetails.title || selectedSlotDetails.memberName}</strong>
-              </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Tipo de Reserva:</span>
-                <span className="font-bold text-amber-400">{selectedSlotDetails.reservationType}</span>
-              </div>
-              {selectedSlotDetails.memberCode && selectedSlotDetails.memberCode !== 'ADMIN_BLOCK' && (
-                <div className="flex justify-between py-1 border-b border-white/5">
-                  <span className="text-gray-400">Código de Socio:</span>
-                  <span className="font-bold text-white">{selectedSlotDetails.memberCode}</span>
-                </div>
+
+              {selectedSlotDetails.reservationType === 'MEMBER' ? (
+                <>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-gray-400">Socio Titular:</span>
+                    <strong className="text-white uppercase">{selectedSlotDetails.memberName}</strong>
+                  </div>
+                  {selectedSlotDetails.memberCode && selectedSlotDetails.memberCode !== 'ADMIN_BLOCK' && (
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-gray-400">Código de Socio:</span>
+                      <span className="font-bold font-mono text-brand-gold">#{selectedSlotDetails.memberCode}</span>
+                    </div>
+                  )}
+                  {selectedSlotDetails.memberPhone && (
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-gray-400">WhatsApp / Teléfono:</span>
+                      <span className="font-medium text-gray-200">{selectedSlotDetails.memberPhone}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-1 border-b border-white/5 items-center">
+                    <span className="text-gray-400">Modalidad:</span>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                      selectedSlotDetails.playerType === 'GUESTS' 
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                        : selectedSlotDetails.playerType === 'MEMBERS'
+                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
+                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}>
+                      {selectedSlotDetails.playerType === 'GUESTS' 
+                        ? `👥 Con ${selectedSlotDetails.guestsCount || 1} Invitado(s)` 
+                        : selectedSlotDetails.playerType === 'MEMBERS' 
+                        ? '🎾 Entre Socios' 
+                        : '👨‍👩‍👧‍👦 Familiar'}
+                    </span>
+                  </div>
+                  {selectedSlotDetails.playerNames && (
+                    <div className="flex justify-between py-1 border-b border-white/5">
+                      <span className="text-gray-400">Acompañantes:</span>
+                      <span className="font-medium text-emerald-300 text-right">{selectedSlotDetails.playerNames}</span>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-gray-400">Actividad / Título:</span>
+                    <strong className="text-white">{selectedSlotDetails.title || 'Bloqueo Administrativo'}</strong>
+                  </div>
+                  <div className="flex justify-between py-1 border-b border-white/5">
+                    <span className="text-gray-400">Tipo de Reserva:</span>
+                    <span className="font-bold text-amber-400">{selectedSlotDetails.reservationType}</span>
+                  </div>
+                  {selectedSlotDetails.notes && (
+                    <div className="py-1 border-b border-white/5">
+                      <span className="text-gray-400 block mb-0.5">Notas / Instructor:</span>
+                      <span className="text-gray-200 italic">{selectedSlotDetails.notes}</span>
+                    </div>
+                  )}
+                </>
               )}
-              {selectedSlotDetails.playerNames && (
-                <div className="flex justify-between py-1 border-b border-white/5">
-                  <span className="text-gray-400">Acompañantes / Invitados:</span>
-                  <span className="font-medium text-emerald-300">{selectedSlotDetails.playerNames}</span>
-                </div>
-              )}
-              {selectedSlotDetails.notes && (
-                <div className="py-1">
-                  <span className="text-gray-400 block mb-0.5">Notas / Instructor:</span>
-                  <span className="text-gray-200 italic">{selectedSlotDetails.notes}</span>
-                </div>
-              )}
+
               <div className="flex justify-between py-1">
                 <span className="text-gray-400">Estado:</span>
                 <span className={`font-bold px-2.5 py-0.5 rounded-full text-[10px] ${

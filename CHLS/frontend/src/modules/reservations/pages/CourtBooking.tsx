@@ -845,7 +845,7 @@ export const CourtBooking: React.FC = () => {
           guestFee: currentGuestFee,
           totalPrice: currentTotalPrice,
           paymentMethod: bookingPaymentMethod,
-          title: selectedSport === 'Polifuncional' ? `Polifuncional - ${polifunctionalSport}` : `Reserva de ${selectedSport}`
+          title: formData.memberName || (selectedSport === 'Polifuncional' ? `Polifuncional - ${polifunctionalSport}` : `Reserva de ${selectedSport}`)
         });
         toast.success('¡Reserva registrada con éxito!');
       }
@@ -1119,6 +1119,8 @@ export const CourtBooking: React.FC = () => {
               <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
               <input 
                 type="text"
+                inputMode="text"
+                autoComplete="off"
                 value={myReservationsQuery}
                 onChange={e => setMyReservationsQuery(e.target.value)}
                 placeholder="Buscar por carnet, código de socio, celular o código de reserva..."
@@ -1895,6 +1897,8 @@ export const CourtBooking: React.FC = () => {
                           <div className="relative">
                             <input
                               type="text"
+                              inputMode="text"
+                              autoComplete="name"
                               required
                               value={guestItem.name || ''}
                               onChange={e => handleGuestFieldChange(idx, 'name', e.target.value)}
@@ -1905,6 +1909,8 @@ export const CourtBooking: React.FC = () => {
                           <div className="relative">
                             <input
                               type="text"
+                              inputMode="text"
+                              autoComplete="off"
                               required
                               value={guestItem.documentId || ''}
                               onChange={e => handleGuestFieldChange(idx, 'documentId', e.target.value)}
@@ -1918,6 +1924,8 @@ export const CourtBooking: React.FC = () => {
                         <div className="pt-1 border-t border-white/5">
                           <input
                             type="text"
+                            inputMode="numeric"
+                            autoComplete="off"
                             value={guestItem.guestPassNumber || ''}
                             onChange={e => handleGuestFieldChange(idx, 'guestPassNumber', e.target.value)}
                             placeholder="N° Tarjeta / Pase de Invitado (Opcional si cuenta con pase físico)"
@@ -1978,6 +1986,8 @@ export const CourtBooking: React.FC = () => {
                         <div className="relative">
                           <input
                             type="text"
+                            inputMode="text"
+                            autoComplete="name"
                             value={partnerMembersList[idx]?.name || ''}
                             onChange={e => handlePartnerFieldChange(idx, 'name', e.target.value)}
                             placeholder="Nombre del Socio (ej. Carlos Paz)"
@@ -1987,6 +1997,8 @@ export const CourtBooking: React.FC = () => {
                         <div className="relative">
                           <input
                             type="text"
+                            inputMode="text"
+                            autoComplete="off"
                             value={partnerMembersList[idx]?.documentId || ''}
                             onChange={e => handlePartnerFieldChange(idx, 'documentId', e.target.value)}
                             placeholder="Nro. Acción / Carnet (ej. #CHLS-104)"
@@ -2017,6 +2029,8 @@ export const CourtBooking: React.FC = () => {
                 </p>
                 <input
                   type="text"
+                  inputMode="text"
+                  autoComplete="off"
                   value={familyMembersText}
                   onChange={e => setFamilyMembersText(e.target.value)}
                   placeholder="Ej. Esposa e Hijos: Andrea y Mateo Linares"
@@ -2033,6 +2047,8 @@ export const CourtBooking: React.FC = () => {
               </label>
               <input
                 type="tel"
+                inputMode="tel"
+                autoComplete="tel"
                 required
                 value={formData.memberPhone}
                 onChange={e => setFormData({ ...formData, memberPhone: e.target.value })}

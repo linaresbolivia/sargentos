@@ -7,7 +7,7 @@ import {
 } from './keyboardUtils';
 
 export type KeyboardLayoutType = 'alphanumeric' | 'numeric' | 'symbols' | 'accents';
-export type KeyboardTriggerMode = 'auto' | 'always' | 'disabled';
+export type KeyboardTriggerMode = 'kiosk' | 'always' | 'disabled' | 'auto';
 export type KeyboardDockPosition = 'bottom' | 'top' | 'floating';
 
 interface VirtualKeyboardContextType {
@@ -52,10 +52,18 @@ export const VirtualKeyboardProvider: React.FC<{ children: React.ReactNode }> = 
   const [isOpen, setIsOpen] = useState(false);
   const [mode, setModeState] = useState<KeyboardTriggerMode>(() => {
     try {
+      // Si la URL contiene ?kiosk=true o ?autoservicio=true, activar modo Kiosco
+      if (typeof window !== 'undefined' && (window.location.search.includes('kiosk=true') || window.location.search.includes('autoservicio=true'))) {
+        localStorage.setItem(STORAGE_KEY_MODE, 'kiosk');
+        return 'kiosk';
+      }
       const saved = localStorage.getItem(STORAGE_KEY_MODE);
-      if (saved === 'always' || saved === 'disabled' || saved === 'auto') return saved;
+      if (saved === 'kiosk' || saved === 'always' || saved === 'disabled' || saved === 'auto') {
+        return saved as KeyboardTriggerMode;
+      }
     } catch (e) {}
-    return 'auto';
+    // Por defecto DESACTIVADO para no molestar en móviles personales ni PCs
+    return 'disabled';
   });
 
   const [layout, setLayout] = useState<KeyboardLayoutType>('alphanumeric');
@@ -250,9 +258,16 @@ export const VirtualKeyboardProvider: React.FC<{ children: React.ReactNode }> = 
       const currentMode = modeRef.current;
       const physicalKb = hasPhysicalKeyboardRef.current;
       const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      const isMobilePhone = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (window.innerWidth < 768 && ('ontouchstart' in window));
 
-      // Auto triggering rule:
-      if (currentMode === 'always' || (currentMode === 'auto' && (touch || !physicalKb))) {
+      // Reglas de Activación Inteligente:
+      // 1. Si está en 'disabled': NUNCA se abre automáticamente (para móviles y PCs normales).
+      // 2. Si el dispositivo es un teléfono móvil / smartphone y NO está configurado como 'kiosk'/'always': NUNCA se abre automáticamente (respeta el teclado nativo de Android/iOS).
+      // 3. Si el dispositivo está configurado como 'kiosk' (Punto de Autoservicio / Tótem) o 'always': SÍ se abre automáticamente al tocar campos.
+      // 4. Si está en 'auto': solo se abre en pantallas táctiles grandes que NO tengan teclado físico y NO sean celulares.
+      if (currentMode === 'kiosk' || currentMode === 'always') {
+        setIsOpen(true);
+      } else if (currentMode === 'auto' && !isMobilePhone && touch && !physicalKb) {
         setIsOpen(true);
       }
     };

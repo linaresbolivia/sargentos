@@ -98,55 +98,44 @@ export const ReservationQrDetailsModal: React.FC<ReservationQrDetailsModalProps>
   const isPaid = reservation.paymentStatus === 'PAID';
   const isExempt = reservation.paymentStatus === 'EXEMPT' || totalAmount === 0;
 
-  // Generar texto exacto formateado para WhatsApp
-  let modalityLabel = '👨‍👩‍👧‍👦 Familiar (Socio + Familiares)';
+  // Generar texto exacto formateado para WhatsApp (Corto y directo)
+  let modalityLabel = 'Familiar';
   if (reservation.playerType === 'GUESTS') {
-    modalityLabel = `👥 Con Invitados Externos (${reservation.guestsCount || 1} pers.)`;
+    modalityLabel = `Invitados (${reservation.guestsCount || 1})`;
   } else if (reservation.playerType === 'MEMBERS') {
-    modalityLabel = '🎾 Entre Socios del Club';
+    modalityLabel = 'Entre Socios';
   }
   const companionsText = reservation.playerNames ? `\n📝 *Acompañantes:* ${reservation.playerNames}` : '';
 
   const waMessageText = isExempt
     ? `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Confirmación de Turno Deportivo*
+✅ *Turno Confirmado*
 
-Estimado(a) *${reservation.memberName}*, tu turno ha sido reservado y confirmado exitosamente:
+Hola *${reservation.memberName}*, tu reserva ha sido confirmada:
 
-🎫 *CÓDIGO DE RESERVA:* *#${resCode}*
-🏟️ *Espacio / Cancha:* ${courtName} (${sport})
+📌 *Cancha:* ${courtName} (${sport})
 📅 *Fecha:* ${reservation.date}
 ⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
-💰 *Total:* Bs. 0 (Cortesía de Socio)
+🎫 *Código:* *#${resCode}*
 
-✅ *ESTADO:* 🟢 *RESERVADO Y CONFIRMADO*
-
-📌 *Indicaciones de Ingreso:*
-• Presentar tu carnet de socio en caseta o garita.
-• El acceso se habilita 10 minutos antes del inicio del turno.
-
-¡Que disfrutes tu jornada deportiva en el Club! 🥇✨`
+Presenta tu carnet o código al ingresar. ¡Que disfrutes tu juego! 🥇✨`
     : `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Pre-Reserva de Cancha Registrada*
+🟡 *Pre-Reserva Registrada*
 
-Estimado(a) *${reservation.memberName}*, tu solicitud de turno ha sido registrada:
+Hola *${reservation.memberName}*, registramos tu pre-reserva:
 
-🎫 *CÓDIGO DE RESERVA:* *#${resCode}*
-🏟️ *Espacio / Cancha:* ${courtName} (${sport})
+📌 *Cancha:* ${courtName} (${sport})
 📅 *Fecha:* ${reservation.date}
 ⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
-💰 *TOTAL A PAGAR:* *Bs. ${totalAmount}*
+💰 *Total a Pagar:* *Bs. ${totalAmount}*
+🎫 *Código / Glosa:* *#${resCode}*
 
-⏳ *ESTADO:* 🟡 *PRE-RESERVA (PENDIENTE DE PAGO)*
-
-📌 *INSTRUCCIONES DE PAGO:*
-1. Realiza la transferencia escaneando el *QR Oficial de Pagos* del Club.
-2. ⚠️ *Coloca en la glosa de tu transferencia tu código: #${resCode}*
-3. *Adjunta tu comprobante desde el sistema* o responde a este chat para validar y consolidar tu turno.
-
-¡Te esperamos en el Club! 🏆✨`;
+*Instrucciones de Pago:*
+1. Escanea el QR oficial y realiza la transferencia.
+2. ⚠️ Coloca en la glosa: *#${resCode}*
+3. Adjunta tu comprobante en el sistema para consolidar tu turno.`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(resCode);
@@ -338,51 +327,200 @@ Estimado(a) *${reservation.memberName}*, tu solicitud de turno ha sido registrad
           </div>
         </div>
 
-        {/* Sección de Pago QR (Visible si requiere pago) */}
-        {!isExempt && (
-          <div className="p-4 bg-black/60 rounded-2xl border border-brand-gold/35 space-y-3 text-center">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-brand-gold uppercase tracking-wider flex items-center gap-1">
-                <QrCode className="w-4 h-4" /> QR Oficial de Transferencia
-              </span>
-              <button
-                type="button"
-                onClick={handleDownloadQr}
-                className="text-[10px] text-brand-gold/90 hover:text-brand-gold hover:underline flex items-center gap-1 font-bold"
-              >
-                <Download className="w-3 h-3" /> Descargar QR
-              </button>
+        {/* CASO 1: RESERVA DE CORTESÍA (FAMILIA / ENTRE SOCIOS - BS. 0) */}
+        {isExempt && (
+          <div className="p-4 bg-gradient-to-b from-[#0b2918] via-[#071d11] to-[#041009] border-2 border-emerald-500/50 rounded-2xl space-y-2.5 text-center shadow-lg animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center mx-auto shadow-[0_0_15px_rgba(0,255,135,0.3)]">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
-
-            {/* Imagen QR */}
-            <div className="relative inline-block p-2 bg-white rounded-2xl shadow-xl">
-              <img 
-                src={qrPagosImg} 
-                alt="QR Oficial de Pagos CHLS" 
-                className="w-44 h-auto rounded-xl object-contain mx-auto"
-              />
-            </div>
-
-            {/* Alerta de Glosa Importante */}
-            <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] text-left space-y-1">
-              <p className="font-bold flex items-center gap-1 text-white">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                ⚠️ Colocar en la glosa de tu transferencia:
+            <div className="space-y-1">
+              <h4 className="text-sm font-black text-white">
+                ¡Turno 100% Confirmado y Habilitado!
+              </h4>
+              <p className="text-xs text-emerald-300/90 max-w-sm mx-auto">
+                Tu reserva no tiene costo (Cortesía de Socio). Presenta tu carnet o tu código <strong className="text-white font-mono">#{resCode}</strong> en caseta o garita al ingresar.
               </p>
-              <div className="flex items-center justify-between bg-black/60 p-1.5 rounded-lg border border-amber-500/40">
-                <span className="font-mono font-black text-xs text-brand-gold">
-                  #{resCode}
+            </div>
+          </div>
+        )}
+
+        {/* CASO 2: PRE-RESERVA CON PAGO REQUERIDO (INVITADOS / ARANCELES) */}
+        {!isExempt && (
+          <>
+            {/* Sección de QR Oficial de Pago */}
+            <div className="p-4 bg-black/60 rounded-2xl border-2 border-brand-gold/40 space-y-3 text-center shadow-lg animate-fade-in">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-black text-brand-gold uppercase tracking-wider flex items-center gap-1.5">
+                  <QrCode className="w-4 h-4 text-brand-gold" />
+                  QR Oficial de Pago & Transferencia
                 </span>
                 <button
                   type="button"
-                  onClick={handleCopyCode}
-                  className="px-2 py-0.5 rounded bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold text-[10px] font-bold"
+                  onClick={handleDownloadQr}
+                  className="text-[10px] text-brand-gold hover:text-white hover:underline flex items-center gap-1 font-bold bg-brand-gold/15 px-2.5 py-1 rounded-lg border border-brand-gold/30 transition-colors"
                 >
-                  {copiedCode ? '¡Copiado!' : 'Copiar'}
+                  <Download className="w-3.5 h-3.5" /> Descargar QR
                 </button>
               </div>
+
+              {/* Imagen QR Oficial */}
+              <div className="relative inline-block p-2 bg-white rounded-2xl shadow-2xl border-2 border-brand-gold/40">
+                <img 
+                  src={qrPagosImg} 
+                  alt="QR Oficial de Pagos CHLS" 
+                  className="w-44 sm:w-48 h-auto rounded-xl object-contain mx-auto"
+                />
+              </div>
+
+              {/* Alerta de Glosa Importante */}
+              <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-[11px] text-left space-y-1.5">
+                <p className="font-bold flex items-center gap-1 text-white">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  ⚠️ Colocar en la glosa de tu transferencia:
+                </p>
+                <div className="flex items-center justify-between bg-black/70 p-2 rounded-xl border border-amber-500/40">
+                  <span className="font-mono font-black text-sm text-brand-gold">
+                    #{resCode}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyCode}
+                    className="px-2.5 py-1 rounded-lg bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold text-xs font-bold border border-brand-gold/40 transition-colors"
+                  >
+                    {copiedCode ? '¡Copiado!' : 'Copiar'}
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+
+            {/* Sección Comprobante Adjunto y Envío Directo */}
+            <div className="p-4 bg-gradient-to-b from-[#081e13] to-[#04100a] rounded-2xl border-2 border-emerald-500/40 space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-emerald-400" />
+                  Comprobante de Pago / Transferencia
+                </span>
+                {reservation.paymentReceiptUrl && !showReuploadForm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowReuploadForm(true)}
+                    className="text-[10px] text-brand-gold hover:text-white font-bold flex items-center gap-1 transition-colors underline"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Reenviar / Cambiar
+                  </button>
+                )}
+              </div>
+
+              {/* Si ya existe comprobante subido y no estamos en modo reenvío */}
+              {reservation.paymentReceiptUrl && !showReuploadForm && !pendingReceiptBase64 ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-gray-300">
+                    <span className="flex items-center gap-1 text-emerald-400 font-bold">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Comprobante Registrado
+                    </span>
+                    <span className="text-gray-500 text-[10px]">Guardado en el sistema</span>
+                  </div>
+                  <div className="max-h-48 overflow-auto rounded-xl border border-emerald-500/30 bg-black/70 p-2 flex items-center justify-center">
+                    <img 
+                      src={reservation.paymentReceiptUrl} 
+                      alt="Comprobante de Pago" 
+                      className="max-h-44 max-w-full rounded-lg object-contain"
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* Formulario para seleccionar y enviar el comprobante */
+                <div className="space-y-3">
+                  {pendingReceiptBase64 ? (
+                    /* Vista previa de imagen comprimida lista para enviar */
+                    <div className="space-y-2.5 animate-fade-in">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="text-brand-gold font-bold flex items-center gap-1">
+                          <ImageIcon className="w-3.5 h-3.5" /> Comprobante Optimizado:
+                        </span>
+                        {compressionStats && (
+                          <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                            ⚡ {compressionStats.originalSizeKb} KB ➔ {compressionStats.compressedSizeKb} KB
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="max-h-44 overflow-auto rounded-xl border-2 border-emerald-500/50 bg-black/80 p-2 flex items-center justify-center">
+                        <img 
+                          src={pendingReceiptBase64} 
+                          alt="Vista Previa Comprobante" 
+                          className="max-h-40 max-w-full rounded-lg object-contain"
+                        />
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={isUploading}
+                          onClick={handleSendPendingReceipt}
+                          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-[#00ff87] to-emerald-500 hover:from-emerald-400 hover:to-[#00ff87] text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,135,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {isUploading ? (
+                            <>
+                              <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                              <span>Enviando Comprobante...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Send className="w-4 h-4" />
+                              <span>Enviar Comprobante Ahora</span>
+                            </>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => {
+                            setPendingReceiptBase64(null);
+                            setCompressionStats(null);
+                            setShowReuploadForm(false);
+                          }}
+                          className="px-3 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition-colors"
+                        >
+                          ✕ Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Botón para seleccionar comprobante */
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-black/50 rounded-xl border border-white/10">
+                      <div className="text-xs text-center sm:text-left">
+                        <p className="font-bold text-white">¿Realizaste el pago por QR o Transferencia?</p>
+                        <p className="text-[10px] text-gray-400">Adjunta la captura/foto para enviar y validar tu reserva</p>
+                      </div>
+
+                      <label className={`cursor-pointer px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-gold to-amber-500 hover:from-amber-400 hover:to-brand-gold text-black font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:scale-105 shrink-0 ${isCompressing ? 'opacity-60 pointer-events-none' : ''}`}>
+                        {isCompressing ? (
+                          <>
+                            <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                            <span>Optimizando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <UploadCloud className="w-4 h-4" />
+                            <span>Adjuntar Comprobante</span>
+                          </>
+                        )}
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleFileSelect}
+                          disabled={isCompressing || isUploading}
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </>
         )}
 
         {/* Sección Mensaje Oficial para WhatsApp */}
@@ -397,7 +535,7 @@ Estimado(a) *${reservation.memberName}*, tu solicitud de turno ha sido registrad
               onClick={() => setShowFullMessage(!showFullMessage)}
               className="text-[10px] text-brand-gold hover:underline"
             >
-              {showFullMessage ? 'Ocultar texto' : 'Ver texto completo'}
+              {showFullMessage ? 'Ocultar texto' : 'Ver texto'}
             </button>
           </div>
 
@@ -426,134 +564,6 @@ Estimado(a) *${reservation.memberName}*, tu solicitud de turno ha sido registrad
               <span>Abrir WhatsApp</span>
             </button>
           </div>
-        </div>
-
-        {/* Sección Comprobante Adjunto y Envío Directo */}
-        <div className="p-4 bg-gradient-to-b from-[#081e13] to-[#04100a] rounded-2xl border-2 border-emerald-500/40 space-y-3 shadow-lg">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
-              <UploadCloud className="w-4 h-4 text-emerald-400" />
-              Comprobante de Pago / Transferencia
-            </span>
-            {reservation.paymentReceiptUrl && !showReuploadForm && (
-              <button
-                type="button"
-                onClick={() => setShowReuploadForm(true)}
-                className="text-[10px] text-brand-gold hover:text-white font-bold flex items-center gap-1 transition-colors underline"
-              >
-                <RefreshCw className="w-3 h-3" /> Reenviar / Cambiar
-              </button>
-            )}
-          </div>
-
-          {/* Si ya existe comprobante subido y no estamos en modo reenvío */}
-          {reservation.paymentReceiptUrl && !showReuploadForm && !pendingReceiptBase64 ? (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-[11px] text-gray-300">
-                <span className="flex items-center gap-1 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Comprobante Registrado
-                </span>
-                <span className="text-gray-500 text-[10px]">Guardado en el sistema</span>
-              </div>
-              <div className="max-h-48 overflow-auto rounded-xl border border-emerald-500/30 bg-black/70 p-2 flex items-center justify-center">
-                <img 
-                  src={reservation.paymentReceiptUrl} 
-                  alt="Comprobante de Pago" 
-                  className="max-h-44 max-w-full rounded-lg object-contain"
-                />
-              </div>
-            </div>
-          ) : (
-            /* Formulario para seleccionar y enviar el comprobante */
-            <div className="space-y-3">
-              {pendingReceiptBase64 ? (
-                /* Vista previa de imagen comprimida lista para enviar */
-                <div className="space-y-2.5 animate-fade-in">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-brand-gold font-bold flex items-center gap-1">
-                      <ImageIcon className="w-3.5 h-3.5" /> Comprobante Optimizado:
-                    </span>
-                    {compressionStats && (
-                      <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                        ⚡ {compressionStats.originalSizeKb} KB ➔ {compressionStats.compressedSizeKb} KB
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="max-h-44 overflow-auto rounded-xl border-2 border-emerald-500/50 bg-black/80 p-2 flex items-center justify-center">
-                    <img 
-                      src={pendingReceiptBase64} 
-                      alt="Vista Previa Comprobante" 
-                      className="max-h-40 max-w-full rounded-lg object-contain"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={isUploading}
-                      onClick={handleSendPendingReceipt}
-                      className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-[#00ff87] to-emerald-500 hover:from-emerald-400 hover:to-[#00ff87] text-black font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,255,135,0.4)] transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
-                    >
-                      {isUploading ? (
-                        <>
-                          <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                          <span>Enviando Comprobante...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4" />
-                          <span>Enviar Comprobante Ahora</span>
-                        </>
-                      )}
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isUploading}
-                      onClick={() => {
-                        setPendingReceiptBase64(null);
-                        setCompressionStats(null);
-                        setShowReuploadForm(false);
-                      }}
-                      className="px-3 py-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 font-bold text-xs transition-colors"
-                    >
-                      ✕ Cancelar
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                /* Botón para seleccionar comprobante */
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-black/50 rounded-xl border border-white/10">
-                  <div className="text-xs text-center sm:text-left">
-                    <p className="font-bold text-white">¿Realizaste el pago por QR o Transferencia?</p>
-                    <p className="text-[10px] text-gray-400">Adjunta la captura/foto para enviar y validar tu reserva</p>
-                  </div>
-
-                  <label className={`cursor-pointer px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-gold to-amber-500 hover:from-amber-400 hover:to-brand-gold text-black font-black text-xs flex items-center gap-2 shadow-lg transition-all hover:scale-105 shrink-0 ${isCompressing ? 'opacity-60 pointer-events-none' : ''}`}>
-                    {isCompressing ? (
-                      <>
-                        <div className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
-                        <span>Optimizando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <UploadCloud className="w-4 h-4" />
-                        <span>Adjuntar Comprobante</span>
-                      </>
-                    )}
-                    <input 
-                      type="file" 
-                      accept="image/*" 
-                      className="hidden" 
-                      onChange={handleFileSelect}
-                      disabled={isCompressing || isUploading}
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Acciones para Staff/Admin si aplica */}

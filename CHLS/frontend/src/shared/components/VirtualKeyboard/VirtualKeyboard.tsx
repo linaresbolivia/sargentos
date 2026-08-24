@@ -212,6 +212,8 @@ export const VirtualKeyboard: React.FC = () => {
           className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl border shadow-xl backdrop-blur-xl transition-all duration-300 ${
             isOpen
               ? 'bg-brand-gold text-black border-brand-gold font-extrabold shadow-[0_0_20px_rgba(212,175,55,0.4)] scale-105'
+              : mode === 'kiosk'
+              ? 'bg-emerald-950/90 text-[#00ff87] border-emerald-500/60 shadow-[0_0_15px_rgba(0,255,135,0.3)] hover:scale-105'
               : mode === 'always'
               ? 'bg-[#0a140f]/90 text-brand-gold border-brand-gold/50 hover:border-brand-gold hover:scale-105'
               : 'bg-[#0a140f]/80 text-gray-300 hover:text-brand-gold border-white/10 hover:border-brand-gold/40 hover:scale-105'
@@ -220,10 +222,10 @@ export const VirtualKeyboard: React.FC = () => {
         >
           <Keyboard className="w-4 h-4" />
           <span className="text-xs font-bold hidden md:inline">
-            {isOpen ? 'Ocultar Teclado' : 'Teclado Virtual'}
+            {isOpen ? 'Ocultar Teclado' : mode === 'kiosk' ? 'Teclado Tótem' : 'Teclado Virtual'}
           </span>
-          {mode === 'auto' && (
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse hidden sm:inline" title="Modo Automático Activo" />
+          {mode === 'kiosk' && (
+            <span className="w-2 h-2 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87] animate-pulse hidden sm:inline" title="Modo Tótem Autoservicio Activo en este equipo" />
           )}
         </button>
       </div>
@@ -448,45 +450,82 @@ export const VirtualKeyboard: React.FC = () => {
 
             {/* Quick Settings Panel (Collapsible) */}
             {showSettings && (
-              <div className="p-3 bg-black/60 border border-brand-gold/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-brand-gold" />
-                  <span className="text-gray-300 font-semibold">Comportamiento:</span>
+              <div className="p-3.5 bg-black/80 border-2 border-brand-gold/40 rounded-2xl flex flex-col gap-2.5 text-xs shadow-xl">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-white/10 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-brand-gold" />
+                    <span className="text-white font-bold">Configuración de Despliegue de Teclado:</span>
+                  </div>
                   <span className="text-gray-400 text-[11px]">
-                    (Táctil: <b className="text-white">{isTouchDevice ? 'Sí' : 'No'}</b> | Físico: <b className="text-white">{hasPhysicalKeyboard ? 'Detectado' : 'No detectado'}</b>)
+                    (Pantalla Táctil: <b className="text-white">{isTouchDevice ? 'Sí' : 'No'}</b> | Físico: <b className="text-white">{hasPhysicalKeyboard ? 'Detectado' : 'No detectado'}</b>)
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* Opción 1: Kiosco / Tótem */}
                   <button
                     type="button"
                     onMouseDown={preventBlur}
-                    onClick={() => setMode('auto')}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
-                      mode === 'auto' ? 'bg-emerald-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    onClick={() => setMode('kiosk')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+                      mode === 'kiosk'
+                        ? 'bg-emerald-500/20 border-[#00ff87] text-white shadow-[0_0_12px_rgba(0,255,135,0.3)]'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    Auto
+                    <div className="flex items-center justify-between">
+                      <span className="font-black text-xs text-[#00ff87] flex items-center gap-1">
+                        🏢 Modo Tótem / Autoservicio
+                      </span>
+                      {mode === 'kiosk' && <span className="w-2 h-2 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]" />}
+                    </div>
+                    <span className="text-[10px] text-gray-300">
+                      Activo solo en este dispositivo. Abre el teclado táctil al tocar cualquier campo.
+                    </span>
                   </button>
-                  <button
-                    type="button"
-                    onMouseDown={preventBlur}
-                    onClick={() => setMode('always')}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
-                      mode === 'always' ? 'bg-brand-gold text-black shadow-sm' : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    Siempre Activo
-                  </button>
+
+                  {/* Opción 2: Desactivado */}
                   <button
                     type="button"
                     onMouseDown={preventBlur}
                     onClick={() => setMode('disabled')}
-                    className={`px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all ${
-                      mode === 'disabled' ? 'bg-red-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+                      mode === 'disabled'
+                        ? 'bg-red-500/20 border-red-400 text-white shadow-[0_0_12px_rgba(248,113,113,0.3)]'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
                     }`}
                   >
-                    Desactivar
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-red-400">
+                        📵 Desactivado (Por Defecto)
+                      </span>
+                      {mode === 'disabled' && <span className="w-2 h-2 rounded-full bg-red-400" />}
+                    </div>
+                    <span className="text-[10px] text-gray-400">
+                      No se abre solo. Celulares usan su teclado normal y PCs su teclado físico.
+                    </span>
+                  </button>
+
+                  {/* Opción 3: Siempre Activo */}
+                  <button
+                    type="button"
+                    onMouseDown={preventBlur}
+                    onClick={() => setMode('always')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col gap-0.5 transition-all ${
+                      mode === 'always'
+                        ? 'bg-brand-gold/20 border-brand-gold text-white shadow-[0_0_12px_rgba(204,161,75,0.3)]'
+                        : 'bg-white/5 border-white/10 text-gray-400 hover:text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-brand-gold">
+                        ⌨️ Siempre Forzado
+                      </span>
+                      {mode === 'always' && <span className="w-2 h-2 rounded-full bg-brand-gold" />}
+                    </div>
+                    <span className="text-[10px] text-gray-400">
+                      Forzar apertura en cualquier dispositivo sin excepciones.
+                    </span>
                   </button>
                 </div>
               </div>
