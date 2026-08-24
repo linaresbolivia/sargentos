@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
+  ArrowLeft,
   CalendarDays, 
   CheckCircle, 
   XCircle, 
@@ -19,11 +21,14 @@ import {
   Trophy,
   MessageSquare
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { AdminReservationCalendar } from '../components/AdminReservationCalendar';
 import { AdminTimelineView } from '../components/AdminTimelineView';
 import { AdminCreateBlockModal } from '../components/AdminCreateBlockModal';
+import { AdminEditCourtModal } from '../components/AdminEditCourtModal';
+import { ReservationQrDetailsModal } from '../components/ReservationQrDetailsModal';
+import { compressImage } from '@shared/utils/imageCompressor';
 import WhatsAppConnectorModal from '@modules/pqrs/components/WhatsAppConnectorModal';
 import CrestLogo from '@shared/components/CrestLogo';
 import { 
@@ -34,7 +39,10 @@ import {
   DollarSign, 
   Check, 
   AlertTriangle,
-  AlertCircle 
+  AlertCircle,
+  Pencil,
+  MapPin,
+  QrCode
 } from 'lucide-react';
 
 interface Court {
@@ -75,6 +83,7 @@ interface Reservation {
 }
 
 export const CourtAdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [courts, setCourts] = useState<Court[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,6 +104,16 @@ export const CourtAdminDashboard: React.FC = () => {
   const [modalInitialDate, setModalInitialDate] = useState<string | undefined>();
   const [modalInitialSport, setModalInitialSport] = useState<string | undefined>();
   
+  // Court edit modal state
+  const [isCourtEditModalOpen, setIsCourtEditModalOpen] = useState(false);
+  const [selectedCourtForEdit, setSelectedCourtForEdit] = useState<Court | null>(null);
+
+  // Reservation edit modal state
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+
+  // QR / Pre-reserva details modal state
+  const [selectedForQrModal, setSelectedForQrModal] = useState<Reservation | null>(null);
+
   // Receipt modal viewer state
   const [viewingReceiptReservation, setViewingReceiptReservation] = useState<Reservation | null>(null);
 
@@ -202,24 +221,42 @@ export const CourtAdminDashboard: React.FC = () => {
     r.status === 'APPROVED'
   ).length;
 
-  // Filtered for List View
-  const filteredForList = reservations.filter(r => {
-    if (filterStatus !== 'ALL' && r.status !== filterStatus) return false;
-    if (filterType !== 'ALL' && r.reservationType !== filterType) return false;
-    if (filterPaymentStatus !== 'ALL' && (r.paymentStatus || 'PENDING_PAYMENT') !== filterPaymentStatus) return false;
-    if (selectedSport !== 'ALL' && r.court?.sport !== selectedSport) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchName = r.memberName.toLowerCase().includes(q);
-      const matchTitle = (r.title || '').toLowerCase().includes(q);
-      const matchCourt = (r.court?.name || '').toLowerCase().includes(q);
-      const matchCode = (r.memberCode || '').toLowerCase().includes(q);
-      const matchReservationCode = (r.code || '').toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
-      const matchCompanions = (r.playerNames || '').toLowerCase().includes(q);
-      if (!matchName && !matchTitle && !matchCourt && !matchCode && !matchCompanions && !matchReservationCode) return false;
-    }
-    return true;
-  });
+  // Filtered and Sorted for List View:
+  // 1. Prioridad: Reservas pendientes de confirmación / validación de pago (las más nuevas arriba de todo)
+  // 2. Luego: El resto de reservas ordenadas por orden de llegada (createdAt DESC)
+  const filteredForList = useMemo(() => {
+    return reservations
+      .filter(r => {
+        if (filterStatus !== 'ALL' && r.status !== filterStatus) return false;
+        if (filterType !== 'ALL' && r.reservationType !== filterType) return false;
+        if (filterPaymentStatus !== 'ALL' && (r.paymentStatus || 'PENDING_PAYMENT') !== filterPaymentStatus) return false;
+        if (selectedSport !== 'ALL' && r.court?.sport !== selectedSport) return false;
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchName = r.memberName.toLowerCase().includes(q);
+          const matchTitle = (r.title || '').toLowerCase().includes(q);
+          const matchCourt = (r.court?.name || '').toLowerCase().includes(q);
+          const matchCode = (r.memberCode || '').toLowerCase().includes(q);
+          const matchReservationCode = (r.code || '').toLowerCase().includes(q) || r.id.toLowerCase().includes(q);
+          const matchCompanions = (r.playerNames || '').toLowerCase().includes(q);
+          if (!matchName && !matchTitle && !matchCourt && !matchCode && !matchCompanions && !matchReservationCode) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        // ¿Requiere acción o confirmación de pago/turno?
+        const isPendingA = a.status === 'PENDING' || a.paymentStatus === 'PAID' || (a.reservationType === 'MEMBER' && a.paymentStatus !== 'VERIFIED');
+        const isPendingB = b.status === 'PENDING' || b.paymentStatus === 'PAID' || (b.reservationType === 'MEMBER' && b.paymentStatus !== 'VERIFIED');
+
+        if (isPendingA && !isPendingB) return -1;
+        if (!isPendingA && isPendingB) return 1;
+
+        // Orden de llegada: la más nueva primero (createdAt DESC o fecha/hora DESC)
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : new Date(`${a.date}T${a.startTime || '00:00'}`).getTime();
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : new Date(`${b.date}T${b.startTime || '00:00'}`).getTime();
+        return timeB - timeA;
+      });
+  }, [reservations, filterStatus, filterType, filterPaymentStatus, selectedSport, searchQuery]);
 
 
   return (
@@ -228,6 +265,13 @@ export const CourtAdminDashboard: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-brand-green/30 via-brand-green/10 to-transparent p-6 rounded-3xl border border-brand-gold/20 shadow-xl">
         <div className="flex items-center gap-4">
+          <button 
+            onClick={() => navigate('/')}
+            className="p-2.5 rounded-2xl bg-white/5 hover:bg-brand-gold hover:text-black border border-brand-gold/30 text-brand-gold transition-all shadow-sm"
+            title="Volver al Menú Principal"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
           <CrestLogo size="md" />
           <div>
             <div className="flex items-center gap-2">
@@ -249,11 +293,23 @@ export const CourtAdminDashboard: React.FC = () => {
                 ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:bg-emerald-500/25'
                 : 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
             }`}
-            title="Conectar o administrar la línea WhatsApp de Reservas Deportivas"
+            title="Canal 1: Vincular WhatsApp exclusivo para confirmaciones y QR de Reservas Web"
           >
             <MessageSquare className="w-4 h-4" />
-            <span>{waReservasConnected ? 'WhatsApp Conectado' : 'Conectar WhatsApp'}</span>
+            <span>{waReservasConnected ? 'Canal 1 Reservas: Conectado' : 'Canal 1: Conectar WhatsApp Reservas'}</span>
             <span className={`w-2 h-2 rounded-full ${waReservasConnected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse' : 'bg-amber-400'}`} />
+          </button>
+
+          <button 
+            onClick={() => {
+              setSelectedCourtForEdit(null);
+              setIsCourtEditModalOpen(true);
+            }}
+            className="px-3.5 py-2.5 rounded-xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/40 text-brand-gold text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+            title="Editar canchas, aranceles y estado de espacios deportivos"
+          >
+            <MapPin className="w-4 h-4" />
+            <span>⚙️ Canchas & Tarifas</span>
           </button>
 
           <button 
@@ -395,6 +451,8 @@ export const CourtAdminDashboard: React.FC = () => {
             onUpdateStatus={handleUpdateStatus}
             onDeleteReservation={handleDeleteReservation}
             onDeleteRecurringGroup={handleDeleteRecurringGroup}
+            onEditReservation={(res: any) => setEditingReservation(res)}
+            onViewQrDetails={(res: any) => setSelectedForQrModal(res)}
             onOpenCreateBlock={handleOpenBlockModal}
             selectedSport={selectedSport}
             onChangeSport={setSelectedSport}
@@ -421,19 +479,20 @@ export const CourtAdminDashboard: React.FC = () => {
         {/* 3. View: LIST */}
         {viewMode === 'LIST' && (
           <div className="space-y-4">
+          <div className="bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 p-5 space-y-4">
             
             {/* Filters Bar */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-black/30 p-4 rounded-xl border border-white/5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
               
               {/* Search */}
-              <div className="relative">
-                <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
-                <input 
+              <div className="md:col-span-1 relative">
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <input
                   type="text"
-                  placeholder="Buscar socio, invitado..."
+                  placeholder="Buscar socio, código..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white focus:outline-none focus:border-brand-gold placeholder-gray-500"
+                  className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-gold"
                 />
               </div>
 
@@ -497,7 +556,6 @@ export const CourtAdminDashboard: React.FC = () => {
                   ))}
                 </select>
               </div>
-
             </div>
 
             {/* Table */}
@@ -505,7 +563,8 @@ export const CourtAdminDashboard: React.FC = () => {
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-black/60 border-b border-white/10 uppercase tracking-wider text-gray-400">
-                    <th className="py-3.5 px-4 font-bold">Fecha / Horario</th>
+                    <th className="py-3.5 px-4 font-bold">Fecha / Hora Solicitud (Llegada)</th>
+                    <th className="py-3.5 px-4 font-bold">Turno Deportivo</th>
                     <th className="py-3.5 px-4 font-bold">Cancha / Deporte</th>
                     <th className="py-3.5 px-4 font-bold">Titular & Modalidad</th>
                     <th className="py-3.5 px-4 font-bold">Monto & Pago</th>
@@ -515,20 +574,42 @@ export const CourtAdminDashboard: React.FC = () => {
                 </thead>
                 <tbody className="divide-y divide-white/5 text-gray-300">
                   {loading ? (
-                    <tr><td colSpan={6} className="py-12 text-center text-gray-400">Cargando registros...</td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center text-gray-400">Cargando registros...</td></tr>
                   ) : filteredForList.length === 0 ? (
-                    <tr><td colSpan={6} className="py-12 text-center text-gray-400">No se encontraron reservas con los filtros aplicados.</td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center text-gray-400">No se encontraron reservas con los filtros aplicados.</td></tr>
                   ) : (
-                    filteredForList.map(res => {
+                    filteredForList.map((res: Reservation) => {
                       const isVerified = res.paymentStatus === 'VERIFIED';
                       const isPaid = res.paymentStatus === 'PAID';
                       const isPending = !res.paymentStatus || res.paymentStatus === 'PENDING_PAYMENT';
+                      const isActionRequired = res.status === 'PENDING' || (!isVerified && res.reservationType === 'MEMBER');
                       const hasReceipt = !!res.paymentReceiptUrl;
 
                       return (
-                        <tr key={res.id} className="hover:bg-white/[0.02] transition-colors">
+                        <tr 
+                          key={res.id} 
+                          className={`transition-colors ${
+                            isActionRequired 
+                              ? 'bg-amber-500/[0.05] hover:bg-amber-500/[0.09] border-l-4 border-amber-400' 
+                              : 'hover:bg-white/[0.02]'
+                          }`}
+                        >
+                          {/* Columna 1: Fecha y Hora de Llegada / Solicitud */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 mb-1">
+                              <span className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_6px_#cca14b]"></span>
+                              <span className="font-bold text-white font-mono text-xs">
+                                {res.createdAt ? format(parseISO(res.createdAt), 'dd/MM/yyyy HH:mm:ss') : 'Fecha no reg.'}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-emerald-400 font-medium">
+                              {res.createdAt ? formatDistanceToNow(parseISO(res.createdAt), { addSuffix: true, locale: es }) : ''}
+                            </div>
+                          </td>
+
+                          {/* Columna 2: Turno Deportivo */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 mb-1 flex-wrap">
                               <span className="font-bold text-white">{format(parseISO(res.date), 'dd/MM/yyyy')}</span>
                               <span 
                                 onClick={() => {
@@ -541,6 +622,11 @@ export const CourtAdminDashboard: React.FC = () => {
                               >
                                 #{res.code || res.id.slice(0, 8).toUpperCase()}
                               </span>
+                              {isActionRequired && (
+                                <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[9px] font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                  🔔 Por Confirmar
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-brand-gold font-mono">{res.startTime} - {res.endTime}</div>
                           </td>
@@ -621,6 +707,14 @@ export const CourtAdminDashboard: React.FC = () => {
                                 </span>
                               )}
 
+                              <button
+                                onClick={() => setSelectedForQrModal(res)}
+                                className="px-2 py-0.5 rounded bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/30 text-brand-gold text-[10px] font-bold flex items-center gap-1 transition-colors"
+                                title="Ver QR de Pago, Mensaje y Datos de Pre-Reserva"
+                              >
+                                <QrCode className="w-3 h-3" /> Ver QR / Mensaje
+                              </button>
+
                               {hasReceipt && (
                                 <button
                                   onClick={() => setViewingReceiptReservation(res)}
@@ -655,6 +749,14 @@ export const CourtAdminDashboard: React.FC = () => {
 
                           <td className="py-3 px-4 text-right">
                             <div className="flex justify-end items-center gap-1.5">
+                              {/* Quick View QR Modal Button */}
+                              <button
+                                onClick={() => setSelectedForQrModal(res)}
+                                className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-emerald-500/30"
+                                title="Ver Mensaje, QR de Pago y Datos de Pre-Reserva"
+                              >
+                                <QrCode size={16} />
+                              </button>
                               {/* Quick Verify Payment Button */}
                               {!isVerified && res.reservationType === 'MEMBER' && (
                                 <button
@@ -685,6 +787,15 @@ export const CourtAdminDashboard: React.FC = () => {
                                 </>
                               )}
 
+                              {/* Edit Reservation Button */}
+                              <button
+                                onClick={() => setEditingReservation(res)}
+                                className="p-1.5 hover:bg-brand-gold/20 text-gray-400 hover:text-brand-gold rounded-lg transition-colors"
+                                title="Editar Turno / Horario"
+                              >
+                                <Pencil size={16} />
+                              </button>
+
                               <button
                                 onClick={() => {
                                   if (window.confirm('¿Eliminar este registro?')) {
@@ -705,10 +816,9 @@ export const CourtAdminDashboard: React.FC = () => {
                 </tbody>
               </table>
             </div>
-
           </div>
-        )}
-
+        </div>
+      )}
       </div>
 
       {/* Modal Visor de Comprobante de Pago */}
@@ -797,10 +907,13 @@ export const CourtAdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Create Continuous Block Modal */}
+      {/* Create Continuous Block & Edit Turn Modal (Unified Environment) */}
       <AdminCreateBlockModal
-        isOpen={isBlockModalOpen}
-        onClose={() => setIsBlockModalOpen(false)}
+        isOpen={isBlockModalOpen || !!editingReservation}
+        onClose={() => {
+          setIsBlockModalOpen(false);
+          setEditingReservation(null);
+        }}
         courts={courts}
         onSuccess={() => {
           fetchReservations();
@@ -808,6 +921,50 @@ export const CourtAdminDashboard: React.FC = () => {
         }}
         initialDate={modalInitialDate}
         initialSport={modalInitialSport}
+        editingReservation={editingReservation}
+      />
+
+      {/* Edit Court / Rates Modal */}
+      <AdminEditCourtModal
+        isOpen={isCourtEditModalOpen}
+        onClose={() => {
+          setIsCourtEditModalOpen(false);
+          setSelectedCourtForEdit(null);
+        }}
+        courts={courts}
+        selectedCourtForEdit={selectedCourtForEdit}
+        onSuccess={() => {
+          fetchCourts();
+          fetchReservations();
+        }}
+      />
+
+      {/* Modal Visor de QR, Mensaje Oficial y Datos de Pre-Reserva */}
+      <ReservationQrDetailsModal
+        isOpen={!!selectedForQrModal}
+        onClose={() => setSelectedForQrModal(null)}
+        reservation={selectedForQrModal}
+        isStaffView={true}
+        onEdit={(res) => {
+          setSelectedForQrModal(null);
+          setEditingReservation(res as any);
+        }}
+        onUploadReceipt={async (id, fileOrBase64) => {
+          let base64String: string;
+          if (typeof fileOrBase64 === 'string') {
+            base64String = fileOrBase64;
+          } else {
+            const compressed = await compressImage(fileOrBase64);
+            base64String = compressed.dataUrl;
+          }
+          await api.post(`/reservations/${id}/receipt`, { receiptBase64: base64String });
+          toast.success('Comprobante adjuntado y remitido');
+          fetchReservations();
+        }}
+        onVerifyPayment={async (id) => {
+          await handleUpdatePaymentStatus(id, 'VERIFIED');
+          setSelectedForQrModal(null);
+        }}
       />
 
       {/* WhatsApp Reservas Connector Modal */}
@@ -818,8 +975,8 @@ export const CourtAdminDashboard: React.FC = () => {
             checkWaStatus();
           }}
           clientId="chls-reservas"
-          title="WhatsApp Reservas Deportivas"
-          subtitle="Línea oficial exclusiva para confirmaciones, comprobantes de pago y auditoría de canchas."
+          title="Canal 1: WhatsApp Reservas Deportivas (Notificaciones Web)"
+          subtitle="Línea oficial exclusiva para despachar comprobantes, pases deportivos y QR de pagos de reservas web (sin bots ni menús)."
         />
       )}
 

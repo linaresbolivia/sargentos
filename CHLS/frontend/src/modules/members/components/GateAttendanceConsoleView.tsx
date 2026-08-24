@@ -134,10 +134,10 @@ export const GateAttendanceConsoleView: React.FC = () => {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white serif-brand flex items-center gap-2">
-            <ShieldCheck className="w-5 h-5 text-brand-gold" /> Consola de Garita & Control de Asistencias 360°
+            <ShieldCheck className="w-5 h-5 text-brand-gold" /> Consola de Control de Entrada & Asistencias 360°
           </h2>
           <p className="text-xs text-gray-500 dark:text-gray-400">
-            Identificación de socios, dependientes, invitados, alumnos y personal de apoyo en garita (Págs 15, 16, 17 - Guía Socio)
+            Identificación de socios, dependientes, invitados, alumnos y personal de apoyo en control de entrada (Págs 15, 16, 17 - Guía Socio)
           </p>
         </div>
 
@@ -148,7 +148,7 @@ export const GateAttendanceConsoleView: React.FC = () => {
             {new Date().toLocaleDateString('es-BO', { weekday: 'short', day: 'numeric', month: 'short' })} • 18:30
           </span>
           <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            🟢 Garita Online
+            🟢 Control de Entrada Online
           </span>
         </div>
       </div>
@@ -452,7 +452,7 @@ export const GateAttendanceConsoleView: React.FC = () => {
                 }}
                 className="w-full py-3 rounded-xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black font-extrabold text-xs shadow-md hover:scale-[1.01] transition-all"
               >
-                + Registrar Ingreso de Invitados en Garita
+                + Registrar Ingreso de Invitados en Control de Entrada
               </button>
             </div>
           )}

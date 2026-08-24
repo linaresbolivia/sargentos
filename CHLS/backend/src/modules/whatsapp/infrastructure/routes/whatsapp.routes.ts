@@ -25,6 +25,10 @@ router.get('/status', whatsappController.getStatus.bind(whatsappController));
 router.post('/start', whatsappController.startSession.bind(whatsappController));
 router.post('/logout', whatsappController.logout.bind(whatsappController));
 router.post('/send-bulk', upload.single('image'), whatsappController.sendBulk.bind(whatsappController));
+router.get('/chats', whatsappController.getChats.bind(whatsappController));
+router.get('/chats/:chatId/messages', whatsappController.getChatMessages.bind(whatsappController));
+router.post('/send', whatsappController.sendMessage.bind(whatsappController));
+router.post('/chats/:phone/toggle-handoff', whatsappController.toggleHandoff.bind(whatsappController));
 
 // New Client-specific routes
 router.get('/:clientId/status', whatsappController.getStatus.bind(whatsappController));
@@ -37,5 +41,6 @@ router.post('/:clientId/toggle-bot', whatsappController.toggleBot.bind(whatsappC
 router.get('/:clientId/chats', whatsappController.getChats.bind(whatsappController));
 router.get('/:clientId/chats/:chatId/messages', whatsappController.getChatMessages.bind(whatsappController));
 router.post('/:clientId/send', whatsappController.sendMessage.bind(whatsappController));
+router.post('/:clientId/chats/:phone/toggle-handoff', whatsappController.toggleHandoff.bind(whatsappController));
 
 export default router;

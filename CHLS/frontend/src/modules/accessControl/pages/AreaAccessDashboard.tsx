@@ -4,6 +4,7 @@ import {
   Waves, 
   Dumbbell, 
   ArrowLeft, 
+  Home,
   Clock, 
   Users, 
   Key, 
@@ -726,11 +727,21 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
           </button>
 
           <button 
+            onClick={() => navigate('/')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black text-gray-700 dark:text-gray-200 transition-all text-xs font-bold tracking-wider uppercase"
+            title="Volver al Menú Principal"
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Portal</span>
+          </button>
+
+          <button 
             onClick={() => navigate('/access-selection')}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black text-gray-700 dark:text-gray-200 transition-all text-xs font-bold tracking-wider uppercase"
+            title="Volver al Selector de Puntos de Acceso"
           >
             <ArrowLeft className="w-4 h-4" />
-            Cambiar Punto
+            Puntos
           </button>
         </div>
       </header>

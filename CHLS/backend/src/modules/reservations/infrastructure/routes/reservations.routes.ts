@@ -17,10 +17,13 @@ router.get('/', controller.getReservations.bind(controller));
 router.post('/', controller.createReservation.bind(controller));
 
 // Admin / Staff routes
+router.post('/courts', controller.createCourt.bind(controller));
+router.put('/courts/:id', controller.updateCourt.bind(controller));
 router.post('/block', controller.createContinuousBlock.bind(controller));
 router.delete('/recurring/:groupId', controller.deleteRecurringGroup.bind(controller));
 router.put('/:id/status', controller.updateReservationStatus.bind(controller));
 router.put('/:id/payment-status', controller.updatePaymentStatus.bind(controller));
+router.put('/:id', controller.updateReservation.bind(controller));
 router.delete('/:id', controller.deleteReservation.bind(controller));
 
 export default router;

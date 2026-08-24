@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { api } from '@config/api';
-import { Send, CheckCircle2, Globe } from 'lucide-react';
+import { Send, CheckCircle2, Globe, ArrowLeft } from 'lucide-react';
 import logoClub from '../../../assets/logo.png';
 
 const translations = {
@@ -230,6 +231,14 @@ export const PqrsPublicForm: React.FC = () => {
 
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-emerald-500/20 px-6 py-4 flex flex-col justify-center items-center gap-2 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-[#050e09]/80 transition-all duration-300 relative">
+        <Link
+          to="/"
+          className="absolute left-6 top-5 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-black/70 border border-brand-gold/30 text-gray-300 hover:text-white text-xs font-bold transition-all shadow-sm"
+          title={lang === 'es' ? 'Volver al Inicio' : 'Back to Home'}
+        >
+          <ArrowLeft className="w-4 h-4 text-brand-gold" />
+          <span className="hidden sm:inline">{lang === 'es' ? 'Volver' : 'Back'}</span>
+        </Link>
         <img src={logoClub} alt="Club Logo" className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(204,161,75,0.5)] transition-transform duration-300 hover:scale-105" />
         
         {/* Language Toggle and Track Toggle */}

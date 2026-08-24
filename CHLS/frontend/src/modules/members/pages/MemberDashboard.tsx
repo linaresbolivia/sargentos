@@ -174,7 +174,7 @@ export const MemberDashboard: React.FC = () => {
               </Link>
 
               <button
-                onClick={() => navigate('/reservations')}
+                onClick={() => navigate('/member/reservations')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black text-xs font-extrabold shadow-md shadow-brand-gold/20 hover:scale-105 transition-all"
               >
                 <CalendarCheck className="w-3.5 h-3.5" />

@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -19,7 +19,7 @@ export const MainPortal: React.FC = () => {
   const isStaff = user.roles.includes('MODULO_USUARIO_PQRS');
   const isMember = user.roles.includes('USER');
   const isPqrsUser = user.roles.includes('MODULO_PQRS') || user.roles.includes('MODULO_USUARIO_PQRS') || isAdmin;
-  const isWhatsappUser = user.roles.includes('MODULO_WHATSAPP') || isSuperAdmin;
+  const isWhatsappUser = user.roles.includes('MODULO_WHATSAPP') || isAdmin || isSuperAdmin;
 
   const handleLogout = () => {
     dispatch(logout());
@@ -136,22 +136,41 @@ export const MainPortal: React.FC = () => {
             )}
 
             {isWhatsappUser && (
-              <Link 
-                to="/admin/whatsapp"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                  <MessageSquare className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-green-500 transition-colors">
-                    Envío Masivo (WhatsApp)
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Campañas de mensajería masiva y comunicación directa con socios.
-                  </p>
-                </div>
-              </Link>
+              <>
+                <Link 
+                  to="/admin/whatsapp"
+                  className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform duration-300 mr-6">
+                    <MessageSquare className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-green-500 transition-colors">
+                      Call Center & WhatsApp 24/7
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Bandeja de chats en vivo y asistente virtual automatizado 24/7.
+                    </p>
+                  </div>
+                </Link>
+
+                <Link 
+                  to="/admin/whatsapp-masivo"
+                  className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
+                >
+                  <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300 mr-6">
+                    <Send className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-500 transition-colors">
+                      Envíos Masivos & Comunicados
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      Difusión masiva de avisos, estados de cuenta y comunicados a socios.
+                    </p>
+                  </div>
+                </Link>
+              </>
             )}
 
             {isPqrsUser && (

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '@store/store';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
@@ -71,6 +73,7 @@ interface LiveOccupancyData {
 
 export const LiveClubOccupancy: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useSelector((state: RootState) => state.auth);
   const [data, setData] = useState<LiveOccupancyData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -140,11 +143,18 @@ export const LiveClubOccupancy: React.FC = () => {
       <header className="relative z-10 w-full p-4 lg:px-8 flex justify-between items-center border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-black/40 backdrop-blur-md sticky top-0">
         <div className="flex items-center gap-3.5">
           <button 
-            onClick={() => navigate('/member')}
-            className="p-2 bg-black/5 dark:bg-white/5 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black rounded-xl text-gray-700 dark:text-gray-300 transition-all"
-            title="Volver a Mi Portal"
+            onClick={() => {
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate(user?.roles?.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r)) ? '/' : '/member');
+              }
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-black/5 dark:bg-white/5 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black rounded-xl text-gray-700 dark:text-gray-300 transition-all text-xs font-bold"
+            title="Volver"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4" />
+            <span>Volver</span>
           </button>
           <CrestLogo size="sm" />
           <div>

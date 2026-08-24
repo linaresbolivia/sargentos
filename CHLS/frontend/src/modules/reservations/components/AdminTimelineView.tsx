@@ -1,10 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   ChevronLeft, 
   ChevronRight, 
   Calendar as CalendarIcon, 
-  CalendarX,
-  Clock, 
   CheckCircle, 
   XCircle, 
   Trash2, 
@@ -14,9 +12,11 @@ import {
   Wrench,
   Trophy,
   Sparkles,
-  Layers
+  Layers,
+  Pencil,
+  QrCode
 } from 'lucide-react';
-import { format, addDays, subDays, parseISO } from 'date-fns';
+import { format, addDays, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
 
 interface Court {
@@ -59,6 +59,8 @@ interface AdminTimelineViewProps {
   onUpdateStatus: (id: string, status: string) => void;
   onDeleteReservation: (id: string) => void;
   onDeleteRecurringGroup?: (groupId: string) => void;
+  onEditReservation?: (reservation: Reservation) => void;
+  onViewQrDetails?: (reservation: Reservation) => void;
   onOpenCreateBlock: (courtId?: string, sport?: string) => void;
   selectedSport: string;
   onChangeSport: (sport: string) => void;
@@ -79,12 +81,15 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
   onUpdateStatus,
   onDeleteReservation,
   onDeleteRecurringGroup,
+  onEditReservation,
+  onViewQrDetails,
   onOpenCreateBlock,
   selectedSport,
   onChangeSport,
   loading = false,
 }) => {
   const [selectedSlotDetails, setSelectedSlotDetails] = useState<Reservation | null>(null);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const sports = Array.from(new Set(courts.map(c => c.sport)));
   const filteredCourts = selectedSport === 'ALL' 
@@ -128,11 +133,41 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
             <ChevronLeft className="w-5 h-5" />
           </button>
           
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-black/40 rounded-xl border border-white/10">
-            <CalendarIcon className="w-4 h-4 text-brand-gold" />
-            <span className="font-bold text-sm text-white capitalize">
-              {format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}
-            </span>
+          {/* Interactive Date Picker Container */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                if (dateInputRef.current?.showPicker) {
+                  dateInputRef.current.showPicker();
+                } else {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/70 rounded-xl border border-brand-gold/30 hover:border-brand-gold text-left transition-all group shadow-sm cursor-pointer"
+              title="Haz clic para abrir el selector de calendario"
+            >
+              <CalendarIcon className="w-4 h-4 text-brand-gold group-hover:scale-110 transition-transform" />
+              <span className="font-bold text-sm text-white capitalize">
+                {format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}
+              </span>
+              <span className="text-[10px] text-brand-gold/80 bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/20 font-mono">
+                📅 Calendario
+              </span>
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={format(selectedDate, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                if (e.target.value) {
+                  const [y, m, d] = e.target.value.split('-').map(Number);
+                  onChangeDate(new Date(y, m - 1, d));
+                }
+              }}
+              className="absolute inset-0 opacity-0 pointer-events-none w-full h-full"
+              tabIndex={-1}
+            />
           </div>
 
           <button
@@ -181,6 +216,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
             );
           })}
         </div>
+
       </div>
 
       {/* Mini KPIs & Legend */}
@@ -219,184 +255,159 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
         </button>
       </div>
 
-      {/* Timeline Grid Table */}
-      <div className="bg-[#0a140f] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-        <div className="overflow-x-auto scrollbar-thin">
-          <table className="w-full border-collapse text-left min-w-[1200px]">
-            {/* Header: Hours */}
-            <thead>
-              <tr className="bg-black/60 border-b border-white/10 text-xs font-bold text-gray-400">
-                <th className="py-3.5 px-4 w-60 sticky left-0 z-20 bg-[#070e0a] border-r border-white/10 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
-                  <div className="flex items-center gap-2 text-brand-gold uppercase tracking-wider">
-                    <Layers className="w-4 h-4" /> Canchas ({filteredCourts.length})
+      {/* Grid Timeline Header & Matrix Container */}
+      <div className="overflow-x-auto border border-gray-200 dark:border-white/10 rounded-2xl bg-white/5 dark:bg-black/20">
+        
+        {/* Timeline Matrix */}
+        <div className="min-w-[1000px]">
+          
+          {/* Header Row: Hours */}
+          <div className="grid grid-cols-[180px_repeat(16,1fr)] border-b border-gray-200 dark:border-white/10 bg-black/40 text-xs font-bold text-gray-400 sticky top-0 z-10">
+            <div className="p-3 border-r border-white/10 text-brand-gold flex items-center justify-between">
+              <span>Cancha / Espacio</span>
+              <Layers className="w-3.5 h-3.5" />
+            </div>
+            {HOURS.map(hour => (
+              <div key={hour} className="p-3 text-center border-r border-white/5 font-mono text-[11px]">
+                {hour}
+              </div>
+            ))}
+          </div>
+
+          {/* Body Rows: One per court */}
+          {loading ? (
+            <div className="py-16 text-center text-gray-400">
+              <div className="inline-block w-6 h-6 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mb-2"></div>
+              <p>Cargando cronograma en vivo...</p>
+            </div>
+          ) : filteredCourts.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-sm">
+              No hay canchas configuradas para esta disciplina.
+            </div>
+          ) : (
+            filteredCourts.map(court => (
+              <div 
+                key={court.id}
+                className="grid grid-cols-[180px_repeat(16,1fr)] border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+              >
+                {/* Court Name Column */}
+                <div className="p-3 border-r border-white/10 bg-black/30 flex flex-col justify-center">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-white group-hover:text-brand-gold transition-colors truncate" title={court.name}>
+                      {court.name}
+                    </span>
+                    <button
+                      onClick={() => onOpenCreateBlock(court.id, court.sport)}
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-brand-gold/20 text-brand-gold rounded transition-opacity"
+                      title="Bloquear o programar clases en esta cancha"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                    </button>
                   </div>
-                </th>
-                {HOURS.map(hour => (
-                  <th key={hour} className="py-3 px-2 text-center border-r border-white/5 text-[11px] font-mono text-gray-300 min-w-[64px]">
-                    {hour}
-                  </th>
-                ))}
-              </tr>
-            </thead>
+                  <span className="text-[10px] text-gray-400">{court.sport}</span>
+                </div>
 
-            {/* Rows: Courts */}
-            <tbody className="divide-y divide-white/5 text-xs">
-              {loading ? (
-                <tr>
-                  <td colSpan={HOURS.length + 1} className="py-16 text-center text-gray-400">
-                    <div className="inline-block w-6 h-6 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mb-2"></div>
-                    <p>Cargando cronograma en vivo...</p>
-                  </td>
-                </tr>
-              ) : filteredCourts.length === 0 ? (
-                <tr>
-                  <td colSpan={HOURS.length + 1} className="py-12 text-center text-gray-400">
-                    No hay canchas registradas para la categoría seleccionada.
-                  </td>
-                </tr>
-              ) : (
-                filteredCourts.map(court => (
-                  <tr key={court.id} className="hover:bg-white/[0.02] transition-colors">
-                    
-                    {/* Court Info Sticky Column */}
-                    <td className="py-3 px-4 sticky left-0 z-10 bg-[#09120c] border-r border-white/10 shadow-[2px_0_10px_rgba(0,0,0,0.5)]">
-                      <div className="font-bold text-white text-xs truncate" title={court.name}>
-                        {court.name}
+                {/* Hour Slots Columns */}
+                {HOURS.map(hour => {
+                  const res = getSlotReservation(court.id, hour);
+                  
+                  if (!res) {
+                    return (
+                      <div
+                        key={hour}
+                        onClick={() => onOpenCreateBlock(court.id, court.sport)}
+                        className="border-r border-white/5 p-1 min-h-[55px] cursor-pointer hover:bg-brand-gold/10 transition-colors flex items-center justify-center group/slot"
+                        title={`Disponible: Clic para programar clase/bloqueo a las ${hour}`}
+                      >
+                        <span className="opacity-0 group-hover/slot:opacity-100 text-[10px] text-brand-gold font-bold">
+                          +
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between gap-1 text-[10px] text-brand-gold-light mt-0.5">
-                        <span className="font-medium">{court.sport}</span>
-                        <button
-                          onClick={() => onOpenCreateBlock(court.id, court.sport)}
-                          className="opacity-0 group-hover:opacity-100 hover:opacity-100 text-[10px] text-gray-400 hover:text-brand-gold underline"
-                          title="Bloquear esta cancha"
-                        >
-                          + Ocupar
-                        </button>
+                    );
+                  }
+
+                  const isClass = res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA';
+                  const isMaintenance = res.reservationType === 'MAINTENANCE';
+                  const isTournament = res.reservationType === 'TOURNAMENT';
+                  const isClubEvent = res.reservationType === 'EVENTO_CLUB' || res.reservationType === 'CIERRE_CANCHA';
+
+                  let badgeColor = 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300';
+                  let Icon = User;
+
+                  if (isClass) {
+                    badgeColor = 'bg-amber-500/20 border-amber-500/40 text-amber-300';
+                    Icon = Dumbbell;
+                  } else if (isMaintenance) {
+                    badgeColor = 'bg-rose-500/20 border-rose-500/40 text-rose-300';
+                    Icon = Wrench;
+                  } else if (isTournament) {
+                    badgeColor = 'bg-indigo-500/20 border-indigo-500/40 text-indigo-300';
+                    Icon = Trophy;
+                  } else if (isClubEvent) {
+                    badgeColor = 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300';
+                    Icon = Sparkles;
+                  }
+
+                  return (
+                    <div
+                      key={hour}
+                      onClick={() => setSelectedSlotDetails(res)}
+                      className="border-r border-white/5 p-1 min-h-[55px] cursor-pointer"
+                    >
+                      <div className={`h-full w-full rounded-lg border p-1.5 flex flex-col justify-between transition-all hover:scale-105 shadow-sm ${badgeColor}`}>
+                        <div className="flex items-center justify-between gap-1">
+                          <Icon className="w-3 h-3 shrink-0" />
+                          <span className="text-[9px] font-mono opacity-80">{res.startTime}</span>
+                        </div>
+                        <p className="text-[10px] font-bold truncate leading-tight mt-0.5">
+                          {res.title || res.memberName}
+                        </p>
                       </div>
-                    </td>
+                    </div>
+                  );
+                })}
 
-                    {/* Hourly Slots */}
-                    {HOURS.map(hour => {
-                      const res = getSlotReservation(court.id, hour);
+              </div>
+            ))
+          )}
 
-                      if (!res) {
-                        // Empty / Available Slot
-                        return (
-                          <td 
-                            key={hour} 
-                            onClick={() => onOpenCreateBlock(court.id, court.sport)}
-                            className="p-1 border-r border-white/5 text-center cursor-pointer hover:bg-emerald-500/10 group transition-all"
-                            title={`Disponible - Clic para programar ocupación en ${court.name} a las ${hour}`}
-                          >
-                            <div className="h-10 rounded-lg border border-dashed border-white/5 group-hover:border-emerald-500/40 flex items-center justify-center text-transparent group-hover:text-emerald-400 text-[10px] font-bold">
-                              +
-                            </div>
-                          </td>
-                        );
-                      }
-
-                      // Occupied Slot Styling
-                      const isPending = res.status === 'PENDING';
-                      const isClass = res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA';
-                      const isMaintenance = res.reservationType === 'MAINTENANCE';
-                      const isTournament = res.reservationType === 'TOURNAMENT';
-                      const isCierre = res.reservationType === 'CIERRE_CANCHA' || res.reservationType === 'EVENTO_CLUB';
-
-                      let badgeBg = 'bg-brand-gold/20 border-brand-gold/50 text-brand-gold';
-                      let icon = <User className="w-3 h-3 shrink-0" />;
-
-                      if (isCierre) {
-                        badgeBg = 'bg-rose-500/25 border-rose-500/60 text-rose-200 shadow-[0_0_8px_rgba(244,63,94,0.25)]';
-                        icon = <CalendarX className="w-3 h-3 shrink-0 text-rose-400" />;
-                      } else if (isClass) {
-                        badgeBg = 'bg-amber-500/20 border-amber-500/50 text-amber-300';
-                        icon = <Dumbbell className="w-3 h-3 shrink-0" />;
-                      } else if (isMaintenance) {
-                        badgeBg = 'bg-orange-500/20 border-orange-500/50 text-orange-300';
-                        icon = <Wrench className="w-3 h-3 shrink-0" />;
-                      } else if (isTournament) {
-                        badgeBg = 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300';
-                        icon = <Trophy className="w-3 h-3 shrink-0" />;
-                      } else if (isPending) {
-                        badgeBg = 'bg-yellow-500/20 border-yellow-500/60 text-yellow-200 animate-pulse';
-                      }
-
-                      return (
-                        <td key={hour} className="p-1 border-r border-white/5 text-center">
-                          <div
-                            onClick={() => setSelectedSlotDetails(res)}
-                            className={`h-10 px-1.5 rounded-lg border flex flex-col justify-center items-start cursor-pointer hover:scale-[1.03] transition-all shadow-sm ${badgeBg}`}
-                            title={`${res.title || res.memberName} (${res.startTime} - ${res.endTime}) - Clic para detalles`}
-                          >
-                            <div className="flex items-center gap-1 w-full truncate">
-                              {icon}
-                              <span className="text-[10px] font-bold truncate leading-none">
-                                {res.title || res.memberName}
-                              </span>
-                            </div>
-                            <span className="text-[9px] opacity-75 font-mono leading-none mt-1 truncate">
-                              {res.startTime}-{res.endTime}
-                            </span>
-                          </div>
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
         </div>
+
       </div>
 
-      {/* Modal: Slot Details & Quick Admin Actions */}
+      {/* Selected Slot Details Popover Modal */}
       {selectedSlotDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0d1813] border border-brand-gold/40 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-            
-            {/* Header */}
-            <div className="flex justify-between items-start border-b border-white/10 pb-3">
-              <div>
-                <span className="text-[10px] uppercase font-bold tracking-widest text-brand-gold">
-                  Detalles de la Ocupación
-                </span>
-                <h3 className="text-lg font-bold text-white mt-0.5">
-                  {selectedSlotDetails.title || selectedSlotDetails.memberName}
-                </h3>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+          <div className="bg-[#0b1610] border border-brand-gold/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 relative">
+            <div className="flex justify-between items-center border-b border-white/10 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Info className="w-5 h-5 text-brand-gold" />
+                Detalles del Turno
+              </h3>
               <button 
                 onClick={() => setSelectedSlotDetails(null)}
-                className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10"
+                className="p-1 rounded-xl text-gray-400 hover:text-white hover:bg-white/10"
               >
-                <XCircle className="w-5 h-5" />
+                ✕
               </button>
             </div>
 
-            {/* Info Grid */}
-            <div className="space-y-2.5 text-xs text-gray-300 bg-black/40 p-4 rounded-xl border border-white/5">
+            <div className="space-y-2 text-xs text-gray-300">
               <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Cancha:</span>
-                <span className="font-bold text-white">{selectedSlotDetails.court?.name}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Deporte:</span>
-                <span className="font-bold text-brand-gold">{selectedSlotDetails.court?.sport}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Código de Reserva:</span>
-                <span className="font-mono font-bold text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded border border-brand-gold/30">
-                  #{selectedSlotDetails.code || selectedSlotDetails.id.slice(0, 8).toUpperCase()}
-                </span>
+                <span className="text-gray-400">Espacio / Cancha:</span>
+                <strong className="text-white">{selectedSlotDetails.court?.name}</strong>
               </div>
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Fecha:</span>
-                <span className="font-bold text-white">{selectedSlotDetails.date}</span>
+                <span className="text-white font-mono">{selectedSlotDetails.date}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Horario:</span>
-                <span className="font-bold text-emerald-400 font-mono">
-                  {selectedSlotDetails.startTime} - {selectedSlotDetails.endTime}
-                </span>
+                <span className="text-brand-gold font-mono font-bold">{selectedSlotDetails.startTime} - {selectedSlotDetails.endTime}</span>
+              </div>
+              <div className="flex justify-between py-1 border-b border-white/5">
+                <span className="text-gray-400">Actividad / Socio:</span>
+                <strong className="text-white">{selectedSlotDetails.title || selectedSlotDetails.memberName}</strong>
               </div>
               <div className="flex justify-between py-1 border-b border-white/5">
                 <span className="text-gray-400">Tipo de Reserva:</span>
@@ -406,6 +417,12 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                 <div className="flex justify-between py-1 border-b border-white/5">
                   <span className="text-gray-400">Código de Socio:</span>
                   <span className="font-bold text-white">{selectedSlotDetails.memberCode}</span>
+                </div>
+              )}
+              {selectedSlotDetails.playerNames && (
+                <div className="flex justify-between py-1 border-b border-white/5">
+                  <span className="text-gray-400">Acompañantes / Invitados:</span>
+                  <span className="font-medium text-emerald-300">{selectedSlotDetails.playerNames}</span>
                 </div>
               )}
               {selectedSlotDetails.notes && (
@@ -434,6 +451,38 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
             {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
+              {/* Ver QR y Mensaje Button */}
+              {onViewQrDetails && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedSlotDetails;
+                    setSelectedSlotDetails(null);
+                    onViewQrDetails(target);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                >
+                  <QrCode className="w-4 h-4 text-emerald-400" />
+                  <span>Ver QR, Mensaje & Datos de Pre-Reserva</span>
+                </button>
+              )}
+
+              {/* Edit Button */}
+              {onEditReservation && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedSlotDetails;
+                    setSelectedSlotDetails(null);
+                    onEditReservation(target);
+                  }}
+                  className="w-full py-2 rounded-xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/40 text-brand-gold font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <span>Editar Datos / Horario de este Turno</span>
+                </button>
+              )}
+
               {selectedSlotDetails.status === 'PENDING' && (
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -468,7 +517,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     }}
                     className="text-[11px] text-amber-400 hover:underline flex items-center gap-1"
                   >
-                    <Trash2 className="w-3.5 h-3.5" /> Eliminar toda la serie continua
+                    <Trash2 className="w-3.5 h-3.5" /> Eliminar serie continua
                   </button>
                 )}
 
@@ -481,7 +530,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                   }}
                   className="text-[11px] text-rose-400 hover:underline flex items-center gap-1 ml-auto"
                 >
-                  <Trash2 className="w-3.5 h-3.5" /> Eliminar solo este turno
+                  <Trash2 className="w-3.5 h-3.5" /> Eliminar este turno
                 </button>
               </div>
             </div>

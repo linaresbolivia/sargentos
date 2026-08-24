@@ -175,7 +175,7 @@ export const MemberAdminHub: React.FC = () => {
               onClick={() => setActiveTab('GARITA_ASISTENCIAS')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'GARITA_ASISTENCIAS' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
-              <UserCheck className="w-4 h-4" /> Garita & Asistencias
+              <UserCheck className="w-4 h-4" /> Control de Entrada & Asistencias
             </button>
 
             <button

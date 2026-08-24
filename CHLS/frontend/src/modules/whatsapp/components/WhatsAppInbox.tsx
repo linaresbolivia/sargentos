@@ -1,16 +1,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { format } from 'date-fns';
-import { Send, Check, CheckCheck, User, Search } from 'lucide-react';
+import { 
+  Send, Check, CheckCheck, User, Search, Bot, UserCheck, 
+  PauseCircle, PlayCircle, Sparkles, CreditCard, Clock, Phone, 
+  ChevronRight, Shield, AlertCircle
+} from 'lucide-react';
 import { api } from '../../../config/api';
+
+interface MemberInfo {
+  id: string;
+  fullName: string;
+  documentId: string;
+  membershipNumber: string;
+  membershipType: string;
+  membershipStatus: string;
+  totalDebt: number;
+}
 
 interface Chat {
   id: string;
   phone: string;
+  phoneFormatted?: string;
   contactName: string | null;
   unreadCount: number;
   lastMessage: string | null;
   lastMessageAt: string | null;
+  isHumanHandoff?: boolean;
+  botState?: string;
+  member?: MemberInfo | null;
 }
 
 interface Message {
@@ -22,38 +40,62 @@ interface Message {
   timestamp: string;
 }
 
+const QUICK_REPLIES = [
+  {
+    title: '👋 Saludo Oficial',
+    text: '¡Hola! Estimado socio, le saluda el equipo de Atención al Socio del Club Hípico Los Sargentos. ¿En qué podemos colaborarle?'
+  },
+  {
+    title: '🎾 Reservas Canchas',
+    text: 'Para reservas de Tenis/Frontón comuníquese al +591 76753734 / 76753758. Para Pádel al +591 76753744 y Racquetball en gimnasio al +591 76753743.'
+  },
+  {
+    title: '🏊‍♂️ Horarios Piscina',
+    text: 'El Área Húmeda atiende de Martes a Viernes de 06:00 a 22:00, Sábados y Domingos de 07:00 a 20:00 y Feriados de 08:00 a 20:00. Lunes cerrado por mantenimiento.'
+  },
+  {
+    title: '💳 Pagos y Glosa',
+    text: 'Puede realizar su pago por transferencia o QR oficial indicando obligatoriamente su N° de Acción en la glosa y enviando su comprobante por este chat.'
+  },
+  {
+    title: '✅ Trámite Recibido',
+    text: 'Hemos recibido su solicitud y sus respaldos. Nuestro equipo administrativo la procesará a la brevedad posible.'
+  }
+];
+
 export const WhatsAppInbox: React.FC = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<Chat | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterTab, setFilterTab] = useState<'all' | 'needs_agent' | 'bot'>('all');
+  const [showMemberDrawer, setShowMemberDrawer] = useState(true);
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Initialize Socket and fetch chats
   useEffect(() => {
-    const newSocket = io(import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`, { withCredentials: true });
+    const socket = io(import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`, { 
+      withCredentials: true 
+    });
 
     fetchChats();
 
-    newSocket.on('whatsapp:new_message', (data: { chat: Chat; message: Message }) => {
-      setChats(prev => {
-        const existing = prev.find(c => c.id === data.chat.id);
-        if (existing) {
-          return [data.chat, ...prev.filter(c => c.id !== data.chat.id)];
-        }
-        return [data.chat, ...prev];
-      });
+    socket.on('whatsapp:new_message', (data: { chat: Chat; message: Message }) => {
+      fetchChats();
 
-      if (activeChat && data.chat.id === activeChat.id) {
-        setMessages(prev => [...prev, data.message]);
+      if (activeChat && (data.chat.id === activeChat.id || data.chat.phone === activeChat.phone)) {
+        setMessages(prev => {
+          if (prev.some(m => m.id === data.message.id)) return prev;
+          return [...prev, data.message];
+        });
       }
     });
 
-    newSocket.on('whatsapp:message_ack', (data: { phone: string; status: string }) => {
+    socket.on('whatsapp:message_ack', (data: { phone: string; status: string }) => {
       setMessages(prev => 
         prev.map(m => {
-          // If we had a way to match message ID it would be better, but we assume last messages
-          // For now, we update any message that is 'SENT' or 'DELIVERED'
           if (m.status !== 'READ' && m.fromMe) {
             return { ...m, status: data.status as any };
           }
@@ -63,14 +105,16 @@ export const WhatsAppInbox: React.FC = () => {
     });
 
     return () => {
-      newSocket.disconnect();
+      socket.disconnect();
     };
   }, [activeChat]);
 
   const fetchChats = async () => {
     try {
       const res = await api.get('/whatsapp/chats');
-      setChats(res.data.data);
+      if (res.data && res.data.success) {
+        setChats(res.data.data);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -80,7 +124,6 @@ export const WhatsAppInbox: React.FC = () => {
     try {
       const res = await api.get(`/whatsapp/chats/${chat.id}/messages`);
       setMessages(res.data.data);
-      // Mark as read locally
       setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c));
     } catch (e) {
       console.error(e);
@@ -101,24 +144,58 @@ export const WhatsAppInbox: React.FC = () => {
 
     const text = inputText;
     setInputText('');
+    setShowQuickReplies(false);
 
     try {
       await api.post('/whatsapp/send', {
         phone: activeChat.phone,
         text
       });
-      // The socket will broadcast the new message back to us
     } catch (e) {
       console.error('Failed to send message', e);
     }
   };
 
-  const formatTime = (iso: string) => {
-    return format(new Date(iso), 'HH:mm');
+  const handleToggleHandoff = async () => {
+    if (!activeChat) return;
+    setActionLoading(true);
+    const newStatus = !activeChat.isHumanHandoff;
+
+    try {
+      await api.post(`/whatsapp/chats/${activeChat.phone}/toggle-handoff`, {
+        isHandoff: newStatus
+      });
+
+      setActiveChat(prev => prev ? { ...prev, isHumanHandoff: newStatus } : null);
+      setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, isHumanHandoff: newStatus } : c));
+    } catch (err) {
+      console.error('Error toggling handoff', err);
+    } finally {
+      setActionLoading(false);
+    }
   };
 
-  const formatPhone = (phone: string) => {
-    return phone.replace(/@c\.us|@g\.us|@lid|@s\.whatsapp\.net/g, '');
+  const formatTime = (iso: string) => {
+    try {
+      return format(new Date(iso), 'HH:mm');
+    } catch {
+      return '';
+    }
+  };
+
+  const cleanDisplayPhone = (chat: Chat) => {
+    if (chat.phoneFormatted) return chat.phoneFormatted;
+    const clean = chat.phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+    if (clean.startsWith('591') && clean.length === 11) {
+      return `+591 ${clean.substring(3, 7)} ${clean.substring(7)}`;
+    }
+    if (clean.length === 8) {
+      return `+591 ${clean.substring(0, 4)} ${clean.substring(4)}`;
+    }
+    if (clean.length >= 10 && clean.length <= 13) {
+      return `+${clean.substring(0, clean.length - 8)} ${clean.substring(clean.length - 8, clean.length - 4)} ${clean.substring(clean.length - 4)}`;
+    }
+    return `+${clean}`;
   };
 
   const renderStatus = (status: string) => {
@@ -130,109 +207,399 @@ export const WhatsAppInbox: React.FC = () => {
     }
   };
 
+  // Filtrado de chats
+  const filteredChats = chats.filter(chat => {
+    const term = searchTerm.toLowerCase();
+    const matchesSearch = 
+      (chat.contactName && chat.contactName.toLowerCase().includes(term)) ||
+      chat.phone.includes(term) ||
+      (chat.lastMessage && chat.lastMessage.toLowerCase().includes(term));
+
+    if (!matchesSearch) return false;
+
+    if (filterTab === 'needs_agent') return chat.isHumanHandoff === true;
+    if (filterTab === 'bot') return chat.isHumanHandoff !== true;
+    return true;
+  });
+
+  const needsAgentCount = chats.filter(c => c.isHumanHandoff).length;
+
   return (
-    <div className="flex h-[80vh] w-full rounded-2xl overflow-hidden border border-glass-border shadow-2xl bg-white/60 dark:bg-[#0a110d] backdrop-blur-md">
-      {/* Sidebar - Chat List */}
-      <div className="w-1/3 border-r border-glass-border flex flex-col bg-white/40 dark:bg-[#0d1611]">
-        <div className="p-4 bg-white/50 dark:bg-[#111c15] border-b border-glass-border">
-          <h2 className="text-xl font-bold text-[#d4af37]">Chats</h2>
-          <div className="mt-4 relative">
-            <Search className="absolute left-3 top-2.5 text-gray-500" size={18} />
+    <div className="flex h-[82vh] w-full rounded-2xl overflow-hidden border border-gray-200 dark:border-glass-border shadow-2xl bg-white/70 dark:bg-[#0a110d] backdrop-blur-xl">
+      
+      {/* ========================================================================= */}
+      {/* SIDEBAR: LISTA DE CHATS */}
+      {/* ========================================================================= */}
+      <div className="w-full md:w-80 lg:w-96 border-r border-gray-200 dark:border-glass-border flex flex-col bg-white/60 dark:bg-[#0d1611]">
+        
+        {/* Header & Filtros */}
+        <div className="p-4 bg-white/80 dark:bg-[#111c15] border-b border-gray-200 dark:border-glass-border space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-brand-gold flex items-center gap-2">
+              <Phone className="w-5 h-5 text-brand-gold" />
+              Bandeja de Entrada
+            </h2>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold font-bold border border-brand-gold/20">
+              {chats.length} chats
+            </span>
+          </div>
+
+          {/* Buscador */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
             <input 
               type="text" 
-              placeholder="Buscar chat..." 
-              className="w-full bg-white dark:bg-[#16241a] theme-text rounded-lg pl-10 pr-4 py-2 outline-none focus:ring-1 focus:ring-brand-gold border border-glass-border dark:border-transparent placeholder-gray-400"
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              placeholder="Buscar socio, teléfono o acción..." 
+              className="w-full bg-gray-100 dark:bg-[#16241a] text-gray-900 dark:text-white rounded-xl pl-9 pr-4 py-2 text-xs outline-none focus:ring-1 focus:ring-brand-gold border border-gray-200 dark:border-transparent placeholder-gray-400"
             />
+          </div>
+
+          {/* Pestañas de Filtro */}
+          <div className="flex gap-1 bg-gray-100 dark:bg-black/30 p-1 rounded-xl text-xs">
+            <button
+              onClick={() => setFilterTab('all')}
+              className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                filterTab === 'all' 
+                  ? 'bg-white dark:bg-brand-gold dark:text-brand-green text-gray-900 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFilterTab('needs_agent')}
+              className={`flex-1 py-1.5 rounded-lg font-semibold transition-all flex items-center justify-center gap-1 ${
+                filterTab === 'needs_agent' 
+                  ? 'bg-amber-500 text-white shadow-sm font-bold' 
+                  : 'text-gray-500 hover:text-amber-500'
+              }`}
+            >
+              🛎️ Asesor
+              {needsAgentCount > 0 && (
+                <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full">
+                  {needsAgentCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setFilterTab('bot')}
+              className={`flex-1 py-1.5 rounded-lg font-semibold transition-all ${
+                filterTab === 'bot' 
+                  ? 'bg-white dark:bg-brand-gold dark:text-brand-green text-gray-900 shadow-sm' 
+                  : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+              }`}
+            >
+              🤖 En Bot
+            </button>
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
-          {chats.map(chat => (
-            <div 
-              key={chat.id} 
-              onClick={() => handleChatSelect(chat)}
-              className={`p-4 flex items-center gap-3 cursor-pointer transition-colors duration-200 border-b border-glass-border ${activeChat?.id === chat.id ? 'bg-black/5 dark:bg-[#16241a]' : 'hover:bg-black/5 dark:hover:bg-[#131f17]'}`}
-            >
-              <div className="w-12 h-12 rounded-full bg-emerald-900/50 flex items-center justify-center flex-shrink-0">
-                <User className="text-[#d4af37]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-baseline">
-                  <h3 className="text-brand-green dark:text-white font-medium truncate">{chat.contactName || formatPhone(chat.phone)}</h3>
-                  {chat.lastMessageAt && (
-                    <span className="text-xs text-gray-500">{formatTime(chat.lastMessageAt)}</span>
-                  )}
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <p className="text-sm text-gray-400 truncate">{chat.lastMessage}</p>
-                  {chat.unreadCount > 0 && (
-                    <span className="bg-brand-gold text-white dark:text-[#0a110d] text-xs font-bold px-2 py-0.5 rounded-full">
-                      {chat.unreadCount}
-                    </span>
-                  )}
-                </div>
-              </div>
+        {/* Lista Scrollable */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-gray-100 dark:divide-glass-border">
+          {filteredChats.length === 0 ? (
+            <div className="p-8 text-center text-gray-400 text-xs">
+              No se encontraron conversaciones.
             </div>
-          ))}
-        </div>
-      </div>
+          ) : (
+            filteredChats.map(chat => {
+              const isSelected = activeChat?.id === chat.id;
+              const isHandoff = chat.isHumanHandoff;
 
-      {/* Main Chat Area */}
-      <div className="w-2/3 flex flex-col bg-transparent dark:bg-black/20" style={{ backgroundImage: 'radial-gradient(circle at center, transparent 0%, transparent 100%)' }}>
-        {activeChat ? (
-          <>
-            {/* Chat Header */}
-            <div className="p-4 bg-white/50 dark:bg-[#111c15] border-b border-glass-border flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-emerald-900/50 flex items-center justify-center">
-                <User className="text-[#d4af37]" />
-              </div>
-              <div>
-                <h3 className="text-brand-green dark:text-white font-medium">{activeChat.contactName || formatPhone(activeChat.phone)}</h3>
-                <p className="text-xs text-emerald-400">{formatPhone(activeChat.phone)}</p>
-              </div>
-            </div>
+              return (
+                <div 
+                  key={chat.id} 
+                  onClick={() => handleChatSelect(chat)}
+                  className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all ${
+                    isSelected 
+                      ? 'bg-brand-gold/10 dark:bg-brand-gold/15 border-l-4 border-brand-gold' 
+                      : 'hover:bg-gray-50 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {/* Avatar */}
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 relative ${
+                    isHandoff 
+                      ? 'bg-amber-500/20 text-amber-500 border border-amber-500/30' 
+                      : 'bg-brand-green/10 dark:bg-emerald-900/40 text-brand-gold'
+                  }`}>
+                    {isHandoff ? <AlertCircle size={20} /> : <User size={20} />}
+                    {isHandoff && (
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full animate-ping" />
+                    )}
+                  </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
-              {messages.map(msg => (
-                <div key={msg.id} className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[70%] rounded-2xl px-4 py-2.5 shadow-md backdrop-blur-sm ${msg.fromMe ? 'bg-brand-green dark:bg-brand-gold text-white dark:text-[#0a110d] rounded-br-none' : 'bg-white dark:bg-[#16241a] theme-text rounded-bl-none border border-glass-border'}`}>
-                    <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                    <div className="flex items-center justify-end gap-1 mt-1">
-                      <span className={`text-[10px] ${msg.fromMe ? 'text-white/80 dark:text-[#0a110d]/70' : 'theme-text-muted'}`}>
-                        {formatTime(msg.timestamp)}
-                      </span>
-                      {msg.fromMe && renderStatus(msg.status)}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex justify-between items-baseline mb-0.5">
+                      <h3 className="text-xs font-bold text-gray-900 dark:text-white truncate">
+                        {chat.contactName && !chat.contactName.startsWith('+') 
+                          ? chat.contactName 
+                          : cleanDisplayPhone(chat)}
+                      </h3>
+                      {chat.lastMessageAt && (
+                        <span className="text-[10px] text-gray-400">{formatTime(chat.lastMessageAt)}</span>
+                      )}
+                    </div>
+
+                    {chat.contactName && !chat.contactName.startsWith('+') && (
+                      <p className="text-[10px] text-gray-400 font-mono -mt-0.5 mb-0.5 truncate">
+                        {cleanDisplayPhone(chat)}
+                      </p>
+                    )}
+                    
+                    <div className="flex items-center justify-between gap-1">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[170px]">
+                        {chat.lastMessage || 'Sin mensajes'}
+                      </p>
+                      
+                      <div className="flex items-center gap-1">
+                        {isHandoff ? (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                            🛎️ Asesor
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                            🤖 Bot
+                          </span>
+                        )}
+
+                        {chat.unreadCount > 0 && (
+                          <span className="bg-brand-gold text-white dark:text-brand-green text-[10px] font-bold px-1.5 py-0.2 rounded-full shadow-sm">
+                            {chat.unreadCount}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
-              <div ref={messagesEndRef} />
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* MAIN CHAT AREA */}
+      {/* ========================================================================= */}
+      <div className="flex-1 flex flex-col bg-gray-50/50 dark:bg-black/20">
+        {activeChat ? (
+          <>
+            {/* Top Bar del Chat Activo */}
+            <div className="p-3.5 px-6 bg-white/90 dark:bg-[#111c15] border-b border-gray-200 dark:border-glass-border flex items-center justify-between gap-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-brand-green/10 dark:bg-emerald-900/40 flex items-center justify-center text-brand-gold">
+                  <User size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    {activeChat.contactName || cleanDisplayPhone(activeChat)}
+                    {activeChat.member && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-gold/15 text-brand-gold font-bold border border-brand-gold/30">
+                        Socio #{activeChat.member.membershipNumber}
+                      </span>
+                    )}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    <span>{cleanDisplayPhone(activeChat)}</span>
+                    <span>•</span>
+                    <span className={activeChat.isHumanHandoff ? 'text-amber-500 font-semibold' : 'text-emerald-500'}>
+                      {activeChat.isHumanHandoff ? '🛎️ En atención con Asesor Humano' : '🤖 Atendido por Bot 24/7'}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Botones de Control de Atención */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleToggleHandoff}
+                  disabled={actionLoading}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                    activeChat.isHumanHandoff
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                      : 'bg-amber-500 hover:bg-amber-600 text-white'
+                  }`}
+                  title={activeChat.isHumanHandoff ? 'Devolver el control al Bot' : 'Pausar el bot para responder manualmente'}
+                >
+                  {activeChat.isHumanHandoff ? (
+                    <>
+                      <PlayCircle size={15} />
+                      Reanudar Bot
+                    </>
+                  ) : (
+                    <>
+                      <PauseCircle size={15} />
+                      Pausar Bot y Atender
+                    </>
+                  )}
+                </button>
+
+                <button
+                  onClick={() => setShowMemberDrawer(!showMemberDrawer)}
+                  className={`p-2 rounded-xl border text-xs font-semibold transition-all ${
+                    showMemberDrawer 
+                      ? 'bg-brand-gold text-brand-green border-brand-gold' 
+                      : 'bg-white dark:bg-[#16241a] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-glass-border'
+                  }`}
+                  title="Ver Ficha del Socio"
+                >
+                  <Shield size={16} />
+                </button>
+              </div>
             </div>
 
-            {/* Input Area */}
-            <div className="p-4 bg-white/50 dark:bg-[#111c15] border-t border-glass-border flex items-center gap-3">
-              <input
-                type="text"
-                value={inputText}
-                onChange={e => setInputText(e.target.value)}
-                onKeyPress={e => e.key === 'Enter' && handleSend()}
-                className="flex-1 bg-white dark:bg-[#0a110d] theme-text border border-glass-border rounded-full px-6 py-3 outline-none focus:border-brand-gold transition-colors placeholder-gray-400"
-              />
-              <button 
-                onClick={handleSend}
-                className="w-12 h-12 rounded-full bg-brand-green dark:bg-brand-gold text-white dark:text-[#0a110d] flex items-center justify-center hover:opacity-90 transition-transform active:scale-95 flex-shrink-0"
-              >
-                <Send size={20} className="ml-1" />
-              </button>
+            {/* Layout Cuerpo: Mensajes + Ficha Socio */}
+            <div className="flex-1 flex overflow-hidden">
+              
+              {/* Mensajes */}
+              <div className="flex-1 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 custom-scrollbar">
+                  {messages.map(msg => (
+                    <div key={msg.id} className={`flex ${msg.fromMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm text-xs sm:text-sm ${
+                        msg.fromMe 
+                          ? 'bg-brand-green dark:bg-brand-gold text-white dark:text-brand-green font-medium rounded-br-none' 
+                          : 'bg-white dark:bg-[#16241a] text-gray-900 dark:text-gray-100 rounded-bl-none border border-gray-200 dark:border-glass-border'
+                      }`}>
+                        <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                        <div className="flex items-center justify-end gap-1 mt-1 text-[10px] opacity-75">
+                          <span>{formatTime(msg.timestamp)}</span>
+                          {msg.fromMe && renderStatus(msg.status)}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Plantillas Rápidas Desplegables */}
+                {showQuickReplies && (
+                  <div className="p-3 bg-white/95 dark:bg-[#111c15] border-t border-gray-200 dark:border-glass-border grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {QUICK_REPLIES.map((qr, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          setInputText(qr.text);
+                          setShowQuickReplies(false);
+                        }}
+                        className="text-left p-2 rounded-xl bg-gray-50 dark:bg-black/30 hover:bg-brand-gold/10 border border-gray-200 dark:border-glass-border text-xs transition-colors"
+                      >
+                        <p className="font-bold text-brand-gold-dark dark:text-brand-gold">{qr.title}</p>
+                        <p className="text-[11px] text-gray-500 dark:text-gray-400 truncate">{qr.text}</p>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Input de Mensaje */}
+                <div className="p-3 bg-white/90 dark:bg-[#111c15] border-t border-gray-200 dark:border-glass-border flex items-center gap-2">
+                  <button
+                    onClick={() => setShowQuickReplies(!showQuickReplies)}
+                    className="p-2.5 rounded-xl bg-gray-100 dark:bg-[#16241a] text-brand-gold hover:bg-brand-gold/20 transition-all border border-gray-200 dark:border-glass-border"
+                    title="Plantillas Rápidas"
+                  >
+                    <Sparkles size={18} />
+                  </button>
+
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={e => setInputText(e.target.value)}
+                    onKeyPress={e => e.key === 'Enter' && handleSend()}
+                    placeholder={activeChat.isHumanHandoff ? "Escribe una respuesta como asesor..." : "Escribe un mensaje..."}
+                    className="flex-1 bg-white dark:bg-[#0a110d] text-gray-900 dark:text-white border border-gray-200 dark:border-glass-border rounded-xl px-4 py-2.5 text-xs sm:text-sm outline-none focus:border-brand-gold transition-colors placeholder-gray-400"
+                  />
+                  
+                  <button 
+                    onClick={handleSend}
+                    disabled={!inputText.trim()}
+                    className="w-10 h-10 rounded-xl bg-brand-gold hover:bg-brand-gold-light text-brand-green flex items-center justify-center transition-all disabled:opacity-40 shadow-sm flex-shrink-0"
+                  >
+                    <Send size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Drawer Ficha Socio (Derecha) */}
+              {showMemberDrawer && (
+                <div className="w-72 border-l border-gray-200 dark:border-glass-border bg-white/70 dark:bg-[#0d1611] p-4 flex flex-col justify-between overflow-y-auto custom-scrollbar text-xs">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between border-b border-gray-200 dark:border-glass-border pb-2">
+                      <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                        <Shield className="w-4 h-4 text-brand-gold" />
+                        Ficha del Socio
+                      </h4>
+                      <span className="text-[10px] text-gray-400">{activeChat.member ? 'Registrado' : 'No Socio'}</span>
+                    </div>
+
+                    {activeChat.member ? (
+                      <div className="space-y-3">
+                        <div>
+                          <p className="text-[10px] text-gray-400 uppercase">Nombre Completo</p>
+                          <p className="font-bold text-gray-900 dark:text-white text-sm">{activeChat.member.fullName}</p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-gray-50 dark:bg-black/30 p-2 rounded-lg border border-gray-200 dark:border-glass-border">
+                            <p className="text-[10px] text-gray-400">N° Acción</p>
+                            <p className="font-bold text-brand-gold">{activeChat.member.membershipNumber}</p>
+                          </div>
+                          <div className="bg-gray-50 dark:bg-black/30 p-2 rounded-lg border border-gray-200 dark:border-glass-border">
+                            <p className="text-[10px] text-gray-400">Carnet (CI)</p>
+                            <p className="font-bold text-gray-800 dark:text-gray-200">{activeChat.member.documentId}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-gray-50 dark:bg-black/30 p-2 rounded-lg border border-gray-200 dark:border-glass-border">
+                          <p className="text-[10px] text-gray-400">Tipo de Membresía</p>
+                          <p className="font-semibold text-gray-800 dark:text-gray-200">{activeChat.member.membershipType}</p>
+                        </div>
+
+                        <div className="p-2.5 rounded-xl border bg-brand-gold/5 border-brand-gold/20">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">Estado de Cuotas</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                              activeChat.member.totalDebt === 0 
+                                ? 'bg-green-500/20 text-green-600 dark:text-green-400' 
+                                : 'bg-red-500/20 text-red-600 dark:text-red-400'
+                            }`}>
+                              {activeChat.member.totalDebt === 0 ? 'Al Día' : 'Con Saldo'}
+                            </span>
+                          </div>
+                          <p className="text-base font-extrabold text-gray-900 dark:text-white">
+                            Bs. {activeChat.member.totalDebt.toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-6 space-y-2">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-white/5 flex items-center justify-center mx-auto text-gray-400">
+                          <User size={24} />
+                        </div>
+                        <p className="text-gray-500 dark:text-gray-400">Número no vinculado a una acción de socio.</p>
+                        <p className="text-[11px] text-gray-400">Atendido como consulta general o visitante.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200 dark:border-glass-border text-center">
+                    <p className="text-[10px] text-gray-400">
+                      Línea Central Club Hípico Los Sargentos
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center text-gray-500">
-            <div className="w-24 h-24 rounded-full bg-emerald-900/20 flex items-center justify-center mb-4 border border-emerald-900/30">
-              <Search className="text-[#d4af37]" size={40} />
+          <div className="flex-1 flex flex-col items-center justify-center text-gray-400 p-8 text-center">
+            <div className="w-20 h-20 rounded-3xl bg-brand-gold/10 flex items-center justify-center mb-4 border border-brand-gold/20 text-brand-gold">
+              <Bot size={36} />
             </div>
-            <p className="text-lg">Selecciona un chat para comenzar a enviar mensajes</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Centro de Atención Call Center</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm">
+              Selecciona una conversación de la izquierda para ver el historial, atender solicitudes o gestionar las derivaciones del bot.
+            </p>
           </div>
         )}
       </div>

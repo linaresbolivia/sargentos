@@ -825,6 +825,7 @@ model CourtReservation {
   guestFee          Float    @default(0.0)
   totalPrice        Float    @default(0.0)
   paymentStatus     String   @default("PENDING_PAYMENT") // PENDING_PAYMENT, PAID, VERIFIED, EXEMPT
+  paymentMethod     String?  @default("QR")             // QR, EFECTIVO, TARJETA, TRANSFERENCIA
   paymentReceiptUrl String?  // Receipt image URL if uploaded
 
   title             String?  // Title for class, tournament or maintenance

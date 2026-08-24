@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import fs from 'fs';
+import path from 'path';
 import { whatsappManager } from '../../whatsapp/infrastructure/whatsappService';
 
 const prisma = new PrismaClient();
@@ -72,7 +74,7 @@ export class ReservationsController {
       const reservations = await prisma.courtReservation.findMany({
         where,
         include: { court: true },
-        orderBy: [{ date: 'asc' }, { startTime: 'asc' }],
+        orderBy: [{ createdAt: 'desc' }, { date: 'desc' }, { startTime: 'desc' }],
       });
       return res.json(reservations);
     } catch (error) {
@@ -138,19 +140,22 @@ export class ReservationsController {
         playerNames,
         courtFee,
         guestFee,
-        totalPrice
+        totalPrice,
+        paymentMethod = 'QR',
+        paymentReceiptUrl
       } = req.body;
 
       if (!courtId || !date || !startTime || !endTime || !memberCode || !memberName || !memberPhone || !String(memberPhone).trim()) {
-        return res.status(400).json({ error: 'El número de teléfono/WhatsApp de contacto es obligatorio para confirmar la reserva.' });
+        const errorMsg = 'El número de teléfono/WhatsApp de contacto es obligatorio para confirmar la reserva.';
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
-      const cleanPhone = String(memberPhone).trim().replace(/[\s\-\(\)]/g, '');
-      const boliviaPhoneRegex = /^(?:\+?591)?[67]\d{7}$/;
+      const rawPhone = String(memberPhone).trim();
+      const cleanPhone = rawPhone.replace(/[\s\-\(\)\+]/g, '');
+      const boliviaPhoneRegex = /^(?:591)?[67]\d{7}$/;
       if (!boliviaPhoneRegex.test(cleanPhone)) {
-        return res.status(400).json({ 
-          error: 'Número de celular inválido. Debe ser un celular válido de Bolivia (8 dígitos comenzando con 6 o 7, ej. 70123456 o +591 70123456).' 
-        });
+        const errorMsg = 'Número de celular inválido. Debe ser un celular válido de Bolivia (8 dígitos comenzando con 6 o 7, ej. 70123456 o +591 70123456).';
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
       const todayStr = formatDate(new Date());
@@ -160,12 +165,12 @@ export class ReservationsController {
 
       // Regla Anti-Abuso 1: Ventana de 7 días
       if (date < todayStr) {
-        return res.status(400).json({ error: 'No es posible reservar en fechas pasadas.' });
+        const errorMsg = 'No es posible reservar en fechas pasadas.';
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
       if (date > maxDateStr) {
-        return res.status(400).json({ 
-          error: `Las reservas solo pueden realizarse con un máximo de 7 días de anticipación (hasta ${maxDateStr}).` 
-        });
+        const errorMsg = `Las reservas solo pueden realizarse con un máximo de 7 días de anticipación (hasta ${maxDateStr}).`;
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
       // Regla Anti-Abuso 2: Máximo 2 reservas activas futuras por socio en todo el club
@@ -179,9 +184,8 @@ export class ReservationsController {
       });
 
       if (activeMemberReservations >= 2) {
-        return res.status(400).json({
-          error: 'Límite alcanzado: Tienes 2 reservas activas próximas. Para realizar una nueva, espera a que concluyan o cancela una previa.'
-        });
+        const errorMsg = 'Límite alcanzado: Tienes 2 reservas activas próximas. Para realizar una nueva, espera a que concluyan o cancela una previa.';
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
       // Obtener datos de la cancha para validar límite diario por deporte
@@ -190,7 +194,8 @@ export class ReservationsController {
       });
 
       if (!court) {
-        return res.status(404).json({ error: 'La cancha seleccionada no existe o está inactiva.' });
+        const errorMsg = 'La cancha seleccionada no existe o está inactiva.';
+        return res.status(404).json({ error: errorMsg, message: errorMsg });
       }
 
       // Regla Anti-Abuso 3: Máximo 1 reserva por socio por día en la misma disciplina/deporte
@@ -206,9 +211,8 @@ export class ReservationsController {
       });
 
       if (sameDaySportReservation) {
-        return res.status(400).json({
-          error: `Límite diario: Ya cuentas con una reserva de ${court.sport} para el día ${date} (${sameDaySportReservation.court.name} a las ${sameDaySportReservation.startTime}).`
-        });
+        const errorMsg = `Límite diario: Ya cuentas con una reserva de ${court.sport} para el día ${date} (${sameDaySportReservation.court.name} a las ${sameDaySportReservation.startTime}).`;
+        return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
       // Validación de Solapamiento / Conflicto de horario
@@ -233,15 +237,18 @@ export class ReservationsController {
           : conflict.reservationType === 'MAINTENANCE'
           ? 'en Mantenimiento'
           : 'ya reservado por otro socio';
-        return res.status(409).json({ 
-          error: `El horario de ${startTime} a ${endTime} no está disponible (${reason}).` 
-        });
+        const errorMsg = `El horario de ${startTime} a ${endTime} no está disponible (${reason}).`;
+        return res.status(409).json({ error: errorMsg, message: errorMsg });
       }
 
       // Cálculo de tarifas y duración
       const [startH, startM] = startTime.split(':').map(Number);
       const [endH, endM] = endTime.split(':').map(Number);
       const durationHours = Math.max(1, Math.round((endH * 60 + endM - (startH * 60 + startM)) / 60));
+
+      if (durationHours > 2) {
+        return res.status(400).json({ error: 'La duración máxima permitida para reservas deportivas es de 2 horas continuas.' });
+      }
 
       const hourlyRate = (court as any).hourlyRate ?? 30.0;
       const guestRate = (court as any).guestRate ?? 25.0;
@@ -257,6 +264,8 @@ export class ReservationsController {
       const reservationCode = `RES-${sportPrefix}-${randomSuffix}`;
 
       const isExempt = computedTotalPrice <= 0;
+      const reservationStatus = isExempt ? 'APPROVED' : (paymentReceiptUrl ? 'APPROVED' : 'PENDING');
+      const reservationPaymentStatus = isExempt ? 'EXEMPT' : (paymentReceiptUrl ? 'PAID' : 'PENDING_PAYMENT');
 
       const reservation = await prisma.courtReservation.create({
         data: {
@@ -275,10 +284,12 @@ export class ReservationsController {
           courtFee: computedCourtFee,
           guestFee: computedGuestFee,
           totalPrice: computedTotalPrice,
-          paymentStatus: isExempt ? 'EXEMPT' : 'PENDING_PAYMENT',
+          paymentStatus: reservationPaymentStatus,
+          paymentMethod: String(paymentMethod || 'QR'),
+          paymentReceiptUrl: paymentReceiptUrl ? String(paymentReceiptUrl) : null,
           title: title || 'Reserva de Socio',
           notes: notes || null,
-          status: 'APPROVED' // Instant approval with fair play limits
+          status: reservationStatus
         },
         include: { court: true }
       });
@@ -404,7 +415,7 @@ export class ReservationsController {
           if (isExempt) {
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Confirmación de Turno Deportivo (Cortesía de Socio)*
+🎾 *Confirmación de Turno Deportivo*
 
 Estimado(a) *${memberName}*, tu turno ha sido reservado y confirmado exitosamente:
 
@@ -415,19 +426,19 @@ Estimado(a) *${memberName}*, tu turno ha sido reservado y confirmado exitosament
 👥 *Modalidad:* ${modalityLabel}${companionsText}
 💰 *Total:* Bs. 0 (Sin costo / Cortesía de Socio)
 
-✅ *ESTADO:* *RESERVA CONSOLIDADA Y APROBADA*
+✅ *ESTADO:* 🟢 *RESERVADO Y CONFIRMADO (CORTESÍA SOCIO)*
 
 📌 *Indicaciones de Ingreso:*
-• Presentar tu carnet de socio en portería o caseta deportiva.
+• Presentar tu carnet de socio en Control de Entrada o caseta deportiva.
 • El acceso se habilita 10 minutos antes del inicio del turno.
 
 ¡Que disfrutes tu jornada deportiva en el Club! 🥇✨`;
           } else {
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
-🎾 *Confirmación de Reserva de Cancha*
+🎾 *Pre-Reserva de Cancha Registrada*
 
-Estimado(a) *${memberName}*, tu solicitud de reserva ha sido registrada exitosamente:
+Estimado(a) *${memberName}*, tu solicitud de turno ha sido registrada:
 
 🎫 *CÓDIGO DE RESERVA:* *#${reservationCode}*
 🏟️ *Espacio / Cancha:* ${court.name} (${court.sport})
@@ -439,15 +450,43 @@ Estimado(a) *${memberName}*, tu solicitud de reserva ha sido registrada exitosam
 • Uso de Cancha: Bs. ${computedCourtFee} (Cortesía de Socio)
 ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
 
-📌 *INSTRUCCIONES DE PAGO:*
-1. Realiza la transferencia escaneando el *QR Oficial de Pagos* del Club.
-2. ⚠️ *Coloca en la glosa o motivo de tu transferencia tu código: #${reservationCode}*
-3. *Adjunta tu comprobante de pago directamente desde el sistema* o envíalo a este número para la validación y consolidación de tu turno.
+⏳ *ESTADO:* 🟡 *PRE-RESERVA (PENDIENTE DE PAGO)*
 
-¡Te esperamos en el Club para disfrutar de tu deporte! 🏆✨`;
+📌 *INSTRUCCIONES DE PAGO:*
+1. Realiza la transferencia escaneando el *QR Oficial de Pagos* del Club adjunto a este mensaje.
+2. ⚠️ *Coloca en la glosa de tu transferencia tu código: #${reservationCode}*
+3. *Adjunta tu comprobante desde el sistema* o responde a este chat para validar y consolidar tu turno.
+
+¡Te esperamos en el Club! 🏆✨`;
           }
 
-          await whatsappService.sendMessage(formattedPhone, whatsappMessage);
+          // Cargar imagen QR oficial en base64 si requiere pago
+          let qrBase64: string | undefined = undefined;
+          if (!isExempt) {
+            try {
+              const possiblePaths = [
+                path.resolve(process.cwd(), '../frontend/src/assets/qr-pagos.jpg'),
+                path.resolve(process.cwd(), 'src/assets/qr-pagos.jpg'),
+                path.resolve(process.cwd(), 'frontend/src/assets/qr-pagos.jpg'),
+                'C:\\Users\\HP\\Documents\\CHLS\\frontend\\src\\assets\\qr-pagos.jpg'
+              ];
+              for (const p of possiblePaths) {
+                if (fs.existsSync(p)) {
+                  const buffer = fs.readFileSync(p);
+                  qrBase64 = `data:image/jpeg;base64,${buffer.toString('base64')}`;
+                  break;
+                }
+              }
+            } catch (qrErr) {
+              console.warn('[WhatsApp Bot] Error leyendo imagen QR:', qrErr);
+            }
+          }
+
+          if (qrBase64) {
+            await whatsappService.sendMessage(formattedPhone, whatsappMessage, qrBase64);
+          } else {
+            await whatsappService.sendMessage(formattedPhone, whatsappMessage);
+          }
         } catch (wsErr) {
           console.warn('[WhatsApp Bot] No se pudo enviar notificación de reserva:', wsErr);
         }
@@ -457,12 +496,12 @@ ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
         success: true, 
         message: isExempt 
           ? '¡Reserva confirmada con éxito! Como socio del Club, el uso de cancha no tiene costo.' 
-          : 'Reserva registrada con éxito. Por favor efectúa el pago por QR de tus invitados.',
+          : 'Pre-reserva registrada con éxito. Se envió el código y QR de pago a tu WhatsApp.',
         reservation 
       });
     } catch (error) {
       console.error('Error creating reservation:', error);
-      return res.status(500).json({ error: 'Error al procesar la reserva' });
+      return res.status(500).json({ error: 'Error al procesar la reserva', message: 'Error al procesar la reserva' });
     }
   }
 
@@ -603,20 +642,51 @@ ${guestsLine}💰 *TOTAL A PAGAR:* *Bs. ${computedTotalPrice}*
     }
   }
 
-  // 7. Obtener reservas del socio logueado
+  // 7. Obtener reservas del socio logueado (Búsqueda inteligente por código, CI, carnet o teléfono)
   async getMyReservations(req: Request, res: Response) {
     try {
-      const { memberCode } = req.query;
+      const { memberCode, phone, search } = req.query;
 
-      if (!memberCode) {
-        return res.status(400).json({ error: 'Código de socio no proporcionado' });
+      const queryTerm = (search || memberCode || phone || '').toString().trim();
+      if (!queryTerm) {
+        return res.status(400).json({ error: 'Identificador de socio no proporcionado' });
       }
 
       const todayStr = formatDate(new Date());
 
+      // Condiciones de búsqueda amplia
+      const orFilters: any[] = [
+        { memberCode: queryTerm },
+        { memberPhone: queryTerm },
+        { memberPhone: { contains: queryTerm.replace(/[\s\-\(\)\+]/g, '').slice(-8) } },
+        { memberName: { contains: queryTerm, mode: 'insensitive' } },
+        { code: queryTerm }
+      ];
+
+      // Si queryTerm es numérico o alfanumérico, buscar en el padrón de socios para resolver todos sus identificadores
+      try {
+        const memberProfile = await prisma.member.findFirst({
+          where: {
+            OR: [
+              { membershipNumber: queryTerm },
+              { documentId: queryTerm },
+              { phone: { contains: queryTerm.replace(/[\s\-\(\)\+]/g, '').slice(-8) } }
+            ]
+          }
+        });
+
+        if (memberProfile) {
+          if (memberProfile.membershipNumber) orFilters.push({ memberCode: memberProfile.membershipNumber });
+          if (memberProfile.documentId) orFilters.push({ memberCode: memberProfile.documentId });
+          if (memberProfile.phone) orFilters.push({ memberPhone: memberProfile.phone });
+        }
+      } catch (err) {
+        // Ignorar si la tabla member no coincide
+      }
+
       const reservations = await prisma.courtReservation.findMany({
         where: {
-          memberCode: String(memberCode),
+          OR: orFilters,
           reservationType: 'MEMBER'
         },
         include: { court: true },
@@ -1048,6 +1118,157 @@ Estimado(a) *${reservation.memberName}*, hemos recibido y adjuntado con éxito t
     } catch (error) {
       console.error('Error searching members:', error);
       return res.status(500).json({ error: 'Error al buscar socios' });
+    }
+  }
+
+  // 16. Crear nueva Cancha o Espacio Deportivo
+  async createCourt(req: Request, res: Response) {
+    try {
+      const { name, sport, description, hourlyRate, guestRate, isActive, openingTime, closingTime } = req.body;
+      if (!name || !sport) {
+        return res.status(400).json({ error: 'Nombre y disciplina requeridos' });
+      }
+
+      const court = await prisma.court.create({
+        data: {
+          name: String(name).trim(),
+          sport: String(sport).trim(),
+          description: description ? String(description).trim() : null,
+          hourlyRate: hourlyRate !== undefined ? Number(hourlyRate) : 0,
+          guestRate: guestRate !== undefined ? Number(guestRate) : 50,
+          isActive: isActive !== undefined ? Boolean(isActive) : true,
+          openingTime: openingTime || '06:00',
+          closingTime: closingTime || '22:00',
+        }
+      });
+
+      return res.status(201).json({ success: true, message: 'Cancha creada exitosamente', court });
+    } catch (error) {
+      console.error('Error creating court:', error);
+      return res.status(500).json({ error: 'Error al crear la cancha' });
+    }
+  }
+
+  // 17. Editar Cancha o Espacio Deportivo existente
+  async updateCourt(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { name, sport, description, hourlyRate, guestRate, isActive, openingTime, closingTime } = req.body;
+
+      const existing = await prisma.court.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Cancha no encontrada' });
+      }
+
+      const updated = await prisma.court.update({
+        where: { id },
+        data: {
+          name: name !== undefined ? String(name).trim() : existing.name,
+          sport: sport !== undefined ? String(sport).trim() : existing.sport,
+          description: description !== undefined ? (description ? String(description).trim() : null) : existing.description,
+          hourlyRate: hourlyRate !== undefined ? Number(hourlyRate) : existing.hourlyRate,
+          guestRate: guestRate !== undefined ? Number(guestRate) : existing.guestRate,
+          isActive: isActive !== undefined ? Boolean(isActive) : existing.isActive,
+          openingTime: openingTime !== undefined ? String(openingTime) : existing.openingTime,
+          closingTime: closingTime !== undefined ? String(closingTime) : existing.closingTime,
+        }
+      });
+
+      return res.json({ success: true, message: 'Cancha actualizada correctamente', court: updated });
+    } catch (error) {
+      console.error('Error updating court:', error);
+      return res.status(500).json({ error: 'Error al actualizar la cancha' });
+    }
+  }
+
+  // 18. Editar Reserva o Bloqueo existente (Admin / Socio)
+  async updateReservation(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { 
+        courtId, 
+        date, 
+        startTime, 
+        endTime, 
+        title, 
+        notes, 
+        reservationType, 
+        playerType, 
+        guestsCount, 
+        playerNames, 
+        totalPrice, 
+        status, 
+        paymentStatus,
+        paymentMethod,
+        memberPhone
+      } = req.body;
+
+      const existing = await prisma.courtReservation.findUnique({
+        where: { id },
+        include: { court: true }
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Reserva no encontrada' });
+      }
+
+      // Si cambiaron de cancha, fecha u horario, verificar solapamientos
+      const targetCourtId = courtId || existing.courtId;
+      const targetDate = date || existing.date;
+      const targetStart = startTime || existing.startTime;
+      const targetEnd = endTime || existing.endTime;
+
+      if (targetCourtId !== existing.courtId || targetDate !== existing.date || targetStart !== existing.startTime || targetEnd !== existing.endTime) {
+        const conflict = await prisma.courtReservation.findFirst({
+          where: {
+            id: { not: id },
+            courtId: targetCourtId,
+            date: targetDate,
+            status: { in: ['PENDING', 'APPROVED'] },
+            OR: [
+              {
+                startTime: { lt: targetEnd },
+                endTime: { gt: targetStart }
+              }
+            ]
+          },
+          include: { court: true }
+        });
+
+        if (conflict) {
+          return res.status(409).json({ 
+            error: `Conflicto de horario: El espacio ya está ocupado de ${conflict.startTime} a ${conflict.endTime} (${conflict.title || conflict.memberName}).` 
+          });
+        }
+      }
+
+      const updateData: any = {};
+      if (courtId !== undefined) updateData.courtId = courtId;
+      if (date !== undefined) updateData.date = date;
+      if (startTime !== undefined) updateData.startTime = startTime;
+      if (endTime !== undefined) updateData.endTime = endTime;
+      if (title !== undefined) updateData.title = title ? String(title).trim() : null;
+      if (notes !== undefined) updateData.notes = notes ? String(notes).trim() : null;
+      if (reservationType !== undefined) updateData.reservationType = reservationType;
+      if (playerType !== undefined) updateData.playerType = playerType;
+      if (guestsCount !== undefined) updateData.guestsCount = Number(guestsCount);
+      if (playerNames !== undefined) updateData.playerNames = playerNames ? String(playerNames).trim() : null;
+      if (totalPrice !== undefined) updateData.totalPrice = Number(totalPrice);
+      if (status !== undefined) updateData.status = status;
+      if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+      if (paymentMethod !== undefined) updateData.paymentMethod = paymentMethod;
+      if (memberPhone !== undefined) updateData.memberPhone = memberPhone ? String(memberPhone).trim() : null;
+
+      const updated = await prisma.courtReservation.update({
+        where: { id },
+        data: updateData,
+        include: { court: true }
+      });
+
+      return res.json({ success: true, message: 'Reserva actualizada exitosamente', reservation: updated });
+    } catch (error) {
+      console.error('Error updating reservation:', error);
+      return res.status(500).json({ error: 'Error al actualizar la reserva' });
     }
   }
 }

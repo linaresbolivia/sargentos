@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { api } from '@config/api';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
-import { LogOut, UserPlus } from 'lucide-react';
+import { LogOut, UserPlus, ArrowLeft } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AppDispatch } from '@store/store';
 import { MassiveMemberForm } from '../components/MassiveMemberForm';
@@ -44,6 +45,7 @@ const MODULES_MAP: Record<string, string> = {
 
 export const SuperAdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -201,7 +203,14 @@ export const SuperAdminDashboard = () => {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
         <header className="flex flex-col md:flex-row justify-between items-end mb-10 border-b border-brand-gold/10 pb-6 gap-6">
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => navigate('/')}
+              className="p-2.5 rounded-2xl bg-white/5 hover:bg-brand-gold hover:text-black border border-brand-gold/30 text-brand-gold transition-all shadow-sm"
+              title="Volver al Portal Principal"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
             <CrestLogo size="sm" />
           </div>
           

@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { prisma } from '@shared/infrastructure/prisma';
 import { socketService } from '@config/socket';
+import { botSessionManager } from '../domain/botSessionManager';
 
 export class WhatsappClientInstance {
   private client!: Client;
@@ -26,6 +27,14 @@ export class WhatsappClientInstance {
       authStrategy: new LocalAuth({ clientId: this.clientId }),
       puppeteer: {
         headless: true,
+        defaultViewport: {
+          width: 1280,
+          height: 800,
+          deviceScaleFactor: 1,
+          isMobile: false,
+          hasTouch: false,
+          isLandscape: true
+        },
         args: [
           '--no-sandbox',
           '--disable-setuid-sandbox',
@@ -35,9 +44,14 @@ export class WhatsappClientInstance {
           '--no-zygote',
           '--disable-gpu',
           '--disable-blink-features=AutomationControlled',
-          '--disable-extensions'
+          '--disable-extensions',
+          '--disable-infobars',
+          '--window-position=0,0',
+          '--ignore-certificate-errors',
+          '--ignore-certificate-errors-spki-list',
+          '--lang=es-BO,es;q=0.9,en-US;q=0.8,en;q=0.7'
         ],
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
         bypassCSP: true,
       },
       webVersionCache: {
@@ -109,9 +123,9 @@ export class WhatsappClientInstance {
       this.qrCodeUrl = null;
       this.emitStatusChange();
 
-      const isManualLogout = String(reason).toUpperCase().includes('LOGOUT') || 
-                             String(reason).toUpperCase().includes('NAVIGATION') || 
-                             this.isExplicitlyLoggedOut;
+      const isManualLogout = String(reason).toUpperCase().includes('LOGOUT') ||
+        String(reason).toUpperCase().includes('NAVIGATION') ||
+        this.isExplicitlyLoggedOut;
 
       if (isManualLogout) {
         console.log(`[${this.clientId}] Cierre de sesión definitivo. Purgando credenciales locales...`);
@@ -129,6 +143,8 @@ export class WhatsappClientInstance {
       }
     });
 
+    // Only process Chat/Inbox events for the "masivo" client for now, or distinguish them if needed.
+    // For simplicity, we'll run it for both but store under same DB tables (could be mixed, but fine for now).
     this.client.on('message', async (msg: Message) => {
       await this.handleIncomingMessage(msg);
     });
@@ -148,23 +164,70 @@ export class WhatsappClientInstance {
     if (!this.isBotActive) return; // Si el bot está apagado, no procesa respuestas automáticas
 
     try {
-      if (msg.isStatus || msg.from.includes('@g.us')) return;
+      // Ignorar estados, grupos, canales de noticias (newsletter), difusiones y temporales
+      if (
+        msg.isStatus || 
+        msg.from.includes('@g.us') || 
+        msg.from.includes('@newsletter') || 
+        msg.from.includes('@broadcast') ||
+        msg.from.includes('@temp')
+      ) return;
+
       const contact = await msg.getContact();
-      let phone = contact.number || msg.from.replace(/@.*$/, '');
-      if (phone.includes(':')) phone = phone.split(':')[0];
+      let rawFrom = msg.from;
+      let phone = contact.number || '';
+      if (!phone || phone.length > 13) {
+        phone = rawFrom.replace(/@.*$/, '').split(':')[0].replace(/[^0-9]/g, '');
+      }
 
-      let contactName = contact.name || contact.pushname || phone;
+      // Validar longitud de número telefónico real (7 a 13 dígitos). Descartar LIDs de 15 dígitos o hashes
+      if (!phone || phone.length > 13 || phone.length < 7) {
+        return;
+      }
 
-      // Try to resolve name from PQRS tickets if it's just the phone
-      if (contactName === phone) {
-        const cleanPhone = phone.replace(/^591/, '');
-        const ticket = await prisma.pqrsTicket.findFirst({
-          where: { phone: { contains: cleanPhone } },
-          orderBy: { createdAt: 'desc' }
+      let contactName = contact.name || contact.pushname;
+      const searchPhone = phone.replace(/^591/, '');
+
+      // 1. Buscar en la base de datos de socios
+      try {
+        const person = await prisma.person.findFirst({
+          where: {
+            OR: [
+              { phone: { contains: searchPhone } },
+              { mobile: { contains: searchPhone } }
+            ]
+          },
+          include: {
+            titularMemberships: true
+          }
         });
-        if (ticket) {
-          contactName = ticket.fullName;
+
+        if (person) {
+          const memNum = person.titularMemberships[0]?.membershipNumber;
+          const memTag = memNum ? ` (Acción #${memNum})` : '';
+          contactName = `${person.firstName} ${person.paternalSurname || person.lastName || ''}${memTag}`.trim();
+        } else {
+          // 2. Buscar en tickets PQRS
+          const ticket = await prisma.pqrsTicket.findFirst({
+            where: { phone: { contains: searchPhone } },
+            orderBy: { createdAt: 'desc' }
+          });
+          if (ticket) {
+            contactName = ticket.fullName;
+          } else if (!contactName || contactName === phone || /^[0-9]+$/.test(contactName)) {
+            contactName = phone.startsWith('591') 
+              ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
+              : phone.length === 8 
+                ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
+                : `+${phone}`;
+          }
         }
+      } catch (lookupErr) {
+        contactName = phone.startsWith('591') 
+          ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
+          : phone.length === 8 
+            ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
+            : `+${phone}`;
       }
 
       const chat = await prisma.whatsAppChat.upsert({
@@ -197,9 +260,23 @@ export class WhatsappClientInstance {
 
       socketService.getIo().emit('whatsapp:new_message', { chat, message: newMessage, clientId: this.clientId });
 
-      // --- BOT LOGIC (PQRS Tracker & Satisfaction Survey) ---
+      // --- BOT CALL CENTER 24/7 (PQRS Tracker, Encuestas & Menú Inteligente) ---
+      // Si esta sesión es Reservas Web (chls-reservas) o Difusión Masiva (chls-masivo), NO ejecutar lógica de bot ni menús
+      if (this.clientId === 'chls-reservas' || this.clientId === 'chls-masivo') {
+        return;
+      }
+
+      // Anti-Ban 1: Simular lectura humana de mensaje (ticks azules) tras un retraso orgánico
+      try {
+        const chatObj = await msg.getChat();
+        if (chatObj) {
+          const readingDelay = 1200 + Math.min(msg.body.length * 15, 2000) + Math.random() * 800;
+          await new Promise(resolve => setTimeout(resolve, readingDelay));
+          await chatObj.sendSeen();
+        }
+      } catch (seenErr) { }
+
       const bodyStr = msg.body.trim();
-      const codeMatch = bodyStr.match(/[A-Za-z]{3}[0-9]/);
 
       const cleanPhone = phone.replace(/^591/, '');
       const potentialRating = parseInt(bodyStr, 10);
@@ -228,125 +305,23 @@ export class WhatsappClientInstance {
           }
         });
 
-        await this.sendMessage(msg.from, '¡Gracias por ayudarnos a mejorar! Tu calificación ha sido registrada.');
-        return; // Detener flujo para no activar otras respuestas del bot
+        // Pausa previa a redactar respuesta de encuesta
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1200));
+        await this.sendMessage(msg.from, '¡Gracias por ayudarnos a mejorar! Tu calificación ha sido registrada. 🌟\n\nEscribe *MENU* si deseas realizar otra consulta.');
+        return;
       }
 
-      // Check for Reservation Code Query (e.g. RES-TEN-8942, RES-84920)
-      const resCodeMatch = bodyStr.match(/RES-[A-Z0-9\-]+/i) || bodyStr.match(/\bRES\d+\b/i);
+      // Anti-Ban 2: Pausa de reflexión humana antes de formular la respuesta (1 a 2.5 segundos)
+      const thinkingDelay = 1000 + Math.random() * 1500;
+      await new Promise(resolve => setTimeout(resolve, thinkingDelay));
 
-      if (resCodeMatch) {
-        const rawCode = resCodeMatch[0].toUpperCase();
-        try {
-          const reservation = await prisma.courtReservation.findFirst({
-            where: {
-              OR: [
-                { code: rawCode },
-                { code: { contains: rawCode } },
-                { id: { startsWith: rawCode.replace('RES-', '').toLowerCase() } }
-              ]
-            },
-            include: { court: true }
-          });
-
-          if (reservation) {
-            const isVerified = reservation.paymentStatus === 'VERIFIED';
-            const isPaid = reservation.paymentStatus === 'PAID';
-            
-            let statusBadge = isVerified 
-              ? '🟢 RESERVA CONSOLIDADA (Pago Validado)' 
-              : isPaid 
-              ? '🟡 EN PROCESO (Comprobante en Validación)' 
-              : '🟠 EN PROCESO (Pendiente de Pago)';
-
-            let botReply = `🏆 *CLUB HÍPICO LOS SARGENTOS*\n🎾 *Consulta de Reserva: ${reservation.code || rawCode}*\n\n`;
-            botReply += `👤 *Titular:* ${reservation.memberName}\n`;
-            botReply += `🏟️ *Espacio:* ${reservation.court.name} (${reservation.court.sport})\n`;
-            botReply += `📅 *Fecha:* ${reservation.date}\n`;
-            botReply += `⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}\n`;
-            botReply += `💰 *Monto:* Bs. ${reservation.totalPrice}\n`;
-            botReply += `📊 *Estado:* ${statusBadge}\n\n`;
-
-            if (isVerified) {
-              botReply += `✅ *Tu turno está 100% confirmado y aprobado.* ¡Que disfrutes tu partido! 🥇✨`;
-            } else if (isPaid) {
-              botReply += `⏳ *Tu comprobante está en revisión por Administración.* Recibirás la validación en breve.`;
-            } else {
-              botReply += `📌 *Para consolidar tu turno:* Realiza la transferencia QR indicando el código *${reservation.code || rawCode}* en la glosa y adjunta tu comprobante.`;
-            }
-
-            await this.sendMessage(msg.from, botReply);
-            return;
-          }
-        } catch (resQueryErr) {
-          console.warn(`[${this.clientId}] Error consultando código de reserva:`, resQueryErr);
-        }
+      // Procesar a través de la máquina de estados y motor de conocimientos 24/7
+      const botResult = await botSessionManager.processMessage(phone, bodyStr, contactName);
+      if (botResult.shouldSend && botResult.response) {
+        await this.sendMessage(msg.from, botResult.response);
       }
+      // --- FIN BOT LOGIC ---
 
-      if (bodyStr.toLowerCase() === 'hola' || bodyStr.toLowerCase() === 'estado') {
-        const botReply = this.clientId === 'chls-reservas'
-          ? 'Hola, soy el asistente virtual de Reservas Deportivas del Club Hípico Los Sargentos 🐴🎾. Si deseas consultar el estado de tu reserva de cancha o pago, escribe tu código de reserva (Ej: RES-TEN-1042). ¡Estamos a tu servicio!'
-          : 'Hola, soy Horse 🐴, el asistente virtual del Club Hípico Los Sargentos. Si deseas saber el estado de tu PQRS, por favor escribe tu código de seguimiento (Ej: MLG1). De lo contrario, continúa con la conversación y en breve te atenderá un asistente humano.';
-        await this.sendMessage(msg.from, botReply);
-      } else if (codeMatch) {
-        // Rate limiting: 5 minutes per user
-        const now = Date.now();
-        const lastQuery = this.lastQueryTimestamps.get(msg.from) || 0;
-        if (now - lastQuery < 5 * 60 * 1000) {
-          return; // Detener flujo para no responder repetidamente
-        }
-
-        // Search for ticket
-        const trackingCode = codeMatch[0].toUpperCase();
-        const ticket = await prisma.pqrsTicket.findFirst({
-          where: { trackingCode },
-          include: { history: { orderBy: { createdAt: 'desc' } } }
-        });
-
-        if (!ticket) {
-          const noTicketMsg = `Lo siento, no encontré un caso activo con el código *${trackingCode}*.\n\nPor favor, verifica que el código sea correcto.`;
-          await this.sendMessage(msg.from, noTicketMsg);
-          this.lastQueryTimestamps.set(msg.from, now);
-          return;
-        }
-
-        this.lastQueryTimestamps.set(msg.from, now);
-        const relevantHistory = ticket.history.filter((h: any) =>
-          !['RECIBIDO', 'WHATSAPP_ENVIADO', 'INFO_ACTUALIZADA', 'CREADO'].includes(h.action)
-        );
-
-        const recentHistory = relevantHistory.length > 0 ? relevantHistory[0].description : 'En proceso de revisión.';
-        let cleanHistory = recentHistory;
-
-        if (cleanHistory.includes('Instrucciones/Nota:')) {
-          cleanHistory = cleanHistory.split('Instrucciones/Nota:')[1].trim();
-        } else if (cleanHistory.includes('Nota de Resolución:')) {
-          cleanHistory = cleanHistory.split('Nota de Resolución:')[1].trim();
-        } else {
-          cleanHistory = cleanHistory
-            .replace(/\n?Prioridad actualizada a:.*?(\n|$)/g, '\n')
-            .replace(/\n?Derivado a:.*?(\n|$)/g, '\n')
-            .replace(/\n?El estado del ticket cambió a.*?(\n|$)/g, '\n')
-            .trim();
-        }
-        if (!cleanHistory) cleanHistory = 'En proceso de revisión.';
-
-        const formatText = (text?: string | null) => {
-          if (!text) return '';
-          const lower = text.replace(/_/g, ' ').toLowerCase();
-          return lower.charAt(0).toUpperCase() + lower.slice(1);
-        };
-
-        let botReply = `Estimado socio, le informamos el estado de su: *${ticket.code}*\n`;
-        botReply += `🔸 *Asunto:* ${formatText(ticket.type)}\n`;
-        botReply += `🔸 *Área:* ${formatText(ticket.area) || 'Sin asignar'}\n`;
-        botReply += `🔸 *Descripción:* ${ticket.description}\n`;
-        botReply += `🔸 *Estado:* ${formatText(ticket.status)}\n`;
-        botReply += `🔸 *Última acción:* ${cleanHistory}\n`;
-        botReply += `Gracias por comunicarse con el *Área de Atención al Socio*.\n*Club Hípico Los Sargentos*.\n\n_(Podrá volver a consultar el estado de su caso en 5 minutos)_`;
-
-        await this.sendMessage(msg.from, botReply);
-      }
     } catch (e) {
       console.error(`[${this.clientId}] Error handling incoming message`, e);
     }
@@ -354,48 +329,49 @@ export class WhatsappClientInstance {
 
   public async sendMessage(to: string, content: string, mediaBase64?: string) {
     if (this.status !== 'CONNECTED' || !this.client) {
-      console.error(`[${this.clientId}] WhatsApp client is not connected`);
+      console.error('WhatsApp client is not connected');
       return;
     }
     const chatId = to.includes('@') ? to : `${to}@c.us`;
     try {
+      let chat: any = null;
       try {
-        const chat = await this.client.getChatById(chatId);
+        chat = await this.client.getChatById(chatId);
         if (chat) {
+          // Anti-Ban 3: Simular presencia de "Escribiendo..." proporcional al mensaje
           await chat.sendStateTyping();
         }
       } catch (typingError) { }
 
-      const typingDelay = 1200 + Math.random() * 1300;
-      await new Promise(resolve => setTimeout(resolve, typingDelay));
+      // Tiempo de digitación humana realista (entre 2.5s y 7.0s con variación aleatoria)
+      const typingTime = Math.min(
+        Math.max(content.length * (25 + Math.random() * 12), 2500),
+        7000
+      );
+      await new Promise(resolve => setTimeout(resolve, typingTime));
 
-      try {
-        const chat = await this.client.getChatById(chatId);
-        if (chat) await chat.clearState();
-      } catch (e) { }
+      // Limpiar estado de typing antes del envío
+      if (chat) {
+        try { await chat.clearState(); } catch (e) { }
+      }
+
+      // Anti-Ban 4: Carácter invisible único (Zero-Width) para que el hash SHA sea siempre diferente
+      const invisibleZeroWidth = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
+      const uniqueNoise = invisibleZeroWidth[Math.floor(Math.random() * invisibleZeroWidth.length)];
+      const finalContent = content + uniqueNoise;
 
       let mediaToSend: MessageMedia | undefined;
       if (mediaBase64) {
-        try {
-          if (mediaBase64.startsWith('data:')) {
-            const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
-            if (match) {
-              mediaToSend = new MessageMedia(match[1], match[2], 'comprobante-pago.jpg');
-            }
-          } else if (fs.existsSync(mediaBase64)) {
-            mediaToSend = MessageMedia.fromFilePath(mediaBase64);
-          } else if (mediaBase64.length > 100) {
-            mediaToSend = new MessageMedia('image/jpeg', mediaBase64, 'comprobante-pago.jpg');
-          }
-        } catch (mediaErr) {
-          console.warn(`[${this.clientId}] Error parseando media para WhatsApp:`, mediaErr);
+        const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
+        if (match) {
+          mediaToSend = new MessageMedia(match[1], match[2]);
         }
       }
 
       if (mediaToSend) {
-        await this.client.sendMessage(chatId, mediaToSend, { caption: content });
+        await this.client.sendMessage(chatId, mediaToSend, { caption: finalContent });
       } else {
-        await this.client.sendMessage(chatId, content);
+        await this.client.sendMessage(chatId, finalContent);
       }
     } catch (e) {
       console.error(`[${this.clientId}] Error sending direct message`, e);
@@ -404,10 +380,16 @@ export class WhatsappClientInstance {
 
   private async handleOutgoingMessage(msg: Message) {
     try {
-      if (msg.isStatus || msg.to.includes('@g.us')) return;
+      if (
+        msg.isStatus || 
+        msg.to.includes('@g.us') || 
+        msg.to.includes('@newsletter') || 
+        msg.to.includes('@broadcast') ||
+        msg.to.includes('@temp')
+      ) return;
 
-      let phone = msg.to.replace(/@.*$/, '');
-      if (phone.includes(':')) phone = phone.split(':')[0];
+      let phone = msg.to.replace(/@.*$/, '').split(':')[0].replace(/[^0-9]/g, '');
+      if (!phone || phone.length > 13 || phone.length < 7) return;
 
       let contactName = phone;
       try {
@@ -415,15 +397,43 @@ export class WhatsappClientInstance {
         contactName = chat.name || phone;
       } catch (e) { }
 
-      if (contactName === phone) {
-        const cleanPhone = phone.replace(/^591/, '');
-        const ticket = await prisma.pqrsTicket.findFirst({
-          where: { phone: { contains: cleanPhone } },
-          orderBy: { createdAt: 'desc' }
+      const searchPhone = phone.replace(/^591/, '');
+      try {
+        const person = await prisma.person.findFirst({
+          where: {
+            OR: [
+              { phone: { contains: searchPhone } },
+              { mobile: { contains: searchPhone } }
+            ]
+          },
+          include: { titularMemberships: true }
         });
-        if (ticket) {
-          contactName = ticket.fullName;
+
+        if (person) {
+          const memNum = person.titularMemberships[0]?.membershipNumber;
+          const memTag = memNum ? ` (Acción #${memNum})` : '';
+          contactName = `${person.firstName} ${person.paternalSurname || person.lastName || ''}${memTag}`.trim();
+        } else {
+          const ticket = await prisma.pqrsTicket.findFirst({
+            where: { phone: { contains: searchPhone } },
+            orderBy: { createdAt: 'desc' }
+          });
+          if (ticket) {
+            contactName = ticket.fullName;
+          } else if (!contactName || contactName === phone || /^[0-9]+$/.test(contactName)) {
+            contactName = phone.startsWith('591') 
+              ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
+              : phone.length === 8 
+                ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
+                : `+${phone}`;
+          }
         }
+      } catch (err) {
+        contactName = phone.startsWith('591') 
+          ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
+          : phone.length === 8 
+            ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
+            : `+${phone}`;
       }
 
       const chat = await prisma.whatsAppChat.upsert({
@@ -553,6 +563,7 @@ export class WhatsappClientInstance {
     this.cleanStaleLocks();
     this.clearWatchdog();
 
+    // Watchdog de 60 segundos: si queda colgado en INITIALIZING sin responder, reiniciar limpiamente
     this.initWatchdogTimer = setTimeout(async () => {
       if (this.status === 'INITIALIZING') {
         console.warn(`[${this.clientId}] Watchdog: Inicialización colgada tras 60s. Forzando reset...`);
@@ -598,8 +609,9 @@ export class WhatsappClientInstance {
 
     try {
       if (this.status === 'CONNECTED' && this.client) {
+        // Límite de 3 segundos para logout de WhatsApp Web antes de forzar el cierre
         await Promise.race([
-          this.client.logout().catch(() => {}),
+          this.client.logout().catch(() => { }),
           new Promise(resolve => setTimeout(resolve, 3000))
         ]);
       }
@@ -668,6 +680,7 @@ export class WhatsappClientInstance {
           formattedPhone = `${formattedPhone}@c.us`;
         }
 
+        // Anti-Ban 1: Validar si el número realmente tiene cuenta de WhatsApp activa antes de enviar
         try {
           const isRegistered = await this.client.isRegisteredUser(formattedPhone);
           if (!isRegistered) {
@@ -675,24 +688,30 @@ export class WhatsappClientInstance {
             failCount++;
             continue;
           }
-        } catch (regErr) { }
+        } catch (regErr) {
+          // Si falla la verificación por red, continuar con precaución
+        }
 
+        // Anti-Ban 2: Soporte de Spintax dinámico {Hola|Estimado|Saludos} para variar estructuras
         let messageText = text.replace(/\{([^{}]+)\}/g, (match, choices) => {
           if (match === '{nombre}' || match === '{codigo}') return match;
           const options = choices.split('|');
           return options[Math.floor(Math.random() * options.length)];
         });
 
+        // Reemplazo de variables del socio
         messageText = messageText.replace(/{nombre}/g, contact.nombre);
         messageText = messageText.replace(/{codigo}/g, contact.codigo || '');
         if (link) {
           messageText += `\n\n${link}`;
         }
 
+        // Anti-Ban 3: Caracteres invisibles aleatorios (Zero-Width) para que cada hash SHA de mensaje sea único
         const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
         const randomInvisible = invisibleChars[Math.floor(Math.random() * invisibleChars.length)].repeat(Math.floor(Math.random() * 3) + 1);
         messageText += randomInvisible;
 
+        // Anti-Ban 4: Simulación de presencia y tiempo de digitación humana
         let chat: any = null;
         try {
           chat = await this.client.getChatById(formattedPhone);
@@ -717,6 +736,7 @@ export class WhatsappClientInstance {
           await this.client.sendMessage(formattedPhone, messageText);
         }
 
+        // Limpiar estado de typing tras enviar
         if (chat) {
           try { await chat.clearState(); } catch (e) { }
         }
@@ -724,9 +744,11 @@ export class WhatsappClientInstance {
         successCount++;
         messagesSentInCurrentBatch++;
 
+        // Anti-Ban 5: Intervalo dinámico aleatorio entre mensajes (4 a 9 segundos)
         const delayBetweenMessages = 4000 + Math.random() * 5000;
         await new Promise(resolve => setTimeout(resolve, delayBetweenMessages));
 
+        // Anti-Ban 6: Pausa larga humana (30 a 60 segundos) cada lote de 15 a 20 mensajes
         if (messagesSentInCurrentBatch >= (15 + Math.floor(Math.random() * 5))) {
           const longPause = 30000 + Math.random() * 30000;
           console.log(`[Anti-Ban][${this.clientId}] Descanso humano preventivo: ${Math.round(longPause / 1000)}s.`);
@@ -751,10 +773,13 @@ class WhatsappManager {
   private instances: Map<string, WhatsappClientInstance> = new Map();
 
   constructor() {
+    // Initialize default instances
+    this.instances.set('chls-callcenter', new WhatsappClientInstance('chls-callcenter'));
     this.instances.set('chls-masivo', new WhatsappClientInstance('chls-masivo'));
-    this.instances.set('chls-pqrs', new WhatsappClientInstance('chls-pqrs'));
     this.instances.set('chls-reservas', new WhatsappClientInstance('chls-reservas'));
+    this.instances.set('chls-pqrs', new WhatsappClientInstance('chls-pqrs'));
 
+    // Auto-connect existing saved sessions in .wwebjs_auth
     setTimeout(() => {
       this.autoStartExistingSessions();
     }, 1500);
@@ -773,6 +798,7 @@ class WhatsappManager {
   public getInstance(clientId: string = 'chls-masivo'): WhatsappClientInstance {
     let instance = this.instances.get(clientId);
     if (!instance) {
+      // Lazy load dynamically if needed
       instance = new WhatsappClientInstance(clientId);
       this.instances.set(clientId, instance);
     }
@@ -787,4 +813,5 @@ class WhatsappManager {
 }
 
 export const whatsappManager = new WhatsappManager();
-export const whatsappService = whatsappManager.getInstance('chls-masivo');
+export const whatsappService = whatsappManager.getInstance('chls-masivo'); // For backwards compatibility
+

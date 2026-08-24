@@ -326,6 +326,7 @@ export class CashierBillingService {
     let totalRecibosCDP = 0;
 
     const byMethod: Record<string, number> = {
+      QR: 0,
       EFECTIVO: 0,
       TARJETA: 0,
       TRANSFERENCIA: 0,

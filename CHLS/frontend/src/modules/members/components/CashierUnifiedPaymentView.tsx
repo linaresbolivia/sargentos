@@ -1,7 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Search, DollarSign, Receipt, Printer, CheckCircle2, AlertCircle, FileText, Calendar, Shield, Clock, X } from 'lucide-react';
+import { 
+  Search, 
+  DollarSign, 
+  Receipt, 
+  Printer, 
+  CheckCircle2, 
+  AlertCircle, 
+  FileText, 
+  Calendar, 
+  Shield, 
+  Clock, 
+  X,
+  QrCode,
+  CreditCard,
+  Banknote,
+  Building2,
+  Check
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { memberAdminApi } from '../services/memberAdminApi';
+import qrPagosUrl from '../../../assets/qr-pagos.jpg';
 
 interface Props {
   initialPersonId?: string | null;
@@ -20,8 +38,13 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
   // Selected Debt Items to Pay
   const [selectedItems, setSelectedItems] = useState<{ [id: string]: { selected: boolean; amount: number; type: 'SOCIAL_FEE' | 'CDP_INSTALLMENT' | 'EXTRAORDINARY_CHARGE' } }>({});
 
-  // Payment Form
-  const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
+  // Payment Form (QR is default)
+  const [paymentMethod, setPaymentMethod] = useState<'QR' | 'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA' | 'DEBITO' | 'CHEQUE'>('QR');
+  const [cashReceived, setCashReceived] = useState<string>('');
+  const [cardAuthCode, setCardAuthCode] = useState<string>('');
+  const [cardType, setCardType] = useState<string>('DEBITO');
+  const [qrReference, setQrReference] = useState<string>('');
+  const [bankReference, setBankReference] = useState<string>('');
   const [fiscalNit, setFiscalNit] = useState('');
   const [fiscalRazonSocial, setFiscalRazonSocial] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
@@ -124,6 +147,19 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
         .filter(([_, item]) => item.selected)
         .map(([id, item]) => ({ id, type: item.type, amount: item.amount }));
 
+      let extendedNotes = paymentNotes.trim();
+      if (paymentMethod === 'EFECTIVO' && cashReceived) {
+        const receivedNum = parseFloat(cashReceived) || 0;
+        const changeNum = Math.max(0, receivedNum - totalToPay);
+        extendedNotes = `Efectivo Recibido: Bs. ${receivedNum.toFixed(2)} | Vuelto: Bs. ${changeNum.toFixed(2)}${extendedNotes ? ` | ${extendedNotes}` : ''}`;
+      } else if (paymentMethod === 'TARJETA' && cardAuthCode) {
+        extendedNotes = `Tarjeta (${cardType}) | Auth/Voucher: ${cardAuthCode.trim()}${extendedNotes ? ` | ${extendedNotes}` : ''}`;
+      } else if (paymentMethod === 'QR' && qrReference) {
+        extendedNotes = `Ref. QR / Transf: ${qrReference.trim()}${extendedNotes ? ` | ${extendedNotes}` : ''}`;
+      } else if (paymentMethod === 'TRANSFERENCIA' && bankReference) {
+        extendedNotes = `Ref. Bancaria: ${bankReference.trim()}${extendedNotes ? ` | ${extendedNotes}` : ''}`;
+      }
+
       const res = await memberAdminApi.processPayment({
         personId: selectedPerson.id,
         cashierUsername: 'personal_caja_1',
@@ -132,11 +168,17 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
         fiscalNit,
         fiscalRazonSocial,
         selectedItemIds: itemsToPay,
-        notes: paymentNotes
+        notes: extendedNotes
       });
 
       toast.success('¡Cobro procesado exitosamente!');
       setCompletedPayment(res.data);
+      // Reset inputs
+      setCashReceived('');
+      setCardAuthCode('');
+      setQrReference('');
+      setBankReference('');
+      setPaymentNotes('');
       // Reload debt
       loadDebt(selectedPerson.id);
     } catch (err: any) {
@@ -372,31 +414,219 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                 </div>
               </div>
 
-              {/* Payment Method */}
-              <div>
-                <label className="text-xs text-gray-600 dark:text-gray-400 uppercase font-semibold">Forma de Pago</label>
-                <select 
-                  value={paymentMethod}
-                  onChange={e => setPaymentMethod(e.target.value)}
-                  className="w-full mt-1 p-2.5 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-brand-gold/30 text-gray-900 dark:text-white text-xs outline-none font-medium"
-                >
-                  <option value="EFECTIVO">Efectivo (Bolivianos)</option>
-                  <option value="TARJETA">Tarjeta de Débito / Crédito</option>
-                  <option value="TRANSFERENCIA">Transferencia Bancaria QR</option>
-                  <option value="DEBITO">Débito Automático Bancario</option>
-                  <option value="CHEQUE">Cheque</option>
-                </select>
+              {/* Payment Method Selector (QR Default, Cash, Card) */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs text-gray-600 dark:text-gray-400 uppercase font-bold tracking-wider">
+                    Forma de Pago
+                  </label>
+                  <span className="text-[10px] text-brand-gold font-bold">
+                    {paymentMethod === 'QR' ? '⚡ QR Predeterminado' : paymentMethod === 'EFECTIVO' ? '💵 Efectivo en Caja' : paymentMethod === 'TARJETA' ? '💳 POS Débito/Crédito' : '🏦 Operación Bancaria'}
+                  </span>
+                </div>
+
+                {/* Main 3 Method Selector Grid */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('QR')}
+                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 relative ${
+                      paymentMethod === 'QR'
+                        ? 'bg-brand-gold/15 border-brand-gold text-brand-gold shadow-[0_0_15px_rgba(212,175,55,0.3)] scale-[1.02]'
+                        : 'bg-gray-100 dark:bg-black/40 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span className="absolute -top-2 bg-brand-gold text-black text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full shadow-sm">
+                      Default
+                    </span>
+                    <QrCode className="w-5 h-5 mt-1" />
+                    <span className="text-xs font-black">Pago QR</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('EFECTIVO')}
+                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'EFECTIVO'
+                        ? 'bg-emerald-500/15 border-emerald-500 text-emerald-500 dark:text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] scale-[1.02]'
+                        : 'bg-gray-100 dark:bg-black/40 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Banknote className="w-5 h-5" />
+                    <span className="text-xs font-black">Efectivo</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('TARJETA')}
+                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
+                      paymentMethod === 'TARJETA'
+                        ? 'bg-blue-500/15 border-blue-500 text-blue-600 dark:text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-[1.02]'
+                        : 'bg-gray-100 dark:bg-black/40 border-gray-200 dark:border-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <CreditCard className="w-5 h-5" />
+                    <span className="text-xs font-black">Tarjeta / POS</span>
+                  </button>
+                </div>
+
+                {/* Sub-panel: QR DETAILS */}
+                {paymentMethod === 'QR' && (
+                  <div className="p-3 bg-brand-gold/10 border border-brand-gold/30 rounded-2xl space-y-2.5 animate-fade-in text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
+                        <QrCode className="w-4 h-4" /> QR Oficial Club Hípico Los Sargentos
+                      </span>
+                      <span className="text-[10px] text-gray-500 dark:text-gray-400">Banco BMSC / BCP</span>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-black/40 p-2 rounded-xl border border-white/10">
+                      <img src={qrPagosUrl} alt="QR CHLS" className="w-16 h-16 object-cover rounded-lg border border-brand-gold/40 shrink-0" />
+                      <div className="space-y-1 text-[11px] text-gray-300">
+                        <p>El socio puede escanear desde su app bancaria.</p>
+                        <p className="text-brand-gold font-semibold">Total a transferir: Bs {totalToPay.toFixed(2)}</p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-semibold block">
+                        Nro. de Referencia / Comprobante de Transferencia (Opcional):
+                      </label>
+                      <input 
+                        type="text"
+                        placeholder="Ej. TRANS-849204 o Nro. de Operación..."
+                        value={qrReference}
+                        onChange={e => setQrReference(e.target.value)}
+                        className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none focus:border-brand-gold"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-panel: EFECTIVO & VUELTO DETAILS */}
+                {paymentMethod === 'EFECTIVO' && (
+                  <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl space-y-2.5 animate-fade-in text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5">
+                        <Banknote className="w-4 h-4" /> Cobro en Efectivo (Bolivianos)
+                      </span>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-semibold block">
+                        Monto Recibido en Caja (Bs.):
+                      </label>
+                      <input 
+                        type="number"
+                        step="0.50"
+                        placeholder={`Monto exacto: ${totalToPay.toFixed(2)}`}
+                        value={cashReceived}
+                        onChange={e => setCashReceived(e.target.value)}
+                        className="w-full p-2.5 rounded-xl bg-gray-100 dark:bg-black/60 border border-gray-300 dark:border-emerald-500/40 text-gray-900 dark:text-white font-mono text-sm font-bold outline-none focus:border-emerald-500"
+                      />
+
+                      {/* Quick cash denomination buttons */}
+                      <div className="flex gap-1.5 flex-wrap pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setCashReceived(totalToPay.toFixed(2))}
+                          className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-gray-700 dark:text-gray-300 text-[10px] font-bold border border-white/10"
+                        >
+                          Exacto (Bs {totalToPay.toFixed(2)})
+                        </button>
+                        {[50, 100, 200, 500].map(val => (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setCashReceived(String(val))}
+                            className="px-2 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 text-[10px] font-bold border border-emerald-500/20"
+                          >
+                            Bs {val}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Change / Vuelto calculation */}
+                      {cashReceived && parseFloat(cashReceived) >= totalToPay && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/50 flex justify-between items-center text-xs">
+                          <span className="text-emerald-300 font-bold uppercase tracking-wider">Cambio / Vuelto a Devolver:</span>
+                          <span className="text-base font-black font-mono text-[#00ff87]">
+                            Bs {(parseFloat(cashReceived) - totalToPay).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {cashReceived && parseFloat(cashReceived) < totalToPay && (
+                        <p className="text-[11px] text-amber-500 font-bold">
+                          ⚠️ Monto recibido menor al total adeudado (Faltan Bs {(totalToPay - parseFloat(cashReceived)).toFixed(2)})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Sub-panel: TARJETA / POS DETAILS */}
+                {paymentMethod === 'TARJETA' && (
+                  <div className="p-3 bg-blue-500/10 border border-blue-500/30 rounded-2xl space-y-2.5 animate-fade-in text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-blue-800 dark:text-blue-400 flex items-center gap-1.5">
+                        <CreditCard className="w-4 h-4" /> Terminal POS / Tarjeta
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-semibold block">Tipo de Tarjeta</label>
+                        <select
+                          value={cardType}
+                          onChange={e => setCardType(e.target.value)}
+                          className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none"
+                        >
+                          <option value="DEBITO">Débito</option>
+                          <option value="CREDITO">Crédito</option>
+                          <option value="VISA">Visa</option>
+                          <option value="MASTERCARD">Mastercard</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-semibold block">Nro. Voucher / Autorización</label>
+                        <input 
+                          type="text"
+                          placeholder="Ej. AUT-948201"
+                          value={cardAuthCode}
+                          onChange={e => setCardAuthCode(e.target.value)}
+                          className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Other payment methods selector link */}
+                <div className="text-right">
+                  <select
+                    value={paymentMethod}
+                    onChange={e => setPaymentMethod(e.target.value as any)}
+                    className="text-[11px] bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white underline outline-none cursor-pointer"
+                  >
+                    <option value="QR">Otras opciones: Pago QR</option>
+                    <option value="EFECTIVO">Otras opciones: Efectivo</option>
+                    <option value="TARJETA">Otras opciones: Tarjeta POS</option>
+                    <option value="TRANSFERENCIA">Otras opciones: Transferencia Bancaria Directa</option>
+                    <option value="DEBITO">Otras opciones: Débito Automático</option>
+                    <option value="CHEQUE">Otras opciones: Cheque de Gerencia</option>
+                  </select>
+                </div>
               </div>
 
               {/* Invoicing Info */}
-              <div className="space-y-2">
+              <div className="space-y-2 pt-1 border-t border-gray-200 dark:border-white/10">
                 <div>
                   <label className="text-[11px] text-gray-600 dark:text-gray-400 font-semibold">NIT / CI Facturación</label>
                   <input 
                     type="text"
                     value={fiscalNit}
                     onChange={e => setFiscalNit(e.target.value)}
-                    className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none"
+                    className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none focus:border-brand-gold"
                   />
                 </div>
                 <div>
@@ -405,7 +635,7 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                     type="text"
                     value={fiscalRazonSocial}
                     onChange={e => setFiscalRazonSocial(e.target.value)}
-                    className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none"
+                    className="w-full mt-1 p-2 rounded-xl bg-gray-100 dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-900 dark:text-white text-xs outline-none focus:border-brand-gold"
                   />
                 </div>
               </div>
@@ -467,6 +697,48 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                 </div>
               </div>
 
+              {/* Method Breakdown Cards */}
+              {closingData.summary.byMethod && (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3 rounded-2xl bg-brand-gold/10 border border-brand-gold/30 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Cobros QR</p>
+                      <p className="text-base font-black text-amber-800 dark:text-brand-gold font-mono">
+                        Bs {Number(closingData.summary.byMethod.QR || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <QrCode className="w-5 h-5 text-brand-gold" />
+                  </div>
+                  <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Efectivo en Caja</p>
+                      <p className="text-base font-black text-emerald-700 dark:text-emerald-400 font-mono">
+                        Bs {Number(closingData.summary.byMethod.EFECTIVO || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <Banknote className="w-5 h-5 text-emerald-500" />
+                  </div>
+                  <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Tarjetas / POS</p>
+                      <p className="text-base font-black text-blue-700 dark:text-blue-400 font-mono">
+                        Bs {Number(closingData.summary.byMethod.TARJETA || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <CreditCard className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase">Bancos / Otros</p>
+                      <p className="text-base font-black text-purple-700 dark:text-purple-400 font-mono">
+                        Bs {Number((closingData.summary.byMethod.TRANSFERENCIA || 0) + (closingData.summary.byMethod.DEBITO || 0) + (closingData.summary.byMethod.CHEQUE || 0)).toLocaleString()}
+                      </p>
+                    </div>
+                    <Building2 className="w-5 h-5 text-purple-500" />
+                  </div>
+                </div>
+              )}
+
               {/* Transactions Log */}
               <div className="overflow-x-auto rounded-2xl border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40">
                 <table className="w-full text-left text-xs">
@@ -486,7 +758,22 @@ export const CashierUnifiedPaymentView: React.FC<Props> = ({ initialPersonId }) 
                       <tr key={t.id} className="hover:bg-gray-100/60 dark:hover:bg-white/5">
                         <td className="p-3 font-mono font-bold text-amber-800 dark:text-brand-gold">{t.transactionCode}</td>
                         <td className="p-3 font-bold text-gray-900 dark:text-white">{t.person?.firstName} {t.person?.paternalSurname}</td>
-                        <td className="p-3 font-semibold text-gray-800 dark:text-gray-200">{t.paymentMethod}</td>
+                        <td className="p-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider inline-flex items-center gap-1 ${
+                            t.paymentMethod === 'QR'
+                              ? 'bg-brand-gold/20 text-amber-800 dark:text-brand-gold border border-brand-gold/40'
+                              : t.paymentMethod === 'EFECTIVO'
+                              ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40'
+                              : t.paymentMethod === 'TARJETA'
+                              ? 'bg-blue-500/20 text-blue-800 dark:text-blue-300 border border-blue-500/40'
+                              : 'bg-gray-200 dark:bg-white/10 text-gray-800 dark:text-gray-300'
+                          }`}>
+                            {t.paymentMethod === 'QR' && <QrCode className="w-3 h-3" />}
+                            {t.paymentMethod === 'EFECTIVO' && <Banknote className="w-3 h-3" />}
+                            {t.paymentMethod === 'TARJETA' && <CreditCard className="w-3 h-3" />}
+                            {t.paymentMethod}
+                          </span>
+                        </td>
                         <td className="p-3 text-blue-600 dark:text-blue-400 font-mono font-bold">{t.invoiceNumber || '-'}</td>
                         <td className="p-3 text-emerald-600 dark:text-emerald-400 font-mono font-bold">{t.receiptNumber || '-'}</td>
                         <td className="p-3 font-black text-gray-900 dark:text-white">Bs {Number(t.totalAmount).toFixed(2)}</td>

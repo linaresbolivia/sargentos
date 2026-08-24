@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { whatsappManager } from '../whatsappService';
 import fs from 'fs';
 import { prisma } from '@shared/infrastructure/prisma';
+import { botSessionManager } from '../../domain/botSessionManager';
 
 export class WhatsappController {
   private getService(req: Request) {
@@ -76,12 +77,77 @@ export class WhatsappController {
 
   public async getChats(req: Request, res: Response, next: NextFunction) {
     try {
-      // Could filter by clientId if we store it in DB, for now returning all chats
       const chats = await prisma.whatsAppChat.findMany({
         orderBy: { lastMessageAt: 'desc' },
-        take: 50
+        take: 100
       });
-      res.json({ success: true, data: chats });
+
+      const validChats = chats.filter(c => {
+        const clean = c.phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+        return clean.length >= 7 && clean.length <= 13;
+      });
+
+      const enrichedChats = await Promise.all(
+        validChats.map(async (chat) => {
+          const sessionInfo = botSessionManager.getSessionInfo(chat.phone);
+          const cleanPhone = chat.phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+
+          const formattedPhone = cleanPhone.startsWith('591')
+            ? `+591 ${cleanPhone.substring(3, 7)} ${cleanPhone.substring(7)}`
+            : cleanPhone.length === 8
+              ? `+591 ${cleanPhone.substring(0, 4)} ${cleanPhone.substring(4)}`
+              : `+${cleanPhone}`;
+
+          let displayName = chat.contactName;
+          let member = sessionInfo?.member;
+
+          if (!member) {
+            const searchPhone = cleanPhone.replace(/^591/, '');
+            const person = await prisma.person.findFirst({
+              where: {
+                OR: [
+                  { phone: { contains: searchPhone } },
+                  { mobile: { contains: searchPhone } }
+                ]
+              },
+              include: {
+                titularMemberships: { include: { type: true } },
+                socialFeeAccruals: { where: { status: { in: ['PENDIENTE', 'PARCIAL'] } } }
+              }
+            });
+
+            if (person) {
+              const memNum = person.titularMemberships[0]?.membershipNumber || 'S/N';
+              displayName = `${person.firstName} ${person.paternalSurname || person.lastName || ''} (Acción #${memNum})`.trim();
+              const unpaidTotal = person.socialFeeAccruals.reduce((sum, f) => sum + Number(f.residualBalance || f.baseAmount || 0), 0);
+              member = {
+                id: person.id,
+                fullName: `${person.firstName} ${person.paternalSurname || person.lastName || ''}`.trim(),
+                documentId: person.documentId,
+                membershipNumber: memNum,
+                membershipType: person.titularMemberships[0]?.type?.name || 'Titular',
+                membershipStatus: person.titularMemberships[0]?.status || 'ACTIVA',
+                totalDebt: unpaidTotal
+              };
+            }
+          }
+
+          if (!displayName || displayName === chat.phone || /^[0-9]+$/.test(displayName)) {
+            displayName = formattedPhone;
+          }
+
+          return {
+            ...chat,
+            phoneFormatted: formattedPhone,
+            contactName: displayName,
+            isHumanHandoff: sessionInfo?.isHumanHandoff || false,
+            botState: sessionInfo?.state || 'MAIN_MENU',
+            member: member || null
+          };
+        })
+      );
+
+      res.json({ success: true, data: enrichedChats });
     } catch (error) {
       next(error);
     }
@@ -122,6 +188,17 @@ export class WhatsappController {
     }
   }
 
+  public async toggleHandoff(req: Request, res: Response, next: NextFunction) {
+    try {
+      const { phone } = req.params;
+      const { isHandoff } = req.body;
+      botSessionManager.setHandoff(phone, !!isHandoff);
+      res.json({ success: true, isHumanHandoff: !!isHandoff });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   public async toggleBot(req: Request, res: Response, next: NextFunction): Promise<any> {
     try {
       const clientId = req.params.clientId || 'chls-masivo';
@@ -138,4 +215,5 @@ export class WhatsappController {
     }
   }
 }
+
 

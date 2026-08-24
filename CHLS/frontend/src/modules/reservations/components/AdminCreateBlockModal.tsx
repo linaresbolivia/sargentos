@@ -15,9 +15,11 @@ import {
   Trophy,
   GraduationCap,
   Bookmark,
-  ShieldAlert,
   CalendarX,
-  Check
+  User,
+  Pencil,
+  Check,
+  CheckCircle2
 } from 'lucide-react';
 import { format, addDays, addMonths } from 'date-fns';
 
@@ -34,6 +36,7 @@ interface AdminCreateBlockModalProps {
   onSuccess: () => void;
   initialDate?: string;
   initialSport?: string;
+  editingReservation?: any | null;
 }
 
 const TIME_SLOTS_OPTIONS = [
@@ -58,22 +61,63 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
   courts,
   onSuccess,
   initialDate,
-  initialSport
+  initialSport,
+  editingReservation
 }) => {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const isEditing = !!editingReservation;
   
-  const [reservationType, setReservationType] = useState<'CIERRE_CANCHA' | 'CLASS' | 'MAINTENANCE' | 'TOURNAMENT' | 'ESCUELA_DEPORTIVA' | 'EVENTO_CLUB'>('CIERRE_CANCHA');
+  const [reservationType, setReservationType] = useState<string>('CIERRE_CANCHA');
   const [title, setTitle] = useState('Cierre de Canchas - Mantenimiento y Adecuación');
   const [notes, setNotes] = useState('');
   const [startDate, setStartDate] = useState(initialDate || todayStr);
   const [endDate, setEndDate] = useState(initialDate || format(addDays(new Date(), 2), 'yyyy-MM-dd'));
   const [startTime, setStartTime] = useState('06:00');
   const [endTime, setEndTime] = useState('22:00');
-  // Por defecto: todos los 7 días seleccionados para cubrir el rango completo automáticamente
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]);
   const [selectedCourtIds, setSelectedCourtIds] = useState<string[]>([]);
   const [selectedSportFilter, setSelectedSportFilter] = useState<string>(initialSport || 'ALL');
+  const [playerNames, setPlayerNames] = useState('');
+  const [status, setStatus] = useState('APPROVED');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Cargar datos cuando se abre el modal (creación o edición)
+  useEffect(() => {
+    if (isOpen) {
+      if (editingReservation) {
+        setReservationType(editingReservation.reservationType || 'CIERRE_CANCHA');
+        setTitle(editingReservation.title || editingReservation.memberName || '');
+        setNotes(editingReservation.notes || '');
+        setStartDate(editingReservation.date || todayStr);
+        setEndDate(editingReservation.date || todayStr);
+        setStartTime(editingReservation.startTime || '08:00');
+        setEndTime(editingReservation.endTime || '09:00');
+        setSelectedCourtIds(editingReservation.courtId ? [editingReservation.courtId] : []);
+        setSelectedSportFilter(editingReservation.court?.sport || 'ALL');
+        setPlayerNames(editingReservation.playerNames || '');
+        setStatus(editingReservation.status || 'APPROVED');
+        if (editingReservation.date) {
+          const [y, m, d] = editingReservation.date.split('-').map(Number);
+          const dt = new Date(y, m - 1, d);
+          setSelectedDays([dt.getDay()]);
+        }
+      } else {
+        setReservationType('CIERRE_CANCHA');
+        setTitle('Cierre de Canchas - Mantenimiento y Adecuación');
+        setNotes('');
+        const start = initialDate || todayStr;
+        setStartDate(start);
+        setEndDate(initialDate || format(addDays(new Date(), 2), 'yyyy-MM-dd'));
+        setStartTime('06:00');
+        setEndTime('22:00');
+        setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+        setSelectedCourtIds([]);
+        setSelectedSportFilter(initialSport || 'ALL');
+        setPlayerNames('');
+        setStatus('APPROVED');
+      }
+    }
+  }, [isOpen, editingReservation, initialDate, initialSport, todayStr]);
 
   // Helper para calcular días de la semana en el rango seleccionado
   const computeDaysInRange = (startStr: string, endStr: string): number[] => {
@@ -97,14 +141,19 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
     }
   };
 
-  // Auto-seleccionar los días del rango cuando cambian las fechas
   const handleStartDateChange = (newStart: string) => {
     setStartDate(newStart);
-    if (newStart > endDate) {
+    if (isEditing) {
       setEndDate(newStart);
-      setSelectedDays(computeDaysInRange(newStart, newStart));
+      const [y, m, d] = newStart.split('-').map(Number);
+      setSelectedDays([new Date(y, m - 1, d).getDay()]);
     } else {
-      setSelectedDays(computeDaysInRange(newStart, endDate));
+      if (newStart > endDate) {
+        setEndDate(newStart);
+        setSelectedDays(computeDaysInRange(newStart, newStart));
+      } else {
+        setSelectedDays(computeDaysInRange(newStart, endDate));
+      }
     }
   };
 
@@ -119,18 +168,21 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
   };
 
   // Set default title depending on activity type
-  const handleTypeChange = (type: any) => {
+  const handleTypeChange = (type: string) => {
     setReservationType(type);
-    if (type === 'CIERRE_CANCHA') {
-      setTitle('Cierre de Canchas - Mantenimiento y Adecuación');
-      setStartTime('06:00');
-      setEndTime('22:00');
+    if (!isEditing) {
+      if (type === 'CIERRE_CANCHA') {
+        setTitle('Cierre de Canchas - Mantenimiento y Adecuación');
+        setStartTime('06:00');
+        setEndTime('22:00');
+      }
+      else if (type === 'CLASS') setTitle('Clases de Tenis / Pádel - Academia');
+      else if (type === 'MAINTENANCE') setTitle('Mantenimiento Técnico y Limpieza');
+      else if (type === 'TOURNAMENT') setTitle('Torneo Oficial CHLS');
+      else if (type === 'ESCUELA_DEPORTIVA') setTitle('Escuela Deportiva de Menores');
+      else if (type === 'EVENTO_CLUB') setTitle('Evento Institucional del Club');
+      else if (type === 'MEMBER') setTitle('Reserva de Socio');
     }
-    else if (type === 'CLASS') setTitle('Clases de Tenis / Pádel - Academia');
-    else if (type === 'MAINTENANCE') setTitle('Mantenimiento Técnico y Limpieza');
-    else if (type === 'TOURNAMENT') setTitle('Torneo Oficial CHLS');
-    else if (type === 'ESCUELA_DEPORTIVA') setTitle('Escuela Deportiva de Menores');
-    else if (type === 'EVENTO_CLUB') setTitle('Evento Institucional del Club');
   };
 
   const sports = useMemo(() => {
@@ -143,12 +195,18 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
   }, [courts, selectedSportFilter]);
 
   const toggleCourt = (id: string) => {
-    setSelectedCourtIds(prev => 
-      prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
-    );
+    if (isEditing) {
+      // En modo edición de un turno, seleccionar la cancha única
+      setSelectedCourtIds([id]);
+    } else {
+      setSelectedCourtIds(prev => 
+        prev.includes(id) ? prev.filter(cId => cId !== id) : [...prev, id]
+      );
+    }
   };
 
   const selectAllFilteredCourts = () => {
+    if (isEditing) return;
     const filteredIds = filteredCourts.map(c => c.id);
     const allSelected = filteredIds.every(id => selectedCourtIds.includes(id));
     if (allSelected) {
@@ -181,11 +239,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
       return;
     }
     if (!title.trim()) {
-      toast.error('Ingresa un título o concepto para la ocupación / cierre');
-      return;
-    }
-    if (startDate > endDate) {
-      toast.error('La fecha de inicio no puede ser posterior a la fecha de fin');
+      toast.error('Ingresa un título o concepto para la ocupación / turno');
       return;
     }
     if (startTime >= endTime) {
@@ -193,29 +247,56 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
       return;
     }
 
-    // Si no seleccionó días explícitos, usar automáticamente todos los días del rango
-    const finalDays = selectedDays.length > 0 ? selectedDays : computeDaysInRange(startDate, endDate);
-
     setIsSubmitting(true);
     try {
-      const res = await api.post('/reservations/block', {
-        courtIds: selectedCourtIds,
-        startDate,
-        endDate,
-        startTime,
-        endTime,
-        daysOfWeek: finalDays,
-        reservationType,
-        title: title.trim(),
-        notes: notes.trim() || undefined,
-        adminCreatedBy: 'Administración CHLS'
-      });
+      if (isEditing && editingReservation) {
+        // MODO EDICIÓN: Actualizar el turno existente
+        const targetCourtId = selectedCourtIds[0] || editingReservation.courtId;
+        const res = await api.put(`/reservations/${editingReservation.id}`, {
+          courtId: targetCourtId,
+          date: startDate,
+          startTime,
+          endTime,
+          title: title.trim(),
+          notes: notes.trim() || undefined,
+          reservationType,
+          playerNames: playerNames.trim() || undefined,
+          status
+        });
 
-      toast.success(res.data.message || 'Cierre / Ocupación programado exitosamente');
-      onSuccess();
-      onClose();
+        toast.success(res.data.message || 'Turno / Horario actualizado exitosamente ✅');
+        onSuccess();
+        onClose();
+      } else {
+        // MODO CREACIÓN: Programar bloques en lote
+        if (startDate > endDate) {
+          toast.error('La fecha de inicio no puede ser posterior a la fecha de fin');
+          setIsSubmitting(false);
+          return;
+        }
+
+        const finalDays = selectedDays.length > 0 ? selectedDays : computeDaysInRange(startDate, endDate);
+
+        const res = await api.post('/reservations/block', {
+          courtIds: selectedCourtIds,
+          startDate,
+          endDate,
+          startTime,
+          endTime,
+          daysOfWeek: finalDays,
+          reservationType,
+          title: title.trim(),
+          notes: notes.trim() || undefined,
+          adminCreatedBy: 'Administración CHLS'
+        });
+
+        toast.success(res.data.message || 'Cierre / Ocupación programado exitosamente');
+        onSuccess();
+        onClose();
+      }
     } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Error al programar ocupación');
+      console.error('Error in AdminCreateBlockModal:', err);
+      toast.error(err.response?.data?.error || 'Error al guardar los datos');
     } finally {
       setIsSubmitting(false);
     }
@@ -223,22 +304,45 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
   if (!isOpen) return null;
 
+  const ACTIVITY_OPTIONS = [
+    { id: 'CIERRE_CANCHA', label: 'Cierre de Canchas', icon: CalendarX, color: 'text-rose-400 border-rose-500/50 bg-rose-500/15' },
+    { id: 'CLASS', label: 'Clase Deportiva', icon: Dumbbell, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
+    { id: 'MAINTENANCE', label: 'Mantenimiento', icon: Wrench, color: 'text-orange-400 border-orange-500/40 bg-orange-500/10' },
+    { id: 'TOURNAMENT', label: 'Torneo', icon: Trophy, color: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/10' },
+    { id: 'ESCUELA_DEPORTIVA', label: 'Escuela / Menores', icon: GraduationCap, color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' },
+    { id: 'EVENTO_CLUB', label: 'Evento Club', icon: Bookmark, color: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10' },
+    { id: 'MEMBER', label: 'Reserva Socio', icon: User, color: 'text-teal-400 border-teal-500/40 bg-teal-500/10' },
+  ];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="bg-[#0c1611] border border-brand-gold/30 rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.8)] overflow-hidden my-auto">
+      <div className="bg-[#0c1611] border-2 border-brand-gold/40 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden my-auto">
         
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-brand-gold/20 flex justify-between items-center bg-gradient-to-r from-brand-green/40 to-transparent">
+        <div className="p-5 sm:p-6 border-b border-brand-gold/20 flex justify-between items-center bg-gradient-to-r from-brand-green/40 via-brand-green/20 to-transparent">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold">
-              <Sparkles className="w-5 h-5" />
+            <div className="w-11 h-11 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold shadow-sm">
+              {isEditing ? <Pencil className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white serif-brand tracking-tight">
-                Programar <span className="text-brand-gold">Cierre de Canchas / Clases / Bloqueo</span>
-              </h2>
-              <p className="text-xs text-gray-400">
-                El concepto y título se registrarán automáticamente en el cronograma y en las vistas de socios.
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-xl font-bold text-white serif-brand tracking-tight">
+                  {isEditing ? (
+                    <>Editar <span className="text-brand-gold">Turno / Horario / Ocupación</span></>
+                  ) : (
+                    <>Programar <span className="text-brand-gold">Cierre de Canchas / Clases / Bloqueo</span></>
+                  )}
+                </h2>
+                {isEditing && editingReservation && (
+                  <span className="font-mono text-xs font-bold text-brand-gold bg-brand-gold/15 px-2.5 py-0.5 rounded-full border border-brand-gold/30">
+                    #{editingReservation.code || editingReservation.id?.slice(0, 8).toUpperCase()}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-gray-400 mt-0.5">
+                {isEditing 
+                  ? 'Modifica los datos, horario, espacio asignado o motivo de este turno en el mismo entorno.'
+                  : 'El concepto y título se registrarán automáticamente en el cronograma y en las vistas de socios.'}
               </p>
             </div>
           </div>
@@ -253,20 +357,28 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-gray-200">
           
+          {/* Si es reserva de socio, mostrar banner informativo */}
+          {isEditing && editingReservation && editingReservation.memberCode && editingReservation.memberCode !== 'ADMIN_BLOCK' && (
+            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <User className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-gray-300">
+                  Socio Titular: <strong className="text-white">{editingReservation.memberName}</strong> (Código: <span className="font-mono text-emerald-300 font-bold">{editingReservation.memberCode}</span>)
+                </span>
+              </div>
+              {editingReservation.memberPhone && (
+                <span className="text-emerald-400 font-mono text-[11px]">📱 {editingReservation.memberPhone}</span>
+              )}
+            </div>
+          )}
+
           {/* Tipo de Actividad */}
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-2">
               Tipo de Actividad / Cierre
             </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-              {[
-                { id: 'CIERRE_CANCHA', label: 'Cierre de Canchas', icon: CalendarX, color: 'text-rose-400 border-rose-500/50 bg-rose-500/15' },
-                { id: 'CLASS', label: 'Clase Deportiva', icon: Dumbbell, color: 'text-amber-400 border-amber-500/40 bg-amber-500/10' },
-                { id: 'MAINTENANCE', label: 'Mantenimiento', icon: Wrench, color: 'text-orange-400 border-orange-500/40 bg-orange-500/10' },
-                { id: 'TOURNAMENT', label: 'Torneo', icon: Trophy, color: 'text-indigo-400 border-indigo-500/40 bg-indigo-500/10' },
-                { id: 'ESCUELA_DEPORTIVA', label: 'Escuela / Menores', icon: GraduationCap, color: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' },
-                { id: 'EVENTO_CLUB', label: 'Evento Club', icon: Bookmark, color: 'text-cyan-400 border-cyan-500/40 bg-cyan-500/10' },
-              ].map(item => {
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+              {ACTIVITY_OPTIONS.map(item => {
                 const Icon = item.icon;
                 const isSelected = reservationType === item.id;
                 return (
@@ -274,14 +386,14 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => handleTypeChange(item.id)}
-                    className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                    className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                       isSelected 
-                        ? `${item.color} shadow-[0_0_15px_rgba(204,161,75,0.2)] font-bold scale-[1.02]` 
+                        ? `${item.color} shadow-[0_0_15px_rgba(204,161,75,0.25)] font-bold scale-[1.02]` 
                         : 'border-white/10 bg-black/30 hover:border-white/20 text-gray-400'
                     }`}
                   >
-                    <Icon className="w-5 h-5 mb-1" />
-                    <span className="text-[11px] leading-tight font-bold">{item.label}</span>
+                    <Icon className="w-4 h-4 mb-1" />
+                    <span className="text-[10px] leading-tight font-bold">{item.label}</span>
                   </button>
                 );
               })}
@@ -292,14 +404,14 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-black/40 border border-brand-gold/25">
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-1 flex items-center justify-between">
-                <span>Título / Concepto del Cierre *</span>
+                <span>Título / Concepto del Turno *</span>
                 <span className="text-[10px] text-emerald-400 font-normal">Visible en horarios</span>
               </label>
               <input 
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
-                placeholder="Ej. Cierre de Canchas por Mantenimiento General / Torneo CHLS"
+                placeholder="Ej. Cierre de Canchas / Clases de Tenis / Torneo CHLS"
                 className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
                 required
               />
@@ -319,82 +431,151 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
               />
               <p className="text-[10px] text-gray-400 mt-1">
-                Información interna adicional sobre la actividad o motivo del cierre.
+                Información interna adicional sobre la actividad o motivo del turno.
               </p>
             </div>
           </div>
 
-          {/* Rango de Fechas */}
+          {/* Acompañantes y Estado (Visible en Modo Edición) */}
+          {isEditing && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-black/30 border border-white/10">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+                  Acompañantes / Invitados Registrados
+                </label>
+                <input 
+                  type="text"
+                  value={playerNames}
+                  onChange={e => setPlayerNames(e.target.value)}
+                  placeholder="Ej. Juan Pérez, Carlos Gómez"
+                  className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+                  Estado del Turno
+                </label>
+                <select
+                  value={status}
+                  onChange={e => setStatus(e.target.value)}
+                  className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+                >
+                  <option value="APPROVED">🟢 Aprobada / Activa</option>
+                  <option value="PENDING">🟡 Pendiente de Aprobación</option>
+                  <option value="REJECTED">🔴 Rechazada</option>
+                  <option value="CANCELLED">⚪ Cancelada / Liberada</option>
+                </select>
+              </div>
+            </div>
+          )}
+
+          {/* Fechas */}
           <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
             <div className="flex justify-between items-center flex-wrap gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-                <Calendar className="w-4 h-4" /> Rango de Fechas para el Cierre / Ocupación
+                <Calendar className="w-4 h-4" /> {isEditing ? 'Fecha del Turno' : 'Rango de Fechas para el Cierre / Ocupación'}
               </label>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleStartDateChange(todayStr);
-                    handleEndDateChange(todayStr);
-                  }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
-                >
-                  Solo Hoy
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleStartDateChange(todayStr);
-                    handleEndDateChange(format(addDays(new Date(), 2), 'yyyy-MM-dd'));
-                  }}
-                  className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
-                >
-                  3 Días (Hoy + 2)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleStartDateChange(todayStr);
-                    handleEndDateChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
-                  }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
-                >
-                  7 Días
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    handleStartDateChange(todayStr);
-                    handleEndDateChange(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
-                  }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
-                >
-                  1 Mes
-                </button>
-              </div>
+              {!isEditing && (
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartDateChange(todayStr);
+                      handleEndDateChange(todayStr);
+                    }}
+                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  >
+                    Solo Hoy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartDateChange(todayStr);
+                      handleEndDateChange(format(addDays(new Date(), 2), 'yyyy-MM-dd'));
+                    }}
+                    className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
+                  >
+                    3 Días (Hoy + 2)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartDateChange(todayStr);
+                      handleEndDateChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
+                    }}
+                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  >
+                    7 Días
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStartDateChange(todayStr);
+                      handleEndDateChange(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
+                    }}
+                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  >
+                    1 Mes
+                  </button>
+                </div>
+              )}
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className={`grid ${isEditing ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'} gap-3`}>
               <div>
-                <span className="text-[11px] text-gray-400 block mb-1">Fecha de Inicio:</span>
-                <input 
-                  type="date"
-                  value={startDate}
-                  onChange={e => handleStartDateChange(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
-                  required
-                />
+                <span className="text-[11px] text-gray-400 block mb-1">
+                  {isEditing ? 'Fecha Asignada:' : 'Fecha de Inicio:'}
+                </span>
+                <div className="relative flex items-center">
+                  <input 
+                    id="startDateInput"
+                    type="date"
+                    value={startDate}
+                    onChange={e => handleStartDateChange(e.target.value)}
+                    className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const el = document.getElementById('startDateInput') as any;
+                      if (el?.showPicker) el.showPicker();
+                      else el?.focus();
+                    }}
+                    className="absolute right-2.5 text-brand-gold hover:text-yellow-400 p-1 transition-transform hover:scale-110"
+                    title="Abrir selector de fecha"
+                  >
+                    <Calendar className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div>
-                <span className="text-[11px] text-gray-400 block mb-1">Fecha de Fin:</span>
-                <input 
-                  type="date"
-                  value={endDate}
-                  onChange={e => handleEndDateChange(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
-                  required
-                />
-              </div>
+              {!isEditing && (
+                <div>
+                  <span className="text-[11px] text-gray-400 block mb-1">Fecha de Fin:</span>
+                  <div className="relative flex items-center">
+                    <input 
+                      id="endDateInput"
+                      type="date"
+                      value={endDate}
+                      onChange={e => handleEndDateChange(e.target.value)}
+                      className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById('endDateInput') as any;
+                        if (el?.showPicker) el.showPicker();
+                        else el?.focus();
+                      }}
+                      className="absolute right-2.5 text-brand-gold hover:text-yellow-400 p-1 transition-transform hover:scale-110"
+                      title="Abrir selector de fecha"
+                    >
+                      <Calendar className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -402,7 +583,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
             <div className="flex justify-between items-center flex-wrap gap-2">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-                <Clock className="w-4 h-4" /> Horario del Cierre / Bloqueo
+                <Clock className="w-4 h-4" /> Horario del Turno / Bloqueo
               </label>
               <div className="flex flex-wrap gap-1.5">
                 <button
@@ -417,28 +598,35 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                   onClick={() => { setStartTime('07:00'); setEndTime('09:00'); }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
-                  07-09 (Mañana)
+                  07-09
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartTime('08:00'); setEndTime('12:00'); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  onClick={() => { setStartTime('08:00'); setEndTime('10:00'); }}
+                  className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
                 >
-                  08-12
+                  08-10
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartTime('16:00'); setEndTime('19:00'); }}
+                  onClick={() => { setStartTime('16:00'); setEndTime('18:00'); }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
-                  16-19 (Tarde)
+                  16-18
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setStartTime('19:00'); setEndTime('22:00'); }}
+                  onClick={() => { setStartTime('18:00'); setEndTime('20:00'); }}
                   className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
                 >
-                  19-22 (Noche)
+                  18-20
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStartTime('20:00'); setEndTime('22:00'); }}
+                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                >
+                  20-22
                 </button>
               </div>
             </div>
@@ -449,7 +637,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 <select
                   value={startTime}
                   onChange={e => setStartTime(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
                 >
                   {TIME_SLOTS_OPTIONS.slice(0, -1).map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -461,7 +649,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 <select
                   value={endTime}
                   onChange={e => setEndTime(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
                 >
                   {TIME_SLOTS_OPTIONS.slice(1).map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -471,90 +659,92 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
             </div>
           </div>
 
-          {/* Días de la Semana */}
-          <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
-            <div className="flex justify-between items-center flex-wrap gap-2 mb-1">
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
-                  Días de Repetición en el Rango
-                </label>
-                <span className="text-[10px] text-emerald-400">
-                  * Se programará y cerrará automáticamente en los días marcados
-                </span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('RANGE')}
-                  className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold hover:bg-emerald-500/30 transition-colors"
-                >
-                  ✓ Días del Rango
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('ALL')}
-                  className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold hover:bg-white/20 transition-colors"
-                >
-                  Todos (7 días)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('WEEKDAYS')}
-                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
-                >
-                  Lun a Vie
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('WEEKENDS')}
-                  className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
-                >
-                  Sáb y Dom
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('MWF')}
-                  className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
-                >
-                  L-M-V
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDaysPreset('TT')}
-                  className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
-                >
-                  M-J
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-7 gap-2">
-              {DAYS_OF_WEEK.map(d => {
-                const isSelected = selectedDays.includes(d.value);
-                return (
+          {/* Días de la Semana (solo en modo creación) */}
+          {!isEditing && (
+            <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
+              <div className="flex justify-between items-center flex-wrap gap-2 mb-1">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
+                    Días de Repetición en el Rango
+                  </label>
+                  <span className="text-[10px] text-emerald-400">
+                    * Se programará y cerrará automáticamente en los días marcados
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
                   <button
-                    key={d.value}
                     type="button"
-                    onClick={() => toggleDay(d.value)}
-                    className={`py-2.5 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center justify-center gap-0.5 ${
-                      isSelected
-                        ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_12px_rgba(204,161,75,0.3)] scale-[1.02]'
-                        : 'border-white/10 bg-black/40 text-gray-400 hover:border-white/20'
-                    }`}
+                    onClick={() => setDaysPreset('RANGE')}
+                    className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold hover:bg-emerald-500/30 transition-colors"
                   >
-                    <span>{d.label}</span>
-                    <span className="text-[8px] font-normal opacity-80">{d.full.slice(0, 3)}</span>
+                    ✓ Días del Rango
                   </button>
-                );
-              })}
+                  <button
+                    type="button"
+                    onClick={() => setDaysPreset('ALL')}
+                    className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold hover:bg-white/20 transition-colors"
+                  >
+                    Todos (7 días)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDaysPreset('WEEKDAYS')}
+                    className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                  >
+                    Lun a Vie
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDaysPreset('WEEKENDS')}
+                    className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                  >
+                    Sáb y Dom
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDaysPreset('MWF')}
+                    className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
+                  >
+                    L-M-V
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDaysPreset('TT')}
+                    className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
+                  >
+                    M-J
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {DAYS_OF_WEEK.map(d => {
+                  const isSelected = selectedDays.includes(d.value);
+                  return (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => toggleDay(d.value)}
+                      className={`py-2.5 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center justify-center gap-0.5 ${
+                        isSelected
+                          ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_12px_rgba(204,161,75,0.3)] scale-[1.02]'
+                          : 'border-white/10 bg-black/40 text-gray-400 hover:border-white/20'
+                      }`}
+                    >
+                      <span>{d.label}</span>
+                      <span className="text-[8px] font-normal opacity-80">{d.full.slice(0, 3)}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Selección de Canchas */}
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
               <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
-                <Layers className="w-4 h-4" /> Seleccionar Canchas ({selectedCourtIds.length} seleccionadas)
+                <Layers className="w-4 h-4" /> {isEditing ? 'Espacio / Cancha Asignada' : `Seleccionar Canchas (${selectedCourtIds.length} seleccionadas)`}
               </label>
               
               <div className="flex items-center gap-2">
@@ -569,13 +759,15 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                   ))}
                 </select>
 
-                <button
-                  type="button"
-                  onClick={selectAllFilteredCourts}
-                  className="px-2.5 py-1 rounded bg-brand-green-light/30 border border-brand-green-light text-[11px] text-emerald-300 hover:bg-brand-green-light/50 transition-colors"
-                >
-                  {filteredCourts.every(c => selectedCourtIds.includes(c.id)) ? 'Deseleccionar' : 'Seleccionar Visibles'}
-                </button>
+                {!isEditing && (
+                  <button
+                    type="button"
+                    onClick={selectAllFilteredCourts}
+                    className="px-2.5 py-1 rounded bg-brand-green-light/30 border border-brand-green-light text-[11px] text-emerald-300 hover:bg-brand-green-light/50 transition-colors"
+                  >
+                    {filteredCourts.every(c => selectedCourtIds.includes(c.id)) ? 'Deseleccionar' : 'Seleccionar Visibles'}
+                  </button>
+                )}
               </div>
             </div>
 
@@ -588,7 +780,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     onClick={() => toggleCourt(c.id)}
                     className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       isSelected
-                        ? 'bg-brand-gold/15 border-brand-gold text-white font-semibold'
+                        ? 'bg-brand-gold/15 border-brand-gold text-white font-semibold shadow-[0_0_10px_rgba(204,161,75,0.2)]'
                         : 'bg-black/20 border-white/5 text-gray-400 hover:border-white/15 hover:text-gray-200'
                     }`}
                   >
@@ -597,7 +789,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       <p className="text-[10px] text-gray-400">{c.sport}</p>
                     </div>
                     {isSelected ? (
-                      <CheckSquare className="w-4 h-4 text-brand-gold shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-brand-gold shrink-0" />
                     ) : (
                       <Square className="w-4 h-4 text-gray-600 shrink-0" />
                     )}
@@ -611,7 +803,15 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           <div className="p-3.5 rounded-xl bg-brand-gold/10 border border-brand-gold/30 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-brand-gold shrink-0 mt-0.5" />
             <div className="text-xs text-gray-300">
-              <span className="font-bold text-brand-gold">Resumen de Programación:</span> Se crearán bloques continuos para <strong>{selectedCourtIds.length} cancha(s)</strong> de <strong>{startTime} a {endTime}</strong> los días seleccionados entre el <strong>{startDate}</strong> y el <strong>{endDate}</strong>. Estos horarios quedarán reservados como <em>{title}</em> y no podrán ser reservados por socios.
+              {isEditing ? (
+                <>
+                  <span className="font-bold text-brand-gold">Resumen de Actualización:</span> Se guardarán los cambios para el turno <strong>#{editingReservation?.code || editingReservation?.id?.slice(0, 8).toUpperCase()}</strong> en <strong>{courts.find(c => selectedCourtIds.includes(c.id))?.name || 'la cancha seleccionada'}</strong> el día <strong>{startDate}</strong> de <strong>{startTime} a {endTime}</strong> ({title}).
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-brand-gold">Resumen de Programación:</span> Se crearán bloques continuos para <strong>{selectedCourtIds.length} cancha(s)</strong> de <strong>{startTime} a {endTime}</strong> los días seleccionados entre el <strong>{startDate}</strong> y el <strong>{endDate}</strong>. Estos horarios quedarán reservados como <em>{title}</em> y no podrán ser reservados por socios.
+                </>
+              )}
             </div>
           </div>
 
@@ -627,12 +827,17 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
             <button
               type="submit"
               disabled={isSubmitting}
-              className="glass-button-primary px-6 py-2.5 text-xs font-bold flex items-center gap-2"
+              className="glass-button-primary px-6 py-2.5 text-xs font-bold flex items-center gap-2 shadow-goldGlow"
             >
               {isSubmitting ? (
                 <>
                   <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
-                  <span>Programando...</span>
+                  <span>Guardando...</span>
+                </>
+              ) : isEditing ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Guardar Cambios del Turno</span>
                 </>
               ) : (
                 <>
