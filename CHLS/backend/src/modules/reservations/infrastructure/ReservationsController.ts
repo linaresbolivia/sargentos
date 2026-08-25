@@ -413,27 +413,27 @@ export class ReservationsController {
           let qrBase64: string | undefined = undefined;
 
           if (isExempt) {
-            // Confirmación directa sin QR ni solicitud de comprobante para Familia / Entre Socios
+            // Confirmación directa con trato formal y respetuoso (Usted)
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
-✅ *Turno Confirmado*
+✅ *Confirmación de Turno Deportivo*
 
-Hola *${memberName}*, tu reserva ha sido confirmada:
+Estimado(a) socio(a) *${memberName}*, su reserva ha sido confirmada exitosamente:
 
 📌 *Cancha:* ${court.name} (${court.sport})
 📅 *Fecha:* ${date}
 ⏰ *Horario:* ${startTime} a ${endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
-🎫 *Código:* *#${reservationCode}*
+🎫 *Código de Reserva:* *#${reservationCode}*
 
-Presenta tu carnet o código al ingresar. ¡Que disfrutes tu juego! 🥇✨`;
+Por favor presente su carnet de socio o código al ingresar al club. ¡Esperamos que disfrute de su jornada deportiva! 🥇✨`;
           } else {
-            // Pre-reserva con aranceles / invitados: requiere pago por QR y comprobante
+            // Pre-reserva con aranceles / invitados con trato formal (Usted)
             whatsappMessage = 
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
 🟡 *Pre-Reserva Registrada*
 
-Hola *${memberName}*, registramos tu pre-reserva:
+Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
 
 📌 *Cancha:* ${court.name} (${court.sport})
 📅 *Fecha:* ${date}
@@ -443,9 +443,11 @@ Hola *${memberName}*, registramos tu pre-reserva:
 🎫 *Código / Glosa:* *#${reservationCode}*
 
 *Instrucciones de Pago:*
-1. Escanea el QR adjunto y realiza la transferencia.
-2. ⚠️ Coloca en la glosa: *#${reservationCode}*
-3. Adjunta tu comprobante en el sistema para consolidar tu turno.`;
+1. Escanee el código QR adjunto y realice la transferencia bancaria.
+2. ⚠️ Coloque en la glosa de su transferencia el código: *#${reservationCode}*
+3. Adjunte su comprobante en el sistema para consolidar su turno.
+
+¡Quedamos a su grata disposición en el Club! 🏆✨`;
 
             // Cargar imagen QR oficial en base64 solo para turnos que requieren pago
             try {
@@ -650,23 +652,27 @@ Hola *${memberName}*, registramos tu pre-reserva:
 
       // Si queryTerm es numérico o alfanumérico, buscar en el padrón de socios para resolver todos sus identificadores
       try {
-        const memberProfile = await prisma.member.findFirst({
+        const personProfile = await prisma.person.findFirst({
           where: {
             OR: [
-              { membershipNumber: queryTerm },
+              { titularMemberships: { some: { membershipNumber: queryTerm } } },
               { documentId: queryTerm },
-              { phone: { contains: queryTerm.replace(/[\s\-\(\)\+]/g, '').slice(-8) } }
+              { phone: { contains: queryTerm.replace(/[\s\-\(\)\+]/g, '').slice(-8) } },
+              { mobile: { contains: queryTerm.replace(/[\s\-\(\)\+]/g, '').slice(-8) } }
             ]
-          }
+          },
+          include: { titularMemberships: true }
         });
 
-        if (memberProfile) {
-          if (memberProfile.membershipNumber) orFilters.push({ memberCode: memberProfile.membershipNumber });
-          if (memberProfile.documentId) orFilters.push({ memberCode: memberProfile.documentId });
-          if (memberProfile.phone) orFilters.push({ memberPhone: memberProfile.phone });
+        if (personProfile) {
+          const memNumber = personProfile.titularMemberships[0]?.membershipNumber;
+          if (memNumber) orFilters.push({ memberCode: memNumber });
+          if (personProfile.documentId) orFilters.push({ memberCode: personProfile.documentId });
+          if (personProfile.phone) orFilters.push({ memberPhone: { contains: personProfile.phone.slice(-8) } });
+          if (personProfile.mobile) orFilters.push({ memberPhone: { contains: personProfile.mobile.slice(-8) } });
         }
       } catch (err) {
-        // Ignorar si la tabla member no coincide
+        // Ignorar si la tabla person no coincide
       }
 
       const reservations = await prisma.courtReservation.findMany({

@@ -8,6 +8,15 @@ import { RegisterStandalonePersonUseCase } from '../../application/useCases/Regi
 import { UpdateAccessLogUseCase } from '../../application/useCases/UpdateAccessLogUseCase';
 import { authenticate, authorize } from '@modules/auth/infrastructure/middlewares/auth.middleware';
 
+export const DEFAULT_PISCINA_FACILITIES = [
+  { id: 'piscina_5_carriles', name: 'PISCINA 5 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 1 },
+  { id: 'piscina_3_carriles', name: 'PISCINA 3 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 2 },
+  { id: 'jacuzzi', name: 'JACUZZI', value: '41', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 3 },
+  { id: 'sauna_v_hierbas', name: 'SAUNA V. HIERBAS', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 4 },
+  { id: 'sauna_seco', name: 'SAUNA SECO', value: 'Ok', unit: '', status: 'OPTIMO', type: 'STATUS', order: 5 },
+  { id: 'sauna_eucalipto', name: 'SAUNA EUCALIPTO', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 6 }
+];
+
 export class AccessController {
   public router = Router();
   private prisma = new PrismaClient();
@@ -23,8 +32,13 @@ export class AccessController {
   }
 
   private initializeRoutes() {
-    // Only Admin, Staff, and SuperAdmin can use the gatehouse endpoints
+    // Authenticate all requests
     this.router.use(authenticate);
+
+    // Live occupancy can be checked by members, socio, staff, and admins
+    this.router.get('/live-occupancy', authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN', 'MEMBER', 'SOCIO']), this.getLiveOccupancy.bind(this));
+
+    // Admin, Staff, and SuperAdmin gatehouse and area management endpoints
     this.router.use(authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN']));
 
     this.router.get('/search', this.search.bind(this));
@@ -40,7 +54,6 @@ export class AccessController {
     this.router.put('/area-logs/:id/exit', this.registerAreaExit.bind(this));
     this.router.get('/area-stats', this.getAreaStats.bind(this));
     this.router.get('/today-gatehouse', this.getTodayGatehouseEntries.bind(this));
-    this.router.get('/live-occupancy', this.getLiveOccupancy.bind(this));
     this.router.get('/executive-analytics', this.getExecutiveAnalytics.bind(this));
 
     // Dynamic Area Configuration & Pool Temperature Control
@@ -330,17 +343,17 @@ export class AccessController {
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
       // Find or create area config
-      let config = await this.prisma.areaConfig.findUnique({
-        where: { area }
-      });
+      const rawRows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT * FROM area_configs WHERE area = $1 LIMIT 1`,
+        area
+      );
+      let config = rawRows && rawRows.length > 0 ? rawRows[0] : null;
       if (!config) {
-        config = await this.prisma.areaConfig.create({
-          data: {
-            area,
-            totalLockers: area === 'PISCINA' ? 50 : 40,
-            maxCapacity: area === 'PISCINA' ? 50 : 45
-          }
-        });
+        config = {
+          totalLockers: area === 'PISCINA' ? 50 : 40,
+          maxCapacity: area === 'PISCINA' ? 50 : 45,
+          facilities: area === 'PISCINA' ? DEFAULT_PISCINA_FACILITIES : []
+        };
       }
 
       const currentlyInside = await this.prisma.areaAccessLog.count({
@@ -410,6 +423,8 @@ export class AccessController {
         }
       }
 
+      const facilities = (config as any).facilities || (area === 'PISCINA' ? DEFAULT_PISCINA_FACILITIES : []);
+
       res.status(200).json({
         success: true,
         data: {
@@ -420,7 +435,8 @@ export class AccessController {
           totalLockers: config.totalLockers,
           maxCapacity: config.maxCapacity,
           lockersAvailable,
-          poolTemp: poolTempData
+          poolTemp: poolTempData,
+          facilities
         }
       });
     } catch (error: any) {
@@ -524,15 +540,15 @@ export class AccessController {
       const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate(), 23, 59, 59, 999);
 
       // Dynamic Area Configs
-      let piscinaConfig = await this.prisma.areaConfig.findUnique({ where: { area: 'PISCINA' } });
-      if (!piscinaConfig) {
-        piscinaConfig = await this.prisma.areaConfig.create({ data: { area: 'PISCINA', totalLockers: 50, maxCapacity: 50 } });
-      }
+      const piscinaRows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT * FROM area_configs WHERE area = 'PISCINA' LIMIT 1`
+      );
+      const piscinaConfig = piscinaRows && piscinaRows.length > 0 ? piscinaRows[0] : { totalLockers: 50, maxCapacity: 50, facilities: DEFAULT_PISCINA_FACILITIES };
 
-      let gimnasioConfig = await this.prisma.areaConfig.findUnique({ where: { area: 'GIMNASIO' } });
-      if (!gimnasioConfig) {
-        gimnasioConfig = await this.prisma.areaConfig.create({ data: { area: 'GIMNASIO', totalLockers: 40, maxCapacity: 45 } });
-      }
+      const gimnasioRows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT * FROM area_configs WHERE area = 'GIMNASIO' LIMIT 1`
+      );
+      const gimnasioConfig = gimnasioRows && gimnasioRows.length > 0 ? gimnasioRows[0] : { totalLockers: 40, maxCapacity: 45 };
 
       // Piscina live metrics
       const piscinaInside = await this.prisma.areaAccessLog.count({
@@ -606,6 +622,14 @@ export class AccessController {
         gimnasioRecommendation = 'Afluencia media. Sala de musculación y cardio operando con normalidad.';
       }
 
+      const piscinaFacilities = (piscinaConfig as any).facilities || DEFAULT_PISCINA_FACILITIES;
+
+      const p5 = piscinaFacilities.find((f: any) => f.id === 'piscina_5_carriles' || f.name?.includes('5'));
+      const p3 = piscinaFacilities.find((f: any) => f.id === 'piscina_3_carriles' || f.name?.includes('3'));
+      const p5Val = parseFloat(p5?.value || '30') || 30;
+      const p3Val = parseFloat(p3?.value || '30') || 30;
+      const avgWaterTemp = Math.round(((p5Val + p3Val) / 2) * 10) / 10;
+
       res.status(200).json({
         success: true,
         data: {
@@ -619,11 +643,15 @@ export class AccessController {
             totalLockers: piscinaConfig.totalLockers,
             lockersInUse: piscinaLockersInUse,
             lockersAvailable: Math.max(piscinaConfig.totalLockers - piscinaLockersInUse, 0),
-            waterTemp,
-            lastTempRecordedAt,
-            lanesAvailable: Math.max(6 - Math.ceil(piscinaInside / 8), 1),
+            waterTemp: avgWaterTemp,
+            piscina5Temp: p5?.value || '30',
+            piscina3Temp: p3?.value || '30',
+            lastTempRecordedAt: today,
+            totalLanes: 8,
+            lanesAvailable: Math.max(8 - Math.ceil(piscinaInside / 6), 1),
             status: piscinaOccupancyRate < 50 ? 'OPTIMO' : (piscinaOccupancyRate < 80 ? 'MODERADO' : 'CONCURRIDO'),
-            recommendation: piscinaRecommendation
+            recommendation: piscinaRecommendation,
+            facilities: piscinaFacilities
           },
           gimnasio: {
             inside: gimnasioInside,
@@ -809,21 +837,44 @@ export class AccessController {
   private async getAreaConfig(req: Request, res: Response) {
     try {
       const area = ((req.query.area as string) || 'PISCINA').toUpperCase();
-      let config = await this.prisma.areaConfig.findUnique({
-        where: { area }
-      });
+      const rawRows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT * FROM area_configs WHERE area = $1 LIMIT 1`,
+        area
+      );
+
+      let config = rawRows && rawRows.length > 0 ? rawRows[0] : null;
 
       if (!config) {
-        config = await this.prisma.areaConfig.create({
-          data: {
-            area,
-            totalLockers: area === 'PISCINA' ? 50 : 40,
-            maxCapacity: area === 'PISCINA' ? 50 : 45
-          }
-        });
+        const defaultFacs = area === 'PISCINA' ? DEFAULT_PISCINA_FACILITIES : [];
+        await this.prisma.$executeRawUnsafe(
+          `INSERT INTO area_configs (id, area, "totalLockers", "maxCapacity", facilities, "createdAt", "updatedAt")
+           VALUES (gen_random_uuid()::text, $1, $2, $3, $4::jsonb, NOW(), NOW())
+           ON CONFLICT (area) DO NOTHING`,
+          area,
+          area === 'PISCINA' ? 50 : 40,
+          area === 'PISCINA' ? 50 : 45,
+          JSON.stringify(defaultFacs)
+        );
+
+        const createdRows: any[] = await this.prisma.$queryRawUnsafe(
+          `SELECT * FROM area_configs WHERE area = $1 LIMIT 1`,
+          area
+        );
+        config = createdRows && createdRows.length > 0 ? createdRows[0] : null;
       }
 
-      res.status(200).json({ success: true, data: config });
+      const facilities = config?.facilities || (area === 'PISCINA' ? DEFAULT_PISCINA_FACILITIES : []);
+
+      res.status(200).json({ 
+        success: true, 
+        data: {
+          id: config?.id,
+          area: config?.area || area,
+          totalLockers: config?.totalLockers || (area === 'PISCINA' ? 50 : 40),
+          maxCapacity: config?.maxCapacity || (area === 'PISCINA' ? 50 : 45),
+          facilities
+        } 
+      });
     } catch (error: any) {
       console.error('Error fetching area config:', error);
       res.status(500).json({ success: false, message: 'Error al obtener configuración del área' });
@@ -832,27 +883,49 @@ export class AccessController {
 
   private async updateAreaConfig(req: Request, res: Response): Promise<void> {
     try {
-      const { area, totalLockers, maxCapacity } = req.body;
+      const { area, totalLockers, maxCapacity, facilities } = req.body;
       if (!area) {
         res.status(400).json({ success: false, message: 'El área es requerida' });
         return;
       }
 
       const areaKey = area.toUpperCase();
-      const updated = await this.prisma.areaConfig.upsert({
-        where: { area: areaKey },
-        update: {
-          totalLockers: Number(totalLockers) || (areaKey === 'PISCINA' ? 50 : 40),
-          maxCapacity: Number(maxCapacity) || (areaKey === 'PISCINA' ? 50 : 45)
-        },
-        create: {
-          area: areaKey,
-          totalLockers: Number(totalLockers) || (areaKey === 'PISCINA' ? 50 : 40),
-          maxCapacity: Number(maxCapacity) || (areaKey === 'PISCINA' ? 50 : 45)
-        }
-      });
+      const lockers = Number(totalLockers) || (areaKey === 'PISCINA' ? 50 : 40);
+      const capacity = Number(maxCapacity) || (areaKey === 'PISCINA' ? 50 : 45);
+      const defaultFacilities = areaKey === 'PISCINA' ? DEFAULT_PISCINA_FACILITIES : [];
+      const facsToSave = facilities !== undefined ? facilities : defaultFacilities;
 
-      res.status(200).json({ success: true, data: updated, message: 'Configuración actualizada exitosamente' });
+      await this.prisma.$executeRawUnsafe(
+        `INSERT INTO area_configs (id, area, "totalLockers", "maxCapacity", facilities, "createdAt", "updatedAt")
+         VALUES (gen_random_uuid()::text, $1, $2, $3, $4::jsonb, NOW(), NOW())
+         ON CONFLICT (area) DO UPDATE 
+         SET "totalLockers" = EXCLUDED."totalLockers",
+             "maxCapacity" = EXCLUDED."maxCapacity",
+             facilities = EXCLUDED.facilities,
+             "updatedAt" = NOW()`,
+        areaKey,
+        lockers,
+        capacity,
+        JSON.stringify(facsToSave)
+      );
+
+      const rows: any[] = await this.prisma.$queryRawUnsafe(
+        `SELECT * FROM area_configs WHERE area = $1 LIMIT 1`,
+        areaKey
+      );
+      const updated = rows && rows.length > 0 ? rows[0] : null;
+
+      res.status(200).json({ 
+        success: true, 
+        data: {
+          id: updated?.id,
+          area: updated?.area || areaKey,
+          totalLockers: updated?.totalLockers || lockers,
+          maxCapacity: updated?.maxCapacity || capacity,
+          facilities: updated?.facilities || facsToSave
+        }, 
+        message: 'Configuración actualizada exitosamente' 
+      });
     } catch (error: any) {
       console.error('Error updating area config:', error);
       res.status(500).json({ success: false, message: 'Error al actualizar configuración' });

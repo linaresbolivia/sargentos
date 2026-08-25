@@ -229,9 +229,8 @@ export class PqrsController {
         updateData.isWaitingForRating = true;
       }
 
-      if (currentTicket?.assignedToId && currentTicket.assignedToId !== req.user?.userId) {
-        updateData.isRead = false;
-      }
+      // Siempre marcar como no leído para notificar a la otra parte (Admin o Usuario Asignado)
+      updateData.isRead = false;
 
       const ticket = await prisma.pqrsTicket.update({
         where: { id },
@@ -434,16 +433,11 @@ export class PqrsController {
         return;
       }
       
-      let updateData: any = {};
-      if (ticket.assignedToId && ticket.assignedToId !== req.user?.userId) {
-        updateData.isRead = false;
-      }
-      if (Object.keys(updateData).length > 0) {
-        await prisma.pqrsTicket.update({
-          where: { id },
-          data: updateData
-        });
-      }
+      // Siempre marcar como no leído para alertar al receptor
+      await prisma.pqrsTicket.update({
+        where: { id },
+        data: { isRead: false }
+      });
 
       let performedBy = 'Sistema';
       if (req.user?.userId) {

@@ -122,6 +122,25 @@ const DEPENDENCIES = [
   { id: 'HUESPED', label: 'Huésped', color: 'bg-rose-500/15 text-rose-500 border-rose-500/30' },
 ];
 
+export interface FacilityItem {
+  id: string;
+  name: string;
+  value: string;
+  unit: string;
+  status: string;
+  type: string;
+  order?: number;
+}
+
+export const DEFAULT_PISCINA_FACILITIES: FacilityItem[] = [
+  { id: 'piscina_5_carriles', name: 'PISCINA 5 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 1 },
+  { id: 'piscina_3_carriles', name: 'PISCINA 3 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 2 },
+  { id: 'jacuzzi', name: 'JACUZZI', value: '41', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 3 },
+  { id: 'sauna_v_hierbas', name: 'SAUNA V. HIERBAS', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 4 },
+  { id: 'sauna_seco', name: 'SAUNA SECO', value: 'Ok', unit: '', status: 'OPTIMO', type: 'STATUS', order: 5 },
+  { id: 'sauna_eucalipto', name: 'SAUNA EUCALIPTO', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 6 }
+];
+
 export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaProp }) => {
   const navigate = useNavigate();
   const params = useParams<{ area?: string }>();
@@ -138,6 +157,7 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
     totalLockers?: number;
     maxCapacity?: number;
     lockersAvailable?: number;
+    facilities?: FacilityItem[];
     poolTemp?: {
       temperature: number;
       ambientTemp?: number | null;
@@ -157,13 +177,15 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
     totalLockers: isPiscina ? 50 : 40,
     maxCapacity: isPiscina ? 50 : 45,
     lockersAvailable: isPiscina ? 50 : 40,
-    poolTemp: null
+    poolTemp: null,
+    facilities: DEFAULT_PISCINA_FACILITIES
   });
 
-  // Dynamic Lockers & Capacity Config Modal
+  // Dynamic Lockers & Capacity & Facilities Config Modal
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configLockers, setConfigLockers] = useState<number>(isPiscina ? 50 : 40);
   const [configCapacity, setConfigCapacity] = useState<number>(isPiscina ? 50 : 45);
+  const [configFacilities, setConfigFacilities] = useState<FacilityItem[]>(DEFAULT_PISCINA_FACILITIES);
 
   // Pool Temperature Control Modal
   const [showTempModal, setShowTempModal] = useState(false);
@@ -252,6 +274,9 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
         if (res.data.data?.maxCapacity) {
           setConfigCapacity(res.data.data.maxCapacity);
         }
+        if (res.data.data?.facilities && Array.isArray(res.data.data.facilities) && res.data.data.facilities.length > 0) {
+          setConfigFacilities(res.data.data.facilities);
+        }
         if (res.data.data?.poolTemp?.temperature) {
           setTempValue(res.data.data.poolTemp.temperature.toString());
         }
@@ -296,7 +321,8 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
       const res = await api.put('/access/area-config', {
         area: currentArea,
         totalLockers: Number(configLockers) || (isPiscina ? 50 : 40),
-        maxCapacity: Number(configCapacity) || (isPiscina ? 50 : 45)
+        maxCapacity: Number(configCapacity) || (isPiscina ? 50 : 45),
+        facilities: isPiscina ? configFacilities : undefined
       });
 
       if (res.data?.success) {
@@ -825,23 +851,29 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
           {isPiscina ? (
             <div 
-              onClick={() => { setShowTempModal(true); fetchTempHistory(); }}
+              onClick={() => setShowConfigModal(true)}
               className="p-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 backdrop-blur-md flex items-center justify-between shadow-sm cursor-pointer hover:border-cyan-400 transition-colors group"
             >
               <div>
                 <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                  Temp. Agua Piscina
-                  <span className="text-[9px] text-cyan-400 font-extrabold uppercase">(Medir)</span>
+                  Piscinas 5C & 3C
+                  <span className="text-[9px] text-cyan-400 font-extrabold uppercase">(Configurar)</span>
                 </p>
-                <h3 className="text-2xl lg:text-3xl font-black text-cyan-400 mt-0.5 tracking-tight group-hover:scale-105 transition-transform">
-                  {stats.poolTemp?.temperature ? `${stats.poolTemp.temperature}°C` : '28.0°C'}
-                </h3>
+                <div className="flex items-baseline gap-2 mt-0.5">
+                  <h3 className="text-xl sm:text-2xl font-black text-cyan-400 tracking-tight group-hover:scale-105 transition-transform font-mono">
+                    5C: {(stats.facilities?.find(f => f.name.includes('5'))?.value || configFacilities.find(f => f.name.includes('5'))?.value || '30')}°
+                  </h3>
+                  <span className="text-gray-400 font-bold">&bull;</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-cyan-400 tracking-tight group-hover:scale-105 transition-transform font-mono">
+                    3C: {(stats.facilities?.find(f => f.name.includes('3'))?.value || configFacilities.find(f => f.name.includes('3'))?.value || '30')}°
+                  </h3>
+                </div>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
-                  {stats.poolTemp?.recordedAt ? `Hace ${stats.poolTemp.diffMinutes}m` : 'Registrar'} &bull; Hoy: {stats.totalToday} ingresos
+                  {stats.totalToday} ingresos registrados hoy
                 </span>
               </div>
               <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
-                <Thermometer className="w-6 h-6" />
+                <Waves className="w-6 h-6" />
               </div>
             </div>
           ) : (
@@ -861,6 +893,58 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
         </div>
       </div>
+
+      {/* WET ZONE TELEMETRY STRIP FOR PISCINA */}
+      {isPiscina && (
+        <div className="relative z-10 w-full max-w-[1700px] mx-auto px-4 lg:px-8 pt-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl bg-white/90 dark:bg-[#07130e] border border-cyan-500/30 backdrop-blur-md shadow-lg shadow-cyan-500/5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 mb-3 pb-2 border-b border-gray-100 dark:border-white/5">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-cyan-500/20 text-cyan-400 flex items-center justify-center font-bold">
+                  <Waves className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-2">
+                    Telemetría del Área Húmeda & Saunas (En Vivo)
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                      Visible a Socios
+                    </span>
+                  </h4>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowConfigModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 text-xs font-bold transition-all shadow-sm"
+              >
+                <Settings className="w-3.5 h-3.5" />
+                <span>Editar Temperaturas y Estados</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+              {(stats.facilities && stats.facilities.length > 0 ? stats.facilities : configFacilities).map((fac) => (
+                <div 
+                  key={fac.id} 
+                  className="p-3 rounded-xl bg-black/5 dark:bg-white/[0.03] border border-gray-200 dark:border-cyan-500/20 flex flex-col justify-between hover:border-cyan-400/50 transition-all hover:-translate-y-0.5 group"
+                >
+                  <span className="text-[10px] font-black uppercase tracking-tight text-gray-600 dark:text-gray-400 truncate">
+                    {fac.name}
+                  </span>
+                  <div className="flex items-baseline justify-between mt-1.5">
+                    <span className="text-base sm:text-lg font-black text-cyan-500 dark:text-cyan-400 tracking-tight group-hover:scale-105 transition-transform">
+                      {fac.value}{fac.unit || ''}
+                    </span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {fac.status || 'OK'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 3-COLUMN WORKSPACE: Caseta Feed (Left) + Fast Drop-Zone Form (Center) + Area Active List (Right) */}
       <main className="relative z-10 flex-1 max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -1650,11 +1734,11 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 2: CONFIGURACIÓN DE CASILLEROS Y AFORO MÁXIMO                      */}
+      {/* MODAL 2: CONFIGURACIÓN DE PISCINA / GIMNASIO                             */}
       {/* ========================================================================= */}
       {showConfigModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-          <div className="bg-white dark:bg-[#0c1410] border border-brand-gold/30 rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl space-y-6 relative overflow-hidden">
+          <div className="bg-white dark:bg-[#0c1410] border border-brand-gold/30 rounded-3xl p-6 sm:p-8 max-w-xl w-full shadow-2xl space-y-6 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
             
             <div className="flex justify-between items-start border-b border-gray-200 dark:border-white/10 pb-4">
               <div className="flex items-center gap-3">
@@ -1666,7 +1750,7 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                     Configuración de {currentArea}
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Define la cantidad de casilleros existentes y el aforo máximo de socios.
+                    Define la cantidad de casilleros existentes, aforo máximo y telemetría de instalaciones.
                   </p>
                 </div>
               </div>
@@ -1681,43 +1765,100 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
             <form onSubmit={handleSaveConfig} className="space-y-4">
               
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block mb-1.5">
-                  🔑 Total de Casilleros / Lockers Existentes *
-                </label>
-                <input 
-                  type="number"
-                  min="1"
-                  max="500"
-                  required
-                  value={configLockers}
-                  onChange={(e) => setConfigLockers(Number(e.target.value))}
-                  placeholder="Ej: 50"
-                  className="w-full bg-gray-50 dark:bg-black/40 border-2 border-brand-gold/40 focus:border-brand-gold rounded-2xl py-3 px-4 text-xl font-extrabold text-gray-900 dark:text-white focus:outline-none"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  💡 Los casilleros disponibles se descontarán automáticamente de este total conforme se entreguen llaves a los socios.
-                </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block mb-1.5">
+                    🔑 Total de Casilleros *
+                  </label>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="500"
+                    required
+                    value={configLockers}
+                    onChange={(e) => setConfigLockers(Number(e.target.value))}
+                    placeholder="Ej: 50"
+                    className="w-full bg-gray-50 dark:bg-black/40 border-2 border-brand-gold/40 focus:border-brand-gold rounded-2xl py-2.5 px-4 text-lg font-extrabold text-gray-900 dark:text-white focus:outline-none"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    💡 Casilleros disponibles se descuentan automáticamente.
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1.5">
+                    👥 Capacidad / Aforo Máximo *
+                  </label>
+                  <input 
+                    type="number"
+                    min="1"
+                    max="500"
+                    required
+                    value={configCapacity}
+                    onChange={(e) => setConfigCapacity(Number(e.target.value))}
+                    placeholder="Ej: 50"
+                    className="w-full bg-gray-50 dark:bg-black/40 border border-gray-300 dark:border-white/10 rounded-2xl py-2.5 px-4 text-lg font-bold text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    💡 Para cálculo del semáforo de ocupación en vivo.
+                  </p>
+                </div>
               </div>
 
-              <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-1.5">
-                  👥 Capacidad / Aforo Máximo de Socios *
-                </label>
-                <input 
-                  type="number"
-                  min="1"
-                  max="500"
-                  required
-                  value={configCapacity}
-                  onChange={(e) => setConfigCapacity(Number(e.target.value))}
-                  placeholder="Ej: 50"
-                  className="w-full bg-gray-50 dark:bg-black/40 border border-gray-300 dark:border-white/10 rounded-2xl py-3 px-4 text-lg font-bold text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold"
-                />
-                <p className="text-[11px] text-gray-400 mt-1">
-                  💡 Utilizado para el cálculo del semáforo de ocupación en vivo para los socios.
-                </p>
-              </div>
+              {/* TELEMETRÍA Y TEMPERATURAS DE INSTALACIONES (PISCINA & SAUNAS) */}
+              {isPiscina && (
+                <div className="pt-4 border-t border-gray-200 dark:border-white/10 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-black uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                      <Waves className="w-4 h-4" /> Telemetría Área Húmeda & Saunas (En Vivo para Socios)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setConfigFacilities([...DEFAULT_PISCINA_FACILITIES])}
+                      className="text-[10px] text-brand-gold hover:underline font-bold"
+                    >
+                      Restablecer valores
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Alimenta las temperaturas y estados operativos mostrados en tiempo real en la pantalla y portal de socios:
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {configFacilities.map((fac, idx) => (
+                      <div 
+                        key={fac.id || idx} 
+                        className="p-3 rounded-2xl bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-cyan-500/30 flex items-center justify-between gap-3 shadow-sm"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[11px] font-black uppercase tracking-wider text-cyan-600 dark:text-cyan-400 block truncate">
+                            {fac.name}
+                          </span>
+                          <span className="text-[9px] text-gray-400">
+                            {fac.type === 'TEMP' ? 'Temperatura medida' : 'Estado actual'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <input 
+                            type="text"
+                            value={fac.value}
+                            onChange={(e) => {
+                              const updated = [...configFacilities];
+                              updated[idx] = { ...updated[idx], value: e.target.value };
+                              setConfigFacilities(updated);
+                            }}
+                            placeholder={fac.unit ? '30' : 'Ok'}
+                            className="w-16 bg-white dark:bg-black/70 border-2 border-cyan-500/50 focus:border-cyan-400 rounded-xl py-1.5 px-2 text-center text-sm font-black text-gray-900 dark:text-white focus:outline-none"
+                          />
+                          {fac.unit ? (
+                            <span className="text-xs font-black text-cyan-500 dark:text-cyan-400">{fac.unit}</span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-white/10">
                 <button

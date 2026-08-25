@@ -261,7 +261,7 @@ export const MainPortal: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  Consulta cuán lleno está el club (Piscina y Gimnasio) antes de asistir.
+                  Consulta cuán lleno está el club (Piscina, Saunas y Gimnasio) y temperaturas en tiempo real antes de asistir.
                 </p>
               </div>
             </Link>

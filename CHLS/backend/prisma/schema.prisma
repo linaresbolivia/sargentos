@@ -671,6 +671,7 @@ model AreaConfig {
   area         String   @unique // "PISCINA" | "GIMNASIO"
   totalLockers Int      @default(50)
   maxCapacity  Int      @default(50)
+  facilities   Json?    // Telemetry items: name, value, unit, status, type
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

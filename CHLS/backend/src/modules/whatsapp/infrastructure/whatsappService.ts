@@ -701,15 +701,17 @@ export class WhatsappClientInstance {
 
         // Reemplazo de variables del socio
         messageText = messageText.replace(/{nombre}/g, contact.nombre);
-        messageText = messageText.replace(/{codigo}/g, contact.codigo || '');
-        if (link) {
-          messageText += `\n\n${link}`;
-        }
+        const codigoClean = contact.codigo && String(contact.codigo).trim() !== '' ? String(contact.codigo).trim() : '';
+        messageText = messageText.replace(/{codigo}/g, codigoClean);
 
-        // Anti-Ban 3: Caracteres invisibles aleatorios (Zero-Width) para que cada hash SHA de mensaje sea único
+        // Anti-Ban 3: Caracteres invisibles aleatorios (Zero-Width) en el texto (NUNCA al final del enlace para no corromper la URL)
         const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
-        const randomInvisible = invisibleChars[Math.floor(Math.random() * invisibleChars.length)].repeat(Math.floor(Math.random() * 3) + 1);
-        messageText += randomInvisible;
+        const randomInvisible = invisibleChars[Math.floor(Math.random() * invisibleChars.length)];
+        messageText = `${randomInvisible}${messageText}`;
+
+        if (link && link.trim()) {
+          messageText += `\n\n${link.trim()}`;
+        }
 
         // Anti-Ban 4: Simulación de presencia y tiempo de digitación humana
         let chat: any = null;
@@ -761,8 +763,10 @@ export class WhatsappClientInstance {
       }
     }
 
-    if (imagePath && fs.existsSync(imagePath)) {
-      fs.unlinkSync(imagePath);
+    if (imagePath && fs.existsSync(imagePath) && imagePath.includes('tmp')) {
+      try {
+        fs.unlinkSync(imagePath);
+      } catch (e) {}
     }
 
     return { successCount, failCount };

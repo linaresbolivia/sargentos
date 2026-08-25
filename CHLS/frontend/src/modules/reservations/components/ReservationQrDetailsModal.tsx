@@ -109,21 +109,21 @@ export const ReservationQrDetailsModal: React.FC<ReservationQrDetailsModalProps>
 
   const waMessageText = isExempt
     ? `🐴 *CLUB HÍPICO LOS SARGENTOS*
-✅ *Turno Confirmado*
+✅ *Confirmación de Turno Deportivo*
 
-Hola *${reservation.memberName}*, tu reserva ha sido confirmada:
+Estimado(a) socio(a) *${reservation.memberName}*, su reserva ha sido confirmada exitosamente:
 
 📌 *Cancha:* ${courtName} (${sport})
 📅 *Fecha:* ${reservation.date}
 ⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}
 👥 *Modalidad:* ${modalityLabel}${companionsText}
-🎫 *Código:* *#${resCode}*
+🎫 *Código de Reserva:* *#${resCode}*
 
-Presenta tu carnet o código al ingresar. ¡Que disfrutes tu juego! 🥇✨`
+Por favor presente su carnet de socio o código al ingresar al club. ¡Esperamos que disfrute de su jornada deportiva! 🥇✨`
     : `🐴 *CLUB HÍPICO LOS SARGENTOS*
 🟡 *Pre-Reserva Registrada*
 
-Hola *${reservation.memberName}*, registramos tu pre-reserva:
+Estimado(a) socio(a) *${reservation.memberName}*, se ha registrado su pre-reserva:
 
 📌 *Cancha:* ${courtName} (${sport})
 📅 *Fecha:* ${reservation.date}
@@ -133,9 +133,11 @@ Hola *${reservation.memberName}*, registramos tu pre-reserva:
 🎫 *Código / Glosa:* *#${resCode}*
 
 *Instrucciones de Pago:*
-1. Escanea el QR oficial y realiza la transferencia.
-2. ⚠️ Coloca en la glosa: *#${resCode}*
-3. Adjunta tu comprobante en el sistema para consolidar tu turno.`;
+1. Escanee el código QR oficial y realice la transferencia bancaria.
+2. ⚠️ Coloque en la glosa de su transferencia el código: *#${resCode}*
+3. Adjunte su comprobante en el sistema para consolidar su turno.
+
+¡Quedamos a su grata disposición en el Club! 🏆✨`;
 
   const handleCopyCode = () => {
     navigator.clipboard.writeText(resCode);

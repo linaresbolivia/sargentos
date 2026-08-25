@@ -21,7 +21,9 @@ import {
   Thermometer, 
   ChevronRight,
   TrendingDown,
-  Info
+  Info,
+  Flame,
+  Droplets
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
@@ -30,6 +32,25 @@ import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+
+export interface FacilityTelemetry {
+  id: string;
+  name: string;
+  value: string;
+  unit: string;
+  status: string;
+  type: string;
+  order?: number;
+}
+
+export const DEFAULT_PISCINA_FACILITIES: FacilityTelemetry[] = [
+  { id: 'piscina_5_carriles', name: 'PISCINA 5 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 1 },
+  { id: 'piscina_3_carriles', name: 'PISCINA 3 CARRILES', value: '30', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 2 },
+  { id: 'jacuzzi', name: 'JACUZZI', value: '41', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 3 },
+  { id: 'sauna_v_hierbas', name: 'SAUNA V. HIERBAS', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 4 },
+  { id: 'sauna_seco', name: 'SAUNA SECO', value: 'Ok', unit: '', status: 'OPTIMO', type: 'STATUS', order: 5 },
+  { id: 'sauna_eucalipto', name: 'SAUNA EUCALIPTO', value: '36', unit: '°', status: 'OPTIMO', type: 'TEMP', order: 6 }
+];
 
 interface LiveOccupancyData {
   timestamp: string;
@@ -43,10 +64,14 @@ interface LiveOccupancyData {
     lockersInUse: number;
     lockersAvailable: number;
     waterTemp: number;
+    piscina5Temp?: string;
+    piscina3Temp?: string;
+    totalLanes?: number;
     lastTempRecordedAt?: string | null;
     lanesAvailable: number;
     status: 'OPTIMO' | 'MODERADO' | 'CONCURRIDO';
     recommendation: string;
+    facilities?: FacilityTelemetry[];
   };
   gimnasio: {
     inside: number;
@@ -220,10 +245,10 @@ export const LiveClubOccupancy: React.FC = () => {
                   </div>
                   <div>
                     <span className="text-[10px] font-black uppercase tracking-widest text-cyan-400">
-                      ÁREA ACUÁTICA
+                      ÁREA ACUÁTICA (5 Y 3 CARRILES)
                     </span>
                     <h3 className="text-xl font-extrabold text-gray-900 dark:text-white">
-                      Piscina Climatizada
+                      Piscinas Climatizadas
                     </h3>
                   </div>
                 </div>
@@ -257,33 +282,31 @@ export const LiveClubOccupancy: React.FC = () => {
                 </div>
               </div>
 
-              {/* Real-time details grid */}
+              {/* Real-time details grid: Centralized Piscina 5C, Piscina 3C and Casilleros */}
               <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-gray-200 dark:border-white/5 mb-5 text-center">
                 <div>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Agua</span>
-                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 flex items-center justify-center gap-0.5 mt-0.5">
-                    <Thermometer className="w-3.5 h-3.5" /> {data?.piscina.waterTemp || 28}°C
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Piscina 5C</span>
+                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 flex items-center justify-center gap-0.5 mt-0.5 font-mono">
+                    <Thermometer className="w-3.5 h-3.5" /> 
+                    {data?.piscina?.piscina5Temp || (data?.piscina?.facilities?.find(f => f.name.includes('5'))?.value) || '30'}°
                   </span>
-                  {data?.piscina.lastTempRecordedAt && (
-                    <span className="text-[9px] text-gray-400 block font-medium">
-                      Medido {format(new Date(data.piscina.lastTempRecordedAt), 'HH:mm')}
-                    </span>
-                  )}
+                  <span className="text-[9px] text-emerald-400/80 block font-semibold">5 Carriles</span>
                 </div>
                 <div className="border-x border-gray-200 dark:border-white/5">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Carriles</span>
-                  <span className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white mt-0.5 block">
-                    {data?.piscina.lanesAvailable || 4} libres
+                  <span className="text-[10px] text-gray-400 font-bold uppercase block">Piscina 3C</span>
+                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 flex items-center justify-center gap-0.5 mt-0.5 font-mono">
+                    <Thermometer className="w-3.5 h-3.5" /> 
+                    {data?.piscina?.piscina3Temp || (data?.piscina?.facilities?.find(f => f.name.includes('3'))?.value) || '30'}°
                   </span>
-                  <span className="text-[9px] text-gray-400 block font-medium">de 6 carriles</span>
+                  <span className="text-[9px] text-emerald-400/80 block font-semibold">3 Carriles</span>
                 </div>
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">Casilleros</span>
-                  <span className="text-xs sm:text-sm font-extrabold text-brand-gold mt-0.5 block">
-                    {data?.piscina.lockersAvailable !== undefined ? data.piscina.lockersAvailable : 32} libres
+                  <span className="text-xs sm:text-sm font-extrabold text-brand-gold mt-0.5 block font-mono">
+                    {data?.piscina.lockersAvailable !== undefined ? data.piscina.lockersAvailable : 57} libres
                   </span>
                   <span className="text-[9px] text-gray-400 block font-medium">
-                    de {data?.piscina.totalLockers || 50}
+                    de {data?.piscina.totalLockers || 57}
                   </span>
                 </div>
               </div>
@@ -381,6 +404,142 @@ export const LiveClubOccupancy: React.FC = () => {
               <span>{data?.gimnasio.recommendation}</span>
             </div>
 
+          </div>
+
+        </div>
+
+        {/* TABLERO DIGITAL DE ÁREA HÚMEDA & SAUNAS EN VIVO CON EFECTO AGUA */}
+        <div className="bg-gradient-to-br from-[#041912] via-[#082218] to-[#03130d] p-6 sm:p-7 rounded-3xl border-2 border-emerald-500/30 shadow-2xl shadow-emerald-500/10 space-y-5 relative overflow-hidden group">
+          
+          {/* PURE CODE DYNAMIC WATER BACKGROUND & CAUSTIC WAVE ANIMATION */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none rounded-3xl">
+            {/* Caustic water shimmer glow */}
+            <div className="absolute -inset-10 water-caustic-effect blur-2xl pointer-events-none opacity-40 group-hover:opacity-70 transition-opacity duration-700"></div>
+
+            {/* Subtle animated water ripple circles */}
+            <div className="absolute top-1/4 right-1/4 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl animate-pulse pointer-events-none"></div>
+            <div className="absolute bottom-1/4 left-1/3 w-80 h-80 rounded-full bg-emerald-500/10 blur-3xl animate-pulse pointer-events-none"></div>
+
+            {/* Animated SVG Wave Layer 1 */}
+            <svg 
+              className="absolute -bottom-2 left-0 w-[200%] h-36 text-cyan-500/10 dark:text-cyan-400/10 water-wave-anim-1 pointer-events-none" 
+              viewBox="0 0 1200 120" 
+              preserveAspectRatio="none"
+            >
+              <path 
+                d="M0,20 C150,80 350,-20 500,50 C650,120 900,15 1200,35 L1200,120 L0,120 Z" 
+                fill="currentColor"
+              ></path>
+            </svg>
+
+            {/* Animated SVG Wave Layer 2 */}
+            <svg 
+              className="absolute -bottom-1 left-0 w-[200%] h-28 text-emerald-500/15 dark:text-emerald-400/10 water-wave-anim-2 pointer-events-none" 
+              viewBox="0 0 1200 120" 
+              preserveAspectRatio="none"
+            >
+              <path 
+                d="M0,45 C200,110 450,10 650,65 C850,120 1050,35 1200,70 L1200,120 L0,120 Z" 
+                fill="currentColor"
+              ></path>
+            </svg>
+          </div>
+
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-emerald-500/20 pb-4 relative z-10">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/30 flex items-center justify-center text-cyan-400 shadow-lg shadow-cyan-500/15 backdrop-blur-md">
+                <Waves className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-500/20 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                    Tablero Digital En Vivo
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-semibold flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-cyan-400" /> Monitoreo y calderas
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight mt-0.5">
+                  Temperaturas de Piscinas & Saunas
+                </h3>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-300 bg-black/30 backdrop-blur-md px-3.5 py-1.5 rounded-xl border border-white/10">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+              <span className="text-emerald-400">Instalaciones Climatizadas Activas</span>
+            </div>
+          </div>
+
+          {/* Telemetry Cards Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 relative z-10">
+            {((data?.piscina?.facilities && data.piscina.facilities.length > 0) ? data.piscina.facilities : DEFAULT_PISCINA_FACILITIES).map((facility) => {
+              const isSauna = facility.name.toLowerCase().includes('sauna');
+              const isJacuzzi = facility.name.toLowerCase().includes('jacuzzi');
+              
+              // Theme color tokens matching CHLS luxury palette
+              const themeStyles = isJacuzzi
+                ? {
+                    cardBorder: 'border-blue-500/30 hover:border-blue-400/60',
+                    iconBg: 'bg-blue-500/15 text-blue-400 border-blue-500/30 shadow-[0_0_12px_rgba(59,130,246,0.15)]',
+                    titleColor: 'text-white group-hover/item:text-blue-300',
+                    subColor: 'text-blue-400/80',
+                    pillBg: 'bg-blue-500/15 border-blue-400/40 text-blue-300 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
+                  }
+                : isSauna
+                ? {
+                    cardBorder: 'border-amber-500/30 hover:border-amber-400/60',
+                    iconBg: 'bg-amber-500/15 text-brand-gold border-amber-500/30 shadow-[0_0_12px_rgba(245,158,11,0.15)]',
+                    titleColor: 'text-white group-hover/item:text-brand-gold',
+                    subColor: 'text-amber-400/80',
+                    pillBg: 'bg-amber-500/15 border-brand-gold/40 text-brand-gold shadow-[0_0_15px_rgba(245,158,11,0.2)]'
+                  }
+                : {
+                    cardBorder: 'border-cyan-500/30 hover:border-cyan-400/60',
+                    iconBg: 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_12px_rgba(6,182,212,0.15)]',
+                    titleColor: 'text-white group-hover/item:text-cyan-300',
+                    subColor: 'text-cyan-400/80',
+                    pillBg: 'bg-cyan-500/15 border-cyan-400/40 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
+                  };
+
+              return (
+                <div 
+                  key={facility.id}
+                  className={`bg-black/40 hover:bg-black/60 backdrop-blur-md rounded-2xl border-2 ${themeStyles.cardBorder} p-3.5 sm:p-4 flex items-center justify-between gap-3 transition-all duration-300 hover:-translate-y-0.5 shadow-lg group/item`}
+                >
+                  {/* Left: Icon & Facility Name */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${themeStyles.iconBg}`}>
+                      {isJacuzzi ? <Sparkles className="w-5 h-5" /> : isSauna ? <Flame className="w-5 h-5" /> : <Waves className="w-5 h-5" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className={`text-xs sm:text-sm font-black uppercase tracking-wider ${themeStyles.titleColor} transition-colors leading-tight`}>
+                        {facility.name}
+                      </h4>
+                      <span className={`text-[10px] font-semibold block mt-0.5 ${themeStyles.subColor}`}>
+                        {isSauna ? 'Área Spa & Relajación' : (isJacuzzi ? 'Hidromasaje Térmico' : 'Carriles Climatizados')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right: Glassmorphic Illuminated Badge */}
+                  <div className={`px-3.5 py-1.5 rounded-2xl border-2 ${themeStyles.pillBg} backdrop-blur-md flex items-center justify-center shrink-0 min-w-[70px]`}>
+                    <span className="text-xl sm:text-2xl font-black tracking-tight font-mono">
+                      {facility.value}{facility.unit || ''}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom Info Tip */}
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between text-xs text-emerald-300 relative z-10 backdrop-blur-sm">
+            <span className="flex items-center gap-1.5 font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+              Las temperaturas se mantienen dentro de los rangos óptimos regulados por el departamento de deportes y mantenimiento del Club.
+            </span>
           </div>
 
         </div>

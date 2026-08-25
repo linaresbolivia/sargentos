@@ -309,4 +309,44 @@
     opacity: 1;
     transform: scale(1.15);
   }
+
+  /* Pure Code Water Wave & Caustics Animations */
+  @keyframes waterWaveFlow {
+    0% {
+      transform: translateX(0) translateZ(0) scaleY(1);
+    }
+    50% {
+      transform: translateX(-25%) translateZ(0) scaleY(0.85);
+    }
+    100% {
+      transform: translateX(-50%) translateZ(0) scaleY(1);
+    }
+  }
+
+  @keyframes waterCausticGlow {
+    0%, 100% {
+      opacity: 0.25;
+      transform: scale(1) rotate(0deg);
+    }
+    50% {
+      opacity: 0.45;
+      transform: scale(1.08) rotate(3deg);
+    }
+  }
+
+  .water-wave-anim-1 {
+    animation: waterWaveFlow 14s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
+  }
+
+  .water-wave-anim-2 {
+    animation: waterWaveFlow 9s cubic-bezier(0.36, 0.45, 0.63, 0.53) -2s infinite reverse;
+  }
+
+  .water-caustic-effect {
+    background: radial-gradient(ellipse at 30% 20%, rgba(6, 182, 212, 0.35), transparent 60%),
+                radial-gradient(ellipse at 70% 80%, rgba(16, 185, 129, 0.3), transparent 65%),
+                radial-gradient(ellipse at 50% 50%, rgba(204, 161, 75, 0.15), transparent 70%);
+    animation: waterCausticGlow 8s ease-in-out infinite alternate;
+  }
 }
+

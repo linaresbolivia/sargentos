@@ -458,20 +458,20 @@ export const MemberDashboard: React.FC = () => {
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
                   🏊
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
-                  Tiempo Real
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  En Vivo
                 </span>
               </div>
               <div>
                 <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
-                  Piscina & Gimnasio en Vivo
+                  Piscina, Saunas & Gimnasio en Vivo
                 </h4>
                 <p className="text-xs text-gray-400 mt-1">
-                  Verifica el aforo en piscina semiolímpica, sauna seco/vapor y sala de musculación.
+                  Temperaturas de piscinas 5 y 3 carriles, jacuzzi, saunas y aforo en tiempo real.
                 </p>
               </div>
               <div className="pt-2 flex items-center text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                <span>Ver telemetría de aforo</span>
+                <span>Ver telemetría y temperaturas</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
             </div>

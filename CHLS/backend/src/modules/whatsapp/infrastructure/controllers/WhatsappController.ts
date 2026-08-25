@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { whatsappManager } from '../whatsappService';
 import fs from 'fs';
+import path from 'path';
 import { prisma } from '@shared/infrastructure/prisma';
 import { botSessionManager } from '../../domain/botSessionManager';
 
@@ -39,7 +40,7 @@ export class WhatsappController {
 
   public async sendBulk(req: Request, res: Response): Promise<any> {
     try {
-      const { text, link } = req.body;
+      const { text, link, removeImage } = req.body;
       let contacts = [];
       
       try {
@@ -59,7 +60,23 @@ export class WhatsappController {
         return;
       }
 
-      const imagePath = req.file ? req.file.path : undefined;
+      let imagePath = req.file ? req.file.path : undefined;
+
+      // Si no se envió archivo nuevo pero tampoco se indicó quitar imagen, buscar la imagen por defecto qr-pagos.jpg
+      if (!imagePath && removeImage !== 'true' && removeImage !== true) {
+        const possiblePaths = [
+          path.resolve(process.cwd(), '../frontend/src/assets/qr-pagos.jpg'),
+          path.resolve(process.cwd(), 'src/assets/qr-pagos.jpg'),
+          path.resolve(process.cwd(), 'frontend/src/assets/qr-pagos.jpg'),
+          'C:\\Users\\HP\\Documents\\CHLS\\frontend\\src\\assets\\qr-pagos.jpg'
+        ];
+        for (const p of possiblePaths) {
+          if (fs.existsSync(p)) {
+            imagePath = p;
+            break;
+          }
+        }
+      }
 
       const result = await this.getService(req).sendBulk(contacts, text, imagePath, link);
       
@@ -68,8 +85,10 @@ export class WhatsappController {
         data: result
       });
     } catch (error: any) {
-      if (req.file && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
+      if (req.file && fs.existsSync(req.file.path) && req.file.path.includes('tmp')) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {}
       }
       res.status(500).json({ success: false, message: error.message });
     }

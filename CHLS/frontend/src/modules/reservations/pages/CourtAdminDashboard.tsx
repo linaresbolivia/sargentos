@@ -579,10 +579,11 @@ export const CourtAdminDashboard: React.FC = () => {
                     <tr><td colSpan={7} className="py-12 text-center text-gray-400">No se encontraron reservas con los filtros aplicados.</td></tr>
                   ) : (
                     filteredForList.map((res: Reservation) => {
-                      const isVerified = res.paymentStatus === 'VERIFIED';
+                      const totalAmount = res.totalPrice ?? (res.courtFee ?? 0) + (res.guestFee ?? 0);
+                      const isExempt = res.paymentStatus === 'EXEMPT' || totalAmount === 0;
+                      const isVerified = res.paymentStatus === 'VERIFIED' || (isExempt && res.status === 'APPROVED');
                       const isPaid = res.paymentStatus === 'PAID';
-                      const isPending = !res.paymentStatus || res.paymentStatus === 'PENDING_PAYMENT';
-                      const isActionRequired = res.status === 'PENDING' || (!isVerified && res.reservationType === 'MEMBER');
+                      const isActionRequired = res.reservationType === 'MEMBER' && !isExempt && !isVerified && res.status !== 'REJECTED' && res.status !== 'CANCELLED';
                       const hasReceipt = !!res.paymentReceiptUrl;
 
                       return (
@@ -590,14 +591,16 @@ export const CourtAdminDashboard: React.FC = () => {
                           key={res.id} 
                           className={`transition-colors ${
                             isActionRequired 
-                              ? 'bg-amber-500/[0.05] hover:bg-amber-500/[0.09] border-l-4 border-amber-400' 
+                              ? 'bg-amber-500/[0.06] hover:bg-amber-500/[0.1] border-l-4 border-amber-400' 
+                              : isExempt 
+                              ? 'bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]'
                               : 'hover:bg-white/[0.02]'
                           }`}
                         >
                           {/* Columna 1: Fecha y Hora de Llegada / Solicitud */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 mb-1">
-                              <span className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_6px_#cca14b]"></span>
+                              <span className={`w-2 h-2 rounded-full ${isExempt ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-brand-gold shadow-[0_0_6px_#cca14b]'}`}></span>
                               <span className="font-bold text-white font-mono text-xs">
                                 {res.createdAt ? format(parseISO(res.createdAt), 'dd/MM/yyyy HH:mm:ss') : 'Fecha no reg.'}
                               </span>
@@ -627,6 +630,11 @@ export const CourtAdminDashboard: React.FC = () => {
                                   🔔 Por Confirmar
                                 </span>
                               )}
+                              {isExempt && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                                  ✓ Habilitado
+                                </span>
+                              )}
                             </div>
                             <div className="text-[11px] text-brand-gold font-mono">{res.startTime} - {res.endTime}</div>
                           </td>
@@ -637,9 +645,11 @@ export const CourtAdminDashboard: React.FC = () => {
                           </td>
                           
                           <td className="py-3 px-4">
-                            <div className="font-bold text-white uppercase">{res.title || res.memberName}</div>
+                            <div className="font-bold text-white uppercase">
+                              {res.reservationType === 'MEMBER' ? res.memberName : (res.title || 'Bloqueo Administrativo')}
+                            </div>
                             {res.memberCode && res.memberCode !== 'ADMIN_BLOCK' && (
-                              <div className="text-[10px] text-gray-400">Socio: {res.memberCode} {res.memberPhone ? `• ${res.memberPhone}` : ''}</div>
+                              <div className="text-[10px] text-gray-400">Socio: #{res.memberCode} {res.memberPhone ? `• ${res.memberPhone}` : ''}</div>
                             )}
                             {/* Modalidad Badge para Socios */}
                             {res.reservationType === 'MEMBER' && (
@@ -651,7 +661,7 @@ export const CourtAdminDashboard: React.FC = () => {
                                     ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                                     : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                                 }`}>
-                                  {res.playerType === 'GUESTS' ? `👥 Con ${res.guestsCount || 1} Invitado(s)` : res.playerType === 'MEMBERS' ? '🎾 Socios' : '👨‍👩‍👧‍👦 Familia'}
+                                  {res.playerType === 'GUESTS' ? `👥 Con ${res.guestsCount || 1} Invitado(s)` : res.playerType === 'MEMBERS' ? '🎾 Entre Socios' : '👨‍👩‍👧‍👦 Familiar'}
                                 </span>
                                 {res.playerNames && (
                                   <span className="text-[10px] text-gray-400 italic truncate max-w-xs" title={res.playerNames}>
@@ -686,33 +696,33 @@ export const CourtAdminDashboard: React.FC = () => {
                           {/* Monto & Pago Column */}
                           <td className="py-3 px-4">
                             <div className="font-bold text-white font-mono text-sm">
-                              Bs. {res.totalPrice ?? (res.courtFee ?? (res.court?.hourlyRate ?? 30))}
+                              {isExempt ? 'Bs. 0' : `Bs. ${totalAmount}`}
                             </div>
                             <div className="mt-1 flex items-center gap-1.5 flex-wrap">
-                              {isVerified ? (
+                              {isExempt ? (
+                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                                  <Check className="w-2.5 h-2.5 text-emerald-400" /> Cortesía de Socio
+                                </span>
+                              ) : isVerified ? (
                                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shadow-sm">
-                                  <Check className="w-2.5 h-2.5 text-emerald-400" /> Pago Validado (Consolidada)
+                                  <Check className="w-2.5 h-2.5 text-emerald-400" /> Pago Validado
                                 </span>
                               ) : isPaid ? (
                                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 flex items-center gap-1">
-                                  <Clock className="w-2.5 h-2.5 text-amber-400" /> En Proceso (Validando)
-                                </span>
-                              ) : res.paymentStatus === 'EXEMPT' ? (
-                                <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-gray-500/20 text-gray-400">
-                                  Exento
+                                  <Clock className="w-2.5 h-2.5 text-amber-400" /> Comprobante Recibido
                                 </span>
                               ) : (
                                 <span className="px-2.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30 flex items-center gap-1 animate-pulse">
-                                  <AlertCircle className="w-2.5 h-2.5 text-amber-400" /> En Proceso (Pendiente)
+                                  <AlertCircle className="w-2.5 h-2.5 text-amber-400" /> Pendiente de Pago
                                 </span>
                               )}
 
                               <button
                                 onClick={() => setSelectedForQrModal(res)}
                                 className="px-2 py-0.5 rounded bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/30 text-brand-gold text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                title="Ver QR de Pago, Mensaje y Datos de Pre-Reserva"
+                                title="Ver QR de Pago, Mensaje y Datos de Reserva"
                               >
-                                <QrCode className="w-3 h-3" /> Ver QR / Mensaje
+                                <QrCode className="w-3 h-3" /> Ver QR / Detalle
                               </button>
 
                               {hasReceipt && (
@@ -728,20 +738,20 @@ export const CourtAdminDashboard: React.FC = () => {
                           </td>
 
                           <td className="py-3 px-4">
-                            {isVerified || res.status === 'APPROVED' ? (
-                              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-[10px] font-bold">
-                                {isVerified ? 'Reserva Consolidada' : 'Aprobada'}
+                            {isExempt || isVerified || res.status === 'APPROVED' ? (
+                              <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit">
+                                <Check className="w-3 h-3 text-emerald-400" /> Aprobada
                               </span>
                             ) : res.status === 'PENDING' ? (
-                              <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 rounded-full text-[10px] font-bold">
-                                Reserva en Proceso
+                              <span className="px-2.5 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 rounded-full text-[10px] font-bold flex items-center gap-1 w-fit">
+                                <Clock className="w-3 h-3 text-yellow-400" /> En Proceso
                               </span>
                             ) : res.status === 'REJECTED' ? (
-                              <span className="px-2.5 py-1 bg-rose-500/20 text-rose-300 rounded-full text-[10px] font-bold">
+                              <span className="px-2.5 py-1 bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-full text-[10px] font-bold w-fit">
                                 Rechazada
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 bg-gray-500/20 text-gray-400 rounded-full text-[10px] font-bold">
+                              <span className="px-2.5 py-1 bg-gray-500/20 text-gray-400 border border-gray-500/30 rounded-full text-[10px] font-bold w-fit">
                                 Cancelada
                               </span>
                             )}
@@ -753,12 +763,13 @@ export const CourtAdminDashboard: React.FC = () => {
                               <button
                                 onClick={() => setSelectedForQrModal(res)}
                                 className="p-1.5 hover:bg-emerald-500/20 text-emerald-400 rounded-lg transition-colors border border-emerald-500/30"
-                                title="Ver Mensaje, QR de Pago y Datos de Pre-Reserva"
+                                title="Ver Detalle y Pase"
                               >
                                 <QrCode size={16} />
                               </button>
-                              {/* Quick Verify Payment Button */}
-                              {!isVerified && res.reservationType === 'MEMBER' && (
+
+                              {/* Quick Verify Payment Button: SOLO cuando NO es exento y falta verificar */}
+                              {!isVerified && !isExempt && res.reservationType === 'MEMBER' && (
                                 <button
                                   onClick={() => handleUpdatePaymentStatus(res.id, 'VERIFIED')}
                                   className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold flex items-center gap-1 transition-colors shadow-sm"

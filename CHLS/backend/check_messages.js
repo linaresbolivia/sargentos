@@ -4,16 +4,12 @@ const prisma = new PrismaClient();
 async function main() {
   const messages = await prisma.whatsAppMessage.findMany({
     orderBy: { timestamp: 'desc' },
-    take: 5,
+    take: 20,
     include: { chat: true }
   });
   
-  console.log(messages.map(m => ({
-    body: m.content,
-    time: m.timestamp,
-    phone: m.chat.phone,
-    fromMe: m.fromMe
-  })));
+  console.log(JSON.stringify(messages, null, 2));
 }
 
 main().finally(() => prisma.$disconnect());
+

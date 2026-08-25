@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import * as XLSX from 'xlsx';
-import { Upload, Send, Image as ImageIcon, Link, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Upload, Send, Image as ImageIcon, Link, FileText, CheckCircle2, AlertCircle, Eye, CheckCheck } from 'lucide-react';
 import { api } from '../../../config/api';
 import qrPagosUrl from '../../../assets/qr-pagos.jpg';
 
@@ -38,9 +38,11 @@ export default function MassiveWhatsAppForm() {
   const [text, setText] = useState(DEFAULT_TEXT);
   const [link, setLink] = useState(DEFAULT_LINK);
   const [image, setImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(qrPagosUrl);
   const [fileName, setFileName] = useState<string | null>(null);
   
   const loadDefaultImage = () => {
+    setImagePreview(qrPagosUrl);
     fetch(qrPagosUrl)
       .then(res => res.blob())
       .then(blob => {
@@ -102,9 +104,10 @@ export default function MassiveWhatsAppForm() {
       };
 
       const parsed: Contact[] = rawRows.map((row: any) => {
-        const codigo = findField(row, ['codigo', 'cod', 'socio', 'nro', 'num', 'id', 'numerosocio', 'nrosocio', 'codsocio', 'accion']);
-        const nombre = findField(row, ['nombre', 'name', 'socio', 'titular', 'cliente', 'completo', 'nombres', 'fullname', 'persona']) || 'Socio';
-        let telefono = findField(row, ['telefono', 'celular', 'phone', 'telf', 'tel', 'movil', 'cel', 'contacto', 'whatsapp', 'numero', 'telfs', 'telefonos']);
+        // Excluir 'socio' de candidates de codigo para evitar que asigne el nombre del socio como código
+        const codigo = findField(row, ['codsocio', 'nrosocio', 'nroaccion', 'numaccion', 'codigocuentasocio', 'accion', 'codigo', 'cod', 'nro', 'num', 'id']);
+        const nombre = findField(row, ['nombre', 'socio', 'nombres', 'titular', 'cliente', 'completo', 'nombrecompleto', 'fullname', 'name', 'persona']) || 'Socio';
+        let telefono = findField(row, ['telefono', 'celular', 'phone', 'telf', 'tel', 'movil', 'cel', 'contacto', 'whatsapp', 'numero', 'telfs', 'telefonos', 'celulares']);
 
         // Format clean phone number
         telefono = telefono.replace(/\s+/g, '').replace(/[-()]/g, '');
@@ -136,7 +139,13 @@ export default function MassiveWhatsAppForm() {
     const file = e.target.files?.[0];
     if (file) {
       setImage(file);
+      setImagePreview(URL.createObjectURL(file));
     }
+  };
+
+  const handleRemoveImage = () => {
+    setImage(null);
+    setImagePreview(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -158,10 +167,14 @@ export default function MassiveWhatsAppForm() {
       const formData = new FormData();
       formData.append('contacts', JSON.stringify(contacts));
       formData.append('text', text);
-      if (link) formData.append('link', link);
-      if (image) formData.append('image', image);
+      if (link && link.trim()) formData.append('link', link.trim());
+      if (image) {
+        formData.append('image', image);
+      } else {
+        formData.append('removeImage', 'true');
+      }
 
-      const res = await api.post('/whatsapp/send-bulk', formData, {
+      const res = await api.post('/whatsapp/chls-masivo/send-bulk', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -186,10 +199,16 @@ export default function MassiveWhatsAppForm() {
     }
   };
 
+  // Sample contact for live preview
+  const sampleContact = contacts.length > 0 ? contacts[0] : { nombre: 'Sistemas Corp.', codigo: '11', telefono: '76753767' };
+  const previewText = text
+    .replace(/{nombre}/g, sampleContact.nombre)
+    .replace(/{codigo}/g, sampleContact.codigo || sampleContact.nombre || '');
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Left Column: List Upload */}
-      <div className="bg-white dark:bg-[#07170e]/80 border border-gray-200 dark:border-glass-border rounded-2xl p-6 shadow-lg dark:shadow-glass flex flex-col backdrop-blur-md">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      {/* Left Column: List Upload (5 cols) */}
+      <div className="lg:col-span-5 bg-white dark:bg-[#07170e]/80 border border-gray-200 dark:border-glass-border rounded-2xl p-6 shadow-lg dark:shadow-glass flex flex-col backdrop-blur-md">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-bold text-brand-gold-dark dark:text-brand-gold flex items-center gap-2">
             <FileText className="w-5 h-5" />
@@ -229,7 +248,7 @@ export default function MassiveWhatsAppForm() {
           </div>
         )}
 
-        <div className="flex-1 bg-gray-50 dark:bg-black/30 border border-gray-200/80 dark:border-white/5 rounded-xl p-4 overflow-y-auto max-h-[300px]">
+        <div className="flex-1 bg-gray-50 dark:bg-black/30 border border-gray-200/80 dark:border-white/5 rounded-xl p-4 overflow-y-auto max-h-[360px]">
           <div className="flex justify-between items-center mb-3">
             <h4 className="font-semibold text-gray-700 dark:text-gray-300">Contactos cargados</h4>
             <span className="text-sm bg-brand-gold/20 text-brand-gold-dark dark:text-brand-gold px-2.5 py-1 rounded-md font-bold">
@@ -262,17 +281,17 @@ export default function MassiveWhatsAppForm() {
         </div>
       </div>
 
-      {/* Right Column: Message Crafting */}
-      <div className="bg-white dark:bg-[#07170e]/80 border border-gray-200 dark:border-glass-border rounded-2xl p-6 shadow-lg dark:shadow-glass backdrop-blur-md">
-        <h3 className="text-xl font-bold text-brand-gold-dark dark:text-brand-gold mb-6 flex items-center gap-2">
+      {/* Right Column: Message Crafting + Live WhatsApp Preview (7 cols) */}
+      <div className="lg:col-span-7 bg-white dark:bg-[#07170e]/80 border border-gray-200 dark:border-glass-border rounded-2xl p-6 shadow-lg dark:shadow-glass backdrop-blur-md space-y-6">
+        <h3 className="text-xl font-bold text-brand-gold-dark dark:text-brand-gold flex items-center gap-2">
           <Send className="w-5 h-5" />
           Redactar Mensaje
         </h3>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Imagen (Opcional)</label>
-            <div className="flex items-center gap-3">
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Imagen Adjunta (Código QR Oficial)</label>
+            <div className="flex flex-wrap items-center gap-3">
               <input
                 type="file"
                 accept="image/*"
@@ -288,51 +307,104 @@ export default function MassiveWhatsAppForm() {
                 <ImageIcon className="w-4 h-4" />
                 {image ? 'Cambiar Imagen' : 'Seleccionar Imagen'}
               </button>
-              {image && <span className="text-sm font-medium text-brand-gold-dark dark:text-brand-gold truncate max-w-[200px]">{image.name}</span>}
               {image && (
-                <button type="button" onClick={() => setImage(null)} className="text-red-500 hover:text-red-600 dark:text-red-400 text-sm font-medium hover:underline">
-                  Quitar
+                <span className="text-sm font-medium text-brand-gold-dark dark:text-brand-gold truncate max-w-[200px]">
+                  📷 {image.name}
+                </span>
+              )}
+              {image && (
+                <button type="button" onClick={handleRemoveImage} className="text-red-500 hover:text-red-600 dark:text-red-400 text-sm font-medium hover:underline">
+                  Quitar Imagen
+                </button>
+              )}
+              {!image && (
+                <button type="button" onClick={loadDefaultImage} className="text-blue-500 hover:text-blue-600 dark:text-blue-400 text-xs font-semibold hover:underline">
+                  Restaurar QR oficial
                 </button>
               )}
             </div>
+            {imagePreview && (
+              <div className="mt-3 flex items-center gap-3 p-2 bg-gray-50 dark:bg-black/40 rounded-xl border border-gray-200 dark:border-white/10 w-fit">
+                <img src={imagePreview} alt="Vista previa" className="w-14 h-14 object-cover rounded-lg border border-gray-300 dark:border-white/20 shadow-sm" />
+                <div className="text-xs">
+                  <p className="font-bold text-gray-800 dark:text-gray-200">Imagen lista para despacho</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-[11px]">Se enviará con el texto como descripción (caption).</p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Mensaje</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Texto del Mensaje</label>
             <textarea
-              className="w-full bg-gray-50 dark:bg-black/30 border border-gray-300 dark:border-glass-border rounded-xl p-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-black/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none transition-all resize-none"
-              rows={6}
+              className="w-full bg-gray-50 dark:bg-black/30 border border-gray-300 dark:border-glass-border rounded-xl p-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-black/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none transition-all resize-none font-sans"
+              rows={7}
               placeholder="Hola {nombre}, este es un mensaje importante..."
               value={text}
               onChange={(e) => setText(e.target.value)}
               required
             />
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">
-              Usa <code className="text-brand-gold-dark dark:text-brand-gold bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded font-mono font-medium">{`{nombre}`}</code> y <code className="text-brand-gold-dark dark:text-brand-gold bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded font-mono font-medium">{`{codigo}`}</code> para insertar datos del socio.
+              Usa <code className="text-brand-gold-dark dark:text-brand-gold bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded font-mono font-medium">{`{nombre}`}</code> y <code className="text-brand-gold-dark dark:text-brand-gold bg-gray-100 dark:bg-black/40 border border-gray-200 dark:border-white/10 px-1 py-0.5 rounded font-mono font-medium">{`{codigo}`}</code> para insertar datos personalizados del socio.
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Enlace (Opcional)</label>
+            <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Enlace Directo de Atención al Socio (WhatsApp)</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <Link className="w-4 h-4 text-gray-400 dark:text-gray-500" />
               </div>
               <input
                 type="url"
-                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-300 dark:border-glass-border rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-black/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none transition-all"
-                placeholder="https://ejemplo.com"
+                className="w-full bg-gray-50 dark:bg-black/30 border border-gray-300 dark:border-glass-border rounded-xl pl-10 pr-4 py-3 text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 focus:bg-white dark:focus:bg-black/50 focus:border-brand-gold focus:ring-1 focus:ring-brand-gold outline-none transition-all font-mono text-xs"
+                placeholder="https://api.whatsapp.com/send?phone=..."
                 value={link}
                 onChange={(e) => setLink(e.target.value)}
               />
             </div>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Este enlace se adjuntará automáticamente al final del mensaje.</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1.5">Este enlace se adjuntará de forma limpia y clickeable al final del mensaje.</p>
+          </div>
+
+          {/* Live WhatsApp Bubble Preview */}
+          <div className="p-4 rounded-2xl bg-emerald-950/20 border border-emerald-500/30 space-y-2">
+            <div className="flex items-center justify-between text-xs text-emerald-400 font-bold">
+              <span className="flex items-center gap-1.5">
+                <Eye className="w-4 h-4" />
+                Vista Previa del Mensaje (WhatsApp)
+              </span>
+              <span className="text-[11px] font-normal text-gray-400">
+                Ejemplo para: <strong className="text-emerald-300">{sampleContact.nombre} {sampleContact.codigo ? `[${sampleContact.codigo}]` : ''}</strong>
+              </span>
+            </div>
+
+            <div className="max-w-md mx-auto bg-[#0b291d] dark:bg-[#0b291d] border border-emerald-600/30 rounded-2xl p-3 text-gray-100 text-xs shadow-xl space-y-2.5">
+              {imagePreview && (
+                <div className="rounded-xl overflow-hidden border border-emerald-700/40 bg-black/40">
+                  <img src={imagePreview} alt="QR Pago" className="w-full max-h-48 object-contain bg-white/5" />
+                </div>
+              )}
+              <div className="whitespace-pre-wrap leading-relaxed text-[11.5px] text-gray-200">
+                {previewText}
+              </div>
+              {link && (
+                <div className="pt-1">
+                  <a href={link} target="_blank" rel="noreferrer" className="text-blue-400 hover:underline break-all font-mono text-[11px]">
+                    {link}
+                  </a>
+                </div>
+              )}
+              <div className="flex justify-end items-center gap-1 text-[10px] text-emerald-400/80 pt-1">
+                <span>12:00</span>
+                <CheckCheck className="w-3.5 h-3.5 text-blue-400" />
+              </div>
+            </div>
           </div>
 
           {error && (
             <div className="bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl flex items-center gap-2 text-sm">
               <AlertCircle className="w-5 h-5 flex-shrink-0" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
@@ -363,7 +435,7 @@ export default function MassiveWhatsAppForm() {
             ) : (
               <>
                 <Send className="w-5 h-5" />
-                Iniciar Envío Masivo
+                Iniciar Envío Masivo ({contacts.length} {contacts.length === 1 ? 'socio' : 'socios'})
               </>
             )}
           </button>
@@ -372,3 +444,4 @@ export default function MassiveWhatsAppForm() {
     </div>
   );
 }
+
