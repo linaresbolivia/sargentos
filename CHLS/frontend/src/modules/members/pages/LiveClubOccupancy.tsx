@@ -269,21 +269,19 @@ export const LiveClubOccupancy: React.FC = () => {
                 </div>
               </div>
 
-              {/* Real-time details grid: Centralized Piscina 5C, Piscina 3C and Casilleros */}
+              {/* Real-time details grid: Piscina 5C, Piscina 3C and Casilleros */}
               <div className="grid grid-cols-3 gap-2.5 p-3.5 rounded-2xl bg-black/5 dark:bg-white/[0.03] border border-gray-200 dark:border-white/5 mb-5 text-center">
                 <div>
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">Piscina 5C</span>
-                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 flex items-center justify-center gap-0.5 mt-0.5 font-mono">
-                    <Thermometer className="w-3.5 h-3.5" /> 
-                    {data?.piscina?.piscina5Temp || (data?.piscina?.facilities?.find(f => f.name.includes('5'))?.value) || '30'}°
+                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 block mt-0.5">
+                    {data?.piscina?.occupancyRate && data.piscina.occupancyRate > 75 ? 'Concurrido' : (data?.piscina?.occupancyRate && data.piscina.occupancyRate > 45 ? 'Moderado' : 'Libre')}
                   </span>
                   <span className="text-[9px] text-emerald-400/80 block font-semibold">5 Carriles</span>
                 </div>
                 <div className="border-x border-gray-200 dark:border-white/5">
                   <span className="text-[10px] text-gray-400 font-bold uppercase block">Piscina 3C</span>
-                  <span className="text-xs sm:text-sm font-extrabold text-cyan-400 flex items-center justify-center gap-0.5 mt-0.5 font-mono">
-                    <Thermometer className="w-3.5 h-3.5" /> 
-                    {data?.piscina?.piscina3Temp || (data?.piscina?.facilities?.find(f => f.name.includes('3'))?.value) || '30'}°
+                  <span className="text-xs sm:text-sm font-extrabold text-gray-900 dark:text-white block mt-0.5">
+                    {data?.piscina?.occupancyRate && data.piscina.occupancyRate > 75 ? 'Concurrido' : (data?.piscina?.occupancyRate && data.piscina.occupancyRate > 45 ? 'Moderado' : 'Óptimo')}
                   </span>
                   <span className="text-[9px] text-emerald-400/80 block font-semibold">3 Carriles</span>
                 </div>
