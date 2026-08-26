@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
-  ArrowLeft, 
   FileText, 
   Download, 
   Filter, 
@@ -27,6 +26,8 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import logoClub from '../../../assets/logo.png';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 interface AreaLog {
   id: string;
@@ -428,18 +429,16 @@ export const AreaReports: React.FC<AreaReportsProps> = ({ defaultArea = 'ALL' })
         
         {/* TOP HEADER */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center border-b border-gray-200 dark:border-brand-gold/20 pb-6 gap-4">
-          <div className="flex items-center gap-4">
-            <button 
+          <div className="flex items-center gap-3.5">
+            <BackButton 
               onClick={() => {
                 if (areaFilter === 'PISCINA') navigate('/access/piscina');
                 else if (areaFilter === 'GIMNASIO') navigate('/access/gimnasio');
                 else navigate('/access-selection');
               }}
-              className="p-2.5 bg-white dark:bg-[#0c1410] hover:bg-gray-100 dark:hover:bg-black/60 border border-gray-200 dark:border-brand-gold/30 rounded-2xl text-brand-gold shadow-md transition-all hover:scale-105 active:scale-95"
               title="Volver"
-            >
-              <ArrowLeft size={22} />
-            </button>
+            />
+            <CrestLogo size="sm" />
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight flex items-center gap-2.5">

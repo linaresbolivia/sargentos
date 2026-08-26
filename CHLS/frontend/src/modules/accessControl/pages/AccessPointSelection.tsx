@@ -6,7 +6,6 @@ import {
   ShieldCheck, 
   Waves, 
   Dumbbell, 
-  ArrowLeft, 
   Clock, 
   Users, 
   Key, 
@@ -19,6 +18,7 @@ import {
   BarChart3
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { api } from '@config/api';
 
@@ -80,6 +80,7 @@ export const AccessPointSelection: React.FC = () => {
       {/* Top Header */}
       <header className="relative z-10 w-full p-6 lg:px-12 flex justify-between items-center border-b border-gray-200 dark:border-white/10 bg-white/70 dark:bg-black/30 backdrop-blur-md">
         <div className="flex items-center gap-4">
+          <BackButton to="/" title="Volver al Portal Principal" />
           <CrestLogo size="sm" />
           <div>
             <span className="text-[10px] font-bold tracking-widest uppercase text-brand-gold">Club Hípico Los Sargentos</span>
@@ -89,7 +90,7 @@ export const AccessPointSelection: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 sm:gap-6">
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs text-gray-600 dark:text-gray-300 font-medium">
             <Clock className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
             <span>{currentTime.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}</span>
@@ -114,14 +115,6 @@ export const AccessPointSelection: React.FC = () => {
           >
             <FileText className="w-4 h-4" />
             Reportes
-          </button>
-
-          <button 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black text-gray-700 dark:text-gray-200 transition-all text-xs font-bold tracking-wider uppercase"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Volver al Portal
           </button>
         </div>
       </header>

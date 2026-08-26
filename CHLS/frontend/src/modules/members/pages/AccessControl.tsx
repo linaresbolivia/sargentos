@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import { fetchAccessLogs, checkMemberAccess, MemberProfile } from '@store/membersSlice';
-import { Search, ShieldCheck, ShieldAlert, Activity, User, LogOut, ArrowLeft } from 'lucide-react';
+import { Search, ShieldCheck, ShieldAlert, Activity, User, LogOut } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '@store/authSlice';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 export const AccessControl: React.FC = () => {
   const navigate = useNavigate();
@@ -60,14 +62,9 @@ export const AccessControl: React.FC = () => {
       {/* Sidebar / Left Column (Scanning) */}
       <div className="w-full md:w-1/3 border-r border-[#cca14b]/10 bg-[#06110b] flex flex-col">
         <header className="p-6 border-b border-[#cca14b]/10 flex justify-between items-center bg-[#050e09]/50">
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => navigate('/')}
-              className="p-1.5 bg-[#050e09] hover:bg-[#cca14b]/20 border border-[#cca14b]/30 rounded-lg text-[#cca14b] shadow-sm transition-all"
-              title="Volver al Menú Principal"
-            >
-              <ArrowLeft size={20} />
-            </button>
+          <div className="flex items-center gap-3.5">
+            <BackButton to="/" title="Volver al Menú Principal" />
+            <CrestLogo size="sm" />
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-[#cca14b] to-[#fde08b] bg-clip-text text-transparent serif-brand">
                 CHLS Portería

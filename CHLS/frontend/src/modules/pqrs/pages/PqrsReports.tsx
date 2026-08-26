@@ -2,12 +2,14 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
-import { ArrowLeft, FileText, Download, Filter } from 'lucide-react';
+import { FileText, Download, Filter } from 'lucide-react';
 import { format, isAfter, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoClub from '../../../assets/logo.png';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 interface PqrsTicket {
   id: string;
@@ -257,15 +259,10 @@ export const PqrsReports: React.FC = () => {
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-200 dark:border-brand-green/20 pb-6 gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/admin/pqrs')}
-              className="p-2 bg-white dark:bg-black/40 hover:bg-gray-100 dark:hover:bg-black/60 border border-gray-200 dark:border-brand-green/30 rounded-xl text-brand-gold shadow-sm transition-all"
-            >
-              <ArrowLeft size={24} />
-            </button>
+            <BackButton to="/admin/pqrs" title="Volver a Gestión PQRS" />
+            <CrestLogo size="sm" />
             <div>
-              <h1 className="text-3xl font-bold text-brand-gold flex items-center gap-3">
-                <FileText size={32} />
+              <h1 className="text-3xl font-bold text-brand-gold serif-brand">
                 Generador de Reportes PQRS
               </h1>
               <p className="theme-text-muted text-sm mt-1">Exporta datos filtrados en formato PDF.</p>

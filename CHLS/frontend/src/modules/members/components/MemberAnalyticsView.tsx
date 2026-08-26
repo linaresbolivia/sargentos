@@ -5,12 +5,13 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, Legend 
 } from 'recharts';
 import { 
-  ArrowLeft, Activity, CheckCircle2, Clock, Users, ShieldCheck, 
+  Activity, CheckCircle2, Clock, Users, ShieldCheck, 
   DollarSign, Award, AlertTriangle, Copy, Filter, RefreshCw, Calendar, FileText, Download 
 } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import toast from 'react-hot-toast';
 import { memberAdminApi } from '../services/memberAdminApi';
+import { BackButton } from '@shared/components/BackButton';
 
 const COLORS = {
   emerald: '#10b981',
@@ -152,13 +153,10 @@ export const MemberAnalyticsView: React.FC<{ onBack?: () => void }> = ({ onBack 
       <div className="glass-panel p-6 border-l-4 border-emerald-500 bg-white/90 dark:bg-[#0d1311]/90 border border-gray-200 dark:border-white/10 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 rounded-3xl">
         <div className="flex items-center gap-3">
           {onBack && (
-            <button 
+            <BackButton 
               onClick={onBack}
-              className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
               title="Volver"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+            />
           )}
           <div>
             <div className="flex items-center gap-2">

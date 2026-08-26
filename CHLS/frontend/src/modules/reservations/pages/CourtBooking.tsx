@@ -25,9 +25,7 @@ import {
   Wrench,
   Trophy,
   ArrowRight,
-  ArrowLeft,
   LogOut,
-  Home,
   Users,
   UserPlus,
   QrCode,
@@ -49,6 +47,7 @@ import {
 import { format, addDays, startOfToday, parseISO, isSameDay, isBefore, isSaturday, isSunday } from 'date-fns';
 import { es } from 'date-fns/locale';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { compressImage } from '@shared/utils/imageCompressor';
 
 interface Court {
@@ -1021,8 +1020,12 @@ export const CourtBooking: React.FC = () => {
       {/* HEADER SUPERIOR MINIMALISTA */}
       {/* ========================================================================= */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#0d1c13] via-[#08120b] to-[#0d1c13] p-4 sm:p-5 rounded-3xl border border-brand-gold/30 shadow-2xl">
-        <div className="flex items-center gap-3">
-          <CrestLogo size="md" />
+        <div className="flex items-center gap-3.5">
+          <BackButton 
+            to={user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r)) ? '/' : '/member'} 
+            title="Volver al Menú Principal" 
+          />
+          <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
@@ -1039,16 +1042,6 @@ export const CourtBooking: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap sm:flex-nowrap">
-          {/* Botón Volver al Menú */}
-          <Link
-            to={user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r)) ? '/' : '/member'}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-black/50 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 text-xs font-bold transition-all shadow-sm"
-            title="Volver al Menú Principal"
-          >
-            <ArrowLeft className="w-4 h-4 text-brand-gold" />
-            <span>Volver</span>
-          </Link>
-
           {/* Botón Mis Reservas */}
           <button
             onClick={() => setShowMyReservationsSheet(!showMyReservationsSheet)}

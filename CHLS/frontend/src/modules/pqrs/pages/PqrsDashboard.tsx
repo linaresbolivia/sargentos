@@ -12,6 +12,8 @@ import confetti from 'canvas-confetti';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import WhatsAppConnectorModal from '../components/WhatsAppConnectorModal';
 import logoClub from '../../../assets/logo.png';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 interface PqrsTicket {
   id: string;
@@ -814,19 +816,13 @@ export const PqrsDashboard: React.FC = () => {
         
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-glass-border pb-6 gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/')}
-              className="p-2 bg-white dark:bg-black/40 hover:bg-gray-100 dark:hover:bg-black/60 border border-gray-200 dark:border-brand-green/30 rounded-xl text-brand-gold shadow-sm transition-all"
-              title="Volver al Menú Principal"
-            >
-              <ArrowLeft size={24} />
-            </button>
+            <BackButton to="/" title="Volver al Menú Principal" />
+            <CrestLogo size="sm" />
             <div>
-              <h1 className="text-3xl font-bold text-brand-gold flex items-center gap-3">
-                <img src={logoClub} alt="Club Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
+              <h1 className="text-3xl font-bold text-brand-gold serif-brand">
                 Gestión PQRS
               </h1>
-              <p className="theme-text-muted text-sm mt-2">Peticiones, Quejas, Reclamos y Sugerencias de socios.</p>
+              <p className="theme-text-muted text-sm mt-1">Peticiones, Quejas, Reclamos y Sugerencias de socios.</p>
             </div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-3">

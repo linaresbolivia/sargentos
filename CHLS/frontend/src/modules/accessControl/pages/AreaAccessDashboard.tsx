@@ -3,8 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Waves, 
   Dumbbell, 
-  ArrowLeft, 
-  Home,
   Clock, 
   Users, 
   Key, 
@@ -41,6 +39,7 @@ import {
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { format, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -690,7 +689,8 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
       {/* Top Header */}
       <header className="relative z-10 w-full p-4 lg:px-8 flex justify-between items-center border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-black/40 backdrop-blur-md">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3.5">
+          <BackButton to="/access-selection" title="Volver a Selección de Puntos" />
           <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
@@ -750,24 +750,6 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
           >
             <FileSpreadsheet className="w-4 h-4" />
             Reportes
-          </button>
-
-          <button 
-            onClick={() => navigate('/')}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black text-gray-700 dark:text-gray-200 transition-all text-xs font-bold tracking-wider uppercase"
-            title="Volver al Menú Principal"
-          >
-            <Home className="w-4 h-4" />
-            <span className="hidden sm:inline">Portal</span>
-          </button>
-
-          <button 
-            onClick={() => navigate('/access-selection')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gray-200 dark:bg-white/10 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black text-gray-700 dark:text-gray-200 transition-all text-xs font-bold tracking-wider uppercase"
-            title="Volver al Selector de Puntos de Acceso"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Puntos
           </button>
         </div>
       </header>

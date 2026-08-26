@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
-  ArrowLeft,
   CalendarDays, 
   CheckCircle, 
   XCircle, 
@@ -31,6 +30,7 @@ import { ReservationQrDetailsModal } from '../components/ReservationQrDetailsMod
 import { compressImage } from '@shared/utils/imageCompressor';
 import WhatsAppConnectorModal from '@modules/pqrs/components/WhatsAppConnectorModal';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { 
   CreditCard, 
   Eye, 
@@ -265,14 +265,8 @@ export const CourtAdminDashboard: React.FC = () => {
       {/* Top Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-brand-green/30 via-brand-green/10 to-transparent p-6 rounded-3xl border border-brand-gold/20 shadow-xl">
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/')}
-            className="p-2.5 rounded-2xl bg-white/5 hover:bg-brand-gold hover:text-black border border-brand-gold/30 text-brand-gold transition-all shadow-sm"
-            title="Volver al Menú Principal"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-          <CrestLogo size="md" />
+          <BackButton to="/" title="Volver al Menú Principal" />
+          <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white serif-brand tracking-tight">

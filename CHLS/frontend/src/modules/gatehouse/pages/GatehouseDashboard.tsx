@@ -11,7 +11,6 @@ import {
   AlertCircle, 
   Clock, 
   UserPlus, 
-  ArrowLeft,
   ShieldAlert,
   AlertTriangle,
   Check,
@@ -26,6 +25,7 @@ import { useDispatch } from 'react-redux';
 import { logout } from '@store/authSlice';
 import { AppDispatch } from '@store/store';
 import { CrestLogo } from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { MemberHistoryModal } from '../components/MemberHistoryModal';
 import { RegisterGuestModal } from '../components/RegisterGuestModal';
@@ -205,14 +205,13 @@ export const GatehouseDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-50 dark:bg-[#050806] text-gray-900 dark:text-white flex flex-col font-sans transition-colors duration-200">
       {/* Header */}
       <header className="h-16 border-b border-gray-200 dark:border-brand-gold/20 flex items-center justify-between px-6 bg-white dark:bg-[#0a100d] shrink-0 transition-colors duration-200">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/')}
-            className="p-2 bg-white dark:bg-[#131c26]/80 hover:bg-gray-100 dark:hover:bg-[#1a2533] border border-gray-200 dark:border-brand-gold/30 rounded-xl text-brand-gold shadow-sm transition-all"
-            title="Volver al Menú Principal"
-          >
-            <ArrowLeft size={20} />
-          </button>
+        <div className="flex items-center gap-3.5">
+          <BackButton to="/" title="Volver al Menú Principal" />
+          <CrestLogo size="sm" />
+          <div>
+            <span className="text-[10px] font-black uppercase text-brand-gold tracking-widest leading-none block">Club Hípico Los Sargentos</span>
+            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white serif-brand leading-tight">Control de Garita Principal</h1>
+          </div>
         </div>
         <div className="flex items-center gap-4">
           <ThemeToggle />

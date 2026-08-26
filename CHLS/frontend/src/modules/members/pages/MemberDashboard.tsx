@@ -4,6 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import { fetchCurrentProfile } from '@store/membersSlice';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { 
   Users, 
   CalendarCheck, 
@@ -143,13 +144,14 @@ export const MemberDashboard: React.FC = () => {
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
             <div className="flex items-center gap-4">
-              <CrestLogo size="md" />
+              <BackButton to="/" title="Volver al Portal Principal" />
+              <CrestLogo size="sm" />
               <div>
                 <div className="flex items-center gap-2">
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
                     Socio Distinguido
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse flex items-center gap-1">
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> EN LÍNEA
                   </span>
                 </div>
@@ -164,15 +166,6 @@ export const MemberDashboard: React.FC = () => {
 
             {/* Quick Actions Header Pills */}
             <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap sm:flex-nowrap">
-              <Link
-                to="/"
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white transition-all text-xs font-semibold"
-                title="Menú General"
-              >
-                <Home className="w-3.5 h-3.5 text-brand-gold" />
-                <span>Menú Principal</span>
-              </Link>
-
               <button
                 onClick={() => navigate('/member/reservations')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black text-xs font-extrabold shadow-md shadow-brand-gold/20 hover:scale-105 transition-all"

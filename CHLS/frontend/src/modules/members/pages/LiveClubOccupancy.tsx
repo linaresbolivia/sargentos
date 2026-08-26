@@ -5,7 +5,6 @@ import { RootState } from '@store/store';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { 
-  ArrowLeft, 
   Waves, 
   Dumbbell, 
   Clock, 
@@ -29,6 +28,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
 } from 'recharts';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -167,20 +167,7 @@ export const LiveClubOccupancy: React.FC = () => {
       {/* Top Header */}
       <header className="relative z-10 w-full p-4 lg:px-8 flex justify-between items-center border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-black/40 backdrop-blur-md sticky top-0">
         <div className="flex items-center gap-3.5">
-          <button 
-            onClick={() => {
-              if (window.history.length > 1) {
-                navigate(-1);
-              } else {
-                navigate(user?.roles?.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r)) ? '/' : '/member');
-              }
-            }}
-            className="flex items-center gap-1.5 px-3 py-2 bg-black/5 dark:bg-white/5 hover:bg-brand-gold hover:text-black dark:hover:bg-brand-gold dark:hover:text-black rounded-xl text-gray-700 dark:text-gray-300 transition-all text-xs font-bold"
-            title="Volver"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Volver</span>
-          </button>
+          <BackButton />
           <CrestLogo size="sm" />
           <div>
             <span className="text-[10px] font-extrabold tracking-widest uppercase text-brand-gold">

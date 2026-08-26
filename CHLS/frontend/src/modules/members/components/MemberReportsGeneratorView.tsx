@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-  ArrowLeft, FileText, Download, Filter, Search, Calendar, 
+  FileText, Download, Filter, Search, Calendar, 
   CheckCircle2, AlertTriangle, ShieldCheck, DollarSign, RefreshCw, X 
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import toast from 'react-hot-toast';
 import { memberAdminApi } from '../services/memberAdminApi';
+import { BackButton } from '@shared/components/BackButton';
 
 export const MemberReportsGeneratorView: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [members, setMembers] = useState<any[]>([]);
@@ -248,14 +249,10 @@ export const MemberReportsGeneratorView: React.FC<{ onBack?: () => void }> = ({ 
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3">
           {onBack && (
-            <button 
-              type="button"
+            <BackButton 
               onClick={onBack}
-              className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors cursor-pointer"
               title="Volver"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
+            />
           )}
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-amber-500/15 text-amber-800 dark:text-brand-gold border border-amber-300 dark:border-brand-gold/30">

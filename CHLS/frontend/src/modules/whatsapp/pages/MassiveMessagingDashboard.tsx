@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw, MessageSquare, LogOut, ArrowLeft, Send, QrCode, Radio, CheckCircle2 } from 'lucide-react';
+import { RefreshCw, MessageSquare, LogOut, Send, QrCode, Radio, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { api } from '../../../config/api';
 import MassiveWhatsAppForm from '../components/MassiveWhatsAppForm';
-import logoClub from '../../../assets/logo.png';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 interface WhatsAppStatus {
   status: 'DISCONNECTED' | 'QR_READY' | 'CONNECTED' | 'INITIALIZING';
@@ -101,13 +102,8 @@ export default function MassiveMessagingDashboard() {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-gray-200 dark:border-glass-border pb-5 gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/')}
-              className="p-2.5 bg-white dark:bg-black/40 hover:bg-gray-100 dark:hover:bg-black/60 border border-gray-200 dark:border-brand-gold/30 rounded-xl text-brand-gold-dark dark:text-brand-gold shadow-sm transition-all"
-              title="Volver al Menú Principal"
-            >
-              <ArrowLeft size={22} />
-            </button>
+            <BackButton to="/" title="Volver al Menú Principal" />
+            <CrestLogo size="sm" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
@@ -117,8 +113,7 @@ export default function MassiveMessagingDashboard() {
                   chls-masivo
                 </span>
               </div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3 mt-1 serif-brand">
-                <img src={logoClub} alt="Club Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(59,130,246,0.3)]" />
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1 serif-brand">
                 Envíos Masivos & Comunicados
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-xs sm:text-sm">

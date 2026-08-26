@@ -6,11 +6,12 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, BarChart, Bar, Legend
 } from 'recharts';
-import { ArrowLeft, Activity, CheckCircle2, Clock, Inbox, AlertTriangle, Users, MapPin, Copy } from 'lucide-react';
+import { Activity, CheckCircle2, Clock, Inbox, AlertTriangle, Users, MapPin, Copy } from 'lucide-react';
 import html2canvas from 'html2canvas';
 import { format, subDays, parseISO, isAfter } from 'date-fns';
 import { es } from 'date-fns/locale';
-import logoClub from '../../../assets/logo.png';
+import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 
 interface PqrsTicket {
   id: string;
@@ -218,15 +219,10 @@ export const PqrsAnalytics: React.FC = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-brand-green/20 pb-6 gap-4">
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate('/admin/pqrs')}
-              className="p-2 bg-white dark:bg-black/40 hover:bg-gray-100 dark:hover:bg-black/60 border border-gray-200 dark:border-brand-green/30 rounded-xl text-brand-gold shadow-sm transition-all"
-            >
-              <ArrowLeft size={24} />
-            </button>
+            <BackButton to="/admin/pqrs" title="Volver a Gestión PQRS" />
+            <CrestLogo size="sm" />
             <div>
-              <h1 className="text-3xl font-bold text-brand-gold flex items-center gap-3 drop-shadow-sm">
-                <img src={logoClub} alt="Club Logo" className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]" />
+              <h1 className="text-3xl font-bold text-brand-gold drop-shadow-sm serif-brand">
                 Reporte Gerencial PQRS
               </h1>
               <p className="text-gray-500 dark:text-gray-400 text-sm mt-1 tracking-wide uppercase font-medium">Panel de Analíticas y KPIs</p>

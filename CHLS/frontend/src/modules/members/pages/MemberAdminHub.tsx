@@ -12,12 +12,12 @@ import {
   ShieldCheck, 
   UserPlus, 
   Activity, 
-  ArrowLeft,
   ChevronRight,
   Download,
   Filter
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
+import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { MemberDirectoryView } from '../components/MemberDirectoryView';
 import { MemberRegistrationModal } from '../components/MemberRegistrationModal';
@@ -79,13 +79,7 @@ export const MemberAdminHub: React.FC = () => {
       {/* Top Header with PQRS-style Indicadores and Export Buttons */}
       <header className="relative z-10 w-full p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-gray-200 dark:border-brand-gold/10 backdrop-blur-md sticky top-0 bg-white/90 dark:bg-[#0a100d]/90 shadow-sm transition-colors">
         <div className="flex items-center gap-4">
-          <button 
-            onClick={() => navigate('/')}
-            className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
-            title="Volver al Portal Principal"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
+          <BackButton to="/" title="Volver al Portal Principal" />
           <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
