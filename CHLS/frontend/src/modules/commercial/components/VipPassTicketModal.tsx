@@ -56,7 +56,7 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
   const handleDownloadImage = async () => {
     if (!ticketCardRef.current) return;
     try {
-      toast.loading('Generando tarjeta de invitación VIP en alta resolución...', { id: 'ticket-dl' });
+      toast.loading('Generando tarjeta de invitación en alta resolución...', { id: 'ticket-dl' });
       const canvas = await html2canvas(ticketCardRef.current, {
         scale: 3,
         backgroundColor: '#0a100d',
@@ -64,11 +64,11 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
       });
 
       const link = document.createElement('a');
-      link.download = `Pase_VIP_${pass.code}_${pass.guestFullName.replace(/\s+/g, '_')}.png`;
+      link.download = `Pase_Cortesia_${pass.code}_${pass.guestFullName.replace(/\s+/g, '_')}.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
 
-      toast.success('¡Tarjeta VIP descargada con éxito!', { id: 'ticket-dl' });
+      toast.success('¡Tarjeta de invitación descargada con éxito!', { id: 'ticket-dl' });
     } catch (err) {
       console.error(err);
       toast.error('Error al generar imagen de la tarjeta', { id: 'ticket-dl' });
@@ -79,7 +79,7 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
   const handleDownloadPdf = async () => {
     if (!ticketCardRef.current) return;
     try {
-      toast.loading('Generando credencial VIP en formato PDF...', { id: 'ticket-pdf' });
+      toast.loading('Generando credencial en formato PDF...', { id: 'ticket-pdf' });
       const canvas = await html2canvas(ticketCardRef.current, {
         scale: 2.5,
         backgroundColor: '#0a100d',
@@ -98,7 +98,7 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
       pdf.setFillColor(10, 16, 13);
       pdf.rect(0, 0, 148, 210, 'F');
       pdf.addImage(imgData, 'PNG', 5, 10, imgWidth, imgHeight);
-      pdf.save(`Credencial_VIP_${pass.code}.pdf`);
+      pdf.save(`Credencial_Cortesia_${pass.code}.pdf`);
 
       toast.success('¡Credencial PDF descargada correctamente!', { id: 'ticket-pdf' });
     } catch (err) {
@@ -107,11 +107,11 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
     }
   };
 
-  // Direct WhatsApp dispatch via CHLS WhatsApp Comercial Server (with captured VIP Card PNG)
+  // Direct WhatsApp dispatch via CHLS WhatsApp Comercial Server (with captured Card PNG)
   const handleSendDirectWhatsApp = async () => {
     if (!pass) return;
     if (!pass.phone) {
-      toast.error('Este pase VIP no tiene un número de celular registrado');
+      toast.error('Este pase no tiene un número de celular registrado');
       handleShareWhatsApp();
       return;
     }
@@ -132,7 +132,7 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
 
       const res = await commercialApi.sendPassWhatsApp(pass.id, base64Image);
       if (res.success) {
-        toast.success(`¡Pase VIP enviado exitosamente por WhatsApp Comercial a ${pass.guestFullName}!`, { id: 'send-wa' });
+        toast.success(`¡Pase de cortesía enviado exitosamente por WhatsApp Comercial a ${pass.guestFullName}!`, { id: 'send-wa' });
       } else {
         toast.error(res.message || 'Línea no vinculada. Abriendo WhatsApp Web...', { id: 'send-wa' });
         handleShareWhatsApp();
@@ -156,18 +156,18 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
     const docText = pass.documentId ? pass.documentId : 'ci';
     const dateText = fromDate === untilDate ? fromDate : `Del ${fromDate} al ${untilDate}`;
     const message = `🏛️ *CLUB HÍPICO LOS SARGENTOS*
-🌟 *Pase de Cortesía VIP*
+🌟 *Pase de Cortesía*
 
 Señor (a): *${pass.guestFullName}*, es un honor invitarl@ a conocer y disfrutar de nuestras instalaciones.
 
-🎟️ *Código de Pase VIP:* ${pass.code}
+🎟️ *Código de Pase:* ${pass.code}
 📅 *Fecha Autorizada:* ${dateText}
 ⏰ *Horario Autorizado:* ${pass.timeStart} a ${pass.timeEnd} hrs
 📍 *Áreas Autorizadas:* ${areaLabels}
 👥 *Acompañantes Autorizados:* ${pass.maxUses}
 👤 *Ejecutivo:* ${pass.hostSellerName}
 
-Al llegar al *Ingreso Principal*, por favor presente su documento de identidad (*${docText}*) y el *Código de Pase VIP* para su ingreso preferencial.
+Al llegar al *Ingreso Principal*, por favor presente su documento de identidad (*${docText}*) y el *Código de Pase* para su ingreso preferencial.
 
 _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
 
@@ -195,7 +195,7 @@ _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
               <Sparkles className="w-4 h-4" />
             </span>
             <h3 className="text-base font-bold serif-brand text-brand-gold">
-              Tarjeta de Invitación & Pase VIP
+              Tarjeta de Invitación & Pase de Cortesía
             </h3>
           </div>
           <button 
@@ -233,7 +233,7 @@ _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
                   CLUB HÍPICO LOS SARGENTOS
                 </p>
                 <h2 className="text-base sm:text-lg font-extrabold serif-brand text-white tracking-tight">
-                  PASE DE CORTESÍA VIP
+                  PASE DE CORTESÍA
                 </h2>
                 <span className="text-[10px] text-gray-400">Admisión de Nuevos Socios</span>
               </div>
@@ -332,7 +332,7 @@ _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
           {/* Footer Warning */}
           <div className="mt-4 pt-2 border-t border-white/10 text-[9px] text-gray-400 flex justify-between items-center">
             <span>Pase personal e intransferible. Válido con CI.</span>
-            <span className="text-brand-gold font-mono font-bold">CHLS • EXPERIENCIA VIP</span>
+            <span className="text-brand-gold font-mono font-bold">CLUB HÍPICO LOS SARGENTOS</span>
           </div>
         </div>
 

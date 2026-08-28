@@ -119,7 +119,7 @@ export const CommercialHub: React.FC = () => {
             }`}
           >
             <QrCode className="w-4 h-4" />
-            <span>Pases VIP</span>
+            <span>Pases de Cortesía</span>
           </button>
 
         </div>

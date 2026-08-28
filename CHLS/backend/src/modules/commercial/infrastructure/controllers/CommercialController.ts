@@ -103,12 +103,12 @@ export class CommercialController {
 
       return res.status(200).json({ success: true, data: filteredPasses });
     } catch (error: any) {
-      console.error('Error listing VIP passes:', error);
-      return res.status(500).json({ success: false, message: 'Error al listar pases VIP' });
+      console.error('Error listing passes:', error);
+      return res.status(500).json({ success: false, message: 'Error al listar pases' });
     }
   }
 
-  // 2. Create VIP Pass
+  // 2. Create Pass
   public async createVipPass(req: Request, res: Response) {
     try {
       const {
@@ -134,9 +134,9 @@ export class CommercialController {
         });
       }
 
-      // Generate a distinct security code (e.g. VIP-CHLS-7392)
+      // Generate a distinct security code (e.g. CHLS-7392)
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-      const passCode = `VIP-CHLS-${randomSuffix}`;
+      const passCode = `CHLS-${randomSuffix}`;
 
       // Clean and standardize date strings (YYYY-MM-DD) and store as UTC midday (12:00:00Z) to prevent timezone shifts
       const cleanFromStr = String(validFrom).split('T')[0];
@@ -167,16 +167,16 @@ export class CommercialController {
 
       return res.status(201).json({
         success: true,
-        message: '¡Pase VIP de Cortesía emitido exitosamente!',
+        message: '¡Pase de Cortesía emitido exitosamente!',
         data: newPass
       });
     } catch (error: any) {
-      console.error('Error creating VIP pass:', error);
-      return res.status(500).json({ success: false, message: 'Error al emitir pase VIP' });
+      console.error('Error creating pass:', error);
+      return res.status(500).json({ success: false, message: 'Error al emitir pase' });
     }
   }
 
-  // 3. Get VIP Pass by ID or Code
+  // 3. Get Pass by ID or Code
   public async getVipPassById(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -187,23 +187,23 @@ export class CommercialController {
       });
 
       if (!pass) {
-        return res.status(404).json({ success: false, message: 'Pase VIP no encontrado' });
+        return res.status(404).json({ success: false, message: 'Pase no encontrado' });
       }
 
       return res.status(200).json({ success: true, data: pass });
     } catch (error: any) {
-      console.error('Error getting VIP pass:', error);
-      return res.status(500).json({ success: false, message: 'Error al obtener pase VIP' });
+      console.error('Error getting pass:', error);
+      return res.status(500).json({ success: false, message: 'Error al obtener pase' });
     }
   }
 
-  // 4. Validate VIP Pass (Scanner validation at Ingreso or Specific Areas)
+  // 4. Validate Pass (Scanner validation at Ingreso or Specific Areas)
   public async validateVipPass(req: Request, res: Response) {
     try {
       const { code, area = 'INGRESO', registerLog = true } = req.body;
 
       if (!code) {
-        return res.status(400).json({ success: false, message: 'Código de Pase VIP es obligatorio' });
+        return res.status(400).json({ success: false, message: 'Código de Pase es obligatorio' });
       }
 
       // Search pass by exact code or document ID
@@ -221,7 +221,7 @@ export class CommercialController {
         return res.status(404).json({
           success: false,
           granted: false,
-          reason: 'Pase VIP no registrado en el sistema comercial CHLS'
+          reason: 'Pase no registrado en el sistema comercial CHLS'
         });
       }
 
@@ -235,7 +235,7 @@ export class CommercialController {
         return res.status(200).json({
           success: true,
           granted: false,
-          reason: 'Pase VIP REVOCADO por la administración',
+          reason: 'Pase REVOCADO por la administración',
           pass
         });
       }
@@ -263,7 +263,7 @@ export class CommercialController {
         return res.status(200).json({
           success: true,
           granted: false,
-          reason: `Pase VIP EXPIRADO el ${dispUntil}`,
+          reason: `Pase EXPIRADO el ${dispUntil}`,
           pass: { ...pass, status: 'EXPIRADO' }
         });
       }
@@ -298,7 +298,7 @@ export class CommercialController {
         return res.status(200).json({
           success: true,
           granted: false,
-          reason: `Área '${targetArea}' no autorizada para este Pase VIP. Áreas permitidas: ${allowedAreasList.join(', ')}`,
+          reason: `Área '${targetArea}' no autorizada para este Pase. Áreas permitidas: ${allowedAreasList.join(', ')}`,
           pass
         });
       }
@@ -329,11 +329,11 @@ export class CommercialController {
         await this.prisma.accessLog.create({
           data: {
             gate: isIngresoTarget ? 'Ingreso Principal' : `Acceso ${targetArea}`,
-            method: 'QR Pase VIP',
+            method: 'QR Pase Cortesía',
             actionType: 'ENTRY',
-            personType: 'INVITADO_VIP',
+            personType: 'INVITADO_CORTESIA',
             status: 'GRANTED',
-            reason: `Pase VIP Comercial (${pass.code})`,
+            reason: `Pase Comercial (${pass.code})`,
             observation: `Invitado de ${pass.hostSellerName}. Documento: ${pass.documentId || 'N/A'}`
           }
         });
@@ -342,7 +342,7 @@ export class CommercialController {
       return res.status(200).json({
         success: true,
         granted: true,
-        message: '¡Pase VIP Válido! Acceso autorizado.',
+        message: '¡Pase Válido! Acceso autorizado.',
         pass: updatedPass,
         guest: {
           fullName: pass.guestFullName,
@@ -356,12 +356,12 @@ export class CommercialController {
       });
 
     } catch (error: any) {
-      console.error('Error validating VIP pass:', error);
-      return res.status(500).json({ success: false, message: 'Error al validar pase VIP' });
+      console.error('Error validating pass:', error);
+      return res.status(500).json({ success: false, message: 'Error al validar pase' });
     }
   }
 
-  // 5. Revoke VIP Pass
+  // 5. Revoke Pass
   public async revokeVipPass(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -372,16 +372,16 @@ export class CommercialController {
 
       return res.status(200).json({
         success: true,
-        message: 'Pase VIP revocado correctamente',
+        message: 'Pase revocado correctamente',
         data: pass
       });
     } catch (error: any) {
-      console.error('Error revoking VIP pass:', error);
-      return res.status(500).json({ success: false, message: 'Error al revocar pase VIP' });
+      console.error('Error revoking pass:', error);
+      return res.status(500).json({ success: false, message: 'Error al revocar pase' });
     }
   }
 
-  // 6. Send VIP Pass via WhatsApp (Commercial Channel chls-comercial)
+  // 6. Send Pass via WhatsApp (Commercial Channel chls-comercial)
   public async sendVipPassWhatsApp(req: Request, res: Response) {
     try {
       const { id } = req.params;
@@ -392,12 +392,12 @@ export class CommercialController {
       });
 
       if (!pass) {
-        return res.status(404).json({ success: false, message: 'Pase VIP no encontrado' });
+        return res.status(404).json({ success: false, message: 'Pase no encontrado' });
       }
 
       const targetPhone = (customPhone || pass.phone || '').trim();
       if (!targetPhone) {
-        return res.status(400).json({ success: false, message: 'El pase VIP no tiene un número de celular registrado' });
+        return res.status(400).json({ success: false, message: 'El pase no tiene un número de celular registrado' });
       }
 
       const formatDisplayDateEs = (d: Date | string): string => {
@@ -415,18 +415,18 @@ export class CommercialController {
       const docText = pass.documentId ? pass.documentId : 'Registrado';
 
       const messageText = `🏛️ *CLUB HÍPICO LOS SARGENTOS*
-🌟 *Pase de Cortesía VIP*
+🌟 *Pase de Cortesía*
 
 Señor (a): *${pass.guestFullName}*, es un honor invitarl@ a conocer y disfrutar de nuestras instalaciones.
 
-🎟️ *Código de Pase VIP:* ${pass.code}
+🎟️ *Código de Pase:* ${pass.code}
 📅 *Vigencia:* ${dateText}
 ⏰ *Horario Autorizado:* ${pass.timeStart} a ${pass.timeEnd} hrs
 📍 *Áreas Autorizadas:* ${allowedAreasList}
 👥 *Acompañantes Autorizados:* ${pass.maxUses}
 👤 *Ejecutivo:* ${pass.hostSellerName}
 
-Al llegar al *Ingreso Principal*, por favor presente su documento de identidad (*${docText}*) y el *Código de Pase VIP* para su ingreso preferencial.
+Al llegar al *Ingreso Principal*, por favor presente su documento de identidad (*${docText}*) y el *Código de Pase* para su ingreso preferencial.
 
 _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
 
@@ -448,14 +448,14 @@ _¡Esperamos disfrute de nuestras instalaciones durante su estadía!_`;
 
       return res.status(200).json({
         success: true,
-        message: `¡Pase VIP enviado exitosamente por WhatsApp Comercial a +${formattedPhone}!`,
+        message: `¡Pase enviado exitosamente por WhatsApp Comercial a +${formattedPhone}!`,
         data: { passId: pass.id, sentTo: formattedPhone }
       });
     } catch (error: any) {
-      console.error('Error sending VIP pass via WhatsApp Comercial:', error);
+      console.error('Error sending pass via WhatsApp Comercial:', error);
       return res.status(500).json({
         success: false,
-        message: error.message || 'Error al enviar pase VIP por WhatsApp Comercial'
+        message: error.message || 'Error al enviar pase por WhatsApp Comercial'
       });
     }
   }

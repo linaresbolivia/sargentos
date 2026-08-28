@@ -139,7 +139,7 @@ export const VipPassGeneratorView: React.FC = () => {
       setPasses(res.data || []);
     } catch (err) {
       console.error(err);
-      toast.error('Error al cargar la lista de pases VIP');
+      toast.error('Error al cargar la lista de pases');
     } finally {
       setLoading(false);
     }
@@ -161,14 +161,14 @@ export const VipPassGeneratorView: React.FC = () => {
   const handleCreatePass = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.guestFullName.trim()) {
-      toast.error('El nombre del invitado VIP es obligatorio');
+      toast.error('El nombre del invitado es obligatorio');
       return;
     }
 
     try {
       setLoading(true);
       const res = await commercialApi.createPass(formData);
-      toast.success('¡Pase VIP emitido exitosamente!');
+      toast.success('¡Pase de cortesía emitido exitosamente!');
       setShowCreateModal(false);
       
       // Open the ticket modal right away so the user can download or share via WhatsApp
@@ -177,10 +177,10 @@ export const VipPassGeneratorView: React.FC = () => {
 
       // Auto-send via WhatsApp Comercial if enabled and phone exists
       if (autoSendWhatsApp && res.data.phone) {
-        toast.loading('Enviando Pase VIP por WhatsApp Comercial...', { id: 'auto-wa' });
+        toast.loading('Enviando Pase por WhatsApp Comercial...', { id: 'auto-wa' });
         try {
           await commercialApi.sendPassWhatsApp(res.data.id);
-          toast.success(`¡Pase VIP enviado automáticamente por WhatsApp Comercial a ${res.data.guestFullName}!`, { id: 'auto-wa' });
+          toast.success(`¡Pase enviado automáticamente por WhatsApp Comercial a ${res.data.guestFullName}!`, { id: 'auto-wa' });
         } catch (waErr: any) {
           toast.error(waErr.response?.data?.message || 'Pase creado, pero WhatsApp Comercial no está conectado. Puedes enviarlo manualmente.', { id: 'auto-wa' });
         }
@@ -203,7 +203,7 @@ export const VipPassGeneratorView: React.FC = () => {
         notes: '',
       });
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al emitir pase VIP');
+      toast.error(err.response?.data?.message || 'Error al emitir pase');
     } finally {
       setLoading(false);
     }
@@ -213,10 +213,10 @@ export const VipPassGeneratorView: React.FC = () => {
     try {
       setLoading(true);
       await commercialApi.revokePass(passId);
-      toast.success('Pase VIP revocado');
+      toast.success('Pase revocado');
       loadPasses();
     } catch (err) {
-      toast.error('Error al revocar pase VIP');
+      toast.error('Error al revocar pase');
     } finally {
       setLoading(false);
     }
@@ -225,14 +225,14 @@ export const VipPassGeneratorView: React.FC = () => {
   // Excel Export
   const handleExportExcel = () => {
     if (passes.length === 0) {
-      toast.error('No hay pases VIP disponibles para exportar.');
+      toast.error('No hay pases disponibles para exportar.');
       return;
     }
 
     try {
       const dataToExport = passes.map((p) => ({
         'Código / Pase': p.code,
-        'Invitado VIP': p.guestFullName,
+        'Invitado': p.guestFullName,
         'CI / Pasaporte': p.documentId || 'S/D',
         'Celular / WhatsApp': p.phone || 'S/N',
         'Ejecutivo Anfitrión': p.hostSellerName || 'Eduardo Bejarano',
@@ -246,7 +246,7 @@ export const VipPassGeneratorView: React.FC = () => {
 
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Pases VIP');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Pases de Cortesía');
 
       worksheet['!cols'] = [
         { wch: 18 },
@@ -262,7 +262,7 @@ export const VipPassGeneratorView: React.FC = () => {
         { wch: 14 }
       ];
 
-      const fileName = `Reporte_Pases_VIP_CHLS_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const fileName = `Reporte_Pases_CHLS_${new Date().toISOString().split('T')[0]}.xlsx`;
       XLSX.writeFile(workbook, fileName);
       toast.success('Reporte Excel generado exitosamente.');
     } catch (err: any) {
@@ -274,7 +274,7 @@ export const VipPassGeneratorView: React.FC = () => {
   // Standardized Official PDF Export
   const handleExportPdf = () => {
     if (passes.length === 0) {
-      toast.error('No hay pases VIP disponibles para exportar.');
+      toast.error('No hay pases disponibles para exportar.');
       return;
     }
 
@@ -318,7 +318,7 @@ export const VipPassGeneratorView: React.FC = () => {
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Reporte Oficial Pases VIP - Club Hípico Los Sargentos</title>
+          <title>Reporte Oficial Pases de Cortesía - Club Hípico Los Sargentos</title>
           <style>
             @media print {
               @page { size: letter landscape; margin: 10mm; }
@@ -348,7 +348,7 @@ export const VipPassGeneratorView: React.FC = () => {
               </td>
               <td style="vertical-align: middle; padding-left: 12px;">
                 <div class="brand-title">CLUB HÍPICO LOS SARGENTOS</div>
-                <div class="brand-subtitle">MÓDULO COMERCIAL • REPORTE OFICIAL DE PASES E INVITACIONES VIP</div>
+                <div class="brand-subtitle">MÓDULO COMERCIAL • REPORTE OFICIAL DE PASES E INVITACIONES</div>
               </td>
               <td style="text-align: right; vertical-align: middle; font-size: 10.5px; color: #475569; line-height: 1.4;">
                 <strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString('es-BO')}<br/>
@@ -381,8 +381,8 @@ export const VipPassGeneratorView: React.FC = () => {
             <thead>
               <tr>
                 <th style="width: 30px; text-align: center;">#</th>
-                <th style="width: 120px;">Código VIP</th>
-                <th>Invitado VIP / Documento / Celular</th>
+                <th style="width: 120px;">Código</th>
+                <th>Invitado / Documento / Celular</th>
                 <th style="width: 150px;">Fecha Autorizada & Horario</th>
                 <th style="width: 180px;">Áreas Autorizadas</th>
                 <th style="width: 100px; text-align: center;">Acompañantes</th>
@@ -425,7 +425,7 @@ export const VipPassGeneratorView: React.FC = () => {
   // Test scanner validator
   const handleTestScan = async () => {
     if (!scannerCode.trim()) {
-      toast.error('Ingresa o escanea un código de Pase VIP');
+      toast.error('Ingresa o escanea un código de Pase');
       return;
     }
     try {
@@ -458,11 +458,11 @@ export const VipPassGeneratorView: React.FC = () => {
         <div>
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/30 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Pases VIP & Control de Accesos
+              <Sparkles className="w-3 h-3" /> Pases & Control de Accesos
             </span>
           </div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white serif-brand mt-1">
-            Gestión de Pases e Invitaciones VIP
+            Gestión de Pases e Invitaciones de Cortesía
           </h2>
         </div>
 
@@ -478,7 +478,7 @@ export const VipPassGeneratorView: React.FC = () => {
                 ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 animate-pulse'
                 : 'bg-red-500/15 text-red-300 border-red-500/40 hover:bg-red-500/25'
             }`}
-            title="Estado del WhatsApp Comercial para envío de pases VIP"
+            title="Estado del WhatsApp Comercial para envío de pases"
           >
             <span className={`w-2.5 h-2.5 rounded-full ${
               waStatus.status === 'CONNECTED' ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : waStatus.status === 'QR_READY' ? 'bg-amber-400 animate-ping' : 'bg-red-400'
@@ -495,7 +495,7 @@ export const VipPassGeneratorView: React.FC = () => {
         </div>
       </div>
 
-      {/* CENTERED CELESTIAL GOLD VIP BANNER CONTAINER */}
+      {/* CENTERED CELESTIAL GOLD BANNER CONTAINER */}
       <div className="flex items-center justify-center my-4">
         <div className="w-full max-w-2xl p-3 sm:p-4 rounded-[2rem] bg-gradient-to-br from-amber-500/10 via-black/50 to-yellow-600/10 border-2 border-brand-gold/40 backdrop-blur-md shadow-[0_0_50px_rgba(212,175,55,0.15)] flex items-center justify-center">
           {/* CELESTIAL GOLD REFLECTIVE BUTTON */}
@@ -507,7 +507,7 @@ export const VipPassGeneratorView: React.FC = () => {
             <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none"></span>
             
             <Sparkles className="w-6 h-6 text-black shrink-0" />
-            <span className="drop-shadow-sm font-black">✦ EMITIR PASE DE CORTESÍA VIP ✦</span>
+            <span className="drop-shadow-sm font-black">✦ EMITIR PASE DE CORTESÍA ✦</span>
             <Plus className="w-6 h-6 text-black font-black shrink-0" />
           </button>
         </div>
@@ -544,7 +544,7 @@ export const VipPassGeneratorView: React.FC = () => {
           <button
             onClick={handleExportExcel}
             className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40 text-xs font-extrabold transition-all flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
-            title="Exportar listado completo de Pases VIP a Excel (.xlsx)"
+            title="Exportar listado completo de Pases a Excel (.xlsx)"
           >
             <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
             <span>Excel</span>
@@ -553,7 +553,7 @@ export const VipPassGeneratorView: React.FC = () => {
           <button
             onClick={handleExportPdf}
             className="px-3.5 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 text-xs font-extrabold transition-all flex items-center gap-1.5 shrink-0 shadow-sm cursor-pointer"
-            title="Exportar reporte oficial institucional de Pases VIP en PDF"
+            title="Exportar reporte oficial institucional de Pases en PDF"
           >
             <Printer className="w-4 h-4 text-amber-300" />
             <span>PDF</span>
@@ -568,7 +568,7 @@ export const VipPassGeneratorView: React.FC = () => {
             <thead className="bg-gray-100/90 dark:bg-white/5 text-gray-700 dark:text-gray-400 uppercase text-[10px] tracking-wider border-b border-gray-200 dark:border-white/10 font-black">
               <tr>
                 <th className="p-4">Código / Pase</th>
-                <th className="p-4">Invitado VIP</th>
+                <th className="p-4">Invitado</th>
                 <th className="p-4">Vigencia & Horario</th>
                 <th className="p-4">Áreas Autorizadas</th>
                 <th className="p-4">Acompañantes</th>
@@ -580,7 +580,7 @@ export const VipPassGeneratorView: React.FC = () => {
               {loading ? (
                 <tr>
                   <td colSpan={7} className="p-8 text-center text-amber-700 dark:text-brand-gold font-bold animate-pulse">
-                    Cargando pases VIP...
+                    Cargando pases...
                   </td>
                 </tr>
               ) : passes.length === 0 ? (
@@ -662,7 +662,7 @@ export const VipPassGeneratorView: React.FC = () => {
                           <button
                             onClick={() => setSelectedPassForModal(p)}
                             className="px-3 py-1.5 rounded-xl bg-brand-gold text-black font-extrabold text-xs hover:scale-105 shadow-sm transition-all flex items-center gap-1"
-                            title="Ver e Imprimir Tarjeta VIP"
+                            title="Ver e Imprimir Tarjeta"
                           >
                             <QrCode className="w-3.5 h-3.5" /> Ver Ticket
                           </button>
@@ -708,7 +708,7 @@ export const VipPassGeneratorView: React.FC = () => {
               <div>
                 <h3 className="text-base sm:text-xl font-black serif-brand text-gray-900 dark:text-brand-gold flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-brand-gold" />
-                  Emitir Pase de Cortesía VIP
+                  Emitir Pase de Cortesía
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-300 mt-0.5">
                   Completa los datos del invitado para generar su tarjeta digital QR
@@ -730,7 +730,7 @@ export const VipPassGeneratorView: React.FC = () => {
               {/* Guest Full Name */}
               <div>
                 <label className="text-gray-800 dark:text-gray-200 font-extrabold uppercase tracking-wider text-xs block mb-1.5">
-                  Nombre Completo del Invitado VIP <span className="text-brand-gold">*</span>
+                  Nombre Completo del Invitado <span className="text-brand-gold">*</span>
                 </label>
                 <input
                   type="text"
@@ -917,7 +917,7 @@ export const VipPassGeneratorView: React.FC = () => {
                       Envío Automático por WhatsApp Comercial
                     </div>
                     <div className="text-[11px] text-gray-400">
-                      Despacha la credencial VIP con código QR directamente al celular del invitado.
+                      Despacha la credencial con código QR directamente al celular del invitado.
                     </div>
                   </div>
                 </div>
@@ -943,7 +943,7 @@ export const VipPassGeneratorView: React.FC = () => {
                   disabled={loading}
                   className="px-6 py-3 rounded-2xl bg-gradient-to-r from-brand-gold via-yellow-500 to-amber-500 text-black text-xs sm:text-sm font-black hover:scale-105 shadow-xl shadow-brand-gold/30 transition-all cursor-pointer"
                 >
-                  {loading ? 'Generando...' : 'Emitir Pase VIP & Ver QR'}
+                  {loading ? 'Generando...' : 'Emitir Pase & Ver QR'}
                 </button>
               </div>
 
@@ -964,10 +964,10 @@ export const VipPassGeneratorView: React.FC = () => {
       {showWaConnectorModal && (
         <WhatsAppConnectorModal
           clientId="chls-comercial"
-          moduleName="Módulo Comercial & Admisión VIP"
-          channelBadge="Canal 5 • Admisiones & Pases VIP"
+          moduleName="Módulo Comercial & Admisiones"
+          channelBadge="Canal 5 • Admisiones & Pases"
           title="Conexión WhatsApp Comercial"
-          subtitle="Vincule la línea oficial de WhatsApp Comercial para despachar Pases VIP con QR e invitaciones a futuros socios."
+          subtitle="Vincule la línea oficial de WhatsApp Comercial para despachar Pases de Cortesía con QR e invitaciones a futuros socios."
           purposeDescription="Esta línea enviará automáticamente las credenciales con código QR y mensajes de cortesía a los invitados registrados."
           onClose={() => {
             setShowWaConnectorModal(false);
