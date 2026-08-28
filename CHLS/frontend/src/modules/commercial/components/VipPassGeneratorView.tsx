@@ -41,6 +41,42 @@ export const ALL_AVAILABLE_AREAS = [
   { id: 'HIPICA', label: 'Picadero & Hípica', desc: 'Pistas de salto, cuadras y picadero cubierto' },
 ];
 
+export const getLocalDateToday = (): string => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+export const formatVipDateText = (dateInput: string | Date | undefined | null): string => {
+  if (!dateInput) return '';
+  const dateStr = (typeof dateInput === 'string' ? dateInput : new Date(dateInput).toISOString()).split('T')[0];
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const localDate = new Date(y, m, d);
+    return localDate.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+  return new Date(dateInput).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+};
+
+export const formatVipDateShort = (dateInput: string | Date | undefined | null): string => {
+  if (!dateInput) return '';
+  const dateStr = (typeof dateInput === 'string' ? dateInput : new Date(dateInput).toISOString()).split('T')[0];
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    const localDate = new Date(y, m, d);
+    return localDate.toLocaleDateString('es-BO');
+  }
+  return new Date(dateInput).toLocaleDateString('es-BO');
+};
+
 export const VipPassGeneratorView: React.FC = () => {
   const [passes, setPasses] = useState<VipPass[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,8 +99,8 @@ export const VipPassGeneratorView: React.FC = () => {
     phone: '',
     email: '',
     hostSellerName: 'Eduardo Bejarano',
-    validFrom: new Date().toISOString().split('T')[0],
-    validUntil: new Date().toISOString().split('T')[0], // Single day pass
+    validFrom: getLocalDateToday(),
+    validUntil: getLocalDateToday(), // Single day pass
     maxDays: 1,
     timeStart: '07:00',
     timeEnd: '22:00',
@@ -157,8 +193,8 @@ export const VipPassGeneratorView: React.FC = () => {
         phone: '',
         email: '',
         hostSellerName: 'Eduardo Bejarano',
-        validFrom: new Date().toISOString().split('T')[0],
-        validUntil: new Date().toISOString().split('T')[0],
+        validFrom: getLocalDateToday(),
+        validUntil: getLocalDateToday(),
         maxDays: 1,
         timeStart: '07:00',
         timeEnd: '22:00',
@@ -200,12 +236,12 @@ export const VipPassGeneratorView: React.FC = () => {
         'CI / Pasaporte': p.documentId || 'S/D',
         'Celular / WhatsApp': p.phone || 'S/N',
         'Ejecutivo Anfitrión': p.hostSellerName || 'Eduardo Bejarano',
-        'Fecha Autorizada': p.validFrom === p.validUntil ? p.validFrom : `Del ${p.validFrom} al ${p.validUntil}`,
+        'Fecha Autorizada': formatVipDateShort(p.validFrom) === formatVipDateShort(p.validUntil) ? formatVipDateShort(p.validFrom) : `Del ${formatVipDateShort(p.validFrom)} al ${formatVipDateShort(p.validUntil)}`,
         'Horario': `${p.timeStart} a ${p.timeEnd} hrs`,
         'Áreas Autorizadas': Array.isArray(p.allowedAreas) ? p.allowedAreas.join(', ') : p.allowedAreas,
         'Acompañantes Autorizados': p.maxUses,
         'Estado': p.status,
-        'Fecha de Emisión': new Date(p.createdAt).toLocaleDateString('es-BO')
+        'Fecha de Emisión': formatVipDateShort(p.createdAt)
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(dataToExport);
@@ -257,7 +293,7 @@ export const VipPassGeneratorView: React.FC = () => {
           <span style="font-size: 10px; color: #64748b;">CI: ${p.documentId || 'S/D'} • Tel: ${p.phone || 'S/N'}</span>
         </td>
         <td style="padding: 9px 8px; color: #334155;">
-          ${p.validFrom === p.validUntil ? p.validFrom : `Del ${p.validFrom} al ${p.validUntil}`}<br/>
+          ${formatVipDateShort(p.validFrom) === formatVipDateShort(p.validUntil) ? formatVipDateShort(p.validFrom) : `Del ${formatVipDateShort(p.validFrom)} al ${formatVipDateShort(p.validUntil)}`}<br/>
           <span style="font-size: 10px; color: #b45309; font-weight: bold;">${p.timeStart} a ${p.timeEnd} hrs</span>
         </td>
         <td style="padding: 9px 8px; font-size: 10px; color: #475569;">
@@ -581,7 +617,9 @@ export const VipPassGeneratorView: React.FC = () => {
                       {/* Date Range */}
                       <td className="p-4">
                         <p className="text-gray-900 dark:text-white font-semibold text-xs">
-                          {new Date(p.validFrom).toLocaleDateString()} al {new Date(p.validUntil).toLocaleDateString()}
+                          {formatVipDateShort(p.validFrom) === formatVipDateShort(p.validUntil)
+                            ? formatVipDateShort(p.validFrom)
+                            : `${formatVipDateShort(p.validFrom)} al ${formatVipDateShort(p.validUntil)}`}
                         </p>
                         <span className="text-[10px] text-amber-800 dark:text-brand-gold font-mono">
                           {p.timeStart} a {p.timeEnd} hrs

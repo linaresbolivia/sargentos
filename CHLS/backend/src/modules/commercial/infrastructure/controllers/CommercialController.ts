@@ -67,12 +67,12 @@ export class CommercialController {
       });
 
       const now = new Date();
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       const processedPasses = passes.map(pass => {
-        const until = new Date(pass.validUntil);
-        until.setHours(23, 59, 59, 999);
+        const untilStr = (pass.validUntil instanceof Date ? pass.validUntil.toISOString() : String(pass.validUntil)).split('T')[0];
 
-        const isDateExpired = now > until;
+        const isDateExpired = nowStr > untilStr;
         const isUsesExhausted = pass.usageCount >= pass.maxUses;
         const isRevoked = pass.status === 'REVOCADO';
 
@@ -138,6 +138,12 @@ export class CommercialController {
       const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       const passCode = `VIP-CHLS-${randomSuffix}`;
 
+      // Clean and standardize date strings (YYYY-MM-DD) and store as UTC midday (12:00:00Z) to prevent timezone shifts
+      const cleanFromStr = String(validFrom).split('T')[0];
+      const cleanUntilStr = String(validUntil).split('T')[0];
+      const fromDateObj = new Date(`${cleanFromStr}T12:00:00.000Z`);
+      const untilDateObj = new Date(`${cleanUntilStr}T12:00:00.000Z`);
+
       const newPass = await this.prisma.vipPass.create({
         data: {
           code: passCode,
@@ -146,8 +152,8 @@ export class CommercialController {
           phone: phone?.trim() || null,
           email: email?.trim() || null,
           hostSellerName: hostSellerName?.trim() || 'Eduardo Bejarano',
-          validFrom: new Date(validFrom),
-          validUntil: new Date(validUntil),
+          validFrom: fromDateObj,
+          validUntil: untilDateObj,
           maxDays: parseInt(maxDays) || 1,
           timeStart: timeStart || '07:00',
           timeEnd: timeEnd || '22:00',
@@ -220,10 +226,9 @@ export class CommercialController {
       }
 
       const now = new Date();
-      const validFrom = new Date(pass.validFrom);
-      validFrom.setHours(0, 0, 0, 0);
-      const validUntil = new Date(pass.validUntil);
-      validUntil.setHours(23, 59, 59, 999);
+      const nowStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const fromStr = (pass.validFrom instanceof Date ? pass.validFrom.toISOString() : String(pass.validFrom)).split('T')[0];
+      const untilStr = (pass.validUntil instanceof Date ? pass.validUntil.toISOString() : String(pass.validUntil)).split('T')[0];
 
       // 1. Status Check
       if (pass.status === 'REVOCADO') {
@@ -236,25 +241,29 @@ export class CommercialController {
       }
 
       // 2. Date Range Check
-      if (now < validFrom) {
+      if (nowStr < fromStr) {
+        const [y, m, d] = fromStr.split('-').map(Number);
+        const dispFrom = new Date(y, m - 1, d).toLocaleDateString('es-BO');
         return res.status(200).json({
           success: true,
           granted: false,
-          reason: `Pase aún no vigente. Válido a partir del ${validFrom.toLocaleDateString()}`,
+          reason: `Pase aún no vigente. Válido a partir del ${dispFrom}`,
           pass
         });
       }
 
-      if (now > validUntil) {
+      if (nowStr > untilStr) {
         // Auto update status
         await this.prisma.vipPass.update({
           where: { id: pass.id },
           data: { status: 'EXPIRADO' }
         });
+        const [y, m, d] = untilStr.split('-').map(Number);
+        const dispUntil = new Date(y, m - 1, d).toLocaleDateString('es-BO');
         return res.status(200).json({
           success: true,
           granted: false,
-          reason: `Pase VIP EXPIRADO el ${validUntil.toLocaleDateString()}`,
+          reason: `Pase VIP EXPIRADO el ${dispUntil}`,
           pass: { ...pass, status: 'EXPIRADO' }
         });
       }
@@ -391,8 +400,16 @@ export class CommercialController {
         return res.status(400).json({ success: false, message: 'El pase VIP no tiene un número de celular registrado' });
       }
 
-      const fromDate = new Date(pass.validFrom).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
-      const untilDate = new Date(pass.validUntil).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+      const formatDisplayDateEs = (d: Date | string): string => {
+        const str = (d instanceof Date ? d.toISOString() : String(d)).split('T')[0];
+        const [y, m, day] = str.split('-').map(Number);
+        const date = new Date(y, m - 1, day);
+        return date.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+      };
+
+      const fromDate = formatDisplayDateEs(pass.validFrom);
+      const untilDate = formatDisplayDateEs(pass.validUntil);
+      const dateText = fromDate === untilDate ? fromDate : `Del ${fromDate} al ${untilDate}`;
       const allowedAreasList = (pass.allowedAreas || '').split(',').join(', ');
 
       const docText = pass.documentId ? pass.documentId : 'Registrado';
@@ -403,7 +420,7 @@ export class CommercialController {
 Señor (a): *${pass.guestFullName}*, es un honor invitarl@ a conocer y disfrutar de nuestras instalaciones.
 
 🎟️ *Código de Pase VIP:* ${pass.code}
-📅 *Vigencia:* Del ${fromDate} al ${untilDate}
+📅 *Vigencia:* ${dateText}
 ⏰ *Horario Autorizado:* ${pass.timeStart} a ${pass.timeEnd} hrs
 📍 *Áreas Autorizadas:* ${allowedAreasList}
 👥 *Acompañantes Autorizados:* ${pass.maxUses}

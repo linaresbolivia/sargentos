@@ -34,9 +34,23 @@ export const VipPassTicketModal: React.FC<VipPassTicketModalProps> = ({ pass, is
 
   if (!isOpen || !pass) return null;
 
+  const formatVipDateText = (dateInput: string | Date | undefined | null): string => {
+    if (!dateInput) return '';
+    const dateStr = (typeof dateInput === 'string' ? dateInput : new Date(dateInput).toISOString()).split('T')[0];
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const localDate = new Date(y, m, d);
+      return localDate.toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+    return new Date(dateInput).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
   const allowedAreasList = (pass.allowedAreas || '').split(',').map((a) => a.trim());
-  const fromDate = new Date(pass.validFrom).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
-  const untilDate = new Date(pass.validUntil).toLocaleDateString('es-BO', { day: 'numeric', month: 'short', year: 'numeric' });
+  const fromDate = formatVipDateText(pass.validFrom);
+  const untilDate = formatVipDateText(pass.validUntil);
 
   // Download ticket as high-resolution PNG image
   const handleDownloadImage = async () => {
