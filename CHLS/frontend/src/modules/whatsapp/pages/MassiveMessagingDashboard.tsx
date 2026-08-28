@@ -106,15 +106,15 @@ export default function MassiveMessagingDashboard() {
             <CrestLogo size="sm" />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
-                  <Radio className="w-3 h-3" /> Canal 3 • Difusión & Masivos
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                  <Radio className="w-3 h-3" /> Módulo Difusión Masiva • Canal 3
                 </span>
                 <span className="text-[10px] font-mono text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                  chls-masivo
+                  Sesión: chls-masivo
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mt-1 serif-brand">
-                Envíos Masivos & Comunicados
+                Módulo Difusión Masiva & Comunicados
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-xs sm:text-sm">
                 Difusión masiva de avisos, estados de cuenta, cobranzas y comunicados institucionales a socios.
@@ -127,7 +127,7 @@ export default function MassiveMessagingDashboard() {
             <div 
               onClick={() => setActiveTab('connection')}
               className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-black/40 border border-gray-200 dark:border-glass-border shadow-sm hover:border-blue-500 transition-all"
-              title="Ver estado o escanear QR de Canal 3"
+              title="Ver estado o escanear QR de Canal 3 Masivo"
             >
               <div className={`w-3 h-3 rounded-full ${waStatus.status === 'CONNECTED' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-amber-500 animate-pulse'}`} />
               <span className="text-xs font-bold uppercase tracking-wider text-gray-800 dark:text-gray-200">
@@ -181,7 +181,7 @@ export default function MassiveMessagingDashboard() {
                 <div className="p-4 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-4 text-xs text-amber-300">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">⚠️</span>
-                    <span>La línea de WhatsApp Masivo está desconectada. Vincula el código QR antes de iniciar el envío.</span>
+                    <span>La línea de WhatsApp del <strong>Módulo de Difusión Masiva</strong> está desconectada. Vincula el código QR antes de iniciar el envío.</span>
                   </div>
                   <button
                     onClick={() => setActiveTab('connection')}
@@ -196,30 +196,107 @@ export default function MassiveMessagingDashboard() {
           )}
 
           {activeTab === 'connection' && (
-            <div className="max-w-xl mx-auto py-6">
+            <div className="max-w-3xl mx-auto py-6">
               
               {/* Architecture Info */}
-              <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-black/50 border border-blue-500/30 text-xs text-gray-700 dark:text-gray-300 space-y-2 shadow-lg">
-                <div className="flex items-center gap-2 text-blue-400 font-bold">
-                  <Radio className="w-4 h-4" />
-                  <span>Línea Exclusiva para Envíos Masivos (Canal 3)</span>
+              <div className="mb-6 p-5 rounded-2xl bg-white dark:bg-[#07111a] border border-blue-500/30 text-xs text-gray-700 dark:text-gray-300 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between border-b border-blue-500/20 pb-2.5">
+                  <div className="flex items-center gap-2 text-blue-400 font-bold text-sm">
+                    <Radio className="w-4 h-4" />
+                    <span>Canales de WhatsApp por Módulo en CHLS</span>
+                  </div>
+                  <span className="text-[10px] text-gray-400">4 Líneas Independientes</span>
                 </div>
-                <p className="text-[11px] text-gray-400">
-                  Este código QR vincula el número asignado exclusivamente a las campañas de difusión masiva, avisos de cobranza y comunicados institucionales. No interfiere con el Call Center 24/7 ni con las reservas deportivas.
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Canal 1: Reservas */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>🎾 Módulo Reservas Deportivas</span>
+                        <span className="text-emerald-500 font-mono text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">chls-reservas</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Pases de cancha (Pádel, Tenis), confirmación de turnos y QR de pagos deportivos.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/courts')}
+                      className="text-[11px] text-brand-gold hover:underline font-bold mt-2 text-left"
+                    >
+                      Ir a Reservas Deportivas ➔
+                    </button>
+                  </div>
+
+                  {/* Canal 2: Call Center */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>🤖 Módulo Call Center & Bot</span>
+                        <span className="text-emerald-500 font-mono text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">chls-callcenter</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Asistente virtual 24/7, encuestas de satisfacción, IA y bandeja de chats en vivo.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/whatsapp')}
+                      className="text-[11px] text-emerald-500 hover:underline font-bold mt-2 text-left"
+                    >
+                      Ir a Call Center ➔
+                    </button>
+                  </div>
+
+                  {/* Canal 3: Masivo (Este Panel) */}
+                  <div className="p-3 rounded-xl bg-blue-500/15 border border-blue-500/40 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span className="text-blue-400 font-black">📢 Módulo Difusión Masiva (Este Panel)</span>
+                        <span className="text-blue-400 font-mono text-[9px] bg-blue-500/20 px-1.5 py-0.5 rounded">chls-masivo</span>
+                      </p>
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">
+                        Campañas de difusión masiva, estados de cuenta, avisos de cobranza y comunicados institucionales.
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-blue-400 font-bold mt-2 flex items-center gap-1">
+                      ● Panel Activo
+                    </span>
+                  </div>
+
+                  {/* Canal 4: PQRS */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>📋 Módulo PQRS & Reclamos</span>
+                        <span className="text-purple-400 font-mono text-[9px] bg-purple-500/10 px-1.5 py-0.5 rounded">chls-pqrs</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Notificaciones de resolución de tickets, seguimiento de reclamos y consultas.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/pqrs')}
+                      className="text-[11px] text-purple-400 hover:underline font-bold mt-2 text-left"
+                    >
+                      Ir a PQRS & Reclamos ➔
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {waStatus.status === 'DISCONNECTED' && (
-                <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-10 text-center flex flex-col items-center shadow-xl">
-                  <MessageSquare className="w-16 h-16 text-blue-500 mb-6 opacity-80" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Línea Masiva Desconectada</h2>
-                  <p className="text-gray-600 dark:text-gray-300 mb-8 text-sm">
-                    Inicia el servicio para generar el código QR y conectar el WhatsApp dedicado para envíos masivos.
+                <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-8 sm:p-10 text-center flex flex-col items-center shadow-xl">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center mb-5 border border-blue-500/20">
+                    <MessageSquare className="w-8 h-8 text-blue-500 opacity-80" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Línea de Envíos Masivos Desconectada</h2>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm max-w-md">
+                    Inicia el servicio para generar el código QR y conectar el WhatsApp asignado al <strong>Módulo de Difusión Masiva & Cobranzas</strong>.
                   </p>
                   <button
                     onClick={handleStartSession}
                     disabled={loading}
-                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full max-w-sm bg-blue-600 hover:bg-blue-500 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-blue-600/30 disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                   >
                     {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Generar Código QR Masivo'}
                   </button>
@@ -229,16 +306,16 @@ export default function MassiveMessagingDashboard() {
               {waStatus.status === 'INITIALIZING' && (
                 <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-10 text-center flex flex-col items-center shadow-xl">
                   <RefreshCw className="w-16 h-16 text-blue-500 mb-6 animate-spin opacity-80" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Inicializando Línea Masiva...</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">Preparando la conexión segura de WhatsApp, espera un momento.</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Inicializando WhatsApp Masivo...</h2>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">Preparando la conexión segura para el Módulo de Difusión Masiva, espera un momento.</p>
                 </div>
               )}
 
               {waStatus.status === 'QR_READY' && (
                 <div className="bg-white dark:bg-[#07111a] border border-blue-500/40 rounded-2xl p-8 flex flex-col items-center shadow-2xl text-center">
                   <h2 className="text-2xl font-bold text-blue-400 mb-2">Escanea el Código QR</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-                    Abre WhatsApp en el teléfono asignado para <strong>Envíos Masivos</strong>, ve a <strong>Dispositivos Vinculados &gt; Vincular un dispositivo</strong> y escanea el código.
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 max-w-md">
+                    Abre WhatsApp en el teléfono asignado al <strong>Módulo de Difusión Masiva</strong>, ve a <strong>Dispositivos Vinculados &gt; Vincular un dispositivo</strong> y escanea el código.
                   </p>
                   
                   <div className="bg-white p-4 rounded-2xl shadow-xl inline-block mb-6 border border-gray-200">
@@ -265,9 +342,13 @@ export default function MassiveMessagingDashboard() {
                   <div className="w-16 h-16 rounded-full bg-emerald-500/15 flex items-center justify-center text-emerald-400 mb-4 shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                     <CheckCircle2 className="w-8 h-8" />
                   </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-bold uppercase mb-3">
+                    <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
+                    Módulo Difusión Masiva Activo
+                  </div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Línea de Envíos Masivos Conectada!</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-                    La línea está lista para despachar comunicados masivos y avisos a los socios.
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 max-w-md">
+                    La línea está lista para despachar comunicados institucionales, campañas y avisos a los socios sin interferir con otros canales.
                   </p>
                   <button
                     onClick={() => setActiveTab('massive')}

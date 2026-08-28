@@ -6,7 +6,8 @@ import {
   Search, 
   CheckCircle, 
   XCircle, 
-  LogOut, 
+  LogOut,
+  LogIn,
   Car, 
   AlertCircle, 
   Clock, 
@@ -103,8 +104,13 @@ export const GatehouseDashboard: React.FC = () => {
     setActionType(member.currentLocation === 'INSIDE' ? 'EXIT' : 'ENTRY');
     setSearchResults([]);
     if (focusPlate) {
+      const isVip = member.personType === 'INVITADO_VIP' || member.personId?.startsWith('vip_');
       setTimeout(() => {
-        socioRadioRef.current?.focus();
+        if (isVip) {
+          vehicleRadioRef.current?.focus();
+        } else {
+          socioRadioRef.current?.focus();
+        }
       }, 50);
     }
   };
@@ -157,6 +163,12 @@ export const GatehouseDashboard: React.FC = () => {
         finalObservation = `[INSUMOS RECIBIDOS EN CASETA] ${observation}`;
       }
 
+      let logObservation = finalObservation.trim();
+      if (selectedMember.personId.startsWith('vip_')) {
+        const vipName = selectedMember.fullName.replace('⭐ ', '');
+        logObservation = logObservation ? `${vipName} • ${logObservation}` : vipName;
+      }
+
       await api.post('/access/log', {
         personId: selectedMember.personId,
         gate: 'Puerta Principal',
@@ -164,7 +176,7 @@ export const GatehouseDashboard: React.FC = () => {
         actionType: effectiveAction,
         status: finalStatus,
         reason: selectedMember.reason,
-        observation: finalObservation.trim(),
+        observation: logObservation,
         vehiclePlate: accessMethod === 'VEHICLE' ? (vehiclePlate || undefined) : undefined,
         personType: accessPersonType,
         itemsReceivedAtGatehouse
@@ -283,10 +295,13 @@ export const GatehouseDashboard: React.FC = () => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
                   if (selectedMember) {
-                    socioRadioRef.current?.focus();
-                  } else if (searchResults.length === 1) {
-                    handleSelectMember(searchResults[0], true);
-                  } else if (searchResults.length > 1) {
+                    const isVip = selectedMember.personType === 'INVITADO_VIP' || selectedMember.personId?.startsWith('vip_');
+                    if (isVip) {
+                      vehicleRadioRef.current?.focus();
+                    } else {
+                      socioRadioRef.current?.focus();
+                    }
+                  } else if (searchResults.length >= 1) {
                     handleSelectMember(searchResults[0], true);
                   }
                 }
@@ -351,31 +366,58 @@ export const GatehouseDashboard: React.FC = () => {
                 </div>
 
                 {/* Giant Status Indicator */}
-                <div className={`flex-1 w-full rounded-2xl border p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200 flex flex-col items-center justify-center text-center ${
-                  selectedMember.status === 'GRANTED' 
-                    ? 'bg-gradient-to-br from-brand-gold/10 to-[#133825]/5 dark:bg-[#0d2116] border-brand-gold/40 dark:border-brand-gold/30' 
-                    : 'bg-red-50 dark:bg-[#1a0f0f] border-red-200 dark:border-red-500/30'
-                }`}>
-                  {selectedMember.status === 'GRANTED' ? (
-                    <>
-                      <CheckCircle className="w-24 h-24 text-[#cca14b] mb-4" />
-                      <h2 className="text-3xl font-bold text-[#cca14b] tracking-wide mb-2">Acceso Concedido</h2>
-                      <p className="text-gray-300">Sin deuda pendiente.</p>
-                      {selectedMember.lastPaymentDate && (
-                        <p className="text-sm text-gray-500 mt-1">Último pago: {new Date(selectedMember.lastPaymentDate).toLocaleDateString()}</p>
+                {(() => {
+                  const isExiting = actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE';
+                  const hasPendingLoans = selectedMember.pendingAreaLoans && selectedMember.pendingAreaLoans.length > 0;
+
+                  if (isExiting) {
+                    return (
+                      <div className="flex-1 w-full rounded-2xl border p-6 shadow-xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-amber-500/5 dark:bg-[#1a120b] border-amber-500/50 dark:border-amber-500/40 flex flex-col items-center justify-center text-center">
+                        <LogOut className="w-20 h-20 text-amber-400 mb-3 animate-pulse" />
+                        <h2 className="text-2xl font-black text-amber-400 uppercase tracking-wide mb-1">
+                          Registrando Salida del Club
+                        </h2>
+                        {hasPendingLoans ? (
+                          <p className="text-amber-200 font-bold text-xs bg-amber-500/20 px-3 py-1 rounded-lg border border-amber-500/40 mt-1">
+                            ⚠️ Insumos de Piscina/Gimnasio pendientes por entregar en Caseta
+                          </p>
+                        ) : (
+                          <p className="text-gray-300 text-xs">
+                            Socio/Invitado registrado actualmente dentro del Club Hípico.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className={`flex-1 w-full rounded-2xl border p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200 flex flex-col items-center justify-center text-center ${
+                      selectedMember.status === 'GRANTED' 
+                        ? 'bg-gradient-to-br from-brand-gold/10 to-[#133825]/5 dark:bg-[#0d2116] border-brand-gold/40 dark:border-brand-gold/30' 
+                        : 'bg-red-50 dark:bg-[#1a0f0f] border-red-200 dark:border-red-500/30'
+                    }`}>
+                      {selectedMember.status === 'GRANTED' ? (
+                        <>
+                          <CheckCircle className="w-24 h-24 text-[#cca14b] mb-4" />
+                          <h2 className="text-3xl font-bold text-[#cca14b] tracking-wide mb-2">Acceso Concedido</h2>
+                          <p className="text-gray-300">Sin deuda pendiente.</p>
+                          {selectedMember.lastPaymentDate && (
+                            <p className="text-sm text-gray-500 mt-1">Último pago: {new Date(selectedMember.lastPaymentDate).toLocaleDateString()}</p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <XCircle className="w-24 h-24 text-red-500 mb-4" />
+                          <h2 className="text-3xl font-bold text-red-600 dark:text-red-500 tracking-wide mb-2">Acceso Denegado</h2>
+                          <p className="text-gray-800 dark:text-gray-300 font-medium">{selectedMember.reason || 'Restricción Administrativa'}</p>
+                          {selectedMember.totalDebt > 0 && (
+                            <p className="text-red-600 dark:text-red-400 font-bold mt-2 text-lg">Deuda Pendiente: ${selectedMember.totalDebt.toLocaleString()}</p>
+                          )}
+                        </>
                       )}
-                    </>
-                  ) : (
-                    <>
-                      <XCircle className="w-24 h-24 text-red-500 mb-4" />
-                      <h2 className="text-3xl font-bold text-red-600 dark:text-red-500 tracking-wide mb-2">Acceso Denegado</h2>
-                      <p className="text-gray-800 dark:text-gray-300 font-medium">{selectedMember.reason || 'Restricción Administrativa'}</p>
-                      {selectedMember.totalDebt > 0 && (
-                        <p className="text-red-600 dark:text-red-400 font-bold mt-2 text-lg">Deuda Pendiente: ${selectedMember.totalDebt.toLocaleString()}</p>
-                      )}
-                    </>
-                  )}
-                </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Warning Banner: Insumos Pendientes de Devolución */}
@@ -415,83 +457,99 @@ export const GatehouseDashboard: React.FC = () => {
                 </div>
               )}
 
-              {/* Bottom Row: Entry Form */}
+              {/* Bottom Row: Entry/Exit Form */}
               <div className="w-full bg-white dark:bg-[#0d2116] rounded-2xl border border-gray-200 dark:border-brand-gold/20 p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                   {/* Left Column */}
                   <div className="flex flex-col gap-6">
                     {/* Tipo de Acceso */}
-                    <div className="flex flex-col">
-                      <h3 className="text-sm font-semibold text-brand-gold tracking-wide mb-3">
-                        Tipo de Acceso
-                      </h3>
-                      <div className="flex flex-wrap gap-4">
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input 
-                            ref={socioRadioRef}
-                            type="radio" 
-                            name="accessPersonType" 
-                            value="SOCIO" 
-                            checked={accessPersonType === 'SOCIO'} 
-                            onChange={() => setAccessPersonType('SOCIO')}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); vehicleRadioRef.current?.focus(); }
-                              else if (e.key === 'Tab') { 
-                                e.preventDefault(); 
-                                if (e.shiftKey) {
-                                  guestRadioRef.current?.focus();
-                                } else {
-                                  setAccessPersonType('GUEST');
-                                  guestRadioRef.current?.focus(); 
-                                }
-                              }
-                            }}
-                            className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
-                          />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Socio</span>
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input 
-                            ref={guestRadioRef}
-                            type="radio" 
-                            name="accessPersonType" 
-                            value="GUEST" 
-                            checked={accessPersonType === 'GUEST'} 
-                            onChange={() => setAccessPersonType('GUEST')}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') { 
-                                e.preventDefault(); 
-                                setIsGuestModalOpen(true);
-                              }
-                              else if (e.key === 'Tab') {
-                                e.preventDefault();
-                                if (e.shiftKey) {
-                                  setAccessPersonType('SOCIO');
-                                  socioRadioRef.current?.focus();
-                                } else {
-                                  vehicleRadioRef.current?.focus();
-                                }
-                              }
-                            }}
-                            className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
-                          />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Invitado</span>
-                        </label>
-                      </div>
-                      
-                      {accessPersonType === 'GUEST' && (
-                        <div className="mt-4">
-                          <button 
-                            type="button"
-                            onClick={() => setIsGuestModalOpen(true)}
-                            className="w-full bg-brand-gold/10 hover:bg-brand-gold/20 text-brand-gold transition-colors py-2 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border border-brand-gold/30 shadow-[0_4px_15px_rgba(204,161,75,0.1)]"
-                          >
-                            <UserPlus className="w-4 h-4" />
-                            Registrar Invitado
-                          </button>
+                    {(() => {
+                      const isVipGuest = selectedMember?.personType === 'INVITADO_VIP' || selectedMember?.personId?.startsWith('vip_');
+                      return (
+                        <div className="flex flex-col">
+                          <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-semibold text-brand-gold tracking-wide">
+                              Tipo de Acceso
+                            </h3>
+                            {isVipGuest && (
+                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40 flex items-center gap-1">
+                                🔒 Invitado VIP (Fijo)
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex flex-wrap gap-4">
+                            <label className={`flex items-center gap-1.5 ${isVipGuest ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                              <input 
+                                ref={socioRadioRef}
+                                type="radio" 
+                                name="accessPersonType" 
+                                value="SOCIO" 
+                                disabled={isVipGuest}
+                                checked={accessPersonType === 'SOCIO' && !isVipGuest} 
+                                onChange={() => !isVipGuest && setAccessPersonType('SOCIO')}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') { e.preventDefault(); vehicleRadioRef.current?.focus(); }
+                                  else if (e.key === 'Tab') { 
+                                    e.preventDefault(); 
+                                    if (e.shiftKey) {
+                                      guestRadioRef.current?.focus();
+                                    } else {
+                                      setAccessPersonType('GUEST');
+                                      guestRadioRef.current?.focus(); 
+                                    }
+                                  }
+                                }}
+                                className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
+                              />
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Socio</span>
+                            </label>
+                            <label className={`flex items-center gap-1.5 ${isVipGuest ? 'opacity-90 cursor-not-allowed font-extrabold text-brand-gold' : 'cursor-pointer'}`}>
+                              <input 
+                                ref={guestRadioRef}
+                                type="radio" 
+                                name="accessPersonType" 
+                                value="GUEST" 
+                                disabled={isVipGuest}
+                                checked={accessPersonType === 'GUEST' || isVipGuest} 
+                                onChange={() => !isVipGuest && setAccessPersonType('GUEST')}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') { 
+                                    e.preventDefault(); 
+                                    if (!isVipGuest) setIsGuestModalOpen(true);
+                                  }
+                                  else if (e.key === 'Tab') {
+                                    e.preventDefault();
+                                    if (e.shiftKey) {
+                                      setAccessPersonType('SOCIO');
+                                      socioRadioRef.current?.focus();
+                                    } else {
+                                      vehicleRadioRef.current?.focus();
+                                    }
+                                  }
+                                }}
+                                className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
+                              />
+                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                {isVipGuest ? 'Invitado VIP' : 'Invitado'}
+                              </span>
+                            </label>
+                          </div>
+                          
+                          {accessPersonType === 'GUEST' && !isVipGuest && (
+                            <div className="mt-4">
+                              <button 
+                                type="button"
+                                onClick={() => setIsGuestModalOpen(true)}
+                                className="w-full bg-brand-gold/10 hover:bg-brand-gold/20 text-brand-gold transition-colors py-2 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border border-brand-gold/30 shadow-[0_4px_15px_rgba(204,161,75,0.1)]"
+                              >
+                                <UserPlus className="w-4 h-4" />
+                                Registrar Invitado
+                              </button>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      );
+                    })()}
 
                     {/* Registro de Acceso */}
                     <div className="flex flex-col">
@@ -657,13 +715,13 @@ export const GatehouseDashboard: React.FC = () => {
                 </div>
 
                 <div className="flex gap-4">
-                  {selectedMember.status === 'GRANTED' ? (
+                  {(actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE' || selectedMember.status === 'GRANTED') ? (
                     <button 
                       onClick={() => handleRegisterAccess(false)}
                       disabled={isSubmitting}
-                      className={`flex-1 ${actionType === 'EXIT' ? 'bg-orange-600 hover:bg-orange-500 border-orange-500/50' : 'bg-[#133825] hover:bg-[#1a4a31] dark:bg-[#1a4a31] dark:hover:bg-[#205b3c] border-brand-gold'} text-white font-bold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 tracking-wider border-2 shadow-[0_4px_20px_rgba(204,161,75,0.15)] hover:shadow-[0_4px_25px_rgba(204,161,75,0.3)]`}
+                      className={`flex-1 ${(actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? 'bg-amber-600 hover:bg-amber-500 border-amber-400' : 'bg-[#133825] hover:bg-[#1a4a31] dark:bg-[#1a4a31] dark:hover:bg-[#205b3c] border-brand-gold'} text-white font-extrabold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 tracking-wider border-2 shadow-lg cursor-pointer`}
                     >
-                      {isSubmitting ? 'Registrando...' : (actionType === 'EXIT' ? 'Registrar Salida' : 'Registrar Ingreso')}
+                      {isSubmitting ? 'Registrando...' : ((actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? '🚪 Registrar Salida del Club' : 'Registrar Ingreso')}
                     </button>
                   ) : (
                     <>
@@ -674,9 +732,26 @@ export const GatehouseDashboard: React.FC = () => {
                       >
                         {isSubmitting ? 'Registrando...' : 'Registrar Denegación'}
                       </button>
+
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          setActionType('EXIT');
+                          setTimeout(() => {
+                            handleRegisterAccess(false);
+                          }, 50);
+                        }}
+                        disabled={isSubmitting}
+                        className="px-6 bg-amber-600 hover:bg-amber-500 border-2 border-amber-400 text-white font-black py-4 rounded-xl shadow-lg transition-all text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shrink-0"
+                        title="Registrar Salida de la persona aunque el pase/membresía esté denegado"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        <span>🚪 Registrar Salida</span>
+                      </button>
+
                       <button 
                         onClick={() => {
-                          if(window.confirm('¿Está seguro que desea FORZAR el ingreso de este socio a pesar de tener el acceso denegado? Esto quedará registrado.')) {
+                          if(window.confirm('¿Está seguro que desea FORZAR el ingreso de este socio/invitado a pesar de tener el acceso denegado? Esto quedará registrado.')) {
                             handleRegisterAccess(true);
                           }
                         }}

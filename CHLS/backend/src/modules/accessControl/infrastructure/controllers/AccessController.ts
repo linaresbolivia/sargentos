@@ -236,10 +236,19 @@ export class AccessController {
 
       const enrichedLogs = logs.map(l => {
         if (l.status === 'DENTRO') {
+          const logPersonName = l.personName.toLowerCase().trim();
+
           const matchingExit = todayCasetaExits.find(ex => {
             if (l.personId && ex.personId && l.personId === ex.personId) return true;
-            const exName = ex.person ? `${ex.person.firstName} ${ex.person.lastName}`.trim() : (ex.guest ? `${ex.guest.firstName} ${ex.guest.lastName}`.trim() : '');
-            return exName && exName.toLowerCase() === l.personName.toLowerCase();
+
+            const exName = ex.person 
+              ? `${ex.person.firstName} ${ex.person.lastName}`.trim().toLowerCase() 
+              : (ex.guest ? `${ex.guest.firstName} ${ex.guest.lastName}`.trim().toLowerCase() : '');
+
+            if (exName && (exName === logPersonName || logPersonName.includes(exName) || exName.includes(logPersonName))) return true;
+
+            // Match INVITADO VIP observation name
+            return false;
           });
 
           if (matchingExit && new Date(matchingExit.timestamp) >= new Date(l.entryTime)) {
@@ -503,19 +512,28 @@ export class AccessController {
       const currentClubMembers: any[] = [];
 
       for (const log of allMovements) {
-        const key = log.personId || log.guestId || `${log.person?.firstName}_${log.person?.lastName}` || `${log.guest?.firstName}_${log.guest?.lastName}`;
+        const vipName = log.observation ? log.observation.replace(/^(PASE VIP|INVITADO VIP|Pase VIP):\s*/i, '').trim() : '';
+        const key = log.personId 
+          || log.guestId 
+          || (log.person ? `${log.person.firstName}_${log.person.lastName}` : null) 
+          || (log.guest ? `${log.guest.firstName}_${log.guest.lastName}` : null) 
+          || (vipName ? `vip_${vipName.toLowerCase()}` : null)
+          || log.id;
+
         if (!key || seenPersons.has(key)) continue;
         seenPersons.add(key);
 
         const pId = log.person?.id;
         const pName = log.person 
           ? `${log.person.firstName} ${log.person.lastName}`.trim() 
-          : (log.guest ? `${log.guest.firstName} ${log.guest.lastName}`.trim() : '');
+          : (log.guest ? `${log.guest.firstName} ${log.guest.lastName}`.trim() : vipName);
 
-        const currentActive = activeAreaLogs.find(a => 
-          (pId && a.personId === pId) ||
-          (pName && a.personName.toLowerCase() === pName.toLowerCase())
-        );
+        const currentActive = activeAreaLogs.find(a => {
+          if (pId && a.personId === pId) return true;
+          if (pName && (a.personName.toLowerCase().includes(pName.toLowerCase()) || pName.toLowerCase().includes(a.personName.toLowerCase()))) return true;
+          if (vipName && (a.personName.toLowerCase().includes(vipName.toLowerCase()) || vipName.toLowerCase().includes(a.personName.toLowerCase()))) return true;
+          return false;
+        });
 
         const hasLeftClub = log.actionType === 'EXIT';
 

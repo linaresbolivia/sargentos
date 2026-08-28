@@ -42,7 +42,7 @@ export const CHLS_KNOWLEDGE_BASE: FaqTopic[] = [
       `• 🧒 Niños (4-12 años): *Bs. 130*\n` +
       `• 🧑 Adultos (13+ años): *Bs. 170*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `🎁 *Pronto Pago:* Si pagaste tu anualidad adelantada, tus pases de cortesía no pagan.\n` +
+      `🎁 *Pronto Pago:* Si realizó el pago de su anualidad por adelantado, sus pases de cortesía no tienen costo.\n` +
       `⚠️ _El invitado debe ingresar con el socio titular/dependiente._`
   },
   {

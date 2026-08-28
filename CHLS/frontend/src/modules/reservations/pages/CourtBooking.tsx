@@ -2074,7 +2074,7 @@ export const CourtBooking: React.FC = () => {
                       <span className="text-emerald-400 font-mono text-[11px] font-black">#100% Liberado</span>
                     </p>
                     <p className="text-[11px] text-gray-400">
-                      Como socio titular, tu uso de cancha no tiene costo. Al presionar <strong>Confirmar Reserva</strong>, tu turno queda reservado y recibirás tu pase de acceso directamente en tu WhatsApp.
+                      Como socio titular, su uso de cancha no tiene costo. Al presionar <strong>Confirmar Reserva</strong>, su turno queda reservado y recibirá su pase de acceso directamente en su WhatsApp.
                     </p>
                   </div>
                 </div>
@@ -2140,7 +2140,7 @@ export const CourtBooking: React.FC = () => {
                     <img src={qrPagosUrl} alt="QR Pagos CHLS" className="w-16 h-16 object-cover rounded-xl border border-brand-gold/40 shrink-0 shadow-md" />
                     <div className="text-[11px] text-gray-300 space-y-0.5">
                       <p className="font-bold text-brand-gold">QR Oficial Club Hípico Los Sargentos</p>
-                      <p className="text-gray-400">Banco BMSC / BCP. Al confirmar, este QR también se enviará a tu WhatsApp.</p>
+                      <p className="text-gray-400">Banco BMSC / BCP. Al confirmar, este QR también se enviará a su WhatsApp.</p>
                     </div>
                   </div>
                 )}
@@ -2148,7 +2148,7 @@ export const CourtBooking: React.FC = () => {
                 {bookingPaymentMethod === 'TARJETA' && (
                   <div className="p-3 bg-blue-950/40 rounded-2xl border border-blue-500/30 space-y-1.5 text-xs text-blue-200">
                     <p>
-                      💳 <strong>Pago con Tarjeta:</strong> Puedes cancelar con tarjeta de débito o crédito en <strong>Oficinas de Atención al Socio y recepciones</strong>.
+                      💳 <strong>Pago con Tarjeta:</strong> Puede cancelar con tarjeta de débito o crédito en <strong>Oficinas de Atención al Socio y recepciones</strong>.
                     </p>
                     <div className="bg-black/40 p-2.5 rounded-xl border border-blue-500/20 text-[11px] text-gray-300 space-y-1">
                       <p className="font-bold text-brand-gold">
@@ -2159,7 +2159,7 @@ export const CourtBooking: React.FC = () => {
                     </div>
                     {!isCardPaymentAllowed && (
                       <p className="text-[10px] text-amber-300 bg-amber-950/50 p-2 rounded-lg border border-amber-500/30">
-                        ⚠️ <em>Nota: Te encuentras fuera del horario de atención de cajas. Tu turno quedará reservado y podrás cancelar con tarjeta al abrir las recepciones o pagar con QR ahora.</em>
+                        ⚠️ <em>Nota: Se encuentra fuera del horario de atención de cajas. Su turno quedará reservado y podrá cancelar con tarjeta al abrir las recepciones o pagar con QR ahora.</em>
                       </p>
                     )}
                   </div>

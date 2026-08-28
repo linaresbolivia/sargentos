@@ -103,15 +103,15 @@ export class WhatsappController {
 
       const validChats = chats.filter(c => {
         const clean = c.phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
-        return clean.length >= 7 && clean.length <= 13;
+        return clean.length >= 8 && clean.length <= 12 && !clean.startsWith('505106') && !clean.startsWith('561379');
       });
 
       const enrichedChats = await Promise.all(
         validChats.map(async (chat) => {
-          const sessionInfo = botSessionManager.getSessionInfo(chat.phone);
           const cleanPhone = chat.phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+          const sessionInfo = botSessionManager.getSessionInfo(cleanPhone);
 
-          const formattedPhone = cleanPhone.startsWith('591')
+          const formattedPhone = cleanPhone.startsWith('591') && cleanPhone.length === 11
             ? `+591 ${cleanPhone.substring(3, 7)} ${cleanPhone.substring(7)}`
             : cleanPhone.length === 8
               ? `+591 ${cleanPhone.substring(0, 4)} ${cleanPhone.substring(4)}`
@@ -199,9 +199,41 @@ export class WhatsappController {
         return;
       }
 
-      await this.getService(req).sendBulk([{ nombre: '', telefono: phone }], text);
+      // Priorizar instancia Call Center o la instancia activa solicitada
+      let service = req.params.clientId ? whatsappManager.getInstance(req.params.clientId) : null;
+      if (!service || service.status !== 'CONNECTED') {
+        const callCenter = whatsappManager.getInstance('chls-callcenter');
+        if (callCenter.status === 'CONNECTED') {
+          service = callCenter;
+        } else {
+          service = this.getService(req);
+        }
+      }
+
+      let cleanPhone = phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+      if (cleanPhone.length === 8) {
+        cleanPhone = `591${cleanPhone}`;
+      }
+
+      // Enviar por el servicio activo (usa la cola de digitación humana y guarda en base de datos)
+      await service.sendMessage(cleanPhone, text);
+
+      // Obtener el mensaje registrado para retornarlo a la interfaz
+      const chat = await prisma.whatsAppChat.findFirst({
+        where: {
+          OR: [
+            { phone: cleanPhone },
+            { phone: cleanPhone.replace(/^591/, '') }
+          ]
+        }
+      });
+
+      const createdMessage = chat ? await prisma.whatsAppMessage.findFirst({
+        where: { chatId: chat.id },
+        orderBy: { timestamp: 'desc' }
+      }) : null;
       
-      res.json({ success: true, message: 'Enviado' });
+      res.json({ success: true, message: 'Enviado', data: createdMessage });
     } catch (error) {
       next(error);
     }
@@ -211,7 +243,14 @@ export class WhatsappController {
     try {
       const { phone } = req.params;
       const { isHandoff } = req.body;
-      botSessionManager.setHandoff(phone, !!isHandoff);
+      const cleanPhone = phone.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+      botSessionManager.setHandoff(cleanPhone, !!isHandoff);
+
+      try {
+        const { socketService } = require('@config/socket');
+        socketService.getIo()?.emit('whatsapp:handoff_change', { phone: cleanPhone, isHumanHandoff: !!isHandoff });
+      } catch (e) {}
+
       res.json({ success: true, isHumanHandoff: !!isHandoff });
     } catch (error) {
       next(error);

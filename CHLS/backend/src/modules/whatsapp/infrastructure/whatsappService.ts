@@ -17,6 +17,13 @@ export class WhatsappClientInstance {
   private isInitializing: boolean = false;
   private initWatchdogTimer: NodeJS.Timeout | null = null;
 
+  // --- MOTOR HUMANO & ANTI-BAN CALL CENTER ---
+  private incomingDebounceMap: Map<string, { timer: NodeJS.Timeout; messages: string[]; contactName: string; rawFrom: string }> = new Map();
+  private userMessageFrequency: Map<string, { count: number; firstTimestamp: number; isThrottled: boolean }> = new Map();
+  private outboundQueue: Array<{ to: string; content: string; mediaBase64?: string; resolve: () => void; reject: (err: any) => void }> = [];
+  private isProcessingOutboundQueue: boolean = false;
+  private presenceHeartbeatTimer: NodeJS.Timeout | null = null;
+
   constructor(clientId: string) {
     this.clientId = clientId;
     this.initClient();
@@ -72,6 +79,27 @@ export class WhatsappClientInstance {
     } catch (e) { }
   }
 
+  private startPresenceHeartbeat() {
+    if (this.presenceHeartbeatTimer) {
+      clearInterval(this.presenceHeartbeatTimer);
+    }
+    // Heartbeat cada 4 a 5 minutos para simular sesión activa de escritorio
+    this.presenceHeartbeatTimer = setInterval(async () => {
+      if (this.status === 'CONNECTED' && this.client) {
+        try {
+          await this.client.sendPresenceAvailable();
+        } catch (e) { }
+      }
+    }, 240000 + Math.random() * 60000);
+  }
+
+  private stopPresenceHeartbeat() {
+    if (this.presenceHeartbeatTimer) {
+      clearInterval(this.presenceHeartbeatTimer);
+      this.presenceHeartbeatTimer = null;
+    }
+  }
+
   private initializeEvents() {
     this.client.on('qr', async (qr) => {
       console.log(`[${this.clientId}] QR Code received, scan it!`);
@@ -86,7 +114,7 @@ export class WhatsappClientInstance {
       this.emitStatusChange();
     });
 
-    this.client.on('ready', () => {
+    this.client.on('ready', async () => {
       console.log(`[${this.clientId}] WhatsApp Client is ready!`);
       this.clearWatchdog();
       this.status = 'CONNECTED';
@@ -94,6 +122,28 @@ export class WhatsappClientInstance {
       this.qrCodeUrl = null;
       this.isExplicitlyLoggedOut = false;
       this.emitStatusChange();
+
+      // Stealth In-Browser: eliminar huellas de Puppeteer y webdriver
+      try {
+        const page = (this.client as any)?.pupPage;
+        if (page) {
+          await page.evaluate(`(() => {
+            try {
+              Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+              window.chrome = { runtime: {}, app: { isInstalled: false } };
+              Object.defineProperty(navigator, 'languages', { get: () => ['es-BO', 'es', 'en-US', 'en'] });
+              Object.defineProperty(navigator, 'plugins', {
+                get: () => [
+                  { name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer', description: 'Portable Document Format' },
+                  { name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai', description: '' }
+                ]
+              });
+            } catch (e) { }
+          })()`);
+        }
+      } catch (stealthErr) { }
+
+      this.startPresenceHeartbeat();
     });
 
     this.client.on('authenticated', () => {
@@ -106,6 +156,7 @@ export class WhatsappClientInstance {
     this.client.on('auth_failure', async msg => {
       console.error(`[${this.clientId}] WhatsApp Authentication failure:`, msg);
       this.clearWatchdog();
+      this.stopPresenceHeartbeat();
       this.status = 'DISCONNECTED';
       this.isInitializing = false;
       this.isExplicitlyLoggedOut = true;
@@ -118,6 +169,7 @@ export class WhatsappClientInstance {
     this.client.on('disconnected', async (reason) => {
       console.log(`[${this.clientId}] WhatsApp Client was disconnected:`, reason);
       this.clearWatchdog();
+      this.stopPresenceHeartbeat();
       this.status = 'DISCONNECTED';
       this.isInitializing = false;
       this.qrCodeUrl = null;
@@ -143,8 +195,6 @@ export class WhatsappClientInstance {
       }
     });
 
-    // Only process Chat/Inbox events for the "masivo" client for now, or distinguish them if needed.
-    // For simplicity, we'll run it for both but store under same DB tables (could be mixed, but fine for now).
     this.client.on('message', async (msg: Message) => {
       await this.handleIncomingMessage(msg);
     });
@@ -161,7 +211,7 @@ export class WhatsappClientInstance {
   }
 
   private async handleIncomingMessage(msg: Message) {
-    if (!this.isBotActive) return; // Si el bot está apagado, no procesa respuestas automáticas
+    if (!this.isBotActive) return;
 
     try {
       // Ignorar estados, grupos, canales de noticias (newsletter), difusiones y temporales
@@ -173,114 +223,153 @@ export class WhatsappClientInstance {
         msg.from.includes('@temp')
       ) return;
 
-      const contact = await msg.getContact();
+      let phone = '';
       let rawFrom = msg.from;
-      let phone = contact.number || '';
-      if (!phone || phone.length > 13) {
-        phone = rawFrom.replace(/@.*$/, '').split(':')[0].replace(/[^0-9]/g, '');
+      let contactName = '';
+
+      // 1. Obtener datos del contacto oficial
+      try {
+        const contact = await msg.getContact();
+        if (contact) {
+          contactName = contact.name || contact.pushname || '';
+          if (contact.number && /^[0-9]{7,13}$/.test(contact.number)) {
+            phone = contact.number;
+          }
+        }
+      } catch (e) { }
+
+      // 2. Si no se obtuvo de contact.number y viene de @c.us
+      if (!phone && rawFrom.endsWith('@c.us')) {
+        const userPart = rawFrom.split('@')[0].split(':')[0].replace(/[^0-9]/g, '');
+        if (userPart.length >= 7 && userPart.length <= 13) {
+          phone = userPart;
+        }
       }
 
-      // Validar longitud de número telefónico real (7 a 13 dígitos). Descartar LIDs de 15 dígitos o hashes
-      if (!phone || phone.length > 13 || phone.length < 7) {
+      // 3. Si viene de un @lid, resolver con el chat
+      if (!phone) {
+        try {
+          const chatObj = await msg.getChat();
+          if (chatObj?.id?._serialized?.endsWith('@c.us')) {
+            phone = chatObj.id.user.replace(/[^0-9]/g, '');
+          }
+        } catch (e) { }
+      }
+
+      // 4. Fallback: extraer dígitos de rawFrom
+      if (!phone) {
+        const digits = rawFrom.replace(/@.*$/, '').split(':')[0].replace(/[^0-9]/g, '');
+        if (digits.length >= 7 && digits.length <= 13) {
+          phone = digits;
+        }
+      }
+
+      // Normalizar número boliviano de 8 dígitos a formato internacional 591XXXXXXXX
+      if (phone.length === 8) {
+        phone = `591${phone}`;
+      }
+
+      // Descartar identificadores que no sean números de teléfono válidos (7 a 12 dígitos)
+      if (!phone || phone.length < 7 || phone.length > 12) {
         return;
       }
 
-      let contactName = contact.name || contact.pushname;
       const searchPhone = phone.replace(/^591/, '');
 
-      // 1. Buscar en la base de datos de socios
       try {
         const person = await prisma.person.findFirst({
-          where: {
-            OR: [
-              { phone: { contains: searchPhone } },
-              { mobile: { contains: searchPhone } }
-            ]
-          },
-          include: {
-            titularMemberships: true
-          }
+          where: { OR: [{ phone: { contains: searchPhone } }, { mobile: { contains: searchPhone } }] },
+          include: { titularMemberships: true }
         });
-
         if (person) {
           const memNum = person.titularMemberships[0]?.membershipNumber;
           const memTag = memNum ? ` (Acción #${memNum})` : '';
           contactName = `${person.firstName} ${person.paternalSurname || person.lastName || ''}${memTag}`.trim();
-        } else {
-          // 2. Buscar en tickets PQRS
-          const ticket = await prisma.pqrsTicket.findFirst({
-            where: { phone: { contains: searchPhone } },
-            orderBy: { createdAt: 'desc' }
-          });
-          if (ticket) {
-            contactName = ticket.fullName;
-          } else if (!contactName || contactName === phone || /^[0-9]+$/.test(contactName)) {
-            contactName = phone.startsWith('591') 
-              ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
-              : phone.length === 8 
-                ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
-                : `+${phone}`;
-          }
-        }
-      } catch (lookupErr) {
-        contactName = phone.startsWith('591') 
-          ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
-          : phone.length === 8 
-            ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
+        } else if (!contactName || /^[0-9]+$/.test(contactName)) {
+          contactName = phone.startsWith('591') 
+            ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
             : `+${phone}`;
-      }
+        }
+      } catch (lookupErr) {}
 
       const chat = await prisma.whatsAppChat.upsert({
         where: { phone },
-        update: {
-          contactName,
-          lastMessage: msg.body,
-          lastMessageAt: new Date(),
-          unreadCount: { increment: 1 }
-        },
-        create: {
-          phone,
-          contactName,
-          lastMessage: msg.body,
-          lastMessageAt: new Date(),
-          unreadCount: 1
-        }
+        update: { contactName: contactName || phone, lastMessage: msg.body, lastMessageAt: new Date(), unreadCount: { increment: 1 } },
+        create: { phone, contactName: contactName || phone, lastMessage: msg.body, lastMessageAt: new Date(), unreadCount: 1 }
       });
 
       const newMessage = await prisma.whatsAppMessage.create({
-        data: {
-          chatId: chat.id,
-          content: msg.body,
-          fromMe: false,
-          hasMedia: msg.hasMedia,
-          status: 'DELIVERED',
-          timestamp: new Date()
-        }
+        data: { chatId: chat.id, content: msg.body, fromMe: false, hasMedia: msg.hasMedia, status: 'DELIVERED', timestamp: new Date() }
       });
 
-      socketService.getIo().emit('whatsapp:new_message', { chat, message: newMessage, clientId: this.clientId });
+      socketService.getIo()?.emit('whatsapp:new_message', { chat, message: newMessage, clientId: this.clientId });
 
-      // --- BOT CALL CENTER 24/7 (PQRS Tracker, Encuestas & Menú Inteligente) ---
-      // Si esta sesión es Reservas Web (chls-reservas) o Difusión Masiva (chls-masivo), NO ejecutar lógica de bot ni menús
+      // --- LOGICA DE BOT (Exclusiva para chls-callcenter y chls-pqrs) ---
       if (this.clientId === 'chls-reservas' || this.clientId === 'chls-masivo') {
         return;
       }
 
-      // Anti-Ban 1: Simular lectura humana de mensaje (ticks azules) tras un retraso orgánico
+      // Control Anti-Flood / Anti-Loop por usuario (máximo 8 mensajes en 30s)
+      const now = Date.now();
+      const userFreq = this.userMessageFrequency.get(phone) || { count: 0, firstTimestamp: now, isThrottled: false };
+      if (now - userFreq.firstTimestamp > 30000) {
+        userFreq.count = 1;
+        userFreq.firstTimestamp = now;
+        userFreq.isThrottled = false;
+      } else {
+        userFreq.count++;
+      }
+      this.userMessageFrequency.set(phone, userFreq);
+
+      if (userFreq.count > 8) {
+        if (!userFreq.isThrottled) {
+          userFreq.isThrottled = true;
+          await this.sendMessage(msg.from, 'Estimado(a) socio(a), estamos procesando sus solicitudes. Por favor aguarde unos instantes para evitar saturación del canal.');
+        }
+        return;
+      }
+
+      // Anti-Ban Debounce Buffer: Agrupar mensajes en 2.2-2.8s
+      const existingDebounce = this.incomingDebounceMap.get(phone);
+      if (existingDebounce) {
+        clearTimeout(existingDebounce.timer);
+        existingDebounce.messages.push(msg.body);
+        existingDebounce.timer = setTimeout(async () => {
+          await this.processDebouncedIncoming(phone);
+        }, 2200 + Math.random() * 600);
+      } else {
+        const timer = setTimeout(async () => {
+          await this.processDebouncedIncoming(phone);
+        }, 2200 + Math.random() * 600);
+        this.incomingDebounceMap.set(phone, { timer, messages: [msg.body], contactName, rawFrom: msg.from });
+      }
+    } catch (e) {
+      console.error(`[${this.clientId}] Error handling incoming message`, e);
+    }
+  }
+
+  private async processDebouncedIncoming(phone: string) {
+    const entry = this.incomingDebounceMap.get(phone);
+    if (!entry) return;
+    this.incomingDebounceMap.delete(phone);
+
+    try {
+      const combinedBody = entry.messages.join(' ').trim();
+      const contactName = entry.contactName;
+      const rawFrom = entry.rawFrom;
+
       try {
-        const chatObj = await msg.getChat();
+        const chatObj = await this.client.getChatById(rawFrom.includes('@') ? rawFrom : `${rawFrom}@c.us`);
         if (chatObj) {
-          const readingDelay = 1200 + Math.min(msg.body.length * 15, 2000) + Math.random() * 800;
+          const readingDelay = 1000 + Math.min(combinedBody.length * 12, 1800) + Math.random() * 600;
           await new Promise(resolve => setTimeout(resolve, readingDelay));
           await chatObj.sendSeen();
         }
       } catch (seenErr) { }
 
-      const bodyStr = msg.body.trim();
-
       const cleanPhone = phone.replace(/^591/, '');
-      const potentialRating = parseInt(bodyStr, 10);
-      const isPossibleRating = !isNaN(potentialRating) && potentialRating >= 1 && potentialRating <= 5 && bodyStr.length === 1;
+      const potentialRating = parseInt(combinedBody, 10);
+      const isPossibleRating = !isNaN(potentialRating) && potentialRating >= 1 && potentialRating <= 5 && combinedBody.length === 1;
 
       const ticketWaitingForRating = await prisma.pqrsTicket.findFirst({
         where: { phone: { contains: cleanPhone }, isWaitingForRating: true },
@@ -289,13 +378,11 @@ export class WhatsappClientInstance {
 
       if (ticketWaitingForRating) {
         const finalRating = isPossibleRating ? potentialRating : 5;
-        const extraNote = !isPossibleRating ? ` (Asignado automáticamente tras responder: "${bodyStr.substring(0, 30)}")` : '';
-
+        const extraNote = !isPossibleRating ? ` (Asignado automáticamente tras responder: "${combinedBody.substring(0, 30)}")` : '';
         await prisma.pqrsTicket.update({
           where: { id: ticketWaitingForRating.id },
           data: { rating: finalRating, isWaitingForRating: false }
         });
-
         await prisma.pqrsHistory.create({
           data: {
             ticketId: ticketWaitingForRating.id,
@@ -304,78 +391,124 @@ export class WhatsappClientInstance {
             performedBy: `${ticketWaitingForRating.fullName || 'Socio'} (WhatsApp)`,
           }
         });
-
-        // Pausa previa a redactar respuesta de encuesta
-        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1200));
-        await this.sendMessage(msg.from, '¡Gracias por ayudarnos a mejorar! Tu calificación ha sido registrada. 🌟\n\nEscribe *MENU* si deseas realizar otra consulta.');
+        await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+        await this.sendMessage(rawFrom, '¡Muchas gracias por ayudarnos a mejorar! Su calificación ha sido registrada con éxito. 🌟\n\nEscriba *MENU* si desea realizar otra consulta.');
         return;
       }
 
-      // Anti-Ban 2: Pausa de reflexión humana antes de formular la respuesta (1 a 2.5 segundos)
-      const thinkingDelay = 1000 + Math.random() * 1500;
+      const thinkingDelay = 1000 + Math.random() * 1200;
       await new Promise(resolve => setTimeout(resolve, thinkingDelay));
-
-      // Procesar a través de la máquina de estados y motor de conocimientos 24/7
-      const botResult = await botSessionManager.processMessage(phone, bodyStr, contactName);
+      const botResult = await botSessionManager.processMessage(phone, combinedBody, contactName);
       if (botResult.shouldSend && botResult.response) {
-        await this.sendMessage(msg.from, botResult.response);
+        await this.sendMessage(rawFrom, botResult.response);
       }
-      // --- FIN BOT LOGIC ---
-
-    } catch (e) {
-      console.error(`[${this.clientId}] Error handling incoming message`, e);
+    } catch (err) {
+      console.error(`[${this.clientId}] Error en processDebouncedIncoming:`, err);
     }
   }
 
-  public async sendMessage(to: string, content: string, mediaBase64?: string) {
-    if (this.status !== 'CONNECTED' || !this.client) {
-      console.error('WhatsApp client is not connected');
-      return;
-    }
-    const chatId = to.includes('@') ? to : `${to}@c.us`;
-    try {
-      let chat: any = null;
+  public async sendMessage(to: string, content: string, mediaBase64?: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.outboundQueue.push({ to, content, mediaBase64, resolve, reject });
+      this.processOutboundQueue();
+    });
+  }
+
+  private async processOutboundQueue() {
+    if (this.isProcessingOutboundQueue) return;
+    this.isProcessingOutboundQueue = true;
+    while (this.outboundQueue.length > 0) {
+      const item = this.outboundQueue.shift();
+      if (!item) break;
       try {
-        chat = await this.client.getChatById(chatId);
-        if (chat) {
-          // Anti-Ban 3: Simular presencia de "Escribiendo..." proporcional al mensaje
-          await chat.sendStateTyping();
+        if (this.status !== 'CONNECTED' || !this.client) {
+          console.warn(`[${this.clientId}] WhatsApp client no está conectado. Omitiendo mensaje a ${item.to}`);
+          item.resolve();
+          continue;
         }
-      } catch (typingError) { }
-
-      // Tiempo de digitación humana realista (entre 2.5s y 7.0s con variación aleatoria)
-      const typingTime = Math.min(
-        Math.max(content.length * (25 + Math.random() * 12), 2500),
-        7000
-      );
-      await new Promise(resolve => setTimeout(resolve, typingTime));
-
-      // Limpiar estado de typing antes del envío
-      if (chat) {
-        try { await chat.clearState(); } catch (e) { }
-      }
-
-      // Anti-Ban 4: Carácter invisible único (Zero-Width) para que el hash SHA sea siempre diferente
-      const invisibleZeroWidth = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
-      const uniqueNoise = invisibleZeroWidth[Math.floor(Math.random() * invisibleZeroWidth.length)];
-      const finalContent = content + uniqueNoise;
-
-      let mediaToSend: MessageMedia | undefined;
-      if (mediaBase64) {
-        const match = mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
-        if (match) {
-          mediaToSend = new MessageMedia(match[1], match[2]);
+        const chatId = item.to.includes('@') ? item.to : `${item.to}@c.us`;
+        let chat: any = null;
+        try {
+          chat = await this.client.getChatById(chatId);
+          if (chat) await chat.sendStateTyping();
+        } catch (typingError) { }
+        const typingTime = Math.min(Math.max(item.content.length * (20 + Math.random() * 15), 2200), 6000);
+        await new Promise(resolve => setTimeout(resolve, typingTime));
+        if (chat) try { await chat.clearState(); } catch (e) { }
+        const invisibleZeroWidth = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
+        const uniqueNoise = invisibleZeroWidth[Math.floor(Math.random() * invisibleZeroWidth.length)];
+        const finalContent = item.content + uniqueNoise;
+        let mediaToSend: MessageMedia | undefined;
+        if (item.mediaBase64) {
+          const match = item.mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
+          if (match) mediaToSend = new MessageMedia(match[1], match[2]);
         }
-      }
+        if (mediaToSend) await this.client.sendMessage(chatId, mediaToSend, { caption: finalContent });
+        else await this.client.sendMessage(chatId, finalContent);
 
-      if (mediaToSend) {
-        await this.client.sendMessage(chatId, mediaToSend, { caption: finalContent });
-      } else {
-        await this.client.sendMessage(chatId, finalContent);
+        let cleanPhone = chatId.replace(/@.*$/, '').replace(/[^0-9]/g, '');
+        if (cleanPhone.length === 8) cleanPhone = `591${cleanPhone}`;
+
+        let contactName = cleanPhone;
+        const searchPhone = cleanPhone.replace(/^591/, '');
+        try {
+          const person = await prisma.person.findFirst({
+            where: { OR: [{ phone: { contains: searchPhone } }, { mobile: { contains: searchPhone } }] },
+            include: { titularMemberships: true }
+          });
+          if (person) {
+            const memNum = person.titularMemberships[0]?.membershipNumber;
+            const memTag = memNum ? ` (Acción #${memNum})` : '';
+            contactName = `${person.firstName} ${person.paternalSurname || person.lastName || ''}${memTag}`.trim();
+          } else {
+            contactName = cleanPhone.startsWith('591') 
+              ? `+591 ${cleanPhone.substring(3, 7)} ${cleanPhone.substring(7)}` 
+              : `+${cleanPhone}`;
+          }
+        } catch (e) { }
+
+        const dbChat = await prisma.whatsAppChat.upsert({
+          where: { phone: cleanPhone },
+          update: {
+            lastMessage: item.content,
+            lastMessageAt: new Date()
+          },
+          create: {
+            phone: cleanPhone,
+            contactName,
+            lastMessage: item.content,
+            lastMessageAt: new Date(),
+            unreadCount: 0
+          }
+        });
+
+        const createdMsg = await prisma.whatsAppMessage.create({
+          data: {
+            chatId: dbChat.id,
+            content: item.content,
+            fromMe: true,
+            hasMedia: !!item.mediaBase64,
+            status: 'SENT',
+            timestamp: new Date()
+          }
+        });
+
+        socketService.getIo()?.emit('whatsapp:new_message', {
+          chat: dbChat,
+          message: createdMsg,
+          clientId: this.clientId
+        });
+
+        item.resolve();
+        if (this.outboundQueue.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1200 + Math.random() * 1300));
+        }
+      } catch (err) {
+        console.error(`[${this.clientId}] Error despachando mensaje de cola:`, err);
+        item.resolve();
       }
-    } catch (e) {
-      console.error(`[${this.clientId}] Error sending direct message`, e);
     }
+    this.isProcessingOutboundQueue = false;
   }
 
   private async handleOutgoingMessage(msg: Message) {
@@ -389,7 +522,8 @@ export class WhatsappClientInstance {
       ) return;
 
       let phone = msg.to.replace(/@.*$/, '').split(':')[0].replace(/[^0-9]/g, '');
-      if (!phone || phone.length > 13 || phone.length < 7) return;
+      if (phone.length === 8) phone = `591${phone}`;
+      if (!phone || phone.length > 12 || phone.length < 7) return;
 
       let contactName = phone;
       try {
@@ -413,28 +547,8 @@ export class WhatsappClientInstance {
           const memNum = person.titularMemberships[0]?.membershipNumber;
           const memTag = memNum ? ` (Acción #${memNum})` : '';
           contactName = `${person.firstName} ${person.paternalSurname || person.lastName || ''}${memTag}`.trim();
-        } else {
-          const ticket = await prisma.pqrsTicket.findFirst({
-            where: { phone: { contains: searchPhone } },
-            orderBy: { createdAt: 'desc' }
-          });
-          if (ticket) {
-            contactName = ticket.fullName;
-          } else if (!contactName || contactName === phone || /^[0-9]+$/.test(contactName)) {
-            contactName = phone.startsWith('591') 
-              ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
-              : phone.length === 8 
-                ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
-                : `+${phone}`;
-          }
         }
-      } catch (err) {
-        contactName = phone.startsWith('591') 
-          ? `+591 ${phone.substring(3, 7)} ${phone.substring(7)}` 
-          : phone.length === 8 
-            ? `+591 ${phone.substring(0, 4)} ${phone.substring(4)}`
-            : `+${phone}`;
-      }
+      } catch (err) { }
 
       const chat = await prisma.whatsAppChat.upsert({
         where: { phone },
@@ -451,6 +565,17 @@ export class WhatsappClientInstance {
         }
       });
 
+      // Evitar duplicar si el mensaje fue enviado por el bot/cola hace menos de 8 segundos
+      const existing = await prisma.whatsAppMessage.findFirst({
+        where: {
+          chatId: chat.id,
+          content: msg.body,
+          fromMe: true,
+          timestamp: { gte: new Date(Date.now() - 8000) }
+        }
+      });
+      if (existing) return;
+
       const newMessage = await prisma.whatsAppMessage.create({
         data: {
           chatId: chat.id,
@@ -462,7 +587,7 @@ export class WhatsappClientInstance {
         }
       });
 
-      socketService.getIo().emit('whatsapp:new_message', { chat, message: newMessage, clientId: this.clientId });
+      socketService.getIo()?.emit('whatsapp:new_message', { chat, message: newMessage, clientId: this.clientId });
     } catch (e) {
       console.error(`[${this.clientId}] Error handling outgoing message`, e);
     }
@@ -492,6 +617,14 @@ export class WhatsappClientInstance {
 
   private async safeDestroyClient() {
     this.clearWatchdog();
+    this.stopPresenceHeartbeat();
+    for (const debounce of this.incomingDebounceMap.values()) {
+      clearTimeout(debounce.timer);
+    }
+    this.incomingDebounceMap.clear();
+    this.outboundQueue = [];
+    this.isProcessingOutboundQueue = false;
+
     try {
       if (this.client) {
         const browser = (this.client as any)?.pupBrowser;
@@ -636,10 +769,47 @@ export class WhatsappClientInstance {
   }
 
   public getStatus() {
+    const moduleMap: Record<string, { moduleName: string; channelBadge: string; description: string }> = {
+      'chls-reservas': {
+        moduleName: 'Módulo de Reservas Deportivas',
+        channelBadge: 'Canal 1 • Reservas Web',
+        description: 'Confirmación automática de turnos, pases de acceso y QR de pago de canchas.'
+      },
+      'chls-callcenter': {
+        moduleName: 'Módulo Call Center & Chatbot 24/7',
+        channelBadge: 'Canal 2 • Bot 24/7 & Call Center',
+        description: 'Asistente virtual interactivo 24/7, encuestas y atención en vivo.'
+      },
+      'chls-masivo': {
+        moduleName: 'Módulo Difusión Masiva & Comunicados',
+        channelBadge: 'Canal 3 • Difusión & Cobranzas',
+        description: 'Difusión masiva de avisos, estados de cuenta y cobranzas.'
+      },
+      'chls-pqrs': {
+        moduleName: 'Módulo PQRS & Atención al Socio',
+        channelBadge: 'Canal 4 • PQRS',
+        description: 'Seguimiento y notificación de tickets de reclamos y sugerencias.'
+      },
+      'chls-comercial': {
+        moduleName: 'Módulo Comercial & Admisión VIP',
+        channelBadge: 'Canal 5 • Admisiones & Pases VIP',
+        description: 'Envío automático de pases VIP e información a postulantes a nuevos socios.'
+      }
+    };
+
+    const info = moduleMap[this.clientId] || {
+      moduleName: `Módulo (${this.clientId})`,
+      channelBadge: this.clientId,
+      description: 'Línea de WhatsApp del sistema.'
+    };
+
     return {
       status: this.status,
       qr: this.qrCodeUrl,
       clientId: this.clientId,
+      moduleName: info.moduleName,
+      channelBadge: info.channelBadge,
+      description: info.description,
       isBotActive: this.isBotActive
     };
   }
@@ -782,6 +952,7 @@ class WhatsappManager {
     this.instances.set('chls-masivo', new WhatsappClientInstance('chls-masivo'));
     this.instances.set('chls-reservas', new WhatsappClientInstance('chls-reservas'));
     this.instances.set('chls-pqrs', new WhatsappClientInstance('chls-pqrs'));
+    this.instances.set('chls-comercial', new WhatsappClientInstance('chls-comercial'));
 
     // Auto-connect existing saved sessions in .wwebjs_auth
     setTimeout(() => {

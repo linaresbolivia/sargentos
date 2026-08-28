@@ -11,11 +11,13 @@ import whatsappRoutes from './modules/whatsapp/infrastructure/routes/whatsapp.ro
 import pqrsRoutes from './modules/pqrs/infrastructure/routes/pqrs.routes';
 import reservationsRoutes from './modules/reservations/infrastructure/routes/reservations.routes';
 import { AccessController } from '@modules/accessControl/infrastructure/controllers/AccessController';
+import { CommercialController } from '@modules/commercial/infrastructure/controllers/CommercialController';
 
 import path from 'path';
 
 const app = express();
 const accessController = new AccessController();
+const commercialController = new CommercialController();
 
 // Static uploads serving
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -42,9 +44,9 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Request Parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// Request Parsing (Increased payload limit to 200mb for high definition magazine PDFs)
+app.use(express.json({ limit: '200mb' }));
+app.use(express.urlencoded({ limit: '200mb', extended: true }));
 
 // HTTP Request Logger Middleware
 app.use((req, res, next) => {
@@ -65,6 +67,7 @@ app.use('/api/whatsapp', whatsappRoutes);
 app.use('/api/pqrs', pqrsRoutes);
 app.use('/api/reservations', reservationsRoutes);
 app.use('/api/access', accessController.router);
+app.use('/api/commercial', commercialController.router);
 
 // Global Error Handler
 app.use(errorHandler);

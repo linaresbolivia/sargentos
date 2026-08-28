@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { 
   Send, Check, CheckCheck, User, Search, Bot, UserCheck, 
   PauseCircle, PlayCircle, Sparkles, CreditCard, Clock, Phone, 
-  ChevronRight, Shield, AlertCircle
+  ChevronRight, Shield, AlertCircle, RotateCw
 } from 'lucide-react';
 import { api } from '../../../config/api';
 
@@ -43,11 +43,11 @@ interface Message {
 const QUICK_REPLIES = [
   {
     title: '👋 Saludo Oficial',
-    text: '¡Hola! Estimado socio, le saluda el equipo de Atención al Socio del Club Hípico Los Sargentos. ¿En qué podemos colaborarle?'
+    text: '¡Hola! Estimado(a) socio(a), le saluda el equipo de Atención al Socio del Club Hípico Los Sargentos. ¿En qué podemos colaborarle?'
   },
   {
     title: '🎾 Reservas Canchas',
-    text: 'Para reservas de Tenis/Frontón comuníquese al +591 76753734 / 76753758. Para Pádel al +591 76753744 y Racquetball en gimnasio al +591 76753743.'
+    text: 'Para reservas de Tenis y Frontón comuníquese con secretaría deportiva al +591 76753734 / 76753758. Para Pádel al +591 76753744 y Racquetball al +591 76753743.'
   },
   {
     title: '🏊‍♂️ Horarios Piscina',
@@ -55,11 +55,11 @@ const QUICK_REPLIES = [
   },
   {
     title: '💳 Pagos y Glosa',
-    text: 'Puede realizar su pago por transferencia o QR oficial indicando obligatoriamente su N° de Acción en la glosa y enviando su comprobante por este chat.'
+    text: 'Puede realizar su pago por transferencia bancaria o QR oficial indicando obligatoriamente su N° de Acción en la glosa y enviando su comprobante por este chat.'
   },
   {
-    title: '✅ Trámite Recibido',
-    text: 'Hemos recibido su solicitud y sus respaldos. Nuestro equipo administrativo la procesará a la brevedad posible.'
+    title: '✅ Solicitud Registrada',
+    text: 'Hemos registrado su solicitud y sus respaldos. Nuestro equipo administrativo la procesará a la brevedad posible.'
   }
 ];
 
@@ -73,6 +73,7 @@ export const WhatsAppInbox: React.FC = () => {
   const [showMemberDrawer, setShowMemberDrawer] = useState(true);
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -87,10 +88,22 @@ export const WhatsAppInbox: React.FC = () => {
 
       if (activeChat && (data.chat.id === activeChat.id || data.chat.phone === activeChat.phone)) {
         setMessages(prev => {
+          // Reemplazar mensaje temporal idéntico enviado recientemente
+          const tempIdx = prev.findIndex(m => m.id.startsWith('temp-') && m.content.trim() === data.message.content.trim());
+          if (tempIdx !== -1) {
+            const updated = [...prev];
+            updated[tempIdx] = data.message;
+            return updated;
+          }
           if (prev.some(m => m.id === data.message.id)) return prev;
           return [...prev, data.message];
         });
       }
+    });
+
+    socket.on('whatsapp:handoff_change', (data: { phone: string; isHumanHandoff: boolean }) => {
+      setChats(prev => prev.map(c => c.phone.includes(data.phone) || data.phone.includes(c.phone) ? { ...c, isHumanHandoff: data.isHumanHandoff } : c));
+      setActiveChat(prev => (prev && (prev.phone.includes(data.phone) || data.phone.includes(prev.phone))) ? { ...prev, isHumanHandoff: data.isHumanHandoff } : prev);
     });
 
     socket.on('whatsapp:message_ack', (data: { phone: string; status: string }) => {
@@ -111,19 +124,26 @@ export const WhatsAppInbox: React.FC = () => {
 
   const fetchChats = async () => {
     try {
+      setIsRefreshing(true);
       const res = await api.get('/whatsapp/chats');
       if (res.data && res.data.success) {
         setChats(res.data.data);
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
   const fetchMessages = async (chat: Chat) => {
     try {
       const res = await api.get(`/whatsapp/chats/${chat.id}/messages`);
-      setMessages(res.data.data);
+      if (res.data && res.data.success) {
+        setMessages(res.data.data);
+      } else if (Array.isArray(res.data)) {
+        setMessages(res.data);
+      }
       setChats(prev => prev.map(c => c.id === chat.id ? { ...c, unreadCount: 0 } : c));
     } catch (e) {
       console.error(e);
@@ -142,15 +162,31 @@ export const WhatsAppInbox: React.FC = () => {
   const handleSend = async () => {
     if (!inputText.trim() || !activeChat) return;
 
-    const text = inputText;
+    const text = inputText.trim();
     setInputText('');
     setShowQuickReplies(false);
 
+    // Mensaje optimista para actualización instantánea
+    const optimisticMsg: Message = {
+      id: `temp-${Date.now()}`,
+      chatId: activeChat.id,
+      content: text,
+      fromMe: true,
+      status: 'SENT',
+      timestamp: new Date().toISOString()
+    };
+
+    setMessages(prev => [...prev, optimisticMsg]);
+    setChats(prev => prev.map(c => c.id === activeChat.id ? { ...c, lastMessage: text, lastMessageAt: new Date().toISOString() } : c));
+
     try {
-      await api.post('/whatsapp/send', {
+      const res = await api.post('/whatsapp/send', {
         phone: activeChat.phone,
         text
       });
+      if (res.data?.data) {
+        setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? res.data.data : m));
+      }
     } catch (e) {
       console.error('Failed to send message', e);
     }
@@ -191,9 +227,6 @@ export const WhatsAppInbox: React.FC = () => {
     }
     if (clean.length === 8) {
       return `+591 ${clean.substring(0, 4)} ${clean.substring(4)}`;
-    }
-    if (clean.length >= 10 && clean.length <= 13) {
-      return `+${clean.substring(0, clean.length - 8)} ${clean.substring(clean.length - 8, clean.length - 4)} ${clean.substring(clean.length - 4)}`;
     }
     return `+${clean}`;
   };
@@ -239,9 +272,19 @@ export const WhatsAppInbox: React.FC = () => {
               <Phone className="w-5 h-5 text-brand-gold" />
               Bandeja de Entrada
             </h2>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold font-bold border border-brand-gold/20">
-              {chats.length} chats
-            </span>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={fetchChats} 
+                disabled={isRefreshing}
+                className={`p-1.5 rounded-lg text-gray-400 hover:text-brand-gold transition-colors ${isRefreshing ? 'animate-spin' : ''}`}
+                title="Recargar conversaciones"
+              >
+                <RotateCw size={15} />
+              </button>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold font-bold border border-brand-gold/20">
+                {chats.length} chats
+              </span>
+            </div>
           </div>
 
           {/* Buscador */}

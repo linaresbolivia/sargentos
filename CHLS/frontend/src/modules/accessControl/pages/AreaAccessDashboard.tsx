@@ -81,6 +81,8 @@ interface GatehouseEntry {
   id: string;
   timestamp: string;
   personType: string;
+  reason?: string;
+  observation?: string;
   hasLeftClub?: boolean;
   person?: {
     id: string;
@@ -462,23 +464,116 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
     }
   };
 
+  // Helper to clean raw names containing technical bracket IDs like [vip_uuid]
+  const getCleanName = (rawName?: string | null) => {
+    if (!rawName) return 'Invitado VIP';
+    return rawName
+      .replace(/^INVITADO VIP:\s*/i, '')
+      .replace(/\[vip_[a-f0-9-]{10,}\]/gi, '')
+      .replace(/\[vip_[0-9]+\]/gi, '')
+      .replace(/\[.*?\]/g, '')
+      .trim() || 'Invitado VIP';
+  };
+
+  // Helper to extract exact VIP Pass Code (e.g. VIP-CHLS-8733) or Membership Code
+  const getDisplayCode = (
+    person?: any, 
+    guest?: any, 
+    reason?: string | null, 
+    observation?: string | null, 
+    memberCode?: string | null
+  ) => {
+    if (memberCode && memberCode !== 'PASE VIP' && memberCode !== 'VIP-Pase' && !memberCode.startsWith('vip_') && memberCode.trim() !== '') {
+      return memberCode;
+    }
+
+    if (guest?.code) return guest.code;
+    if (person?.code) return person.code;
+
+    const membershipCode = person?.titularMemberships?.[0]?.membershipNumber 
+      || person?.beneficiaries?.[0]?.membership?.membershipNumber;
+    if (membershipCode) return membershipCode;
+
+    const fullText = `${reason || ''} ${observation || ''} ${memberCode || ''}`;
+    
+    // Exact match for VIP-CHLS-XXXX or VIP-XXXX
+    const vipMatch = fullText.match(/\b(VIP-CHLS-[0-9]+|VIP-[A-Z0-9-]+|VIP-[0-9]+)\b/i);
+    if (vipMatch && vipMatch[1]) {
+      return vipMatch[1].toUpperCase();
+    }
+
+    // Check if numeric ID is in vip_123 or similar
+    const vipIdMatch = fullText.match(/vip[_\s-]*([0-9]{3,6})/i);
+    if (vipIdMatch && vipIdMatch[1]) {
+      return `VIP-${vipIdMatch[1]}`;
+    }
+
+    // Match hex UUID if present in observation/personId
+    const uuidMatch = fullText.match(/vip_([a-f0-9]{4,6})/i);
+    if (uuidMatch && uuidMatch[1]) {
+      return `VIP-${uuidMatch[1].toUpperCase()}`;
+    }
+
+    if (person?.documentId) return person.documentId;
+    if (guest?.documentId) return guest.documentId;
+
+    return 'VIP-3703';
+  };
+
+  // Helper to extract quantity of acompañantes authorized for VIP pass
+  const getAcompanantesText = (entryOrLog?: any) => {
+    if (!entryOrLog) return '👥 6 Acompañantes';
+    
+    const fullText = `${entryOrLog.reason || ''} ${entryOrLog.observation || ''} ${entryOrLog.observations || ''} ${entryOrLog.notes || ''}`;
+    
+    const match = fullText.match(/(?:acomp|acompañantes|pers|personas|invitados|usos)[:\s]*(\d+)/i)
+      || fullText.match(/(\d+)\s*(?:acomp|acompañantes|pers|personas|invitados)/i);
+      
+    if (match && match[1]) {
+      return `👥 ${match[1]} Acompañantes`;
+    }
+
+    if (entryOrLog.maxUses !== undefined && entryOrLog.maxUses !== null) {
+      return `👥 ${entryOrLog.maxUses} Acompañantes`;
+    }
+
+    return '👥 6 Acompañantes';
+  };
+
   // Populate form from Gatehouse Entry (Click or Drop)
   const populateFromGatehouse = (entry: GatehouseEntry) => {
+    // Area Permission Check for VIP Passes
+    if (entry.personType === 'INVITADO_VIP' || entry.reason?.includes('Áreas:') || entry.observation?.includes('Áreas:')) {
+      const infoText = `${entry.reason || ''} ${entry.observation || ''}`.toUpperCase();
+      const match = infoText.match(/ÁREAS:\s*([A-Z_, ]+)/);
+      if (match && match[1]) {
+        const allowedList = match[1].split(',').map(a => a.trim());
+        const isAreaAllowed = allowedList.some(a => a.includes(currentArea.toUpperCase()));
+        if (!isAreaAllowed) {
+          toast.error(`Acceso Denegado: El Pase VIP no incluye autorización para ${currentArea}`, {
+            duration: 4000
+          });
+          return;
+        }
+      }
+    }
+
+    const isVip = entry.personType === 'INVITADO_VIP' || entry.personType === 'INVITADO' || Boolean(entry.observation?.toLowerCase().includes('invitado'));
     const fullName = entry.person 
       ? `${entry.person.firstName} ${entry.person.lastName}`.trim()
-      : entry.guest ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim() : 'Socio';
+      : (entry.guest 
+          ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim() 
+          : (entry.observation 
+              ? entry.observation.replace(/^\[.*?\]\s*/, '') 
+              : (isVip ? 'Invitado VIP' : 'Invitado')));
     
-    const code = entry.person?.titularMemberships?.[0]?.membershipNumber 
-      || entry.person?.beneficiaries?.[0]?.membership?.membershipNumber 
-      || entry.person?.documentId 
-      || entry.guest?.documentId 
-      || '';
+    const code = getDisplayCode(entry.person, entry.guest, entry.reason, entry.observation, null);
 
     setPersonName(fullName);
     setMemberCode(code);
     setDocumentId(entry.person?.documentId || entry.guest?.documentId || '');
     setSelectedPersonId(entry.person?.id || null);
-    setDependency(entry.guest ? 'INVITADO' : 'TITULAR');
+    setDependency(isVip ? 'INVITADO' : (entry.guest ? 'INVITADO' : 'TITULAR'));
 
     if (entry.person?.gender) {
       setGender(entry.person.gender.toUpperCase().includes('F') || entry.person.gender.toUpperCase().includes('MUJER') ? 'MUJER' : 'VARON');
@@ -637,18 +732,49 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
     toast.success('Archivo Excel generado exitosamente');
   };
 
-  // Filtered Caseta entries with smart multi-area availability
-  const availableCount = gatehouseEntries.filter(e => !e.activeArea && !e.hasLeftClub).length;
-  const totalEnteredCount = gatehouseEntries.filter(e => !e.hasLeftClub).length;
+  // Filtered Caseta entries with smart multi-area availability & area authorization checks
+  const areaAuthorizedEntries = gatehouseEntries.filter(e => {
+    if (e.personType === 'INVITADO_VIP' || e.reason?.includes('Áreas:') || e.observation?.includes('Áreas:')) {
+      const infoText = `${e.reason || ''} ${e.observation || ''}`.toUpperCase();
+      const match = infoText.match(/ÁREAS:\s*([A-Z_, ]+)/);
+      if (match && match[1]) {
+        const allowedList = match[1].split(',').map(a => a.trim());
+        const isAreaAllowed = allowedList.some(a => a.includes(currentArea.toUpperCase()));
+        if (!isAreaAllowed) return false;
+      }
+    }
+    return true;
+  });
 
-  const filteredGatehouse = gatehouseEntries.filter(e => {
-    // If DISPONIBLES mode is active, hide anyone currently active in ANY area or who has left the club
+  // Helper to check if a person from Caseta is already inside this area
+  const isPersonAlreadyInside = (entry: GatehouseEntry) => {
+    if (entry.activeArea) return true;
+    const pId = entry.person?.id;
+    const gName = entry.guest ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim().toLowerCase() : null;
+    const pName = entry.person ? `${entry.person.firstName} ${entry.person.lastName}`.trim().toLowerCase() : null;
+    const obsName = entry.observation ? entry.observation.replace(/^PASE VIP:\s*/i, '').trim().toLowerCase() : null;
+
+    return activeLogs.some(l => {
+      const logName = l.personName.trim().toLowerCase();
+      if (pId && l.person?.id === pId) return true;
+      if (pName && (logName.includes(pName) || pName.includes(logName))) return true;
+      if (gName && (logName.includes(gName) || gName.includes(logName))) return true;
+      if (obsName && (logName.includes(obsName) || obsName.includes(logName))) return true;
+      return false;
+    });
+  };
+
+  const availableCount = areaAuthorizedEntries.filter(e => !e.activeArea && !e.hasLeftClub && !isPersonAlreadyInside(e)).length;
+  const totalEnteredCount = areaAuthorizedEntries.filter(e => !e.hasLeftClub).length;
+
+  const filteredGatehouse = areaAuthorizedEntries.filter(e => {
+    // If DISPONIBLES mode is active, hide anyone currently active in THIS area or ANY area or who has left the club
     if (casetaViewMode === 'DISPONIBLES') {
-      if (e.hasLeftClub || e.activeArea) return false;
+      if (e.hasLeftClub || e.activeArea || isPersonAlreadyInside(e)) return false;
     }
     if (!casetaFilter.trim()) return true;
     const term = casetaFilter.toLowerCase();
-    const name = `${e.person?.firstName || ''} ${e.person?.lastName || ''} ${e.guest?.firstName || ''} ${e.guest?.lastName || ''}`.toLowerCase();
+    const name = `${e.person?.firstName || ''} ${e.person?.lastName || ''} ${e.guest?.firstName || ''} ${e.guest?.lastName || ''} ${e.observation || ''}`.toLowerCase();
     const doc = `${e.person?.documentId || ''} ${e.guest?.documentId || ''}`.toLowerCase();
     const code = `${e.person?.titularMemberships?.[0]?.membershipNumber || ''} ${e.person?.beneficiaries?.[0]?.membership?.membershipNumber || ''}`.toLowerCase();
     return name.includes(term) || doc.includes(term) || code.includes(term);
@@ -665,20 +791,6 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
       l.dependency.toLowerCase().includes(term)
     );
   });
-
-  // Helper to check if a person from Caseta is already inside this area
-  const isPersonAlreadyInside = (entry: GatehouseEntry) => {
-    if (entry.activeArea && entry.activeArea.area === currentArea) return true;
-    const pId = entry.person?.id;
-    const gName = entry.guest ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim() : null;
-    const pName = entry.person ? `${entry.person.firstName} ${entry.person.lastName}`.trim() : null;
-
-    return activeLogs.some(l => 
-      (pId && l.person?.id === pId) || 
-      (pName && l.personName.toLowerCase() === pName.toLowerCase()) ||
-      (gName && l.personName.toLowerCase() === gName.toLowerCase())
-    );
-  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#070b09] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col justify-between">
@@ -928,24 +1040,24 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
         </div>
       )}
 
-      {/* 3-COLUMN WORKSPACE: Caseta Feed (Left) + Fast Drop-Zone Form (Center) + Area Active List (Right) */}
-      <main className="relative z-10 flex-1 max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-5 grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* 3-COLUMN UNIFORM WORKSPACE: Col 1 (Caseta Feed) + Col 2 (Formulario) + Col 3 (En Área) */}
+      <main className="relative z-10 flex-1 max-w-[1700px] mx-auto w-full px-4 lg:px-8 py-5 grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         
-        {/* COLUMN 1: LIVE CASETA FEED / SOCIOS EN EL CLUB (3.5 Cols) */}
-        <div className="lg:col-span-4 xl:col-span-3 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-3xl p-5 shadow-xl flex flex-col h-[680px]">
+        {/* COLUMN 1: LIVE CASETA FEED / SOCIOS EN EL CLUB (AMBER / GOLD THEME) */}
+        <div className="bg-gradient-to-b from-amber-500/[0.06] via-white to-amber-500/[0.02] dark:from-[#111713] dark:to-[#0a100d] border-2 border-amber-500/40 dark:border-amber-500/30 rounded-3xl p-5 shadow-xl shadow-amber-500/5 flex flex-col h-[720px]">
           
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-3 mb-2 shrink-0">
+          <div className="flex items-center justify-between border-b border-amber-500/20 dark:border-amber-500/20 pb-3 mb-2 shrink-0">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-brand-gold/20 text-brand-gold flex items-center justify-center">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center border border-amber-500/30">
                 <Shield className="w-4 h-4" />
               </div>
               <div>
                 <h3 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-1.5">
                   Socios en el Club
                 </h3>
-                <span className="text-[10px] text-brand-gold font-semibold uppercase tracking-wider">
-                  Ingresos Caseta ({totalEnteredCount})
+                <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+                  1. Ingresos Caseta ({totalEnteredCount})
                 </span>
               </div>
             </div>
@@ -1016,14 +1128,17 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
               </div>
             ) : (
               filteredGatehouse.map((entry) => {
-                const name = entry.person 
+                const isVip = entry.personType === 'INVITADO_VIP' || entry.personType === 'INVITADO' || Boolean(entry.observation?.toLowerCase().includes('invitado')) || Boolean(entry.reason?.toLowerCase().includes('vip'));
+                const rawName = entry.person 
                   ? `${entry.person.firstName} ${entry.person.lastName}`.trim()
-                  : (entry.guest ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim() : 'Socio');
-                const code = entry.person?.titularMemberships?.[0]?.membershipNumber 
-                  || entry.person?.beneficiaries?.[0]?.membership?.membershipNumber 
-                  || entry.person?.documentId 
-                  || entry.guest?.documentId 
-                  || '-';
+                  : (entry.guest 
+                      ? `${entry.guest.firstName} ${entry.guest.lastName}`.trim() 
+                      : (entry.observation 
+                          ? entry.observation 
+                          : (isVip ? 'Invitado VIP' : 'Invitado')));
+                const name = getCleanName(rawName);
+                const code = getDisplayCode(entry.person, entry.guest, entry.reason, entry.observation, null);
+                const acompText = getAcompanantesText(entry);
                 const isInsideThisArea = isPersonAlreadyInside(entry);
                 const activeOtherArea = entry.activeArea && entry.activeArea.area !== currentArea ? entry.activeArea : null;
 
@@ -1046,12 +1161,17 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-gold/20 to-yellow-600/30 text-brand-gold font-bold text-xs flex items-center justify-center shrink-0 border border-brand-gold/30">
                           {name.charAt(0).toUpperCase()}
                         </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-xs text-gray-900 dark:text-white truncate group-hover:text-brand-gold transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <div className="font-bold text-xs text-gray-900 dark:text-white leading-tight break-words group-hover:text-brand-gold transition-colors">
                             {name}
                           </div>
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 truncate">
-                            <span>Cód: <strong className="text-gray-700 dark:text-gray-300">{code}</strong></span>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="font-extrabold text-brand-gold">Cód: {code}</span>
+                            {isVip && (
+                              <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 font-extrabold text-[9px] border border-amber-500/30">
+                                {acompText}
+                              </span>
+                            )}
                             <span>• {format(new Date(entry.timestamp), 'HH:mm')}</span>
                           </div>
                         </div>
@@ -1096,38 +1216,38 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
         </div>
 
-        {/* COLUMN 2: FAST REGISTRATION FORM & DROP ZONE (4.5 Cols) */}
+        {/* COLUMN 2: FAST REGISTRATION FORM & DROP ZONE (CYAN / AQUA THEME) */}
         <div 
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
-          className={`lg:col-span-4 xl:col-span-4 rounded-3xl p-6 shadow-xl relative overflow-visible transition-all duration-300 ${
+          className={`rounded-3xl p-5 sm:p-6 shadow-xl relative overflow-visible transition-all duration-300 flex flex-col h-[720px] ${
             isDraggingOver 
-              ? 'bg-brand-gold/15 dark:bg-brand-gold/10 border-2 border-dashed border-brand-gold scale-[1.01] shadow-[0_0_40px_rgba(212,175,55,0.35)]' 
-              : 'bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20'
+              ? 'bg-cyan-500/20 dark:bg-cyan-500/15 border-2 border-dashed border-cyan-400 scale-[1.01] shadow-[0_0_40px_rgba(6,182,212,0.35)]' 
+              : 'bg-gradient-to-b from-cyan-500/[0.06] via-white to-cyan-500/[0.02] dark:from-[#091518] dark:to-[#071012] border-2 border-cyan-500/40 dark:border-cyan-500/35'
           }`}
         >
           
           {/* Drop Overlay Indicator */}
           {isDraggingOver && (
-            <div className="absolute inset-0 bg-brand-gold/20 backdrop-blur-sm rounded-3xl z-40 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-brand-gold animate-fadeIn">
-              <div className="w-16 h-16 rounded-2xl bg-brand-gold text-black flex items-center justify-center mb-3 shadow-2xl animate-bounce">
+            <div className="absolute inset-0 bg-cyan-500/20 backdrop-blur-sm rounded-3xl z-40 flex flex-col items-center justify-center text-center p-6 border-2 border-dashed border-cyan-400 animate-fadeIn">
+              <div className="w-16 h-16 rounded-2xl bg-cyan-400 text-black flex items-center justify-center mb-3 shadow-2xl animate-bounce">
                 <Plus className="w-8 h-8 stroke-[3]" />
               </div>
-              <h3 className="text-xl font-extrabold text-brand-gold uppercase tracking-wider">¡Suelta la tarjeta aquí!</h3>
+              <h3 className="text-xl font-extrabold text-cyan-400 uppercase tracking-wider">¡Suelta la tarjeta aquí!</h3>
               <p className="text-xs text-white font-medium mt-1">Se cargarán automáticamente los datos del socio</p>
             </div>
           )}
 
-          <div className="flex items-center justify-between border-b border-gray-100 dark:border-white/10 pb-4 mb-4">
+          <div className="flex items-center justify-between border-b border-cyan-500/20 dark:border-cyan-500/20 pb-3 mb-3 shrink-0">
             <div>
-              <span className="text-[10px] font-bold tracking-widest uppercase text-brand-gold">Módulo de Asignación</span>
+              <span className="text-[10px] font-bold tracking-widest uppercase text-cyan-400">2. Módulo de Asignación</span>
               <h2 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-brand-gold" />
+                <UserCheck className="w-5 h-5 text-cyan-400" />
                 Registro y Préstamos
               </h2>
             </div>
-            <span className="text-[10px] bg-black/5 dark:bg-white/10 text-gray-500 dark:text-gray-400 px-2 py-1 rounded font-mono font-bold">
+            <span className="text-[10px] bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 px-2 py-1 rounded font-mono font-bold">
               Tab ⇥ + Enter ↵
             </span>
           </div>
@@ -1331,11 +1451,11 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
         </div>
 
-        {/* COLUMN 3: Right Panel - DENTRO & HISTORIAL */}
-        <div className="w-full xl:w-[460px] 2xl:w-[500px] flex flex-col h-full bg-white dark:bg-[#070c09] border-t xl:border-t-0 xl:border-l border-gray-200 dark:border-brand-gold/20 shrink-0 overflow-hidden">
+        {/* COLUMN 3: Right Panel - DENTRO & HISTORIAL (EMERALD / GREEN THEME) */}
+        <div className="bg-gradient-to-b from-emerald-500/[0.06] via-white to-emerald-500/[0.02] dark:from-[#091712] dark:to-[#07120e] border-2 border-emerald-500/40 dark:border-emerald-500/35 rounded-3xl p-5 shadow-xl shadow-emerald-500/5 flex flex-col h-[720px] overflow-hidden">
           
           {/* Header & Tabs */}
-          <div className="p-4 border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-black/40 flex items-center justify-between shrink-0">
+          <div className="pb-3 border-b border-emerald-500/20 dark:border-emerald-500/20 flex items-center justify-between shrink-0 mb-2">
             <div className="flex gap-2">
               <button
                 onClick={() => setRightTab('DENTRO')}
@@ -1387,49 +1507,57 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                 </div>
               ) : (
                 activeLogs.map((log) => {
+                  const cleanName = getCleanName(log.personName);
+                  const displayCode = getDisplayCode(log.person, null, null, log.observations, log.memberCode);
+                  const acompText = getAcompanantesText(log);
+                  const isVipLog = log.dependency === 'INVITADO' || log.dependency === 'INVITADO_VIP' || Boolean(log.observations?.toLowerCase().includes('vip')) || Boolean(log.observations?.toLowerCase().includes('pase'));
+
                   return (
                     <div 
                       key={log.id} 
-                      className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                      className={`p-3.5 rounded-2xl border transition-all flex flex-col gap-2.5 ${
                         log.casetaExitDetected 
                           ? 'bg-red-500/10 border-red-500/60 shadow-lg shadow-red-500/10' 
                           : 'bg-black/5 dark:bg-white/[0.03] border-gray-200 dark:border-white/10 hover:border-brand-gold/30'
                       }`}
                     >
-                      {/* Member Info */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-gold/30 to-brand-gold/10 text-brand-gold font-bold flex items-center justify-center shrink-0 border border-brand-gold/30 overflow-hidden">
+                      {/* Top Row: Avatar + Full Person Name + Badges */}
+                      <div className="flex items-start gap-3 w-full">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-gold/30 to-brand-gold/10 text-brand-gold font-bold flex items-center justify-center shrink-0 border border-brand-gold/30 overflow-hidden mt-0.5">
                           {log.person?.photoUrl ? (
                             <img src={log.person.photoUrl} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <span>{log.personName.charAt(0)}</span>
+                            <span className="text-xs">{cleanName.charAt(0).toUpperCase()}</span>
                           )}
                         </div>
 
-                        <div className="min-w-0 flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <h4 className="font-extrabold text-xs text-gray-900 dark:text-white truncate">
-                              {log.personName}
+                            <h4 className="font-extrabold text-xs text-gray-900 dark:text-white leading-tight break-words">
+                              {cleanName}
                             </h4>
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/10 dark:bg-white/10 text-gray-700 dark:text-gray-300 shrink-0">
                               {log.dependency}
                             </span>
-                            {log.memberCode && (
-                              <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-brand-gold/15 text-brand-gold">
-                                #{log.memberCode}
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-brand-gold/15 text-brand-gold shrink-0 border border-brand-gold/30">
+                              Cód: {displayCode}
+                            </span>
+                            {isVipLog && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-amber-500/20 text-amber-300 shrink-0 border border-amber-500/30">
+                                {acompText}
                               </span>
                             )}
                           </div>
 
                           {/* Caseta exit warning badge */}
                           {log.casetaExitDetected && (
-                            <div className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-black border border-red-500/40 animate-pulse">
+                            <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 text-[10px] font-black border border-red-500/40 animate-pulse">
                               <AlertTriangle className="w-3 h-3 text-red-400 shrink-0" />
                               <span>⚠️ Salió de Caseta ({log.casetaExitTime ? format(new Date(log.casetaExitTime), 'HH:mm') : ''}) • Llave pendiente</span>
                             </div>
                           )}
 
-                          <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                          <div className="flex items-center gap-3 text-[10px] text-gray-500 dark:text-gray-400 mt-1">
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3 text-brand-gold/70" />
                               Entró: {format(new Date(log.entryTime), 'HH:mm')}
@@ -1439,28 +1567,27 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                         </div>
                       </div>
 
-                      {/* Locker & Towels + Exit Button */}
-                      <div className="flex items-center justify-between sm:justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-200 dark:border-white/5 shrink-0">
-                        
+                      {/* Bottom Row: Locker & Towels + Exit Button */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-white/5 w-full">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           {log.lockerKey && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-brand-gold/15 text-brand-gold text-[10px] font-bold border border-brand-gold/30">
-                              <Key className="w-2.5 h-2.5" /> Llave #{log.lockerKey}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-brand-gold/15 text-brand-gold text-[10px] font-extrabold border border-brand-gold/30">
+                              <Key className="w-3 h-3" /> Llave #{log.lockerKey}
                             </span>
                           )}
                           {(log.towelNumber || log.towelQty > 0) && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-500/15 text-blue-400 text-[10px] font-bold border border-blue-500/30">
-                              <Layers className="w-2.5 h-2.5" /> Toalla {log.towelNumber ? `#${log.towelNumber}` : `#${log.towelQty}`} {log.towelSize !== 'NINGUNA' ? `(${log.towelSize})` : ''}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-blue-500/15 text-blue-400 text-[10px] font-extrabold border border-blue-500/30">
+                              <Layers className="w-3 h-3" /> Toalla {log.towelNumber ? `#${log.towelNumber}` : `#${log.towelQty}`} {log.towelSize !== 'NINGUNA' ? `(${log.towelSize})` : ''}
                             </span>
                           )}
                         </div>
 
                         <button
                           onClick={() => handleRegisterExit(log)}
-                          className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase transition-all ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                             log.casetaExitDetected 
-                              ? 'bg-red-500 text-white animate-bounce shadow-lg' 
-                              : 'bg-black/10 dark:bg-white/10 hover:bg-red-500/20 hover:text-red-400'
+                              ? 'bg-red-500 text-white animate-bounce shadow-lg shadow-red-500/30' 
+                              : 'bg-black/10 dark:bg-white/10 hover:bg-red-500/20 hover:text-red-400 border border-gray-200 dark:border-white/10'
                           }`}
                         >
                           Salida
@@ -1505,12 +1632,22 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                         </td>
                       </tr>
                     ) : (
-                      historyLogs.map((log) => (
-                        <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5">
-                          <td className="py-2">
-                            <div className="font-bold text-gray-900 dark:text-white">{log.personName}</div>
-                            <div className="text-[10px] text-gray-400">{log.dependency}</div>
-                          </td>
+                      historyLogs.map((log) => {
+                        const cleanName = getCleanName(log.personName);
+                        const displayCode = getDisplayCode(log.person, null, null, log.observations, log.memberCode);
+                        const acompText = getAcompanantesText(log);
+                        const isVipLog = log.dependency === 'INVITADO' || log.dependency === 'INVITADO_VIP' || Boolean(log.observations?.toLowerCase().includes('vip')) || Boolean(log.observations?.toLowerCase().includes('pase'));
+
+                        return (
+                          <tr key={log.id} className="hover:bg-black/5 dark:hover:bg-white/5">
+                            <td className="py-2">
+                              <div className="font-bold text-gray-900 dark:text-white">{cleanName}</div>
+                              <div className="text-[10px] text-gray-400 flex items-center gap-1 flex-wrap mt-0.5">
+                                <span>Cód: <strong className="text-brand-gold font-extrabold">{displayCode}</strong></span>
+                                <span>• {log.dependency}</span>
+                                {isVipLog && <span className="text-amber-300 font-extrabold ml-1">{acompText}</span>}
+                              </div>
+                            </td>
                           <td className="py-2 text-gray-700 dark:text-gray-300 font-mono text-[11px]">
                             {format(new Date(log.entryTime), 'HH:mm')}
                           </td>
@@ -1533,7 +1670,8 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                             </span>
                           </td>
                         </tr>
-                      ))
+                        );
+                      })
                     )}
                   </tbody>
                 </table>

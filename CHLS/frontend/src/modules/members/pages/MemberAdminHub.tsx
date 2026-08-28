@@ -36,7 +36,7 @@ import { ScheduledBillingGeneratorView } from '../components/ScheduledBillingGen
 import { SalesCommissionsView } from '../components/SalesCommissionsView';
 import { MemberNotificationsRegistryView } from '../components/MemberNotificationsRegistryView';
 import { GateAttendanceConsoleView } from '../components/GateAttendanceConsoleView';
-import { Building, GraduationCap, Layers, Send, UserCheck, Percent } from 'lucide-react';
+import { Building, GraduationCap, Layers, Send, UserCheck, Percent, Sparkles } from 'lucide-react';
 
 export const MemberAdminHub: React.FC = () => {
   const navigate = useNavigate();
@@ -96,6 +96,14 @@ export const MemberAdminHub: React.FC = () => {
 
         {/* Action Header Buttons matching PQRS style */}
         <div className="flex items-center gap-2.5 flex-wrap">
+          {/* Button 0: Commercial & VIP Module (Gold) */}
+          <button 
+            onClick={() => navigate('/admin/comercial')}
+            className="px-4 py-2 rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-md transition-all hover:scale-105 bg-gradient-to-r from-amber-500 via-brand-gold to-yellow-600 text-black shadow-brand-gold/30"
+          >
+            <Sparkles className="w-4 h-4" /> COMERCIAL & VIP
+          </button>
+
           {/* Button 1: Indicadores Gráficos (Green) */}
           <button 
             onClick={() => setActiveTab(activeTab === 'ANALYTICS' ? 'DIRECTORIO' : 'ANALYTICS')}

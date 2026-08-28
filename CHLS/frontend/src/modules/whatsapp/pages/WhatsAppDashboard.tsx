@@ -108,18 +108,18 @@ export default function WhatsAppDashboard() {
             <CrestLogo size="sm" />
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <Bot className="w-3 h-3" /> Canal 2 • Bot 24/7 & Call Center
+                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                  <Bot className="w-3 h-3" /> Módulo Call Center 24/7 • Canal 2
                 </span>
                 <span className="text-[10px] font-mono text-gray-400 bg-white/5 px-2 py-0.5 rounded-full border border-white/10">
-                  chls-callcenter
+                  Sesión: chls-callcenter
                 </span>
               </div>
               <h1 className="text-2xl sm:text-3xl font-bold text-brand-gold-dark dark:text-brand-gold mt-1 serif-brand">
-                Call Center & Chatbot 24/7
+                Módulo Call Center & Chatbot 24/7
               </h1>
               <p className="text-gray-600 dark:text-gray-400 mt-0.5 text-xs sm:text-sm">
-                Atención virtual interactiva, consultas en vivo de socios y seguimiento inteligente de PQRS.
+                Atención virtual interactiva, consultas en vivo de socios y seguimiento inteligente de solicitudes.
               </p>
             </div>
           </div>
@@ -129,11 +129,11 @@ export default function WhatsAppDashboard() {
             <div 
               onClick={() => setActiveTab('connection')}
               className="cursor-pointer flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-black/40 border border-gray-200 dark:border-glass-border shadow-sm hover:border-brand-gold transition-all"
-              title="Ver estado o escanear QR de Canal 2"
+              title="Ver estado o escanear QR de Canal 2 Call Center"
             >
               <div className={`w-3 h-3 rounded-full ${waStatus.status === 'CONNECTED' ? 'bg-emerald-500 shadow-emeraldGlow' : 'bg-amber-500 animate-pulse'}`} />
               <span className="text-xs font-semibold uppercase tracking-wider text-gray-800 dark:text-brand-gold-light">
-                {waStatus.status === 'CONNECTED' ? 'Canal 2 Conectado' : waStatus.status === 'QR_READY' ? 'Escanear QR Canal 2' : waStatus.status}
+                {waStatus.status === 'CONNECTED' ? 'Call Center Conectado' : waStatus.status === 'QR_READY' ? 'Escanear QR Call Center' : waStatus.status}
               </span>
             </div>
             {waStatus.status === 'CONNECTED' && (
@@ -183,7 +183,7 @@ export default function WhatsAppDashboard() {
                 <div className="p-4 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-center justify-between gap-4 text-xs text-amber-300">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">⚠️</span>
-                    <span>La línea del Call Center está desconectada. Vincula el código QR para interactuar en vivo con los socios.</span>
+                    <span>La línea de WhatsApp del <strong>Módulo Call Center</strong> está desconectada. Vincula el código QR para interactuar en vivo con los socios.</span>
                   </div>
                   <button
                     onClick={() => setActiveTab('connection')}
@@ -198,55 +198,107 @@ export default function WhatsAppDashboard() {
           )}
 
           {activeTab === 'connection' && (
-            <div className="max-w-xl mx-auto py-6">
+            <div className="max-w-3xl mx-auto py-6">
 
               {/* Multi-Session Architecture Banner */}
-              <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-black/50 border border-brand-gold/30 text-xs text-gray-700 dark:text-gray-300 space-y-2 shadow-lg">
-                <div className="flex items-center gap-2 text-brand-gold font-bold">
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Configuración de Canales Independientes de WhatsApp</span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  <div className="p-2.5 rounded-xl bg-brand-gold/10 border border-brand-gold/30">
-                    <p className="font-bold text-gray-900 dark:text-white text-[11px] flex items-center gap-1">
-                      <span>🤖 Canal 2 (Este Panel)</span>
-                      <span className="text-emerald-500 dark:text-emerald-400 font-mono text-[9px]">chls-callcenter</span>
-                    </p>
-                    <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                      Bot 24/7 interactivo, encuestas de satisfacción, IA y bandeja de chats en vivo.
-                    </p>
+              <div className="mb-6 p-5 rounded-2xl bg-white dark:bg-[#07130f] border border-brand-gold/30 text-xs text-gray-700 dark:text-gray-300 space-y-3 shadow-xl">
+                <div className="flex items-center justify-between border-b border-brand-gold/20 pb-2.5">
+                  <div className="flex items-center gap-2 text-brand-gold font-bold text-sm">
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Canales de WhatsApp por Módulo en CHLS</span>
                   </div>
-                  <div className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                  <span className="text-[10px] text-gray-400">4 Líneas Independientes</span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  {/* Canal 1: Reservas */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
                     <div>
-                      <p className="font-bold text-gray-900 dark:text-white text-[11px] flex items-center gap-1">
-                        <span>📢 Canal 3 (Envíos Masivos)</span>
-                        <span className="text-blue-400 font-mono text-[9px]">chls-masivo</span>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>🎾 Módulo Reservas Deportivas</span>
+                        <span className="text-emerald-500 font-mono text-[9px] bg-emerald-500/10 px-1.5 py-0.5 rounded">chls-reservas</span>
                       </p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
-                        Línea dedicada a campañas masivas y comunicados a socios.
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Pases de cancha (Pádel, Tenis), confirmación de turnos y QR de pagos deportivos.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/courts')}
+                      className="text-[11px] text-brand-gold hover:underline font-bold mt-2 text-left"
+                    >
+                      Ir a Reservas Deportivas ➔
+                    </button>
+                  </div>
+
+                  {/* Canal 2: Call Center (Este panel) */}
+                  <div className="p-3 rounded-xl bg-brand-gold/15 border border-brand-gold/40 flex flex-col justify-between shadow-sm">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span className="text-brand-gold-dark dark:text-brand-gold font-black">🤖 Módulo Call Center & Bot (Este Panel)</span>
+                        <span className="text-emerald-500 font-mono text-[9px] bg-emerald-500/15 px-1.5 py-0.5 rounded">chls-callcenter</span>
+                      </p>
+                      <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-1">
+                        Asistente virtual 24/7, encuestas de satisfacción, IA y bandeja de chats en vivo.
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-emerald-500 font-bold mt-2 flex items-center gap-1">
+                      ● Panel Activo
+                    </span>
+                  </div>
+
+                  {/* Canal 3: Masivo */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>📢 Módulo Difusión Masiva</span>
+                        <span className="text-blue-400 font-mono text-[9px] bg-blue-500/10 px-1.5 py-0.5 rounded">chls-masivo</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Campañas de difusión masiva, estados de cuenta, avisos de cobranza y comunicados.
                       </p>
                     </div>
                     <button
                       onClick={() => navigate('/admin/whatsapp-masivo')}
-                      className="text-[10px] text-blue-500 hover:underline font-bold mt-1 text-left"
+                      className="text-[11px] text-blue-500 hover:underline font-bold mt-2 text-left"
                     >
                       Ir a Envíos Masivos ➔
+                    </button>
+                  </div>
+
+                  {/* Canal 4: PQRS */}
+                  <div className="p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex flex-col justify-between">
+                    <div>
+                      <p className="font-bold text-gray-900 dark:text-white text-xs flex items-center justify-between">
+                        <span>📋 Módulo PQRS & Reclamos</span>
+                        <span className="text-purple-400 font-mono text-[9px] bg-purple-500/10 px-1.5 py-0.5 rounded">chls-pqrs</span>
+                      </p>
+                      <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1">
+                        Notificaciones de resolución de tickets, seguimiento de reclamos y consultas.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/admin/pqrs')}
+                      className="text-[11px] text-purple-400 hover:underline font-bold mt-2 text-left"
+                    >
+                      Ir a PQRS & Reclamos ➔
                     </button>
                   </div>
                 </div>
               </div>
 
               {waStatus.status === 'DISCONNECTED' && (
-                <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-10 text-center flex flex-col items-center shadow-xl">
-                  <MessageSquare className="w-16 h-16 text-brand-gold mb-6 opacity-80" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">Línea Call Center Desconectada</h2>
-                  <p className="text-gray-600 dark:text-gray-300 mb-8 text-sm">
-                    Inicia el servicio para generar el código QR y conectar el WhatsApp Oficial del Bot y Call Center.
+                <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-8 sm:p-10 text-center flex flex-col items-center shadow-xl">
+                  <div className="w-16 h-16 rounded-2xl bg-brand-gold/10 flex items-center justify-center mb-5 border border-brand-gold/20">
+                    <MessageSquare className="w-8 h-8 text-brand-gold opacity-80" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Línea Call Center Desconectada</h2>
+                  <p className="text-gray-600 dark:text-gray-300 mb-6 text-sm max-w-md">
+                    Inicia el servicio para generar el código QR y conectar el WhatsApp Oficial del <strong>Módulo Call Center & Asistente Virtual 24/7</strong>.
                   </p>
                   <button
                     onClick={handleStartSession}
                     disabled={loading}
-                    className="w-full bg-brand-gold hover:bg-brand-gold-light text-brand-green font-bold py-3.5 px-6 rounded-xl transition-all shadow-goldGlow disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full max-w-sm bg-brand-gold hover:bg-brand-gold-light text-brand-green font-bold py-3.5 px-6 rounded-xl transition-all shadow-goldGlow disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
                   >
                     {loading ? <RefreshCw className="w-5 h-5 animate-spin" /> : 'Generar Código QR de Call Center'}
                   </button>
@@ -256,16 +308,16 @@ export default function WhatsAppDashboard() {
               {waStatus.status === 'INITIALIZING' && (
                 <div className="bg-white dark:bg-glass-bg border border-gray-200 dark:border-glass-border rounded-2xl p-10 text-center flex flex-col items-center shadow-xl">
                   <RefreshCw className="w-16 h-16 text-brand-gold mb-6 animate-spin opacity-80" />
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Inicializando Call Center...</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm">Preparando la conexión segura de WhatsApp, espera un momento.</p>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Inicializando WhatsApp Call Center...</h2>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm">Preparando la conexión segura para el Módulo de Call Center 24/7, espera un momento.</p>
                 </div>
               )}
 
               {waStatus.status === 'QR_READY' && (
                 <div className="bg-white dark:bg-brand-green-light border border-gray-200 dark:border-brand-green-light rounded-2xl p-8 flex flex-col items-center shadow-2xl text-center">
                   <h2 className="text-2xl font-bold text-brand-gold-dark dark:text-brand-gold mb-2">Escanea el Código QR</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-                    Abre WhatsApp en el teléfono de <strong>Call Center / Atención al Socio</strong>, ve a <strong>Dispositivos Vinculados &gt; Vincular un dispositivo</strong> y escanea el código.
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 max-w-md">
+                    Abre WhatsApp en el teléfono asignado al <strong>Módulo Call Center / Asistente Virtual</strong>, ve a <strong>Dispositivos Vinculados &gt; Vincular un dispositivo</strong> y escanea el código.
                   </p>
                   
                   <div className="bg-white p-4 rounded-2xl shadow-xl inline-block mb-6 border border-gray-200">
@@ -292,9 +344,13 @@ export default function WhatsAppDashboard() {
                   <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center text-green-500 mb-4">
                     <MessagesSquare className="w-8 h-8" />
                   </div>
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 text-xs font-bold uppercase mb-3">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    Módulo Call Center Activo
+                  </div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">¡Línea Call Center Conectada y Activa!</h2>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6">
-                    El Bot de Atención Virtual 24/7 y la recepción de mensajes están operando normalmente.
+                  <p className="text-gray-600 dark:text-gray-300 text-sm mb-6 max-w-md">
+                    El Asistente Virtual 24/7 y la recepción de mensajes en vivo para atención a socios están operando normalmente.
                   </p>
                   <button
                     onClick={() => setActiveTab('inbox')}

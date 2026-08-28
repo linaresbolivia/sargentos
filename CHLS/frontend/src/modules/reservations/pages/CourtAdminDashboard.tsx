@@ -980,8 +980,12 @@ export const CourtAdminDashboard: React.FC = () => {
             checkWaStatus();
           }}
           clientId="chls-reservas"
-          title="Canal 1: WhatsApp Reservas Deportivas (Notificaciones Web)"
-          subtitle="Línea oficial exclusiva para despachar comprobantes, pases deportivos y QR de pagos de reservas web (sin bots ni menús)."
+          moduleName="Módulo de Reservas Deportivas"
+          channelBadge="Canal 1 • Reservas Web"
+          title="WhatsApp Reservas Deportivas (Notificaciones Web)"
+          subtitle="Línea oficial asignada exclusivamente a confirmaciones de turnos, envío de pases deportivos y comprobantes QR de pago."
+          purposeDescription="Despachar automáticamente pases de ingreso con código QR de acceso a canchas (Tenis, Pádel) y comprobantes de reservas confirmadas."
+          successMessage="La línea de WhatsApp de Reservas Deportivas está conectada y lista para despachar pases y notificaciones de turnos a los socios."
         />
       )}
 

@@ -214,11 +214,18 @@ export class BotSessionManager {
       ? `🎖️ *Socio Acción #${session.member?.membershipNumber}*` 
       : `👋 *Atención al Socio / Visitantes*`;
 
+    const greetingPrefixes = [
+      `Estimado(a) socio(a) *${greetingName}*:`,
+      `Apreciado(a) socio(a) *${greetingName}*:`,
+      `Distinguido(a) socio(a) *${greetingName}*:`
+    ];
+    const greeting = greetingPrefixes[Math.floor(Math.random() * greetingPrefixes.length)];
+
     return `🏆 *CLUB HÍPICO LOS SARGENTOS*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `¡Hola *${greetingName}*!\n${memberTag}\n\n` +
-      `Elige una opción:\n\n` +
-      `1️⃣ 💳 *Consultar mi Deuda y Saldo Actual*\n` +
+      `${greeting}\n${memberTag}\n\n` +
+      `Por favor elija una opción del menú:\n\n` +
+      `1️⃣ 💳 *Consultar Deuda y Saldo Actual*\n` +
       `2️⃣ 🎾 *Canchas y Deportes*\n` +
       `3️⃣ 🏊‍♂️ *Piscina y Saunas*\n` +
       `4️⃣ 📋 *Reclamos y Sugerencias (PQRS)*\n` +
@@ -227,7 +234,7 @@ export class BotSessionManager {
       `7️⃣ ℹ️ *Información y Contactos*\n` +
       `8️⃣ 👤 *Hablar con un Asesor*\n` +
       `━━━━━━━━━━━━━━━━━━━━\n` +
-      `💡 _O escribe directamente tu consulta._`;
+      `💡 _O escriba directamente su consulta._`;
   }
 
   private async handleMainMenuInput(
@@ -246,7 +253,7 @@ export class BotSessionManager {
       return {
         response: `🔒 *VERIFICACIÓN DE SEGURIDAD*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Por favor, escribe tu número de *Carnet de Identidad (CI)* o N° de Acción para consultar tu estado de cuenta:\n` +
+          `Por favor, ingrese su número de *Carnet de Identidad (CI)* o N° de Acción para consultar su estado de cuenta:\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
           `0️⃣ ↩️ Cancelar`,
         shouldSend: true,
@@ -303,7 +310,7 @@ export class BotSessionManager {
     }
 
     return {
-      response: `🤔 Opción no reconocida. Elige del *1 al 8*:\n\n` + this.buildMainMenu(session),
+      response: `🤔 Opción no reconocida. Por favor elija una opción del *1 al 8*:\n\n` + this.buildMainMenu(session),
       shouldSend: true,
       isHandoff: false
     };
@@ -359,7 +366,7 @@ export class BotSessionManager {
       return {
         response: `🔍 *CONSULTA DE RESERVA DE CANCHA*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Escribe tu código de reserva:\n` +
+          `Por favor ingrese su código de reserva:\n` +
           `👉 Ejemplo: *RES-TEN-1042* o *RES-84920*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
           `0️⃣ ↩️ Volver a Deportes`,
@@ -451,7 +458,7 @@ export class BotSessionManager {
       return {
         response: `🔒 *VERIFICACIÓN DE SEGURIDAD*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Por favor, escribe tu número de *Carnet de Identidad (CI)* o N° de Acción:\n` +
+          `Por favor, ingrese su número de *Carnet de Identidad (CI)* o N° de Acción:\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
           `0️⃣ ↩️ Cancelar`,
         shouldSend: true,
@@ -505,7 +512,7 @@ export class BotSessionManager {
 
       if (!person) {
         return {
-          response: `❌ No se encontró socio con documento *"${input.trim()}"*.\n\nIntenta de nuevo o escribe *0* para volver.`,
+          response: `❌ No se encontró un socio registrado con el documento *"${input.trim()}"*.\n\nPor favor intente nuevamente o escriba *0* para volver.`,
           shouldSend: true,
           isHandoff: false
         };
@@ -529,7 +536,7 @@ export class BotSessionManager {
       };
     } catch (err) {
       return {
-        response: `Error consultando datos. Escribe *'HUMANO'* para hablar con Caja.`,
+        response: `Error al consultar datos. Por favor escriba *'HUMANO'* si desea comunicarse con Caja.`,
         shouldSend: true,
         isHandoff: false
       };
@@ -561,7 +568,7 @@ export class BotSessionManager {
       msg += `━━━━━━━━━━━━━━━━━━━━\n`;
 
       if (unpaidFees.length === 0 && totalUnpaid === 0) {
-        msg += `🟢 *¡Estás al día en tus cuotas sociales!*\nMuchas gracias por tu puntualidad. ✨\n`;
+        msg += `🟢 *¡Usted se encuentra al día en sus cuotas sociales!*\nMuchas gracias por su puntualidad y compromiso con el Club. ✨\n`;
       } else {
         msg += `⚠️ *Cuotas Pendientes:*\n`;
         for (const fee of unpaidFees.slice(0, 4)) {
@@ -572,7 +579,7 @@ export class BotSessionManager {
         }
         msg += `\n💰 *Total Adeudado:* *Bs. ${totalUnpaid.toFixed(2)}*\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `📌 *Pago QR/Transferencia:* Coloca en la glosa tu N° de Acción *${membership?.membershipNumber || ''}* y envía tu comprobante aquí.`;
+        msg += `📌 *Pago QR / Transferencia:* Por favor coloque en la glosa de su transferencia su N° de Acción *${membership?.membershipNumber || ''}* y envíe su comprobante por este medio.`;
       }
 
       return msg;
@@ -623,7 +630,7 @@ export class BotSessionManager {
       return {
         response: `🔍 *CONSULTAR ESTADO PQRS*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Escribe tu código de seguimiento:\n` +
+          `Por favor ingrese su código de seguimiento:\n` +
           `👉 Ejemplo: *MLG1* o *PQR-1002*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
           `0️⃣ ↩️ Cancelar`,
@@ -663,7 +670,7 @@ export class BotSessionManager {
       };
       const selectedType = typeMap[text];
       if (!selectedType) {
-        return { response: `Elige del *1 al 4* (o *0* para cancelar).`, shouldSend: true, isHandoff: false };
+        return { response: `Por favor elija una opción del *1 al 4* (o *0* para cancelar).`, shouldSend: true, isHandoff: false };
       }
 
       session.data.newPqrs.type = selectedType;
@@ -699,16 +706,16 @@ export class BotSessionManager {
       };
       const selectedArea = areaMap[text];
       if (!selectedArea) {
-        return { response: `Elige del *1 al 8* (o *0* para cancelar).`, shouldSend: true, isHandoff: false };
+        return { response: `Por favor elija una opción del *1 al 8* (o *0* para cancelar).`, shouldSend: true, isHandoff: false };
       }
 
       session.data.newPqrs.area = selectedArea;
       session.state = 'PQRS_CREATING_DESC';
 
       return {
-        response: `✍️ *DETALLE DE TU SOLICITUD (Paso 3 de 3)*\n` +
+        response: `✍️ *DETALLE DE SU SOLICITUD (Paso 3 de 3)*\n` +
           `━━━━━━━━━━━━━━━━━━━━\n` +
-          `Por favor escribe en un solo mensaje la descripción de tu ${session.data.newPqrs.type.toLowerCase()}:`,
+          `Por favor escriba en un solo mensaje la descripción de su ${session.data.newPqrs.type.toLowerCase()}:`,
         shouldSend: true,
         isHandoff: false
       };
@@ -716,7 +723,7 @@ export class BotSessionManager {
 
     if (session.state === 'PQRS_CREATING_DESC') {
       if (text.length < 5) {
-        return { response: `Por favor escribe una descripción un poco más detallada.`, shouldSend: true, isHandoff: false };
+        return { response: `Por favor escriba una descripción un poco más detallada.`, shouldSend: true, isHandoff: false };
       }
 
       session.data.newPqrs.description = text;
@@ -773,7 +780,7 @@ export class BotSessionManager {
             `🏢 *Área:* ${ticket.area}\n` +
             `📊 *Estado:* ABIERTO\n` +
             `━━━━━━━━━━━━━━━━━━━━\n` +
-            `📌 _Escribe tu código *${ticket.trackingCode}* en cualquier momento para ver avances._\n\n` +
+            `📌 _Escriba su código *${ticket.trackingCode}* en cualquier momento para consultar avances._\n\n` +
             `0️⃣ ↩️ *Menú Principal*`,
           shouldSend: true,
           isHandoff: false
@@ -781,7 +788,7 @@ export class BotSessionManager {
       } catch (err) {
         session.state = 'MAIN_MENU';
         return {
-          response: `❌ Error al guardar. Escribe *'HUMANO'* para hablar con un asesor.`,
+          response: `❌ Error al guardar. Por favor escriba *'HUMANO'* si desea comunicarse con un asesor.`,
           shouldSend: true,
           isHandoff: false
         };
@@ -905,10 +912,10 @@ export class BotSessionManager {
     return {
       response: `👤 *TRANSFERENCIA A ATENCIÓN HUMANA* 🎧\n` +
         `━━━━━━━━━━━━━━━━━━━━\n` +
-        `Te estamos comunicando con un operador de Atención al Socio del Club.\n\n` +
+        `Le estamos comunicando con un asesor de Atención al Socio del Club Hípico Los Sargentos.\n\n` +
         `⏰ *Horario:* Lun a Sáb de 08:00 a 18:00.\n` +
         `━━━━━━━━━━━━━━━━━━━━\n` +
-        `📌 _El bot se mantendrá pausado. Escribe *'BOT'* o *'MENU'* para reactivarlo._`,
+        `📌 _El asistente virtual se mantendrá pausado. Escriba *'BOT'* o *'MENU'* para reactivarlo._`,
       shouldSend: true,
       isHandoff: true
     };
@@ -932,7 +939,7 @@ export class BotSessionManager {
       });
 
       if (!reservation) {
-        return `❌ No encontramos una reserva activa con el código *${code}*.\n\nVerifica el código o consulta en caseta deportiva.`;
+        return `❌ No encontramos una reserva activa con el código *${code}*.\n\nPor favor verifique el código o consulte en la administración deportiva.`;
       }
 
       const isVerified = reservation.paymentStatus === 'VERIFIED';
@@ -956,11 +963,11 @@ export class BotSessionManager {
         `━━━━━━━━━━━━━━━━━━━━\n`;
 
       if (isVerified) {
-        reply += `✅ *¡Turno 100% confirmado!* Que disfrutes tu partido. 🥇✨`;
+        reply += `✅ *¡Turno 100% confirmado!* Esperamos que disfrute de su jornada deportiva en el Club. 🥇✨`;
       } else if (isPaid) {
         reply += `⏳ *Comprobante en validación por Administración.*`;
       } else {
-        reply += `📌 *Para confirmar:* Paga por QR/Transferencia con glosa *${reservation.code || code}* y adjunta tu comprobante aquí.`;
+        reply += `📌 *Para confirmar:* Por favor realice el pago por QR o transferencia con glosa *${reservation.code || code}* y adjunte su comprobante aquí.`;
       }
 
       return reply;
@@ -977,7 +984,7 @@ export class BotSessionManager {
       });
 
       if (!ticket) {
-        return `❌ No encontramos un caso con código *${trackingCode}*.`;
+        return `❌ No encontramos un caso registrado con el código *${trackingCode}*. Por favor verifique el código ingresado.`;
       }
 
       const relevantHistory = ticket.history.filter((h: any) =>

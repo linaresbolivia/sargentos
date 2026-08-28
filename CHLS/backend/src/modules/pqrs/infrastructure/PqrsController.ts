@@ -256,11 +256,11 @@ export class PqrsController {
 
       if (isClosing && ticket.phone) {
         const whatsappService = whatsappManager.getInstance('chls-pqrs');
-        let surveyMsg = `Tu caso *${ticket.code}* ha sido solucionado.`;
+        let surveyMsg = `Estimado(a) socio(a), le informamos que su caso *${ticket.code}* ha sido atendido y resuelto.`;
         if (resolution && resolution.trim()) {
           surveyMsg += `\n\n📝 *Detalle de la resolución:*\n${resolution.trim()}`;
         }
-        surveyMsg += `\n\nDel *1 al 5*, ¿qué tan satisfecho estás con nuestra atención al resolver tu PQRS?\n_(Responde únicamente con un número)_\n\n*Atención al socio - Club Hípico Los Sargentos*`;
+        surveyMsg += `\n\nDel *1 al 5*, ¿qué tan satisfecho(a) se encuentra con la atención brindada en la resolución de su solicitud?\n_(Por favor responda únicamente con un número del 1 al 5)_\n\n*Atención al Socio - Club Hípico Los Sargentos*`;
         const formattedPhone = ticket.phone.startsWith('591') ? ticket.phone : `591${ticket.phone}`;
         await whatsappService.sendMessage(formattedPhone, surveyMsg, mediaBase64);
       }

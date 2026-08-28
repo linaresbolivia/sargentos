@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send, Sparkles } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -265,6 +265,30 @@ export const MainPortal: React.FC = () => {
                 </p>
               </div>
             </Link>
+
+            {isAdmin && (
+              <Link 
+                to="/admin/comercial"
+                className="group flex items-center p-6 bg-gradient-to-r from-amber-500/10 via-brand-gold/10 to-transparent dark:bg-[#0a100d] border border-brand-gold/40 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-md hover:shadow-[0_0_35px_rgba(212,175,55,0.3)]"
+              >
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-gold to-yellow-600 border border-brand-gold/50 flex items-center justify-center text-black group-hover:scale-110 transition-transform duration-300 mr-6 shadow-lg shadow-brand-gold/20">
+                  <Sparkles className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-brand-gold transition-colors">
+                      Módulo Comercial
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-gradient-to-r from-brand-gold to-yellow-600 text-black shadow-sm">
+                      NUEVOS SOCIOS
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Revista Mágica 3D, Videos HD Offline, Pases VIP con QR, Control en Ingreso y CRM de Postulación.
+                  </p>
+                </div>
+              </Link>
+            )}
 
             {isAdmin && (
               <Link 

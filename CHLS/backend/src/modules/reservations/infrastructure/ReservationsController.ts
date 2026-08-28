@@ -483,7 +483,7 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
         success: true, 
         message: isExempt 
           ? '¡Reserva confirmada con éxito! Como socio del Club, el uso de cancha no tiene costo.' 
-          : 'Pre-reserva registrada con éxito. Se envió el código y QR de pago a tu WhatsApp.',
+          : 'Pre-reserva registrada con éxito. Se envió el código y QR de pago a su WhatsApp.',
         reservation 
       });
     } catch (error) {
@@ -835,13 +835,13 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
           }
 
           const companionsText = reservation.playerNames ? `\n📝 *Acompañantes:* ${reservation.playerNames}` : '';
-          const guestNotice = reservation.playerType === 'GUESTS' ? '• Tus invitados externos deberán registrarse en portería presentando su documento de identidad.\n' : '';
+          const guestNotice = reservation.playerType === 'GUESTS' ? '• Sus invitados externos deberán registrarse en portería presentando su documento de identidad.\n' : '';
 
           const verifyMessage = 
 `🏆 *CLUB HÍPICO LOS SARGENTOS*
 🎾 *¡PAGO VALIDADO & RESERVA CONSOLIDADA!*
 
-Estimado(a) *${reservation.memberName}*, te informamos que tu pago por *Bs. ${reservation.totalPrice}* ha sido *VALIDADO Y APROBADO* exitosamente por el Área de Administración y Deportes.
+Estimado(a) socio(a) *${reservation.memberName}*, le informamos que su pago por *Bs. ${reservation.totalPrice}* ha sido *VALIDADO Y APROBADO* exitosamente por el Área de Administración y Deportes.
 
 ✅ *ESTADO:* *RESERVA CONSOLIDADA Y CONFIRMADA*
 
@@ -852,10 +852,10 @@ Estimado(a) *${reservation.memberName}*, te informamos que tu pago por *Bs. ${re
 🎫 *Código de Reserva:* #${reservation.id.slice(0, 8).toUpperCase()}
 
 📌 *Indicaciones de Ingreso:*
-• Presentar tu carnet de socio o código en garita de control.
-• El acceso a la cancha se habilita 10 minutos antes del inicio de tu turno.
+• Presentar su carnet de socio o código en garita de control.
+• El acceso a la cancha se habilita 10 minutos antes del inicio de su turno.
 ${guestNotice}
-¡Que tengas una excelente jornada deportiva en el Club! 🥇✨`;
+¡Esperamos que tenga una excelente jornada deportiva en el Club! 🥇✨`;
 
           await whatsappService.sendMessage(formattedPhone, verifyMessage);
         } catch (e) {
@@ -909,7 +909,7 @@ ${guestNotice}
 `🐴 *CLUB HÍPICO LOS SARGENTOS*
 🎾 *Comprobante de Pago Recibido*
 
-Estimado(a) *${reservation.memberName}*, hemos recibido y adjuntado con éxito tu comprobante de pago desde el sistema:
+Estimado(a) socio(a) *${reservation.memberName}*, hemos recibido y adjuntado con éxito su comprobante de pago en el sistema:
 
 🎫 *Código de Reserva:* *#${reservation.code || reservation.id.slice(0, 8).toUpperCase()}*
 🏟️ *Espacio / Cancha:* ${reservation.court.name} (${reservation.court.sport})
@@ -917,7 +917,7 @@ Estimado(a) *${reservation.memberName}*, hemos recibido y adjuntado con éxito t
 ⏰ *Horario:* ${reservation.startTime} - ${reservation.endTime}
 💰 *Monto Declarado:* Bs. ${reservation.totalPrice}
 
-📋 *Estado:* 🟡 *Reserva en Proceso (Validando Pago)*. El comprobante fue remitido al Área de Control y Auditoría. Recibirás tu confirmación de consolidación en breve. ¡Gracias! 🏆✨`;
+📋 *Estado:* 🟡 *Reserva en Proceso (Validando Pago)*. El comprobante fue remitido al Área de Control y Auditoría. Recibirá su confirmación de consolidación en breve. ¡Muchas gracias por su preferencia! 🏆✨`;
 
           // Envío con comprobante multimedia adjunto directamente
           await whatsappService.sendMessage(formattedPhone, receiptMessage, receiptPath);

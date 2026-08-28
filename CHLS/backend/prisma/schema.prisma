@@ -841,3 +841,61 @@ model CourtReservation {
   @@map("court_reservations")
 }
 
+// ------------------------------------------------------
+// COMMERCIAL & VIP ACCESS MODULE
+// ------------------------------------------------------
+
+model VipPass {
+  id               String    @id @default(uuid())
+  code             String    @unique // ej. VIP-CHLS-7892
+  guestFullName    String
+  documentId       String?   // CI o Pasaporte
+  phone            String?
+  email            String?
+  hostSellerName   String    @default("Eduardo (Comercial)")
+  
+  // Date & Time window rules
+  validFrom        DateTime
+  validUntil       DateTime
+  maxDays          Int       @default(1)
+  timeStart        String    @default("07:00") // HH:mm
+  timeEnd          String    @default("22:00") // HH:mm
+  
+  // Permitted areas: INGRESO, PISCINA, GIMNASIO, TENIS, HIPICA, RESTAURANTE
+  allowedAreas     String    @default("INGRESO,PISCINA,GIMNASIO,TENIS,HIPICA,RESTAURANTE")
+  
+  // Status & Usage tracking
+  status           String    @default("ACTIVO") // ACTIVO, USADO, EXPIRADO, REVOCADO
+  usageCount       Int       @default(0)
+  maxUses          Int       @default(10)
+  lastUsedAt       DateTime?
+  notes            String?
+  
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("vip_passes")
+}
+
+model CommercialLead {
+  id               String    @id @default(uuid())
+  fullName         String
+  documentId       String?
+  phone            String?
+  email            String?
+  company          String?
+  position         String?
+  categoryInterest String    @default("FAMILIAR") // FAMILIAR, INDIVIDUAL, JUNIOR_MAYOR, DEPORTIVO, PRE_ASOCIADO
+  status           String    @default("NUEVO_LEAD") // NUEVO_LEAD, VISITA_PROGRAMADA, PROPUESTA_ENVIADA, POSTULACION_AVAL, APROBADO_DIRECTORIO, CERRADO_GANADO, DESCARTADO
+  sponsorMember1   String?
+  sponsorMember2   String?
+  sellerName       String?   @default("Eduardo (Comercial)")
+  budgetEstimated  Decimal?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("commercial_leads")
+}
+
+

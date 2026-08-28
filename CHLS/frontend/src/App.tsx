@@ -25,6 +25,7 @@ import { AreaAccessDashboard } from './modules/accessControl/pages/AreaAccessDas
 import { AreaReports } from './modules/accessControl/pages/AreaReports';
 import { AreaManagementAnalytics } from './modules/accessControl/pages/AreaManagementAnalytics';
 import { LiveClubOccupancy } from './modules/members/pages/LiveClubOccupancy';
+import { CommercialHub } from './modules/commercial/pages/CommercialHub';
 
 import { MainPortal } from '@shared/pages/MainPortal';
 import { VirtualKeyboardProvider, VirtualKeyboard } from '@shared/components/VirtualKeyboard';
@@ -112,6 +113,7 @@ export const App: React.FC = () => {
             <Route path="/admin/members" element={<MemberAdminHub />} />
             <Route path="/admin/socios" element={<MemberAdminHub />} />
             <Route path="/admin/reservations" element={<CourtAdminDashboard />} />
+            <Route path="/admin/comercial" element={<CommercialHub />} />
           </Route>
 
           {/* PQRS Module routes */}
