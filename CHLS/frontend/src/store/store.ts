@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import membersReducer from './membersSlice';
+import correspondenceReducer from './correspondenceSlice';
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     members: membersReducer,
+    correspondence: correspondenceReducer,
   },
 });
 

@@ -1,0 +1,231 @@
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { api } from '@config/api';
+import { RouteSheetItem, CorrespondenceStats } from '../modules/correspondence/types/correspondence.types';
+
+interface CorrespondenceState {
+  items: RouteSheetItem[];
+  total: number;
+  selectedItem: RouteSheetItem | null;
+  stats: CorrespondenceStats | null;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  activeFilter: string;
+  searchQuery: string;
+}
+
+const initialState: CorrespondenceState = {
+  items: [],
+  total: 0,
+  selectedItem: null,
+  stats: null,
+  isLoading: false,
+  isSaving: false,
+  error: null,
+  activeFilter: 'ALL',
+  searchQuery: '',
+};
+
+// Async Thunks
+export const fetchRouteSheets = createAsyncThunk(
+  'correspondence/fetchRouteSheets',
+  async (
+    params: { status?: string; priority?: string; area?: string; search?: string; senderType?: string } | void,
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.get('/correspondence/route-sheets', { params: params || {} });
+      return {
+        items: response.data.data,
+        total: response.data.total,
+      };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al cargar Hojas de Ruta');
+    }
+  }
+);
+
+export const fetchRouteSheetById = createAsyncThunk(
+  'correspondence/fetchRouteSheetById',
+  async (idOrCode: string, { rejectWithValue }) => {
+    try {
+      const response = await api.get(`/correspondence/route-sheets/${idOrCode}`);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al obtener la Hoja de Ruta');
+    }
+  }
+);
+
+export const fetchCorrespondenceStats = createAsyncThunk(
+  'correspondence/fetchStats',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/correspondence/stats');
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al cargar estadísticas');
+    }
+  }
+);
+
+export const createRouteSheet = createAsyncThunk(
+  'correspondence/create',
+  async (data: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/correspondence/route-sheets', data);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al crear Hoja de Ruta');
+    }
+  }
+);
+
+export const addMovement = createAsyncThunk(
+  'correspondence/addMovement',
+  async ({ routeSheetId, data }: { routeSheetId: string; data: any }, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/movements`, data);
+      return response.data.data; // { movement, routeSheet }
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al registrar instrucción');
+    }
+  }
+);
+
+export const updateRouteSheetStatus = createAsyncThunk(
+  'correspondence/updateStatus',
+  async ({ routeSheetId, data }: { routeSheetId: string; data: any }, { rejectWithValue }) => {
+    try {
+      const response = await api.patch(`/correspondence/route-sheets/${routeSheetId}/status`, data);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al actualizar estado');
+    }
+  }
+);
+
+export const analyzeTextWithAi = createAsyncThunk(
+  'correspondence/analyzeWithAi',
+  async (text: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/correspondence/ai-assist', { text });
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error en análisis asistivo');
+    }
+  }
+);
+
+export const correspondenceSlice = createSlice({
+  name: 'correspondence',
+  initialState,
+  reducers: {
+    setActiveFilter: (state, action: PayloadAction<string>) => {
+      state.activeFilter = action.payload;
+    },
+    setSearchQuery: (state, action: PayloadAction<string>) => {
+      state.searchQuery = action.payload;
+    },
+    setSelectedItem: (state, action: PayloadAction<RouteSheetItem | null>) => {
+      state.selectedItem = action.payload;
+    },
+    // Realtime Socket Handlers
+    handleRealtimeCreated: (state, action: PayloadAction<RouteSheetItem>) => {
+      const exists = state.items.some((i) => i.id === action.payload.id);
+      if (!exists) {
+        state.items.unshift(action.payload);
+        state.total += 1;
+      }
+    },
+    handleRealtimeUpdated: (state, action: PayloadAction<{ id: string; status: any; currentArea?: string }>) => {
+      const index = state.items.findIndex((i) => i.id === action.payload.id);
+      if (index !== -1) {
+        state.items[index].status = action.payload.status;
+        if (action.payload.currentArea) {
+          state.items[index].currentArea = action.payload.currentArea;
+        }
+      }
+      if (state.selectedItem && state.selectedItem.id === action.payload.id) {
+        state.selectedItem.status = action.payload.status;
+        if (action.payload.currentArea) {
+          state.selectedItem.currentArea = action.payload.currentArea;
+        }
+      }
+    },
+  },
+  extraReducers: (builder) => {
+    // fetchRouteSheets
+    builder
+      .addCase(fetchRouteSheets.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchRouteSheets.fulfilled, (state, action) => {
+        state.isLoading = false;
+        state.items = action.payload.items;
+        state.total = action.payload.total;
+      })
+      .addCase(fetchRouteSheets.rejected, (state, action) => {
+        state.isLoading = false;
+        state.error = action.payload as string;
+      });
+
+    // fetchRouteSheetById
+    builder
+      .addCase(fetchRouteSheetById.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+      });
+
+    // fetchCorrespondenceStats
+    builder
+      .addCase(fetchCorrespondenceStats.fulfilled, (state, action) => {
+        state.stats = action.payload;
+      });
+
+    // createRouteSheet
+    builder
+      .addCase(createRouteSheet.pending, (state) => {
+        state.isSaving = true;
+      })
+      .addCase(createRouteSheet.fulfilled, (state, action) => {
+        state.isSaving = false;
+        state.items.unshift(action.payload);
+        state.total += 1;
+      })
+      .addCase(createRouteSheet.rejected, (state) => {
+        state.isSaving = false;
+      });
+
+    // addMovement
+    builder
+      .addCase(addMovement.fulfilled, (state, action) => {
+        const { routeSheet } = action.payload;
+        state.selectedItem = routeSheet;
+        const index = state.items.findIndex((i) => i.id === routeSheet.id);
+        if (index !== -1) {
+          state.items[index] = routeSheet;
+        }
+      });
+
+    // updateRouteSheetStatus
+    builder
+      .addCase(updateRouteSheetStatus.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      });
+  },
+});
+
+export const {
+  setActiveFilter,
+  setSearchQuery,
+  setSelectedItem,
+  handleRealtimeCreated,
+  handleRealtimeUpdated,
+} = correspondenceSlice.actions;
+
+export default correspondenceSlice.reducer;

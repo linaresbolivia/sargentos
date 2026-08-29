@@ -27,6 +27,11 @@ model User {
   tokens UserToken[]
   assignedPqrs PqrsTicket[]
 
+  // Correspondence relations
+  createdRouteSheets  RouteSheet[] @relation("CreatedRouteSheets")
+  assignedRouteSheets RouteSheet[] @relation("AssignedRouteSheets")
+  sourceMovements     HrMovement[] @relation("SourceMovements")
+
   // Link to the rich Person profile (Socio, Beneficiary)
   person Person?
 
@@ -143,6 +148,9 @@ model Person {
   extraordinaryCharges  ExtraordinaryCharge[]
   paymentTransactions   MemberPaymentTransaction[]
   refundRequests        MembershipRefundRequest[]
+
+  // Correspondence
+  routeSheets           RouteSheet[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -896,6 +904,116 @@ model CommercialLead {
   updatedAt        DateTime  @updatedAt
 
   @@map("commercial_leads")
+}
+
+// ------------------------------------------------------
+// CORRESPONDENCE & ROUTE SHEETS MODULE (CHLS 360°)
+// ------------------------------------------------------
+
+enum RouteSheetSenderType {
+  SOCIO
+  AREA_INTERNA
+  EXTERNO
+}
+
+enum RouteSheetPriority {
+  BAJA
+  NORMAL
+  ALTA
+  URGENTE
+}
+
+enum RouteSheetStatus {
+  RECIBIDO
+  DERIVADO
+  EN_PROCESO
+  OBSERVADO
+  SUBSANADO
+  EN_APROBACION
+  CONCLUIDO
+  ANULADO
+}
+
+model RouteSheet {
+  id                    String                @id @default(uuid())
+  hrCode                String                @unique // ej. 08-193 o HR-2026-00193
+  year                  Int                   @default(2026)
+  correlativeNumber     Int                   @default(1)
+  
+  senderType            RouteSheetSenderType  @default(AREA_INTERNA)
+  personId              String?               // Si es socio
+  person                Person?               @relation(fields: [personId], references: [id], onDelete: SetNull)
+  
+  senderName            String                // Nombre remitente: ej. MARIA DEL PILAR ATANACIO
+  senderArea            String?               // Área origen: ej. ALMACÉN, HÍPICA, etc.
+  senderPhone           String?
+  senderEmail           String?
+  senderDoc             String?               // CI o NIT
+  
+  cite                  String?               // CITE: ej. ALM-INF N° 42/2026
+  pageCount             Int                   @default(1)
+  reference             String                // REFERENCIA: ej. SOLICITUD DE RECARGA PARA TONER...
+  attachmentDescription String?               // ADJUNTO: ej. KARDEX CRONOLÓGICO CONSOLIDADO
+  
+  priority              RouteSheetPriority    @default(NORMAL)
+  status                RouteSheetStatus      @default(RECIBIDO)
+  currentArea           String                @default("SECRETARIA_GENERAL")
+  currentAssigneeId     String?
+  currentAssignee       User?                 @relation("AssignedRouteSheets", fields: [currentAssigneeId], references: [id], onDelete: SetNull)
+  
+  aiSummary             String?               // Resumen inteligente
+  suggestedArea         String?
+  
+  createdById           String
+  createdBy             User                  @relation("CreatedRouteSheets", fields: [createdById], references: [id])
+  
+  movements             HrMovement[]
+  documents             CorrDocument[]
+  
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@map("corr_route_sheets")
+}
+
+model HrMovement {
+  id               String      @id @default(uuid())
+  routeSheetId     String
+  routeSheet       RouteSheet  @relation(fields: [routeSheetId], references: [id], onDelete: Cascade)
+  
+  sequenceNumber   Int         @default(1)
+  sourceUserId     String
+  sourceUser       User        @relation("SourceMovements", fields: [sourceUserId], references: [id])
+  sourceArea       String      @default("GERENCIA_GENERAL")
+  
+  targetArea       String      // ej. CONTRATACIONES, TESORERIA, HIPICA
+  targetPersonName String?     // ej. Lic. Pinto, Lic. Meneses
+  
+  instruction      String      // Texto de la instrucción / proveído
+  quickStamp       String?     // ej. FAVOR SU ATENCIÓN, FAVOR REALIZAR EL PAGO
+  signatureUrl     String?     // Firma digital registrada o sello del emisor
+  
+  receivedAt       DateTime?
+  createdAt        DateTime    @default(now())
+
+  @@map("corr_movements")
+}
+
+model CorrDocument {
+  id                  String      @id @default(uuid())
+  routeSheetId        String
+  routeSheet          RouteSheet  @relation(fields: [routeSheetId], references: [id], onDelete: Cascade)
+  
+  fileName            String
+  fileUrl             String
+  mimeType            String?
+  fileSize            Int?
+  sha256Hash          String?     // Integridad de archivo
+  qrVerificationToken String?     @unique
+  
+  createdAt           DateTime    @default(now())
+
+  @@map("corr_documents")
 }
 
 

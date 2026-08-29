@@ -18,7 +18,8 @@ import {
   Waves,
   Dumbbell,
   Key,
-  Layers
+  Layers,
+  Receipt
 } from 'lucide-react';
 import { AccessLogHistory } from '../components/AccessLogHistory';
 import { AccessSearchResult } from '../../../../../backend/src/modules/accessControl/application/useCases/SearchMemberForAccessUseCase';
@@ -32,6 +33,7 @@ import { MemberHistoryModal } from '../components/MemberHistoryModal';
 import { RegisterGuestModal } from '../components/RegisterGuestModal';
 import { EditAccessModal } from '../components/EditAccessModal';
 import { RegisterStandalonePersonModal } from '../components/RegisterStandalonePersonModal';
+import { GatehouseInvoiceReceiptModal } from '../components/GatehouseInvoiceReceiptModal';
 import { Edit2 } from 'lucide-react';
 
 export const GatehouseDashboard: React.FC = () => {
@@ -47,6 +49,7 @@ export const GatehouseDashboard: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isStandaloneModalOpen, setIsStandaloneModalOpen] = useState(false);
   const [isPendingLoansModalOpen, setIsPendingLoansModalOpen] = useState(false);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   
   const [observation, setObservation] = useState('');
   const [vehiclePlate, setVehiclePlate] = useState('');
@@ -225,7 +228,15 @@ export const GatehouseDashboard: React.FC = () => {
             <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white serif-brand leading-tight">Control de Garita Principal</h1>
           </div>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <button
+            onClick={() => setIsInvoiceModalOpen(true)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/30 hover:to-teal-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105"
+            title="Recepción rápida de facturas (Luz, Agua, Gas, etc.)"
+          >
+            <Receipt className="w-4 h-4 text-emerald-500" />
+            <span className="hidden sm:inline">Recibir Factura</span>
+          </button>
           <ThemeToggle />
           <button 
             onClick={() => dispatch(logout())}
@@ -958,6 +969,12 @@ export const GatehouseDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Invoice Receipt Modal for Guards */}
+      <GatehouseInvoiceReceiptModal
+        isOpen={isInvoiceModalOpen}
+        onClose={() => setIsInvoiceModalOpen(false)}
+      />
     </div>
   );
 };

@@ -396,6 +396,44 @@ export class WhatsappClientInstance {
         return;
       }
 
+      // Consulta directa de Hoja de Ruta / Correspondencia (ej. "HR-2026-00001" o "08-193")
+      const upperBody = combinedBody.trim().toUpperCase();
+      if (upperBody.startsWith('HR-') || (upperBody.startsWith('08-') && upperBody.length >= 5)) {
+        const foundHr = await prisma.routeSheet.findFirst({
+          where: {
+            OR: [
+              { hrCode: { equals: upperBody, mode: 'insensitive' } },
+              { hrCode: { contains: upperBody, mode: 'insensitive' } },
+            ],
+          },
+          include: {
+            movements: {
+              orderBy: { sequenceNumber: 'desc' },
+              take: 1,
+            },
+          },
+        });
+
+        if (foundHr) {
+          const lastMov = foundHr.movements[0];
+          const lastInstruction = lastMov ? `\n📝 *Última Instrucción:* ${lastMov.instruction}` : '';
+          const responseText = `🐎 *CLUB HÍPICO LOS SARGENTOS*\n*Seguimiento de Correspondencia & Hoja de Ruta*\n\n` +
+            `📄 *Código:* ${foundHr.hrCode}\n` +
+            `👤 *Remitente:* ${foundHr.senderName}\n` +
+            `🏢 *Área Actual:* ${foundHr.currentArea}\n` +
+            `📊 *Estado:* ${foundHr.status}\n` +
+            `📌 *Asunto:* ${foundHr.reference}` +
+            `${lastInstruction}\n\n` +
+            `_Para realizar otra consulta, escriba *MENU*._`;
+
+          await this.sendMessage(rawFrom, responseText);
+          return;
+        } else {
+          await this.sendMessage(rawFrom, `⚠️ No se encontró ninguna Hoja de Ruta con el código *${upperBody}* en el sistema de correspondencia del Club Hípico Los Sargentos.\n\nVerifique el número o escriba *MENU*.`);
+          return;
+        }
+      }
+
       const thinkingDelay = 1000 + Math.random() * 1200;
       await new Promise(resolve => setTimeout(resolve, thinkingDelay));
       const botResult = await botSessionManager.processMessage(phone, combinedBody, contactName);

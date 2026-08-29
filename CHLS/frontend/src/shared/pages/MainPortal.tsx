@@ -2,7 +2,7 @@ import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send, Sparkles } from 'lucide-react';
+import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send, Sparkles, FileText, Stamp, Leaf } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -309,6 +309,32 @@ export const MainPortal: React.FC = () => {
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400">
                     Directorio 360°, Ventas & Auditoría CDP (60/40), Caja Unificada, Asambleas y Cartera Saneada.
+                  </p>
+                </div>
+              </Link>
+            )}
+
+            {/* Módulo de Correspondencia & Hojas de Ruta 360° */}
+            {isAdmin && (
+              <Link 
+                to="/admin/correspondencia"
+                className="group flex items-center p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent dark:bg-[#0a100d] border border-emerald-500/30 rounded-2xl hover:border-emerald-400 transition-all duration-300 shadow-md hover:shadow-[0_0_35px_rgba(16,185,129,0.25)]"
+              >
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-700/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300 mr-6 shadow-lg shadow-emerald-500/20">
+                  <FileText className="w-7 h-7" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-emerald-400 transition-colors">
+                      Correspondencia & Hojas de Ruta
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shadow-sm">
+                      <Leaf className="w-2.5 h-2.5" />
+                      CERO PAPEL
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Hojas de Ruta digitales, proveídos 1 toque, réplica 1:1 impresa con QR, trazabilidad institucional y WhatsApp bot.
                   </p>
                 </div>
               </Link>
