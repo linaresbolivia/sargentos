@@ -21,6 +21,8 @@ import {
   Sparkles,
   CheckCircle2,
   AlertTriangle,
+  Calendar,
+  Hash,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -51,7 +53,7 @@ interface CorrespondenceConfigModalProps {
 
 export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'AREAS' | 'STAMPS' | 'ROUTING' | 'EMAIL' | 'USERS'>('AREAS');
+  const [activeTab, setActiveTab] = useState<'AREAS' | 'STAMPS' | 'ROUTING' | 'GESTIONES' | 'EMAIL' | 'USERS'>('AREAS');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -60,6 +62,15 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
   const [routingMode, setRoutingMode] = useState<string>('VIA_SECRETARIA_GERENCIA');
   const [defaultSlaDays, setDefaultSlaDays] = useState<number>(5);
   const [socioSubsanacionDays, setSocioSubsanacionDays] = useState<number>(10);
+
+  // Gestiones & Correlativos de Corte
+  const [currentGestion, setCurrentGestion] = useState<number>(new Date().getFullYear());
+  const [initialCorrelativeNumber, setInitialCorrelativeNumber] = useState<number>(1);
+  const [prefixFormat, setPrefixFormat] = useState<string>('HR');
+  const [gestionesConfig, setGestionesConfig] = useState<Record<number, { initialCorrelative: number; label: string }>>({
+    2026: { initialCorrelative: 1, label: 'Gestión 2026' },
+    2025: { initialCorrelative: 1, label: 'Gestión 2025' },
+  });
 
   // SMTP Settings State
   const [smtp, setSmtp] = useState<SmtpSettings>({
@@ -102,6 +113,10 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         setRoutingMode(data.routingMode || 'VIA_SECRETARIA_GERENCIA');
         setDefaultSlaDays(data.defaultSlaDays || 5);
         setSocioSubsanacionDays(data.socioSubsanacionDays || 10);
+        if (data.currentGestion) setCurrentGestion(Number(data.currentGestion));
+        if (data.initialCorrelativeNumber) setInitialCorrelativeNumber(Number(data.initialCorrelativeNumber));
+        if (data.prefixFormat) setPrefixFormat(data.prefixFormat);
+        if (data.gestiones) setGestionesConfig(data.gestiones);
         if (data.smtp) {
           setSmtp({
             enabled: !!data.smtp.enabled,
@@ -131,9 +146,19 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         routingMode,
         defaultSlaDays,
         socioSubsanacionDays,
+        currentGestion,
+        initialCorrelativeNumber,
+        prefixFormat,
+        gestiones: {
+          ...gestionesConfig,
+          [currentGestion]: {
+            initialCorrelative: Number(initialCorrelativeNumber),
+            label: `Gestión ${currentGestion}`,
+          },
+        },
         smtp,
       });
-      toast.success('¡Parámetros y Servidor de Correo guardados con éxito! ⚙️');
+      toast.success('¡Parámetros, Gestiones y Servidor de Correo guardados con éxito! ⚙️');
       onClose();
     } catch {
       toast.error('Error al guardar la configuración');
@@ -310,6 +335,18 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
           >
             <Sliders className="w-4 h-4" />
             <span>Matriz & SLA</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('GESTIONES')}
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'GESTIONES'
+                ? 'border-brand-gold text-brand-gold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Calendar className="w-4 h-4" />
+            <span>📅 Gestiones & Punto de Corte</span>
           </button>
 
           <button
@@ -561,7 +598,137 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                 </div>
               )}
 
-              {/* TAB 4: SERVIDOR SMTP & NOTIFICACIONES POR CORREO */}
+              {/* TAB 4: GESTIONES & CORRELATIVOS DE CORTE */}
+              {activeTab === 'GESTIONES' && (
+                <div className="space-y-6">
+                  
+                  {/* Banner de Punto de Corte Operativo */}
+                  <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-500/10 via-brand-gold/10 to-transparent border-2 border-brand-gold/40 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Hash className="w-5 h-5 text-brand-gold" />
+                      <span className="font-black text-sm text-slate-900 dark:text-white uppercase tracking-wider">
+                        Punto de Corte de Correlatividad Inicial (Arranque de Sistema)
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed">
+                      Permite iniciar la correlatividad digital en el número exacto donde quedó el registro físico anterior (ej. si en papel llegaron hasta la <strong>N° 192</strong>, configure aquí <strong>193</strong>). El sistema continuará la secuencia sin duplicar ni saltar números.
+                    </p>
+                  </div>
+
+                  {/* Configuración de Gestión y Número Inicial */}
+                  <div className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-2xl border border-slate-200 dark:border-white/10 space-y-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
+                      <Calendar className="w-4 h-4 text-brand-gold" />
+                      <span>Parámetros de la Gestión Activa</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+                      <div className="sm:col-span-4">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Gestión Anual Oficial
+                        </label>
+                        <select
+                          value={currentGestion}
+                          onChange={(e) => setCurrentGestion(Number(e.target.value))}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2.5 text-xs text-slate-950 dark:text-white font-black cursor-pointer"
+                        >
+                          <option value={2026}>Gestión 2026 (Activa)</option>
+                          <option value={2027}>Gestión 2027</option>
+                          <option value={2025}>Gestión 2025 (Histórica)</option>
+                          <option value={2024}>Gestión 2024 (Histórica)</option>
+                        </select>
+                      </div>
+
+                      <div className="sm:col-span-4">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Número Inicial de Hoja de Ruta (Corte) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={99999}
+                          value={initialCorrelativeNumber}
+                          onChange={(e) => setInitialCorrelativeNumber(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-full bg-white dark:bg-[#070e0a] border-2 border-brand-gold/60 rounded-xl px-3 py-2 text-sm text-slate-950 dark:text-white font-mono font-black focus:ring-2 focus:ring-brand-gold"
+                        />
+                        <span className="text-[10px] text-slate-400 mt-1 block">
+                          Ej. 193 o el número correlativo que corresponda
+                        </span>
+                      </div>
+
+                      <div className="sm:col-span-4">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Previsualización del Próximo Código
+                        </label>
+                        <div className="bg-white dark:bg-[#040a06] border border-emerald-500/40 rounded-xl px-3 py-2 text-center">
+                          <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 tracking-wider">
+                            HR-{currentGestion}-{String(initialCorrelativeNumber).padStart(5, '0')}
+                          </span>
+                          <span className="block text-[9px] text-slate-400 uppercase font-bold mt-0.5">
+                            (Alias: {String(initialCorrelativeNumber).padStart(2, '0')})
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Tabla de Gestiones Registradas */}
+                  <div className="space-y-3">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-gray-300 block">
+                      Gestiones Habilitadas en el Sistema
+                    </span>
+                    <div className="border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-100 dark:bg-black/40 text-slate-500 uppercase font-bold text-[10px]">
+                          <tr>
+                            <th className="py-3 px-4">Gestión Anual</th>
+                            <th className="py-3 px-4">Correlativo de Arranque</th>
+                            <th className="py-3 px-4">Formato Oficial</th>
+                            <th className="py-3 px-4 text-right">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5">
+                          <tr className="hover:bg-slate-50 dark:hover:bg-white/[0.02] bg-emerald-500/[0.03]">
+                            <td className="py-3 px-4 font-black text-slate-900 dark:text-white flex items-center gap-2">
+                              <span>Gestión 2026</span>
+                              <span className="text-[9px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded-full font-black uppercase">
+                                ACTUAL
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 font-mono font-bold text-brand-gold">
+                              N° {initialCorrelativeNumber}
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-400">
+                              HR-2026-XXXXX
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className="text-emerald-500 font-bold">✓ En Operación</span>
+                            </td>
+                          </tr>
+
+                          <tr className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
+                            <td className="py-3 px-4 font-bold text-slate-700 dark:text-gray-300">
+                              Gestión 2025
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-400">
+                              N° 1
+                            </td>
+                            <td className="py-3 px-4 font-mono text-slate-400">
+                              HR-2025-XXXXX
+                            </td>
+                            <td className="py-3 px-4 text-right text-slate-400">
+                              Histórico
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* TAB 5: SERVIDOR SMTP & NOTIFICACIONES POR CORREO */}
               {activeTab === 'EMAIL' && (
                 <div className="space-y-6">
                   

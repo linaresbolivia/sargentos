@@ -7,6 +7,7 @@ import {
   fetchCorrespondenceStats,
   setActiveFilter,
   setActiveMailbox,
+  setSelectedGestion,
   setSearchQuery,
   setSelectedItem,
   handleRealtimeCreated,
@@ -47,6 +48,7 @@ import {
   Compass,
   MapPin,
   FileSpreadsheet,
+  Calendar,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -71,7 +73,7 @@ export const CorrespondenceHub: React.FC = () => {
   const [searchParams] = useSearchParams();
   const urlCode = searchParams.get('code');
 
-  const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem } = useSelector(
+  const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem, selectedGestion } = useSelector(
     (state: RootState) => state.correspondence
   );
 
@@ -107,7 +109,7 @@ export const CorrespondenceHub: React.FC = () => {
   }, [urlCode, items, dispatch]);
 
   useEffect(() => {
-    dispatch(fetchRouteSheets());
+    dispatch(fetchRouteSheets({ year: selectedGestion === 'ALL' ? undefined : selectedGestion }));
     dispatch(fetchCorrespondenceStats());
 
     // Socket.io Realtime Listener
@@ -125,7 +127,7 @@ export const CorrespondenceHub: React.FC = () => {
     return () => {
       socket.disconnect();
     };
-  }, [dispatch]);
+  }, [dispatch, selectedGestion]);
 
   // Compute Mailbox Counts for Active Perspective
   const inboxCount = items.filter(
@@ -182,6 +184,13 @@ export const CorrespondenceHub: React.FC = () => {
       if (!hasCopy) return false;
     } else if (activeMailbox === 'ARCHIVED') {
       if (item.status !== 'CONCLUIDO' && item.status !== 'ANULADO' && !item.archiveLocation) {
+        return false;
+      }
+    }
+
+    // Filter by Annual Management (Gestión)
+    if (selectedGestion !== 'ALL') {
+      if (item.year && Number(item.year) !== Number(selectedGestion)) {
         return false;
       }
     }
@@ -294,15 +303,25 @@ export const CorrespondenceHub: React.FC = () => {
             </select>
           </div>
 
-          <button
-            onClick={() => setIsChatOpen(true)}
-            title="Chat Interno & Coordinación entre Áreas CHLS"
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
-          >
-            <MessageSquare className="w-4 h-4 text-brand-gold" />
-            <span className="hidden md:inline">Chat Interno</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-          </button>
+          {/* Annual Management (Gestión) Switcher */}
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-black/50 border border-slate-300 dark:border-emerald-500/30 rounded-2xl px-3 py-1.5 shadow-xs">
+            <Calendar className="w-4 h-4 text-brand-gold shrink-0" />
+            <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 hidden sm:inline">Gestión:</span>
+            <select
+              value={selectedGestion}
+              onChange={(e) => {
+                const val = e.target.value === 'ALL' ? 'ALL' : Number(e.target.value);
+                dispatch(setSelectedGestion(val));
+              }}
+              className="bg-transparent text-xs font-black text-slate-900 dark:text-brand-gold outline-none cursor-pointer font-mono"
+            >
+              <option value={2026} className="bg-slate-900 text-white">Gestión 2026</option>
+              <option value={2027} className="bg-slate-900 text-white">Gestión 2027</option>
+              <option value={2025} className="bg-slate-900 text-white">Gestión 2025</option>
+              <option value={2024} className="bg-slate-900 text-white">Gestión 2024</option>
+              <option value="ALL" className="bg-slate-900 text-white">Todas las Gestiones</option>
+            </select>
+          </div>
 
           <button
             onClick={() => setIsExportModalOpen(true)}
@@ -327,7 +346,7 @@ export const CorrespondenceHub: React.FC = () => {
           <button
             onClick={() => setIsConfigModalOpen(true)}
             title="Parametrización & Matriz de Derivación"
-            className="p-2.5 rounded-2xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm"
+            className="p-2.5 rounded-2xl bg-white dark:bg-white/10 hover:bg-slate-100 dark:hover:bg-white/20 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-white transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
           >
             <Settings className="w-4 h-4 text-brand-gold" />
           </button>
@@ -338,6 +357,17 @@ export const CorrespondenceHub: React.FC = () => {
           >
             <Plus className="w-4 h-4 text-black" />
             <span>+ Nueva Hoja de Ruta</span>
+          </button>
+
+          {/* Chat Interno situado al extremo derecho */}
+          <button
+            onClick={() => setIsChatOpen(true)}
+            title="Chat Interno & Coordinación entre Áreas CHLS"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-300 border-2 border-emerald-500/50 text-xs font-black shadow-md shadow-emerald-500/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 text-brand-gold" />
+            <span>Chat Interno</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
           </button>
         </div>
       </header>

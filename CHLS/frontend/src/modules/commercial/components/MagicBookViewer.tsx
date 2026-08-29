@@ -144,6 +144,7 @@ Los binomios sargentinos han representado con honor a Bolivia en certámenes sud
 ];
 
 export const MagicBookViewer: React.FC = () => {
+  const isTablet = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 1024);
   const [currentPage, setCurrentPage] = useState(0); // 0 = Cover Spread
   const [pdfPages, setPdfPages] = useState<string[]>([]);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
@@ -190,7 +191,7 @@ export const MagicBookViewer: React.FC = () => {
 
   const totalPages = pdfPages.length > 0 ? pdfPages.length : DEFAULT_CHLS_PAGES.length;
 
-  // Ultra-smooth & elegant 850ms animation loop for turning page (natural paper sweep)
+  // Snappy, GPU-optimized animation loop for turning page (380ms on tablet, 600ms on desktop)
   const animateFlip = useCallback((
     direction: 'FORWARD' | 'BACKWARD',
     startProgress: number = 0,
@@ -201,13 +202,13 @@ export const MagicBookViewer: React.FC = () => {
     setFlipDirection(direction);
 
     const startTime = performance.now();
-    const duration = 850; // 850ms serene, natural physical paper sweep
+    const duration = isTablet ? 380 : 600; // Ultra-fast and snappy on tablets
 
     const step = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
       
-      // Elegant paper flip easing (smooth takeoff -> fluid arc -> soft landing)
+      // Smooth and lightweight cubic bezier easing
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const current = startProgress + (targetProgress - startProgress) * ease;
 
@@ -224,7 +225,7 @@ export const MagicBookViewer: React.FC = () => {
     };
 
     animationFrameRef.current = requestAnimationFrame(step);
-  }, []);
+  }, [isTablet]);
 
   // Turn page forward
   const handleNextPage = useCallback(() => {
@@ -756,9 +757,9 @@ export const MagicBookViewer: React.FC = () => {
         backgroundPosition: 'center',
       }}
     >
-      {/* 1. Ambient Golden Fireflies Canvas */}
+      {/* 1. Ambient Golden Fireflies Canvas (Exactamente 3-4 con Resplandor) */}
       {firefliesEnabled && (
-        <FirefliesCanvas count={isFullscreen ? 28 : 18} />
+        <FirefliesCanvas count={4} />
       )}
 
       {/* Floating Exit Fullscreen Button (Only visible during Fullscreen for 100% Pure Book & Grass presentation) */}
@@ -1086,7 +1087,9 @@ export const MagicBookViewer: React.FC = () => {
                       transform: `translateZ(${zElevation}px) rotateY(${forwardAngle}deg) rotateZ(${-paperArchBend}deg) skewY(${-paperFlexSkew}deg) scaleX(${paperFlexScale})`,
                       transformStyle: 'preserve-3d',
                       WebkitTransformStyle: 'preserve-3d',
-                      filter: `drop-shadow(-25px 35px 45px rgba(0,0,0,${0.4 + shadowIntensity * 0.45}))`,
+                      willChange: 'transform',
+                      boxShadow: isTablet ? '0 12px 28px rgba(0,0,0,0.5)' : undefined,
+                      filter: isTablet ? undefined : `drop-shadow(-25px 35px 45px rgba(0,0,0,${0.4 + shadowIntensity * 0.45}))`,
                       transition: isDragging ? 'none' : 'transform 0.04s linear',
                     }}
                   >
@@ -1146,7 +1149,9 @@ export const MagicBookViewer: React.FC = () => {
                       transform: `translateZ(${zElevation}px) rotateY(${backwardAngle}deg) rotateZ(${paperArchBend}deg) skewY(${paperFlexSkew}deg) scaleX(${paperFlexScale})`,
                       transformStyle: 'preserve-3d',
                       WebkitTransformStyle: 'preserve-3d',
-                      filter: `drop-shadow(25px 35px 45px rgba(0,0,0,${0.4 + shadowIntensity * 0.45}))`,
+                      willChange: 'transform',
+                      boxShadow: isTablet ? '0 12px 28px rgba(0,0,0,0.5)' : undefined,
+                      filter: isTablet ? undefined : `drop-shadow(25px 35px 45px rgba(0,0,0,${0.4 + shadowIntensity * 0.45}))`,
                       transition: isDragging ? 'none' : 'transform 0.04s linear',
                     }}
                   >

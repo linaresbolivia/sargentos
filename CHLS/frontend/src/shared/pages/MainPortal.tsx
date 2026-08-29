@@ -1,8 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState, AppDispatch } from '@store/store';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, MessageSquare, Users, Settings, LogOut, CalendarDays, Activity, Waves, Dumbbell, CalendarCheck, Send, Sparkles, FileText, Stamp, Leaf } from 'lucide-react';
+import {
+  ShieldCheck,
+  MessageSquare,
+  Users,
+  Settings,
+  LogOut,
+  CalendarDays,
+  Activity,
+  Waves,
+  Dumbbell,
+  CalendarCheck,
+  Send,
+  Sparkles,
+  FileText,
+  Leaf,
+  ArrowUpRight,
+  Clock,
+  CheckCircle2,
+  Lock,
+  Compass,
+  Crown,
+  Key,
+  Shield,
+} from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
@@ -11,353 +34,549 @@ import toast from 'react-hot-toast';
 export const MainPortal: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch<AppDispatch>();
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   if (!user) return null;
 
   const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
   const isAdmin = user.roles.includes('ADMIN') || isSuperAdmin;
-  const isStaff = user.roles.includes('MODULO_USUARIO_PQRS');
+  const isStaff = user.roles.includes('STAFF') || isSuperAdmin;
   const isMember = user.roles.includes('USER');
-  const isPqrsUser = user.roles.includes('MODULO_PQRS') || user.roles.includes('MODULO_USUARIO_PQRS') || isAdmin;
+
+  // Specific Module Access Flags
+  const canAccessUsers = isSuperAdmin || isAdmin;
+  const canAccessCorrespondence = isAdmin || user.roles.includes('MODULO_CORRESPONDENCIA');
+  const canAccessCommercial = isAdmin || user.roles.includes('MODULO_COMERCIAL');
+  const canAccessMembers = isAdmin || user.roles.includes('MODULO_SOCIOS');
+  const canAccessAccessControl = isAdmin || user.roles.includes('MODULO_CONTROL_ACCESO');
   const isWhatsappUser = user.roles.includes('MODULO_WHATSAPP') || isAdmin || isSuperAdmin;
+  const isPqrsUser = user.roles.includes('MODULO_PQRS') || user.roles.includes('MODULO_USUARIO_PQRS') || isAdmin;
+  const canAccessCourtsAdmin = isAdmin || user.roles.includes('MODULO_CANCHAS');
 
   const handleLogout = () => {
     dispatch(logout());
-    toast.success('Sesión cerrada correctamente');
+    toast.success('Sesión finalizada correctamente');
   };
 
-  return (
-    <div className="min-h-screen bg-transparent relative overflow-hidden font-sans flex flex-col">
-      {/* Background aesthetics */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-gold/30 via-transparent to-transparent dark:via-forest dark:to-forest"></div>
+  // Format date in Spanish
+  const formattedDate = currentTime.toLocaleDateString('es-ES', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
 
-      {/* Top Navigation */}
-      <header className="relative z-10 w-full p-6 flex justify-between items-center border-b border-brand-gold/10">
+  const formattedTime = currentTime.toLocaleTimeString('es-ES', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-[#020704] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300 relative overflow-x-hidden selection:bg-brand-gold selection:text-black">
+      
+      {/* Background Subtle Ambient Lights */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 -left-40 w-[650px] h-[650px] bg-brand-gold/15 dark:bg-brand-gold/[0.08] rounded-full blur-[140px]" />
+        <div className="absolute top-1/4 -right-40 w-[700px] h-[700px] bg-emerald-500/15 dark:bg-emerald-500/[0.08] rounded-full blur-[160px]" />
+        <div className="absolute -bottom-40 left-1/4 w-[600px] h-[600px] bg-teal-500/10 dark:bg-teal-500/[0.06] rounded-full blur-[150px]" />
+      </div>
+
+      {/* Top Header Bar */}
+      <header className="relative z-10 w-full max-w-[1720px] mx-auto px-6 sm:px-10 py-5 flex items-center justify-between border-b border-slate-200/80 dark:border-white/5 backdrop-blur-md">
         <div className="flex items-center gap-4">
-          <CrestLogo size="sm" />
+          <CrestLogo size="md" className="w-12 h-14 shrink-0" />
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold tracking-widest uppercase text-brand-gold">
+                Club Hípico Los Sargentos
+              </span>
+            </div>
+            <div className="flex items-center gap-2.5 mt-0.5">
+              <h1 className="text-base sm:text-lg font-black tracking-wider uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-brand-gold to-yellow-400 drop-shadow-sm">
+                CLUB INTELIGENTE
+              </h1>
+              <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+                Enterprise Suite 360°
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-500 dark:text-gray-400 font-medium">
+              Portal Unificado de Gestión Institucional
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-6">
+
+        <div className="flex items-center gap-4">
+          {/* Live Clock Pill */}
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-600 dark:text-gray-300 shadow-xs">
+            <Clock className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
+            <span className="capitalize">{formattedDate}</span>
+            <span className="text-brand-gold font-bold">| {formattedTime}</span>
+          </div>
+
           <ThemeToggle />
-          <button 
+
+          <button
             onClick={handleLogout}
-            className="flex items-center gap-2 text-gray-500 hover:text-red-500 transition-colors text-sm font-semibold tracking-wider"
+            className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/20 text-xs font-black tracking-wide transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
           >
             <LogOut className="w-4 h-4" />
-            CERRAR SESIÓN
+            <span>Cerrar Sesión</span>
           </button>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto flex flex-col lg:flex-row p-6 lg:p-12 gap-12 items-center lg:items-stretch">
+      {/* Main Workspace Layout */}
+      <main className="relative z-10 flex-1 w-full max-w-[1720px] mx-auto px-6 sm:px-10 py-4 lg:py-6 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
         
-        {/* Left Side - Welcome & Profile */}
-        <div className="flex-1 flex flex-col justify-center max-w-xl">
-          <div className="mb-4 inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-brand-gold to-yellow-600 text-black shadow-[0_0_30px_rgba(212,175,55,0.3)]">
-             <span className="text-3xl font-bold">
-               {user.firstName 
-                 ? `${user.firstName.charAt(0)}${user.lastName ? user.lastName.charAt(0) : ''}`.toUpperCase()
-                 : user.email.substring(0, 2).toUpperCase()}
-             </span>
-          </div>
-          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 dark:text-white mb-2 serif-brand tracking-tight">
-            Bienvenido,<br/> <span className="text-brand-gold">{user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email.split('@')[0]}</span>
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-400 mb-8">
-            Selecciona un módulo en el panel derecho para comenzar a trabajar.
-          </p>
+        {/* ========================================================= */}
+        {/* LEFT SIDE: TOTAL LUXURY GOLD PROFILE CARD (4 Cols) */}
+        {/* ========================================================= */}
+        <div className="lg:col-span-4 flex flex-col gap-4">
           
-          <div className="glass-panel p-6 border-l-4 border-brand-gold max-w-md">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-brand-gold mb-4">Información de Sesión</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Email:</span>
-                <span className="text-gray-900 dark:text-white font-medium">{user.email}</span>
+          {/* Main User Greeting Card - 100% DORADA TOTAL */}
+          <div className="relative group overflow-hidden rounded-[2rem] p-6 sm:p-7 transition-all duration-500 bg-gradient-to-b from-[#241a06] via-[#161004] to-[#0a0702] border-2 border-brand-gold shadow-[0_0_60px_rgba(212,175,55,0.35)] hover:shadow-[0_0_80px_rgba(212,175,55,0.5)]">
+            
+            {/* Ambient Golden Radial Flare inside card */}
+            <div className="absolute -top-24 -right-24 w-64 h-64 bg-brand-gold/30 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl pointer-events-none" />
+
+            {/* Top Badge of Rank & Crown */}
+            <div className="flex items-center justify-between gap-2 mb-5">
+              <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-brand-gold via-yellow-400 to-amber-500 text-black font-black text-[10px] uppercase tracking-wider shadow-lg shadow-brand-gold/35">
+                <Crown className="w-3.5 h-3.5 fill-black" />
+                <span>
+                  {isSuperAdmin ? 'SUPER ADMIN • ACCESO MAESTRO'
+                    : isAdmin ? 'ADMINISTRADOR GENERAL'
+                    : user.roles.includes('MODULO_CORRESPONDENCIA') ? 'SECRETARÍA DE GERENCIA'
+                    : user.roles.includes('MODULO_COMERCIAL') ? 'GERENCIA COMERCIAL'
+                    : user.roles.includes('MODULO_SOCIOS') ? 'ADMINISTRACIÓN & CAJA'
+                    : isStaff ? 'FUNCIONARIO STAFF'
+                    : 'SOCIO TITULAR'}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Nivel de Acceso:</span>
-                <span className="text-brand-gold font-bold">
-                  {isSuperAdmin ? 'Administrador Maestro' 
-                    : isAdmin ? 'Administrador' 
-                    : user.roles.includes('MODULO_WHATSAPP') ? 'Personal Administrativo'
-                    : user.roles.includes('MODULO_PQRS') ? 'Administrador PQRS'
-                    : isStaff ? 'Personal Administrativo' 
-                    : 'Socio'}
+              <span className="flex h-2.5 w-2.5 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-gold opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-brand-gold"></span>
+              </span>
+            </div>
+
+            {/* User Avatar + Name Section */}
+            <div className="flex items-center gap-4 mb-5">
+              {/* Luxury Gold Avatar Box */}
+              <div className="relative shrink-0">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-gold via-yellow-400 to-amber-600 text-black font-black text-2xl flex items-center justify-center shadow-[0_0_30px_rgba(212,175,55,0.7)] border-2 border-white/50">
+                  {user.firstName 
+                    ? `${user.firstName.charAt(0)}${user.lastName ? user.lastName.charAt(0) : ''}`.toUpperCase()
+                    : user.email.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="absolute -bottom-1 -right-1 bg-black p-1 rounded-full border border-brand-gold shadow-md">
+                  <ShieldCheck className="w-3.5 h-3.5 text-brand-gold" />
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold/90 block mb-0.5">
+                  USUARIO AUTORIZADO
+                </span>
+                <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight truncate drop-shadow-sm">
+                  {user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.email.split('@')[0]}
+                </h1>
+                <span className="text-xs text-brand-gold font-mono block truncate">
+                  {user.email}
                 </span>
               </div>
             </div>
+
+            <p className="text-xs text-amber-100/90 leading-relaxed mb-5 border-b border-brand-gold/30 pb-4">
+              Bienvenido al sistema institucional. Selecciona el módulo al que deseas acceder en el panel de la derecha.
+            </p>
+
+            {/* Session Details Box - Gold Beveled */}
+            <div className="bg-black/60 backdrop-blur-md rounded-2xl p-4 border border-brand-gold/40 space-y-2.5 text-xs shadow-inner">
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Estado de Conexión:</span>
+                <span className="inline-flex items-center gap-1.5 font-bold text-emerald-400">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Activa & Conectada
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Seguridad de Acceso:</span>
+                <span className="font-bold text-brand-gold flex items-center gap-1">
+                  <Key className="w-3.5 h-3.5 text-brand-gold" />
+                  Cifrado Institucional TLS
+                </span>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <span className="text-gray-400">Gestión Activa:</span>
+                <span className="font-mono font-black text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded-lg border border-brand-gold/40">
+                  AÑO 2026
+                </span>
+              </div>
+            </div>
+
+            {/* Bottom Seal */}
+            <div className="mt-4 flex items-center justify-center gap-2 text-[10px] font-bold text-brand-gold tracking-wider uppercase">
+              <CheckCircle2 className="w-3.5 h-3.5 text-brand-gold" />
+              <span>Credencial Institucional Verificada</span>
+            </div>
+
           </div>
+
+          {/* Quick Help & Protocols Badge - Gold Theme */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-gold/15 via-amber-500/10 to-transparent border border-brand-gold/40 text-xs text-amber-200/90 flex items-center gap-3 shadow-md shadow-brand-gold/5">
+            <div className="p-2 rounded-xl bg-brand-gold/20 text-brand-gold shrink-0 border border-brand-gold/40">
+              <Compass className="w-4 h-4" />
+            </div>
+            <p className="text-[11px] leading-relaxed">
+              <strong className="text-brand-gold font-bold">Trazabilidad Total:</strong> Las operaciones y firmas digitales se registran con auditoría institucional 360°.
+            </p>
+          </div>
+
         </div>
 
-        {/* Right Side - Modules List */}
-        <div className="flex-1 w-full flex flex-col justify-center">
-          <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500 mb-6 border-b border-gray-200 dark:border-white/10 pb-2">
-            Módulos Habilitados
-          </h2>
+        {/* ========================================================= */}
+        {/* RIGHT SIDE: 2-COLUMN MODULES GRID (ALL EMERALD GREEN) */}
+        {/* ========================================================= */}
+        <div className="lg:col-span-8 space-y-4">
           
-          <div className="grid gap-4">
-            
-            {isSuperAdmin && (
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200 dark:border-white/10">
+            <div>
+              <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Módulos del Sistema</span>
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                  ACCESO DIRECTO
+                </span>
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-gray-400">
+                Selecciona una aplicación para iniciar operaciones
+              </p>
+            </div>
+          </div>
+
+          {/* 2-COLUMN GRID OF SPACIOUS HORIZONTAL MODULES (ALL EMERALD GREEN) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-4">
+
+            {/* 1. GESTIÓN DE USUARIOS */}
+            {canAccessUsers && (
               <Link 
                 to="/superadmin"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
               >
-                <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                  <Users className="w-7 h-7" />
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Users className="w-6 h-6" />
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-500 transition-colors">
-                    Gestión de Usuarios
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Administración de personal, permisos y creación de perfiles institucionales.
-                  </p>
-                </div>
-              </Link>
-            )}
-            
-            {isAdmin && (
-              <Link 
-                to="/access-selection"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-brand-gold/10 flex items-center justify-center text-brand-gold group-hover:scale-110 transition-transform duration-300 mr-6">
-                  <ShieldCheck className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-brand-gold transition-colors">
-                    Control de Acceso
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Puntos de control: Caseta Principal, Piscina y Gimnasio.
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {isWhatsappUser && (
-              <>
-                <Link 
-                  to="/admin/whatsapp"
-                  className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-                >
-                  <div className="w-14 h-14 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                    <MessageSquare className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-green-500 transition-colors">
-                      Call Center & WhatsApp 24/7
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Bandeja de chats en vivo y asistente virtual automatizado 24/7.
-                    </p>
-                  </div>
-                </Link>
-
-                <Link 
-                  to="/admin/whatsapp-masivo"
-                  className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-                >
-                  <div className="w-14 h-14 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                    <Send className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-blue-500 transition-colors">
-                      Envíos Masivos & Comunicados
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Difusión masiva de avisos, estados de cuenta y comunicados a socios.
-                    </p>
-                  </div>
-                </Link>
-              </>
-            )}
-
-            {isPqrsUser && (
-              <Link 
-                to="/admin/pqrs"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                  <MessageSquare className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-amber-500 transition-colors">
-                    Módulo PQRS
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Gestión de Peticiones, Quejas, Reclamos y Sugerencias de los socios.
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {isAdmin && (
-              <Link 
-                to="/admin/reservations"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300 mr-6 shadow-sm">
-                  <CalendarDays className="w-7 h-7" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-emerald-400 transition-colors">
-                    Gestión de Canchas
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Administración de reservas deportivas, horarios y aprobaciones.
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {/* Reserva de Canchas para Socios (En Vivo) */}
-            <Link 
-              to="/member/reservations"
-              className="group flex items-center p-5 sm:p-6 bg-white dark:bg-[#0a100d] border border-emerald-500/30 rounded-2xl hover:border-emerald-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(16,185,129,0.2)]"
-            >
-              <div className="w-14 h-14 shrink-0 rounded-xl bg-gradient-to-br from-emerald-500/20 to-brand-gold/20 border border-emerald-500/40 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 mr-5 shadow-sm text-emerald-400">
-                <CalendarCheck className="w-7 h-7" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5 mb-1 flex-wrap sm:flex-nowrap">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white group-hover:text-emerald-400 transition-colors whitespace-nowrap">
-                    Reserva de Canchas
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-[#00ff87] border border-[#00ff87]/50 shadow-[0_0_10px_rgba(0,255,135,0.4)] animate-pulse shrink-0 whitespace-nowrap">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
-                    (En Vivo)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
-                    SOCIOS
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  Reserva tu turno deportivo (Tenis, Pádel, Frontón, Fútbol) en tiempo real.
-                </p>
-              </div>
-            </Link>
-
-            {/* Semáforo de Aforo en Tiempo Real */}
-            <Link 
-              to="/member/occupancy"
-              className="group flex items-center p-5 sm:p-6 bg-white dark:bg-[#0a100d] border border-cyan-500/20 dark:border-cyan-500/30 rounded-2xl hover:border-cyan-400 transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(6,182,212,0.2)]"
-            >
-              <div className="w-14 h-14 shrink-0 rounded-xl bg-gradient-to-br from-cyan-500/15 to-emerald-500/15 border border-cyan-500/30 flex items-center justify-center gap-1 group-hover:scale-110 transition-transform duration-300 mr-5 shadow-sm">
-                <Waves className="w-5 h-5 text-cyan-400" />
-                <Dumbbell className="w-5 h-5 text-emerald-400" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2.5 mb-1 flex-wrap sm:flex-nowrap">
-                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white group-hover:text-cyan-400 transition-colors whitespace-nowrap">
-                    Semáforo: Piscina y Gimnasio
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-[#00ff87] border border-[#00ff87]/50 shadow-[0_0_10px_rgba(0,255,135,0.4)] animate-pulse shrink-0 whitespace-nowrap">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
-                    (En Vivo)
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shrink-0">
-                    SOCIOS
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
-                  Consulta cuán lleno está el club (Piscina, Saunas y Gimnasio) y temperaturas en tiempo real antes de asistir.
-                </p>
-              </div>
-            </Link>
-
-            {isAdmin && (
-              <Link 
-                to="/admin/comercial"
-                className="group flex items-center p-6 bg-gradient-to-r from-amber-500/10 via-brand-gold/10 to-transparent dark:bg-[#0a100d] border border-brand-gold/40 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-md hover:shadow-[0_0_35px_rgba(212,175,55,0.3)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-gold to-yellow-600 border border-brand-gold/50 flex items-center justify-center text-black group-hover:scale-110 transition-transform duration-300 mr-6 shadow-lg shadow-brand-gold/20">
-                  <Sparkles className="w-7 h-7" />
-                </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-brand-gold transition-colors">
-                      Módulo Comercial
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      1. Gestión de Usuarios
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-gradient-to-r from-brand-gold to-yellow-600 text-black shadow-sm">
-                      NUEVOS SOCIOS
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      TI & SEGURIDAD
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Revista Mágica 3D, Videos HD Offline, Pases VIP con QR, Control en Ingreso y CRM de Postulación.
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Administración de personal, permisos y roles.
                   </p>
                 </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
               </Link>
             )}
 
-            {isAdmin && (
-              <Link 
-                to="/admin/members"
-                className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-brand-gold/30 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.2)]"
-              >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-brand-gold/20 to-yellow-600/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold group-hover:scale-110 transition-transform duration-300 mr-6 shadow-sm">
-                  <Users className="w-7 h-7" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-brand-gold transition-colors">
-                      Gestión de Socios & Cobranzas
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
-                      ADMIN & CAJA
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Directorio 360°, Ventas & Auditoría CDP (60/40), Caja Unificada, Asambleas y Cartera Saneada.
-                  </p>
-                </div>
-              </Link>
-            )}
-
-            {/* Módulo de Correspondencia & Hojas de Ruta 360° */}
-            {isAdmin && (
+            {/* 2. CORRESPONDENCIA & HOJAS DE RUTA */}
+            {canAccessCorrespondence && (
               <Link 
                 to="/admin/correspondencia"
-                className="group flex items-center p-6 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent dark:bg-[#0a100d] border border-emerald-500/30 rounded-2xl hover:border-emerald-400 transition-all duration-300 shadow-md hover:shadow-[0_0_35px_rgba(16,185,129,0.25)]"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
               >
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-700/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300 mr-6 shadow-lg shadow-emerald-500/20">
-                  <FileText className="w-7 h-7" />
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <FileText className="w-6 h-6" />
                 </div>
-                <div>
+                <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-emerald-400 transition-colors">
-                      Correspondencia & Hojas de Ruta
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      2. Correspondencia & HR
                     </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1 shadow-sm">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 flex items-center gap-1 shrink-0">
                       <Leaf className="w-2.5 h-2.5" />
                       CERO PAPEL
                     </span>
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Hojas de Ruta digitales, proveídos 1 toque, réplica 1:1 impresa con QR, trazabilidad institucional y WhatsApp bot.
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Hojas de Ruta digitales, proveídos y libro oficial.
                   </p>
                 </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
               </Link>
             )}
 
+            {/* 3. MÓDULO COMERCIAL */}
+            {canAccessCommercial && (
+              <Link 
+                to="/admin/comercial"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      3. Módulo Comercial
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      NUEVOS SOCIOS
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Revista 3D, Videos HD, Pases VIP con QR y CRM.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 4. GESTIÓN DE SOCIOS & COBRANZAS */}
+            {canAccessMembers && (
+              <Link 
+                to="/admin/members"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Users className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      4. Socios & Cobranzas
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      ADMIN & CAJA
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Directorio 360°, Caja Unificada y Ventas CDP.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 5. CONTROL DE ACCESO */}
+            {canAccessAccessControl && (
+              <Link 
+                to="/access-selection"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <ShieldCheck className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      5. Control de Acceso
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      PUERTA & CONTROL
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Caseta Principal, Piscina y Gym con escaneo QR.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 6. CALL CENTER & WHATSAPP 24/7 */}
+            {isWhatsappUser && (
+              <Link 
+                to="/admin/whatsapp"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      6. Call Center & WhatsApp
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      BOT 24/7
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Bandeja en vivo y bot automatizado 24/7.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 7. ENVÍOS MASIVOS & COMUNICADOS */}
+            {isWhatsappUser && (
+              <Link 
+                to="/admin/whatsapp-masivo"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Send className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      7. Envíos Masivos
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      DIFUSIÓN
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Difusión masiva de avisos y estados de cuenta.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 8. MÓDULO PQRS */}
+            {isPqrsUser && (
+              <Link 
+                to="/admin/pqrs"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <MessageSquare className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      8. Módulo PQRS
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      ATENCIÓN
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Peticiones, quejas y reclamos con SLA y control.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 9. GESTIÓN DE CANCHAS */}
+            {canAccessCourtsAdmin && (
+              <Link 
+                to="/admin/reservations"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <CalendarDays className="w-6 h-6" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      9. Gestión de Canchas
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      DEPORTES
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Administración deportiva, canchas y torneos.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* 10. RESERVA DE CANCHAS (SOCIO) */}
             <Link 
-              to="/member"
-              className="group flex items-center p-6 bg-white dark:bg-[#0a100d] border border-gray-200 dark:border-brand-gold/20 rounded-2xl hover:border-brand-gold transition-all duration-300 shadow-sm hover:shadow-[0_0_30px_rgba(212,175,55,0.15)]"
+              to="/member/reservations"
+              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
             >
-              <div className="w-14 h-14 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500 group-hover:scale-110 transition-transform duration-300 mr-6">
-                <Settings className="w-7 h-7" />
+              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                <CalendarCheck className="w-6 h-6" />
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1 group-hover:text-purple-500 transition-colors">
-                  Portal del Socio
-                </h3>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Visualiza tu membresía, credencial digital QR, avance CDP y estados de cuenta.
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                    10. Reserva Canchas
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    En Vivo
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 line-clamp-1">
+                  Reserva en vivo (Tenis, Pádel, Frontón, Fútbol).
                 </p>
               </div>
+              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+            </Link>
+
+            {/* 11. SEMÁFORO: PISCINA Y GIMNASIO */}
+            <Link 
+              to="/member/occupancy"
+              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center gap-1 text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                <Waves className="w-4 h-4" />
+                <Dumbbell className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                    11. Semáforo Piscina/Gym
+                  </h3>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    En Vivo
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 line-clamp-1">
+                  Aforo en tiempo real y temperaturas antes de asistir.
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+            </Link>
+
+            {/* 12. PORTAL DEL SOCIO */}
+            <Link 
+              to="/member"
+              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                <Settings className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                    12. Portal del Socio
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                    AUTOGESTIÓN
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 line-clamp-1">
+                  Membresía, credencial digital QR y estados de cuenta.
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
             </Link>
 
           </div>
+
         </div>
 
       </main>

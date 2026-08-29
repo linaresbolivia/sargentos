@@ -12,8 +12,11 @@ interface CorrespondenceState {
   error: string | null;
   activeFilter: string;
   activeMailbox: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL';
+  selectedGestion: number | 'ALL';
   searchQuery: string;
 }
+
+const currentYear = new Date().getFullYear();
 
 const initialState: CorrespondenceState = {
   items: [],
@@ -25,6 +28,7 @@ const initialState: CorrespondenceState = {
   error: null,
   activeFilter: 'ALL',
   activeMailbox: 'ALL',
+  selectedGestion: currentYear,
   searchQuery: '',
 };
 
@@ -40,6 +44,7 @@ export const fetchRouteSheets = createAsyncThunk(
       senderType?: string;
       mailbox?: string;
       userArea?: string;
+      year?: number | string;
     } | void,
     { rejectWithValue }
   ) => {
@@ -227,6 +232,9 @@ export const correspondenceSlice = createSlice({
     setActiveMailbox: (state, action: PayloadAction<'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL'>) => {
       state.activeMailbox = action.payload;
     },
+    setSelectedGestion: (state, action: PayloadAction<number | 'ALL'>) => {
+      state.selectedGestion = action.payload;
+    },
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
     },
@@ -356,6 +364,7 @@ export const correspondenceSlice = createSlice({
 export const {
   setActiveFilter,
   setActiveMailbox,
+  setSelectedGestion,
   setSearchQuery,
   setSelectedItem,
   handleRealtimeCreated,

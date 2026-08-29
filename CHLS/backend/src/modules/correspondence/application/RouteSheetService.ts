@@ -8,17 +8,38 @@ export class RouteSheetService {
 
   /**
    * Genera el siguiente código correlativo de Hoja de Ruta
-   * Formato: HR-YYYY-00001 (con alias de visualización tipo 08-193)
+   * Formato: HR-YYYY-00001 (con soporte de punto de corte inicial / gestión)
    */
   private async generateNextCode(year: number): Promise<{ hrCode: string; correlativeNumber: number }> {
+    // 1. Obtener punto de corte inicial configurado para el año si existe
+    let initialCutoff = 1;
+    try {
+      const setting = await this.prisma.corrSetting.findUnique({
+        where: { key: 'GLOBAL_SETTINGS' },
+      });
+      if (setting && setting.value) {
+        const val = setting.value as any;
+        if (val.gestiones && val.gestiones[year] && val.gestiones[year].initialCorrelative) {
+          initialCutoff = Number(val.gestiones[year].initialCorrelative) || 1;
+        } else if (val.initialCorrelativeNumber) {
+          initialCutoff = Number(val.initialCorrelativeNumber) || 1;
+        }
+      }
+    } catch (err) {
+      console.error('[RouteSheetService] Error al leer correlativo inicial:', err);
+    }
+
     const lastRecord = await this.prisma.routeSheet.findFirst({
       where: { year },
       orderBy: { correlativeNumber: 'desc' },
       select: { correlativeNumber: true },
     });
 
-    const nextNumber = (lastRecord?.correlativeNumber || 0) + 1;
-    // Formato principal: HR-2026-00001 (o 08-193 si correlativo simple)
+    let nextNumber = initialCutoff;
+    if (lastRecord && lastRecord.correlativeNumber) {
+      nextNumber = Math.max(lastRecord.correlativeNumber + 1, initialCutoff);
+    }
+
     const hrCode = `HR-${year}-${String(nextNumber).padStart(5, '0')}`;
     return { hrCode, correlativeNumber: nextNumber };
   }
@@ -119,6 +140,7 @@ export class RouteSheetService {
     area?: string;
     search?: string;
     senderType?: string;
+    year?: number;
     mailbox?: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL' | string;
     userArea?: string;
     userId?: string;
@@ -132,6 +154,7 @@ export class RouteSheetService {
       area,
       search,
       senderType,
+      year,
       mailbox = 'ALL',
       userArea,
       userId,
@@ -141,6 +164,11 @@ export class RouteSheetService {
     } = params;
 
     const where: any = {};
+
+    // Filtro por Gestión / Año
+    if (year && Number(year) > 0) {
+      where.year = Number(year);
+    }
 
     // 1. Filtrado por Bandeja Oficial (Custodia y Flujo)
     if (mailbox === 'INBOX') {

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { QRCodeSVG } from 'qrcode.react';
 import { Printer, X, Tag, FileText, ShieldCheck, CheckCircle2 } from 'lucide-react';
-import logoUrl from '../../../assets/logo.png';
+import logoUrl from '../../../assets/logo-print.png';
 
 interface PrintableRouteSheetProps {
   item: RouteSheetItem;

@@ -88,7 +88,7 @@ export class CorrespondenceController {
   // 1. List Route Sheets
   public async listRouteSheets(req: Request, res: Response) {
     try {
-      const { status, priority, area, search, senderType, limit, offset, mailbox, userArea } = req.query;
+      const { status, priority, area, search, senderType, limit, offset, mailbox, userArea, year } = req.query;
       const user = (req as any).user;
       const effectiveArea = (userArea as string) || user?.area || (area as string);
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
@@ -99,6 +99,7 @@ export class CorrespondenceController {
         area: area as string,
         search: search as string,
         senderType: senderType as string,
+        year: year && year !== 'ALL' ? parseInt(year as string, 10) : undefined,
         mailbox: (mailbox as any) || 'ALL',
         userArea: effectiveArea,
         userId: user?.id,
