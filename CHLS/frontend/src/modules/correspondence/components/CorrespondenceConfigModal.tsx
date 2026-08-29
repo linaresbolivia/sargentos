@@ -1,6 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@config/api';
-import { X, Save, Plus, Trash2, Settings, Building2, Stamp, Sliders, Users, Check, ArrowRight, ShieldCheck } from 'lucide-react';
+import {
+  X,
+  Save,
+  Plus,
+  Trash2,
+  Settings,
+  Building2,
+  Stamp,
+  Sliders,
+  Users,
+  Check,
+  ArrowRight,
+  ShieldCheck,
+  Mail,
+  Send,
+  Lock,
+  Server,
+  Globe,
+  Sparkles,
+  CheckCircle2,
+  AlertTriangle,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,6 +33,17 @@ interface AreaConfigItem {
   canReceiveExternal: boolean;
 }
 
+interface SmtpSettings {
+  enabled: boolean;
+  host: string;
+  port: number;
+  secure: boolean;
+  user: string;
+  pass: string;
+  fromEmail: string;
+  fromName: string;
+}
+
 interface CorrespondenceConfigModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,7 +51,7 @@ interface CorrespondenceConfigModalProps {
 
 export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'AREAS' | 'STAMPS' | 'ROUTING' | 'USERS'>('AREAS');
+  const [activeTab, setActiveTab] = useState<'AREAS' | 'STAMPS' | 'ROUTING' | 'EMAIL' | 'USERS'>('AREAS');
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -28,6 +60,22 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
   const [routingMode, setRoutingMode] = useState<string>('VIA_SECRETARIA_GERENCIA');
   const [defaultSlaDays, setDefaultSlaDays] = useState<number>(5);
   const [socioSubsanacionDays, setSocioSubsanacionDays] = useState<number>(10);
+
+  // SMTP Settings State
+  const [smtp, setSmtp] = useState<SmtpSettings>({
+    enabled: false,
+    host: 'smtp.gmail.com',
+    port: 587,
+    secure: false,
+    user: '',
+    pass: '',
+    fromEmail: 'correspondencia@chls.bo',
+    fromName: 'Club Hípico Los Sargentos — Correspondencia',
+  });
+
+  // Test Email State
+  const [testRecipient, setTestRecipient] = useState('');
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
 
   // New Area form states
   const [newAreaName, setNewAreaName] = useState('');
@@ -54,6 +102,18 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         setRoutingMode(data.routingMode || 'VIA_SECRETARIA_GERENCIA');
         setDefaultSlaDays(data.defaultSlaDays || 5);
         setSocioSubsanacionDays(data.socioSubsanacionDays || 10);
+        if (data.smtp) {
+          setSmtp({
+            enabled: !!data.smtp.enabled,
+            host: data.smtp.host || 'smtp.gmail.com',
+            port: Number(data.smtp.port) || 587,
+            secure: !!data.smtp.secure,
+            user: data.smtp.user || '',
+            pass: data.smtp.pass || '',
+            fromEmail: data.smtp.fromEmail || 'correspondencia@chls.bo',
+            fromName: data.smtp.fromName || 'Club Hípico Los Sargentos — Correspondencia',
+          });
+        }
       }
     } catch {
       toast.error('Error al cargar la configuración');
@@ -71,13 +131,72 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         routingMode,
         defaultSlaDays,
         socioSubsanacionDays,
+        smtp,
       });
-      toast.success('¡Parámetros y Matriz de Derivación guardados con éxito! ⚙️');
+      toast.success('¡Parámetros y Servidor de Correo guardados con éxito! ⚙️');
       onClose();
     } catch {
       toast.error('Error al guardar la configuración');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTestEmail = async () => {
+    if (!testRecipient.trim() || !testRecipient.includes('@')) {
+      toast.error('Por favor ingresa un correo destinatario válido para la prueba');
+      return;
+    }
+    if (!smtp.user.trim() || !smtp.pass.trim()) {
+      toast.error('Debes completar el usuario/correo y contraseña del servidor SMTP');
+      return;
+    }
+
+    setIsTestingEmail(true);
+    const toastId = toast.loading(`Enviando correo de prueba a ${testRecipient}...`);
+    try {
+      const response = await api.post('/correspondence/settings/email/test', {
+        testRecipient: testRecipient.trim(),
+        smtpConfig: smtp,
+      });
+
+      if (response.data.success) {
+        toast.success(`¡Prueba exitosa! Correo enviado a ${testRecipient} 📧✨`, { id: toastId });
+      } else {
+        toast.error(`Error: ${response.data.message}`, { id: toastId });
+      }
+    } catch (error: any) {
+      toast.error(`Error al conectar con el servidor SMTP: ${error?.response?.data?.message || error.message}`, { id: toastId });
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
+  const handleApplyPreset = (type: 'GMAIL' | 'OUTLOOK' | 'CUSTOM') => {
+    if (type === 'GMAIL') {
+      setSmtp((prev) => ({
+        ...prev,
+        host: 'smtp.gmail.com',
+        port: 587,
+        secure: false,
+      }));
+      toast.success('Preset de Gmail aplicado (Requiere Contraseña de Aplicación de 16 letras)');
+    } else if (type === 'OUTLOOK') {
+      setSmtp((prev) => ({
+        ...prev,
+        host: 'smtp.office365.com',
+        port: 587,
+        secure: false,
+      }));
+      toast.success('Preset de Microsoft Outlook / Office 365 aplicado');
+    } else {
+      setSmtp((prev) => ({
+        ...prev,
+        host: 'mail.chls.bo',
+        port: 465,
+        secure: true,
+      }));
+      toast.success('Preset de Servidor Propio SSL/TLS aplicado');
     }
   };
 
@@ -119,31 +238,31 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
     toast.success('Sello agregado');
   };
 
-  const handleDeleteStamp = (stampToDelete: string) => {
-    setStamps(stamps.filter((s) => s !== stampToDelete));
+  const handleDeleteStamp = (stamp: string) => {
+    setStamps(stamps.filter((s) => s !== stamp));
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-md flex justify-center items-center p-4 sm:p-6 animate-fadeIn">
-      <div className="bg-white dark:bg-[#0c1410] border border-slate-200 dark:border-brand-gold/20 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/80 backdrop-blur-sm flex justify-center items-center p-4">
+      <div className="bg-white dark:bg-[#07110c] border border-slate-200 dark:border-emerald-500/30 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden flex flex-col justify-between max-h-[90vh] animate-fadeIn">
         
-        {/* Modal Header */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-black/20">
+        {/* Top Header */}
+        <div className="p-6 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-brand-gold/15 text-brand-gold flex items-center justify-center">
+            <div className="p-2.5 rounded-2xl bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
               <Settings className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                 <span>Parametrización & Matriz de Derivación</span>
                 <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/30">
                   ADMINISTRACIÓN
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-gray-400">
-                Configura quién deriva a quién, catálogo de áreas, sellos de 1 toque y tiempos SLA.
+                Configura quién deriva a quién, catálogo de áreas, sellos de 1 toque, servidor de correos y tiempos SLA.
               </p>
             </div>
           </div>
@@ -156,10 +275,10 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         </div>
 
         {/* Tab Selector */}
-        <div className="flex items-center gap-2 px-6 pt-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01]">
+        <div className="flex items-center gap-2 px-6 pt-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/30 dark:bg-white/[0.01] overflow-x-auto scrollbar-none">
           <button
             onClick={() => setActiveTab('AREAS')}
-            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'AREAS'
                 ? 'border-brand-gold text-brand-gold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -171,7 +290,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
 
           <button
             onClick={() => setActiveTab('STAMPS')}
-            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'STAMPS'
                 ? 'border-brand-gold text-brand-gold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -183,7 +302,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
 
           <button
             onClick={() => setActiveTab('ROUTING')}
-            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'ROUTING'
                 ? 'border-brand-gold text-brand-gold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -194,8 +313,20 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
           </button>
 
           <button
+            onClick={() => setActiveTab('EMAIL')}
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
+              activeTab === 'EMAIL'
+                ? 'border-brand-gold text-brand-gold'
+                : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
+            }`}
+          >
+            <Mail className="w-4 h-4" />
+            <span>📧 Notificaciones por Correo</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('USERS')}
-            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 ${
+            className={`pb-3 px-3 text-xs font-bold border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer ${
               activeTab === 'USERS'
                 ? 'border-brand-gold text-brand-gold'
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
@@ -209,7 +340,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto flex-1 text-sm space-y-6">
           {isLoading ? (
-            <div className="text-center py-16 text-slate-400">Cargando parámetros...</div>
+            <div className="text-center py-16 text-slate-400 font-bold">Cargando parámetros...</div>
           ) : (
             <>
               {/* TAB 1: AREAS & RESPONSABLES */}
@@ -218,38 +349,37 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                   {/* Add New Area Input Box */}
                   <div className="bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200/80 dark:border-white/5 space-y-3">
                     <span className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 block">
-                      + Agregar Nueva Área al Club
+                      Registrar Nueva Área o Dependencia
                     </span>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
                       <input
                         type="text"
-                        placeholder="Nombre del Área (Ej. POLÍGONO DE TIRO)"
+                        placeholder="Nombre de Área (ej. COMISIÓN DISCIPLINARIA)"
                         value={newAreaName}
                         onChange={(e) => setNewAreaName(e.target.value)}
-                        className="bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none font-bold uppercase"
+                        className="sm:col-span-4 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none font-bold uppercase"
                       />
                       <input
                         type="text"
-                        placeholder="Encargado / Titular (Ej. Cap. Valdivia)"
+                        placeholder="Titular / Responsable (ej. Dr. Juan Pérez)"
                         value={newAreaManager}
                         onChange={(e) => setNewAreaManager(e.target.value)}
-                        className="bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                        className="sm:col-span-4 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
                       />
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Cargo (Ej. Responsable de Área)"
-                          value={newAreaPosition}
-                          onChange={(e) => setNewAreaPosition(e.target.value)}
-                          className="flex-1 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
-                        />
+                      <input
+                        type="text"
+                        placeholder="Cargo (ej. Presidente de Comisión)"
+                        value={newAreaPosition}
+                        onChange={(e) => setNewAreaPosition(e.target.value)}
+                        className="sm:col-span-3 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"
+                      />
+                      <div className="sm:col-span-1">
                         <button
                           type="button"
                           onClick={handleAddArea}
-                          className="bg-brand-gold hover:bg-yellow-500 text-black font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1 shadow-sm shrink-0"
+                          className="w-full h-full bg-brand-gold hover:bg-yellow-500 text-black font-bold rounded-xl flex items-center justify-center p-2 transition-transform active:scale-95"
                         >
                           <Plus className="w-4 h-4" />
-                          <span>Agregar</span>
                         </button>
                       </div>
                     </div>
@@ -310,7 +440,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                     <button
                       type="button"
                       onClick={handleAddStamp}
-                      className="bg-brand-gold hover:bg-yellow-500 text-black font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm"
+                      className="bg-brand-gold hover:bg-yellow-500 text-black font-bold px-4 py-2.5 rounded-xl text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
                     >
                       <Plus className="w-4 h-4" />
                       <span>Agregar Sello</span>
@@ -331,7 +461,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                         <button
                           type="button"
                           onClick={() => handleDeleteStamp(stamp)}
-                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
+                          className="p-1 rounded-lg text-slate-400 hover:text-red-500 transition-colors cursor-pointer"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -393,92 +523,302 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                     </div>
                   </div>
 
-                  {/* SLA Settings */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200 dark:border-white/5">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1">
-                        Tiempo Estándar de SLA (Días Hábiles)
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-gray-300">
+                        Tiempo Estándar de Respuesta (SLA)
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="30"
-                        value={defaultSlaDays}
-                        onChange={(e) => setDefaultSlaDays(parseInt(e.target.value, 10) || 5)}
-                        className="w-full bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white"
-                      />
-                      <span className="text-[10px] text-slate-400 mt-1 block">
-                        Alerta visual en amarillo cuando se aproxime a vencer.
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={30}
+                          value={defaultSlaDays}
+                          onChange={(e) => setDefaultSlaDays(parseInt(e.target.value) || 5)}
+                          className="w-20 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-center font-bold text-slate-900 dark:text-white"
+                        />
+                        <span className="text-xs text-slate-500">días hábiles por despacho</span>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1">
-                        Plazo para Subsanación de Socios (Días)
+                    <div className="bg-slate-50 dark:bg-white/[0.02] p-4 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-gray-300">
+                        Plazo de Subsanación al Socio
                       </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="60"
-                        value={socioSubsanacionDays}
-                        onChange={(e) => setSocioSubsanacionDays(parseInt(e.target.value, 10) || 10)}
-                        className="w-full bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-900 dark:text-white"
-                      />
-                      <span className="text-[10px] text-slate-400 mt-1 block">
-                        Pausa el cronómetro de SLA mientras el socio subsana.
-                      </span>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          max={60}
+                          value={socioSubsanacionDays}
+                          onChange={(e) => setSocioSubsanacionDays(parseInt(e.target.value) || 10)}
+                          className="w-20 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-center font-bold text-slate-900 dark:text-white"
+                        />
+                        <span className="text-xs text-slate-500">días calendario</span>
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* TAB 4: GESTION DE USUARIOS */}
+              {/* TAB 4: SERVIDOR SMTP & NOTIFICACIONES POR CORREO */}
+              {activeTab === 'EMAIL' && (
+                <div className="space-y-6">
+                  
+                  {/* Master Switch */}
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/30">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="font-black text-sm text-slate-900 dark:text-white">
+                          Envío Automático de Acuse de Recibo al Socio / Remitente
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-600 dark:text-gray-300">
+                        Al radicar una Hoja de Ruta, el sistema enviará un correo institucional con el N° de trámite y enlace para seguimiento en línea.
+                      </p>
+                    </div>
+
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={smtp.enabled}
+                        onChange={(e) => setSmtp({ ...smtp, enabled: e.target.checked })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-12 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                    </label>
+                  </div>
+
+                  {/* Presets Rápidos */}
+                  <div>
+                    <span className="text-xs font-black uppercase text-slate-700 dark:text-gray-300 mb-2 block">
+                      Seleccionar Proveedor de Correo (1 Toque)
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('GMAIL')}
+                        className={`p-3 rounded-xl border text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          smtp.host === 'smtp.gmail.com'
+                            ? 'bg-red-500/15 border-red-500/50 text-red-600 dark:text-red-400 shadow-sm'
+                            : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-red-400'
+                        }`}
+                      >
+                        <span>🔴</span>
+                        <span>Google Workspace / Gmail</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('OUTLOOK')}
+                        className={`p-3 rounded-xl border text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          smtp.host === 'smtp.office365.com'
+                            ? 'bg-blue-500/15 border-blue-500/50 text-blue-600 dark:text-blue-400 shadow-sm'
+                            : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-blue-400'
+                        }`}
+                      >
+                        <span>🔵</span>
+                        <span>Outlook / Office 365</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPreset('CUSTOM')}
+                        className={`p-3 rounded-xl border text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
+                          smtp.host === 'mail.chls.bo'
+                            ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-sm'
+                            : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-emerald-400'
+                        }`}
+                      >
+                        <span>🟢</span>
+                        <span>Servidor Propio CHLS (cPanel/Zimbra)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Configuración del Servidor SMTP */}
+                  <div className="bg-slate-50 dark:bg-white/[0.02] p-5 rounded-2xl border border-slate-200 dark:border-white/10 space-y-4">
+                    <span className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-white flex items-center gap-2">
+                      <Server className="w-4 h-4 text-emerald-500" />
+                      <span>Credenciales del Servidor Emisor (SMTP)</span>
+                    </span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                      <div className="sm:col-span-8">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Servidor Saliente (SMTP Host) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="smtp.gmail.com o mail.chls.bo"
+                          value={smtp.host}
+                          onChange={(e) => setSmtp({ ...smtp, host: e.target.value })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white font-mono font-bold"
+                        />
+                      </div>
+
+                      <div className="sm:col-span-4">
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Puerto (Port) <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          placeholder="587 o 465"
+                          value={smtp.port}
+                          onChange={(e) => setSmtp({ ...smtp, port: Number(e.target.value) || 587 })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white font-mono font-bold"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Usuario / Correo Emisor <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="ej. correspondencia@chls.bo o tu_correo@gmail.com"
+                          value={smtp.user}
+                          onChange={(e) => setSmtp({ ...smtp, user: e.target.value, fromEmail: e.target.value })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Contraseña o Token de Aplicación <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="password"
+                          placeholder="••••••••••••••••"
+                          value={smtp.pass}
+                          onChange={(e) => setSmtp({ ...smtp, pass: e.target.value })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Nombre Visible del Remitente
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="Club Hípico Los Sargentos — Correspondencia"
+                          value={smtp.fromName}
+                          onChange={(e) => setSmtp({ ...smtp, fromName: e.target.value })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-600 dark:text-gray-300 mb-1">
+                          Correo de Respuesta (Reply-To)
+                        </label>
+                        <input
+                          type="email"
+                          placeholder="secretaria@chls.bo"
+                          value={smtp.fromEmail}
+                          onChange={(e) => setSmtp({ ...smtp, fromEmail: e.target.value })}
+                          className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-950 dark:text-white"
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Panel de Prueba de Conexión en Vivo */}
+                  <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 p-5 rounded-2xl border border-emerald-500/30 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-black uppercase text-emerald-800 dark:text-emerald-300 flex items-center gap-1.5">
+                        <Send className="w-4 h-4 text-brand-gold" />
+                        <span>Probar Conexión & Enviar Correo de Test</span>
+                      </span>
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold bg-emerald-500/15 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                        Verificación Inmediata
+                      </span>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        placeholder="Ingresa tu correo personal para recibir el test (ej. tu_correo@gmail.com)"
+                        value={testRecipient}
+                        onChange={(e) => setTestRecipient(e.target.value)}
+                        className="flex-1 bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-950 dark:text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleTestEmail}
+                        disabled={isTestingEmail}
+                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-black px-5 py-2.5 rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isTestingEmail ? 'Probando...' : '🧪 Enviar Test'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
+              {/* TAB 5: GESTIÓN DE USUARIOS */}
               {activeTab === 'USERS' && (
-                <div className="space-y-4 bg-slate-50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200 dark:border-white/5 text-center">
-                  <ShieldCheck className="w-12 h-12 text-brand-gold mx-auto" />
-                  <div className="max-w-md mx-auto">
-                    <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                      Gestión Central de Usuarios y Roles
+                <div className="space-y-4">
+                  <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-2xl text-center space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-gold/20 text-brand-gold flex items-center justify-center mx-auto">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-bold text-sm text-slate-800 dark:text-white">
+                      Permisos y Roles de Funcionarios
                     </h3>
-                    <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 leading-relaxed">
+                    <p className="text-xs text-slate-500 dark:text-gray-400 max-w-md mx-auto">
                       Para crear nuevos usuarios institucionales (Secretarias, Jefes de Área, Guardias) o asignar el rol <strong className="text-emerald-500 font-mono">MODULO_CORRESPONDENCIA</strong>, dirígete al panel central de SuperAdmin.
                     </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        navigate('/admin/super');
+                      }}
+                      className="inline-flex items-center gap-2 bg-slate-900 dark:bg-white/10 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-transform active:scale-95 cursor-pointer"
+                    >
+                      <span>Ir al Panel de Usuarios SuperAdmin</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClose();
-                      navigate('/superadmin');
-                    }}
-                    className="inline-flex items-center gap-2 bg-slate-900 dark:bg-brand-gold text-white dark:text-black font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-transform hover:scale-105 active:scale-95"
-                  >
-                    <span>Ir a Gestión de Usuarios (/superadmin)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
                 </div>
               )}
             </>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex justify-end items-center gap-3 bg-slate-50/50 dark:bg-black/20">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-800 dark:hover:text-white text-xs transition-colors"
-          >
-            Cerrar
-          </button>
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-600 hover:from-yellow-500 hover:to-yellow-600 text-black font-black px-6 py-2.5 rounded-xl text-xs shadow-md shadow-brand-gold/20 transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
-          >
-            <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Guardando...' : 'Guardar Parámetros'}</span>
-          </button>
+        {/* Modal Footer */}
+        <div className="p-5 border-t border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-white/[0.02]">
+          <span className="text-xs text-slate-400 font-medium">
+            Los cambios se aplicarán inmediatamente a toda la institución.
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-5 py-2.5 rounded-xl font-bold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white text-xs transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={isSaving}
+              className="flex items-center gap-2 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs shadow-lg shadow-emerald-500/25 transition-transform hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              <Save className="w-4 h-4 text-slate-950" />
+              <span>{isSaving ? 'Guardando...' : 'Guardar Todos los Cambios'}</span>
+            </button>
+          </div>
         </div>
 
       </div>

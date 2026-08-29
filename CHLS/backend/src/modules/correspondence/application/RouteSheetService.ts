@@ -1,5 +1,5 @@
 import { PrismaClient, RouteSheetPriority, RouteSheetSenderType, RouteSheetStatus } from '@prisma/client';
-import { CreateRouteSheetInput, AddMovementInput, UpdateStatusInput } from '../domain/correspondence.dto';
+import { CreateRouteSheetInput, AddMovementInput, UpdateStatusInput, MergeRouteSheetsInput } from '../domain/correspondence.dto';
 import { socketService } from '@config/socket';
 import { logger } from '@config/logger';
 
@@ -111,7 +111,7 @@ export class RouteSheetService {
   }
 
   /**
-   * Listar Hojas de Ruta con filtros de búsqueda y paginación
+   * Listar Hojas de Ruta con filtros de bandejas (Inbox, Outbox, Copies, Archive, All) y paginación
    */
   public async list(params: {
     status?: string;
@@ -119,13 +119,76 @@ export class RouteSheetService {
     area?: string;
     search?: string;
     senderType?: string;
+    mailbox?: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL' | string;
+    userArea?: string;
+    userId?: string;
+    userName?: string;
     limit?: number;
     offset?: number;
   }) {
-    const { status, priority, area, search, senderType, limit = 50, offset = 0 } = params;
+    const {
+      status,
+      priority,
+      area,
+      search,
+      senderType,
+      mailbox = 'ALL',
+      userArea,
+      userId,
+      userName,
+      limit = 50,
+      offset = 0,
+    } = params;
+
     const where: any = {};
 
-    if (status && status !== 'ALL') {
+    // 1. Filtrado por Bandeja Oficial (Custodia y Flujo)
+    if (mailbox === 'INBOX') {
+      // Trámites actualmente en custodia del área del usuario (no concluidos/archivados)
+      if (userArea && userArea !== 'ALL') {
+        where.currentArea = userArea;
+      }
+      where.status = { notIn: ['CONCLUIDO', 'ANULADO'] };
+    } else if (mailbox === 'OUTBOX') {
+      // Trámites que este usuario o área derivó a otros y están en tránsito
+      const outboxConditions: any[] = [];
+      if (userId) {
+        outboxConditions.push({ createdById: userId });
+        outboxConditions.push({ movements: { some: { sourceUserId: userId } } });
+      }
+      if (userArea && userArea !== 'ALL') {
+        outboxConditions.push({ movements: { some: { sourceArea: userArea } } });
+      }
+      if (outboxConditions.length > 0) {
+        where.OR = outboxConditions;
+      }
+      if (userArea && userArea !== 'ALL') {
+        where.currentArea = { not: userArea };
+      }
+      where.status = { notIn: ['CONCLUIDO', 'ANULADO'] };
+    } else if (mailbox === 'COPIES') {
+      // Trámites donde el área o funcionario fue incluido con Copia C.C.
+      const searchTerms = [userArea, userName].filter(Boolean) as string[];
+      if (searchTerms.length > 0) {
+        where.movements = {
+          some: {
+            OR: searchTerms.map((term) => ({
+              instruction: { contains: term, mode: 'insensitive' },
+            })),
+          },
+        };
+      }
+    } else if (mailbox === 'ARCHIVED') {
+      // Trámites en Archivo Central / Concluidos
+      where.OR = [
+        { status: 'CONCLUIDO' },
+        { status: 'ANULADO' },
+        { currentArea: 'ARCHIVO_CENTRAL' },
+        { archiveLocation: { not: null } },
+      ];
+    }
+
+    if (status && status !== 'ALL' && mailbox !== 'INBOX' && mailbox !== 'OUTBOX' && mailbox !== 'ARCHIVED') {
       where.status = status as RouteSheetStatus;
     }
 
@@ -133,7 +196,7 @@ export class RouteSheetService {
       where.priority = priority as RouteSheetPriority;
     }
 
-    if (area && area !== 'ALL') {
+    if (area && area !== 'ALL' && mailbox !== 'INBOX') {
       where.currentArea = area;
     }
 
@@ -143,13 +206,22 @@ export class RouteSheetService {
 
     if (search && search.trim()) {
       const q = search.trim();
-      where.OR = [
+      const searchConditions = [
         { hrCode: { contains: q, mode: 'insensitive' } },
         { reference: { contains: q, mode: 'insensitive' } },
         { senderName: { contains: q, mode: 'insensitive' } },
         { cite: { contains: q, mode: 'insensitive' } },
         { senderArea: { contains: q, mode: 'insensitive' } },
+        { archiveLocation: { contains: q, mode: 'insensitive' } },
+        { archiveBox: { contains: q, mode: 'insensitive' } },
       ];
+
+      if (where.OR) {
+        where.AND = [{ OR: where.OR }, { OR: searchConditions }];
+        delete where.OR;
+      } else {
+        where.OR = searchConditions;
+      }
     }
 
     const [items, total] = await Promise.all([
@@ -180,6 +252,121 @@ export class RouteSheetService {
     ]);
 
     return { items, total };
+  }
+
+  /**
+   * Archivar Hoja de Ruta en Archivo Central
+   */
+  public async archive(id: string, data: { archiveLocation: string; archiveBox?: string; archiveNotes?: string; userId: string }) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id },
+      include: { movements: true },
+    });
+
+    if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
+
+    const nextSeq = routeSheet.movements.length + 1;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Crear proveído de archivo
+      await tx.hrMovement.create({
+        data: {
+          routeSheetId: id,
+          sequenceNumber: nextSeq,
+          sourceUserId: data.userId,
+          sourceArea: routeSheet.currentArea,
+          targetArea: 'ARCHIVO_CENTRAL',
+          targetPersonName: 'Custodia & Archivo Central',
+          instruction: `ARCHIVADO EN ARCHIVO CENTRAL.\nUbicación: ${data.archiveLocation.trim()}${data.archiveBox ? ` (Caja: ${data.archiveBox.trim()})` : ''}\nMotivo / Auto: ${data.archiveNotes ? data.archiveNotes.trim() : 'Trámite concluido y remitido a custodia definitiva.'}`,
+          quickStamp: 'ARCHIVADO',
+        },
+      });
+
+      // 2. Actualizar estado y ubicación de archivo
+      return tx.routeSheet.update({
+        where: { id },
+        data: {
+          status: 'CONCLUIDO',
+          currentArea: 'ARCHIVO_CENTRAL',
+          archiveLocation: data.archiveLocation.trim(),
+          archiveBox: data.archiveBox?.trim() || null,
+          archiveNotes: data.archiveNotes?.trim() || null,
+          archivedAt: new Date(),
+          archivedById: data.userId,
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: {
+            orderBy: { sequenceNumber: 'asc' },
+            include: { sourceUser: true },
+          },
+          documents: true,
+        },
+      });
+    });
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', updated);
+    } catch (sockErr) {
+      logger.warn('Socket broadcast error on archive', sockErr);
+    }
+
+    return updated;
+  }
+
+  /**
+   * Desarchivar y reabrir Hoja de Ruta
+   */
+  public async unarchive(id: string, data: { unarchiveReason: string; targetArea: string; userId: string }) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id },
+      include: { movements: true },
+    });
+
+    if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
+
+    const nextSeq = routeSheet.movements.length + 1;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await tx.hrMovement.create({
+        data: {
+          routeSheetId: id,
+          sequenceNumber: nextSeq,
+          sourceUserId: data.userId,
+          sourceArea: 'ARCHIVO_CENTRAL',
+          targetArea: data.targetArea,
+          targetPersonName: 'Reapertura de Trámite',
+          instruction: `DESARCHIVO Y REAPERTURA DE EXPEDIENTE: Se retira del Archivo Central y se reasigna a ${data.targetArea}.\nMotivo justificado: ${data.unarchiveReason.trim()}`,
+          quickStamp: 'DESARCHIVADO',
+        },
+      });
+
+      return tx.routeSheet.update({
+        where: { id },
+        data: {
+          status: 'EN_PROCESO',
+          currentArea: data.targetArea,
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: {
+            orderBy: { sequenceNumber: 'asc' },
+            include: { sourceUser: true },
+          },
+          documents: true,
+        },
+      });
+    });
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', updated);
+    } catch (sockErr) {
+      logger.warn('Socket broadcast error on unarchive', sockErr);
+    }
+
+    return updated;
   }
 
   /**
@@ -325,6 +512,127 @@ export class RouteSheetService {
     }
 
     return updated;
+  }
+
+  /**
+   * Fusión / Acumulación de Hojas de Ruta
+   */
+  public async mergeRouteSheets(data: MergeRouteSheetsInput, userId: string) {
+    const { targetRouteSheetId, sourceRouteSheetIds, reason } = data;
+
+    const targetHr = await this.prisma.routeSheet.findUnique({
+      where: { id: targetRouteSheetId },
+      include: { movements: true },
+    });
+
+    if (!targetHr) {
+      throw new Error('Hoja de Ruta Matriz no encontrada');
+    }
+
+    const sourceHrs = await this.prisma.routeSheet.findMany({
+      where: { id: { in: sourceRouteSheetIds } },
+      include: { movements: { include: { sourceUser: true } } },
+    });
+
+    if (sourceHrs.length === 0) {
+      throw new Error('No se encontraron Hojas de Ruta secundarias para fusionar');
+    }
+
+    // Calcular suma de fojas y correlativos
+    let additionalPages = 0;
+    const sourceCodes: string[] = [];
+
+    for (const src of sourceHrs) {
+      additionalPages += src.pageCount || 1;
+      sourceCodes.push(src.hrCode);
+    }
+
+    const newTotalPages = (targetHr.pageCount || 1) + additionalPages;
+    let nextSeq = targetHr.movements.length + 1;
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Re-vincular / copiar proveídos de las secundarias a la Matriz con su etiqueta distintiva
+      for (const src of sourceHrs) {
+        for (const mov of src.movements) {
+          await tx.hrMovement.create({
+            data: {
+              routeSheetId: targetRouteSheetId,
+              sequenceNumber: nextSeq++,
+              sourceUserId: mov.sourceUserId || userId,
+              sourceArea: mov.sourceArea,
+              targetArea: mov.targetArea,
+              targetPersonName: mov.targetPersonName,
+              instruction: `[EXPEDIENTE ACUMULADO DE HR: ${src.hrCode}]\n${mov.instruction}`,
+              quickStamp: mov.quickStamp || 'EXPEDIENTE ACUMULADO',
+            },
+          });
+        }
+
+        // 2. Marcar la Hoja de Ruta secundaria como CONCLUIDO / FUSIONADO
+        await tx.routeSheet.update({
+          where: { id: src.id },
+          data: {
+            status: 'CONCLUIDO',
+            currentArea: `FUSIONADO EN ${targetHr.hrCode}`,
+            aiSummary: `FUSIONADO Y ACUMULADO A LA HOJA DE RUTA MATRIZ ${targetHr.hrCode}. Motivo: ${reason}`,
+          },
+        });
+      }
+
+      // 3. Crear el Proveído Formal Maestro de Acumulación en la Matriz
+      await tx.hrMovement.create({
+        data: {
+          routeSheetId: targetRouteSheetId,
+          sequenceNumber: nextSeq++,
+          sourceUserId: userId,
+          sourceArea: targetHr.currentArea,
+          targetArea: targetHr.currentArea,
+          targetPersonName: 'Secretaría de Gerencia General',
+          instruction: `AUTO DE ACUMULACIÓN DE EXPEDIENTES: Se fusionan e incorporan formalmente los antecedentes de las Hojas de Ruta [${sourceCodes.join(', ')}] por conexidad de trámite.\nMotivo: ${reason.trim()}\nTotal fojas acumuladas en el expediente: ${newTotalPages} fojas.`,
+          quickStamp: 'EXPEDIENTE FUSIONADO',
+        },
+      });
+
+      // 4. Actualizar total de fojas y recargar Matriz consolidada
+      const updatedTarget = await tx.routeSheet.update({
+        where: { id: targetRouteSheetId },
+        data: {
+          pageCount: newTotalPages,
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: {
+            orderBy: { sequenceNumber: 'asc' },
+            include: { sourceUser: true },
+          },
+          documents: true,
+        },
+      });
+
+      return updatedTarget;
+    });
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', {
+        id: targetRouteSheetId,
+        hrCode: targetHr.hrCode,
+        status: result.status,
+        currentArea: result.currentArea,
+      });
+      for (const src of sourceHrs) {
+        socketService.getIo()?.emit('correspondence:updated', {
+          id: src.id,
+          hrCode: src.hrCode,
+          status: 'CONCLUIDO',
+          currentArea: `FUSIONADO EN ${targetHr.hrCode}`,
+        });
+      }
+    } catch (err) {
+      logger.warn('Socket emit error on correspondence:updated', err);
+    }
+
+    return result;
   }
 
   /**

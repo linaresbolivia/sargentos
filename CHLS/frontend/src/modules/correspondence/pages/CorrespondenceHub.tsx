@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import {
   fetchRouteSheets,
   fetchCorrespondenceStats,
   setActiveFilter,
+  setActiveMailbox,
   setSearchQuery,
   setSelectedItem,
   handleRealtimeCreated,
@@ -15,6 +17,8 @@ import { NewRouteSheetModal } from '../components/NewRouteSheetModal';
 import { RouteSheetDetailModal } from '../components/RouteSheetDetailModal';
 import { PrintableRouteSheet } from '../components/PrintableRouteSheet';
 import { CorrespondenceConfigModal } from '../components/CorrespondenceConfigModal';
+import { CorrespondenceInternalChatDrawer } from '../components/CorrespondenceInternalChatDrawer';
+import { CorrespondenceReportExportModal } from '../components/CorrespondenceReportExportModal';
 import {
   Search,
   Plus,
@@ -36,6 +40,13 @@ import {
   ChevronRight,
   Settings,
   Receipt,
+  MessageSquare,
+  Inbox,
+  Send as SendIcon,
+  FolderArchive,
+  Compass,
+  MapPin,
+  FileSpreadsheet,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -43,25 +54,57 @@ import BackButton from '@shared/components/BackButton';
 import { GatehouseInvoiceReceiptModal } from '../../gatehouse/components/GatehouseInvoiceReceiptModal';
 import io from 'socket.io-client';
 
-const FILTER_TABS = [
-  { id: 'ALL', label: 'Todos' },
-  { id: 'RECIBIDO', label: 'Recibidos (Mesa de Entrada)' },
-  { id: 'DERIVADO', label: 'En Trámite / Derivados' },
-  { id: 'OBSERVADO', label: 'Observados' },
-  { id: 'CONCLUIDO', label: 'Concluidos' },
+const DEPARTMENTS = [
+  { id: 'SECRETARIA_GENERAL', label: 'Secretaría de Gerencia' },
+  { id: 'GERENCIA_GENERAL', label: 'Gerencia General' },
+  { id: 'TESORERÍA Y FINANZAS', label: 'Tesorería & Finanzas' },
+  { id: 'CONTRATACIONES Y ADQUISICIONES', label: 'Compras & Contrataciones' },
+  { id: 'COMISIÓN HÍPICA', label: 'Comisión Hípica' },
+  { id: 'CAPITANÍA DEPORTES / TENIS', label: 'Capitanía de Deportes' },
+  { id: 'ASESORÍA LEGAL', label: 'Asesoría Legal' },
+  { id: 'MANTENIMIENTO Y OBRAS', label: 'Mantenimiento & Obras' },
+  { id: 'CASETA_ENTRADA', label: 'Caseta de Ingreso' },
 ];
 
 export const CorrespondenceHub: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-  const { items, stats, isLoading, activeFilter, searchQuery, selectedItem } = useSelector(
+  const [searchParams] = useSearchParams();
+  const urlCode = searchParams.get('code');
+
+  const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem } = useSelector(
     (state: RootState) => state.correspondence
   );
 
+  const [currentPerspective, setCurrentPerspective] = useState('SECRETARIA_GENERAL');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const [printableItem, setPrintableItem] = useState<RouteSheetItem | null>(null);
-  const [selectedAreaFilter, setSelectedAreaFilter] = useState('ALL');
+
+  const handleSelectRouteSheetByCode = (hrCode: string) => {
+    const clean = hrCode.trim().toLowerCase();
+    const found = items.find(
+      (i) => i.hrCode.toLowerCase() === clean || i.id.toLowerCase() === clean
+    );
+    if (found) {
+      dispatch(setSelectedItem(found));
+    }
+  };
+
+  // Auto-open route sheet when scanned via QR code link
+  useEffect(() => {
+    if (urlCode && items.length > 0) {
+      const clean = urlCode.trim().toLowerCase();
+      const found = items.find(
+        (i) => i.hrCode.toLowerCase() === clean || i.id.toLowerCase() === clean
+      );
+      if (found) {
+        dispatch(setSelectedItem(found));
+      }
+    }
+  }, [urlCode, items, dispatch]);
 
   useEffect(() => {
     dispatch(fetchRouteSheets());
@@ -84,16 +127,64 @@ export const CorrespondenceHub: React.FC = () => {
     };
   }, [dispatch]);
 
-  // Client-side quick filter
-  const filteredItems = items.filter((item) => {
-    // Filter by tab status
-    if (activeFilter === 'RECIBIDO' && item.status !== 'RECIBIDO') return false;
-    if (activeFilter === 'DERIVADO' && !['DERIVADO', 'EN_PROCESO', 'EN_APROBACION', 'SUBSANADO'].includes(item.status)) return false;
-    if (activeFilter === 'OBSERVADO' && item.status !== 'OBSERVADO') return false;
-    if (activeFilter === 'CONCLUIDO' && item.status !== 'CONCLUIDO') return false;
+  // Compute Mailbox Counts for Active Perspective
+  const inboxCount = items.filter(
+    (i) => i.currentArea === currentPerspective && i.status !== 'CONCLUIDO' && i.status !== 'ANULADO'
+  ).length;
 
-    // Filter by area
-    if (selectedAreaFilter !== 'ALL' && item.currentArea !== selectedAreaFilter) return false;
+  const outboxCount = items.filter(
+    (i) =>
+      i.movements?.some((m) => m.sourceArea === currentPerspective) &&
+      i.currentArea !== currentPerspective &&
+      i.status !== 'CONCLUIDO'
+  ).length;
+
+  const copiesCount = items.filter(
+    (i) =>
+      i.movements?.some(
+        (m) =>
+          m.instruction?.toUpperCase().includes(currentPerspective.toUpperCase()) &&
+          m.instruction?.includes('[C.C.')
+      )
+  ).length;
+
+  const archiveCount = items.filter(
+    (i) => i.status === 'CONCLUIDO' || i.status === 'ANULADO' || Boolean(i.archiveLocation)
+  ).length;
+
+  const totalCount = items.length;
+
+  const MAILBOX_TABS = [
+    { id: 'INBOX', label: 'Bandeja de Entrada', icon: Inbox, count: inboxCount, desc: 'En mi despacho / Pendientes' },
+    { id: 'OUTBOX', label: 'Bandeja de Salida', icon: SendIcon, count: outboxCount, desc: 'Derivados a otras áreas' },
+    { id: 'COPIES', label: 'Copias C.C.', icon: FileText, count: copiesCount, desc: 'Conocimiento e informativas' },
+    { id: 'ARCHIVED', label: 'Archivo Central', icon: FolderArchive, count: archiveCount, desc: 'Custodia definitiva' },
+    { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: totalCount, desc: 'Supervisión institucional' },
+  ];
+
+  // Client-side Filter by Active Mailbox
+  const filteredItems = items.filter((item) => {
+    if (activeMailbox === 'INBOX') {
+      if (item.currentArea !== currentPerspective || item.status === 'CONCLUIDO' || item.status === 'ANULADO') {
+        return false;
+      }
+    } else if (activeMailbox === 'OUTBOX') {
+      const hasSentFromMyArea = item.movements?.some((m) => m.sourceArea === currentPerspective);
+      if (!hasSentFromMyArea || item.currentArea === currentPerspective || item.status === 'CONCLUIDO') {
+        return false;
+      }
+    } else if (activeMailbox === 'COPIES') {
+      const hasCopy = item.movements?.some(
+        (m) =>
+          m.instruction?.toUpperCase().includes(currentPerspective.toUpperCase()) &&
+          m.instruction?.includes('[C.C.')
+      );
+      if (!hasCopy) return false;
+    } else if (activeMailbox === 'ARCHIVED') {
+      if (item.status !== 'CONCLUIDO' && item.status !== 'ANULADO' && !item.archiveLocation) {
+        return false;
+      }
+    }
 
     // Search query
     if (searchQuery.trim()) {
@@ -103,7 +194,8 @@ export const CorrespondenceHub: React.FC = () => {
       const matchSender = item.senderName.toLowerCase().includes(q);
       const matchCite = item.cite?.toLowerCase().includes(q);
       const matchArea = item.senderArea?.toLowerCase().includes(q) || item.currentArea?.toLowerCase().includes(q);
-      if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea) return false;
+      const matchArchive = item.archiveLocation?.toLowerCase().includes(q) || item.archiveBox?.toLowerCase().includes(q);
+      if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchArchive) return false;
     }
 
     return true;
@@ -112,30 +204,65 @@ export const CorrespondenceHub: React.FC = () => {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'RECIBIDO':
-        return 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30';
+        return 'bg-blue-500/15 text-blue-700 dark:text-blue-400 border-blue-500/40';
       case 'DERIVADO':
-        return 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30';
+        return 'bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/40';
       case 'EN_PROCESO':
-        return 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30';
+        return 'bg-purple-500/15 text-purple-700 dark:text-purple-400 border-purple-500/40';
       case 'OBSERVADO':
-        return 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30 animate-pulse';
+        return 'bg-red-500/15 text-red-700 dark:text-red-400 border-red-500/40 animate-pulse';
       case 'CONCLUIDO':
-        return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30';
+        return 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-400 border-emerald-500/40';
       default:
-        return 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30';
+        return 'bg-slate-500/15 text-slate-700 dark:text-slate-400 border-slate-500/40';
     }
   };
 
+  const getSlaBadge = (createdAt: string, status: string) => {
+    if (status === 'CONCLUIDO') {
+      return (
+        <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
+          ✓ Trámite Concluido
+        </span>
+      );
+    }
+    const hours = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
+    if (hours < 24) {
+      return (
+        <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-lg border border-emerald-500/40 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+          <span>SLA &lt;24h (Óptimo)</span>
+        </span>
+      );
+    }
+    if (hours < 48) {
+      return (
+        <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-lg border border-amber-500/40">
+          ⏱️ SLA 24h-48h (En Curso)
+        </span>
+      );
+    }
+    return (
+      <span className="text-[10px] font-black text-rose-800 dark:text-rose-300 bg-rose-500/20 px-2.5 py-0.5 rounded-lg border border-rose-500/40 animate-pulse">
+        ⚠️ SLA &gt;48h (Atención Requerida)
+      </span>
+    );
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#030805] text-gray-900 dark:text-gray-100 font-sans transition-colors duration-300 relative overflow-hidden flex flex-col">
-      {/* Background glow effects */}
-      <div className="absolute inset-0 z-0 opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-brand-gold/30 via-transparent to-transparent dark:via-forest dark:to-forest"></div>
+    <div className="min-h-screen bg-slate-50 dark:bg-[#040806] text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors duration-300 relative overflow-x-hidden">
+      
+      {/* Background Decorative Auras */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-40 -right-40 w-96 h-96 bg-brand-gold/10 rounded-full blur-3xl" />
+        <div className="absolute top-1/3 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl" />
+      </div>
 
       {/* Top Header */}
-      <header className="relative z-10 w-full p-4 sm:p-6 flex justify-between items-center border-b border-slate-200 dark:border-brand-gold/10 backdrop-blur-md">
-        <div className="flex items-center gap-4">
+      <header className="relative z-10 w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between border-b border-slate-200/80 dark:border-emerald-500/30 backdrop-blur-md flex-wrap gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           <BackButton />
-          <CrestLogo size="sm" className="w-10 h-10 shrink-0" />
+          <CrestLogo size="md" className="w-12 h-12 shrink-0" />
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
               <span>Correspondencia & Hojas de Ruta</span>
@@ -144,12 +271,48 @@ export const CorrespondenceHub: React.FC = () => {
               </span>
             </h1>
             <p className="text-xs text-slate-500 dark:text-gray-400">
-              Club Hípico Los Sargentos — Secretaría de Gerencia General
+              Club Hípico Los Sargentos — Sistema Oficial de Custodia & Gestión Documental
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+          {/* Department / Perspective Switcher */}
+          <div className="flex items-center gap-2 bg-slate-100 dark:bg-black/50 border border-slate-300 dark:border-emerald-500/30 rounded-2xl px-3 py-1.5 shadow-xs">
+            <Building2 className="w-4 h-4 text-brand-gold shrink-0" />
+            <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 hidden sm:inline">Despacho:</span>
+            <select
+              value={currentPerspective}
+              onChange={(e) => setCurrentPerspective(e.target.value)}
+              className="bg-transparent text-xs font-black text-slate-900 dark:text-emerald-300 outline-none cursor-pointer"
+            >
+              {DEPARTMENTS.map((dept) => (
+                <option key={dept.id} value={dept.id} className="bg-slate-900 text-white">
+                  {dept.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button
+            onClick={() => setIsChatOpen(true)}
+            title="Chat Interno & Coordinación entre Áreas CHLS"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <MessageSquare className="w-4 h-4 text-brand-gold" />
+            <span className="hidden md:inline">Chat Interno</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          </button>
+
+          <button
+            onClick={() => setIsExportModalOpen(true)}
+            title="Exportar Libro Oficial de Registro a Excel (.xlsx) o PDF (.pdf)"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+            <span className="hidden lg:inline">Libro de Registro</span>
+          </button>
+
           <button
             onClick={() => setIsInvoiceModalOpen(true)}
             title="Recepción rápida de facturas (Luz, Agua, Gas, etc.)"
@@ -158,7 +321,9 @@ export const CorrespondenceHub: React.FC = () => {
             <Receipt className="w-4 h-4 text-emerald-500" />
             <span className="hidden md:inline">Recibir Factura (Caseta)</span>
           </button>
+          
           <ThemeToggle />
+
           <button
             onClick={() => setIsConfigModalOpen(true)}
             title="Parametrización & Matriz de Derivación"
@@ -166,9 +331,10 @@ export const CorrespondenceHub: React.FC = () => {
           >
             <Settings className="w-4 h-4 text-brand-gold" />
           </button>
+
           <button
             onClick={() => setIsNewModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-600 hover:from-yellow-500 hover:to-yellow-600 text-black font-black px-4 sm:px-5 py-2.5 rounded-2xl shadow-lg shadow-brand-gold/25 transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm"
+            className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-600 hover:from-yellow-500 hover:to-yellow-600 text-black font-black px-4 sm:px-5 py-2.5 rounded-2xl shadow-lg shadow-brand-gold/25 transition-all hover:scale-105 active:scale-95 text-xs sm:text-sm cursor-pointer"
           >
             <Plus className="w-4 h-4 text-black" />
             <span>+ Nueva Hoja de Ruta</span>
@@ -177,66 +343,66 @@ export const CorrespondenceHub: React.FC = () => {
       </header>
 
       {/* Main Container */}
-      <main className="relative z-10 flex-1 w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+      <main className="relative z-10 flex-1 w-full max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-7">
         
         {/* Eco-Metrics Bar (Iniciativa Cero Papel) */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           
-          {/* 1. Hojas Ahorradas (Emerald Glow) */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d2a1c] dark:via-[#081c12] dark:to-[#030e08] border border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-500 dark:hover:border-emerald-400 p-4 rounded-3xl backdrop-blur-xl shadow-[0_0_18px_rgba(16,185,129,0.12)] hover:shadow-[0_0_45px_rgba(16,185,129,0.5),0_0_80px_rgba(16,185,129,0.25)] flex items-center gap-3.5 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(16,185,129,0.5)]">
-              <FileText className="w-6 h-6" />
+          {/* 1. Hojas Ahorradas */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d2a1c] dark:via-[#081c12] dark:to-[#030e08] border border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-500 dark:hover:border-emerald-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.12)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5),0_0_90px_rgba(16,185,129,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+              <Leaf className="w-7 h-7 text-emerald-500" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
                 Hojas Ahorradas
               </span>
-              <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.totalSheetsSaved || items.length * 3} <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">hojas</span>
+              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {stats?.ecoMetrics?.totalSheetsSaved || 90} <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">hojas</span>
               </span>
             </div>
           </div>
 
-          {/* 2. Árboles Salvados (Gold Glow) */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#2a220d] dark:via-[#1c1708] dark:to-[#0e0c03] border border-brand-gold/30 dark:border-brand-gold/40 hover:border-brand-gold dark:hover:border-yellow-400 p-4 rounded-3xl backdrop-blur-xl shadow-[0_0_18px_rgba(204,161,75,0.12)] hover:shadow-[0_0_45px_rgba(204,161,75,0.5),0_0_80px_rgba(204,161,75,0.25)] flex items-center gap-3.5 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
-            <div className="w-12 h-12 rounded-2xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(204,161,75,0.5)]">
-              <Leaf className="w-6 h-6" />
+          {/* 2. Árboles Protegidos */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#2a240d] dark:via-[#1c1808] dark:to-[#0e0c03] border border-brand-gold/30 dark:border-brand-gold/40 hover:border-brand-gold dark:hover:border-yellow-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(234,179,8,0.12)] hover:shadow-[0_0_50px_rgba(234,179,8,0.5),0_0_90px_rgba(234,179,8,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(234,179,8,0.5)]">
+              <Sparkles className="w-7 h-7 text-brand-gold" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
-                Árboles Salvados
+              <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
+                Árboles Protegidos
               </span>
-              <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.treesSaved || '0.12'} <span className="text-xs font-bold text-brand-gold">árboles</span>
+              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {stats?.ecoMetrics?.treesSaved || '0.01'} <span className="text-xs font-bold text-brand-gold">árboles</span>
               </span>
             </div>
           </div>
 
-          {/* 3. Agua Preservada (Cyan Glow) */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d262a] dark:via-[#08191c] dark:to-[#030d0e] border border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-500 dark:hover:border-cyan-400 p-4 rounded-3xl backdrop-blur-xl shadow-[0_0_18px_rgba(6,182,212,0.12)] hover:shadow-[0_0_45px_rgba(6,182,212,0.5),0_0_80px_rgba(6,182,212,0.25)] flex items-center gap-3.5 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
-            <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]">
-              <Droplet className="w-6 h-6" />
+          {/* 3. Agua Preservada */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d222a] dark:via-[#08161c] dark:to-[#030a0e] border border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-500 dark:hover:border-cyan-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(6,182,212,0.12)] hover:shadow-[0_0_50px_rgba(6,182,212,0.5),0_0_90px_rgba(6,182,212,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.5)]">
+              <Droplet className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
                 Agua Preservada
               </span>
-              <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.waterSavedLiters || items.length * 30} <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">Litros</span>
+              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {stats?.ecoMetrics?.waterSavedLiters || 900} <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">litros</span>
               </span>
             </div>
           </div>
 
-          {/* 4. CO₂ Evitado (Purple Glow) */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#250d2a] dark:via-[#18081c] dark:to-[#0c030e] border border-purple-500/30 dark:border-purple-500/40 hover:border-purple-500 dark:hover:border-purple-400 p-4 rounded-3xl backdrop-blur-xl shadow-[0_0_18px_rgba(168,85,247,0.12)] hover:shadow-[0_0_45px_rgba(168,85,247,0.5),0_0_80px_rgba(168,85,247,0.25)] flex items-center gap-3.5 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_15px_rgba(168,85,247,0.5)]">
-              <Wind className="w-6 h-6" />
+          {/* 4. CO₂ Evitado */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#250d2a] dark:via-[#18081c] dark:to-[#0c030e] border border-purple-500/30 dark:border-purple-500/40 hover:border-purple-500 dark:hover:border-purple-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.12)] hover:shadow-[0_0_50px_rgba(168,85,247,0.5),0_0_90px_rgba(168,85,247,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+              <Wind className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
+              <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wider block">
                 CO₂ Evitado
               </span>
-              <span className="text-lg sm:text-xl font-black text-slate-900 dark:text-white font-mono">
+              <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
                 {stats?.ecoMetrics?.co2SavedKg || '0.45'} <span className="text-xs font-bold text-purple-600 dark:text-purple-400">kg CO₂</span>
               </span>
             </div>
@@ -244,59 +410,73 @@ export const CorrespondenceHub: React.FC = () => {
 
         </div>
 
-        {/* Filter Controls (Apple Minimalist Bar) */}
-        <div className="bg-white/90 dark:bg-[#0a100d]/90 border border-slate-200/80 dark:border-brand-gold/20 p-3 sm:p-4 rounded-3xl shadow-sm backdrop-blur-md space-y-3">
+        {/* Official 5 Mailbox Trays Navigation Bar */}
+        <div className="bg-white/90 dark:bg-[#07110c]/90 border-2 border-emerald-500/40 p-4 sm:p-5 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.15)] backdrop-blur-md space-y-4">
           
-          <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+          {/* Top Row: Search & Tray Summary */}
+          <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
             {/* Search Input */}
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-brand-gold" />
               <input
                 type="text"
-                placeholder="Buscar por N° de Hoja de Ruta (ej. 08-193), remitente, CITE o asunto..."
+                placeholder="Buscar por N° de Hoja de Ruta (ej. 08-193), remitente, CITE, asunto o ubicación de archivo..."
                 value={searchQuery}
                 onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-brand-gold/50 outline-none transition-all font-medium"
+                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-black/50 border-2 border-slate-200 dark:border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold shadow-xs"
               />
             </div>
 
-            {/* Filter by Area */}
-            <div className="flex items-center gap-2 shrink-0">
-              <Filter className="w-4 h-4 text-slate-400 shrink-0" />
-              <select
-                value={selectedAreaFilter}
-                onChange={(e) => setSelectedAreaFilter(e.target.value)}
-                className="bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-white/10 rounded-2xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-gray-300 focus:ring-2 focus:ring-brand-gold/50 outline-none cursor-pointer"
-              >
-                <option value="ALL">Todas las Áreas</option>
-                <option value="SECRETARIA_GENERAL">Secretaría General</option>
-                <option value="GERENCIA_GENERAL">Gerencia General</option>
-                <option value="CONTRATACIONES Y ADQUISICIONES">Contrataciones</option>
-                <option value="TESORERÍA Y FINANZAS">Tesorería</option>
-                <option value="COMISIÓN HÍPICA">Comisión Hípica</option>
-                <option value="CAPITANÍA DEPORTES / TENIS">Capitanía Deportes</option>
-                <option value="ASESORÍA LEGAL">Asesoría Legal</option>
-                <option value="MANTENIMIENTO Y OBRAS">Mantenimiento</option>
-                <option value="DIRECTORIO / PRESIDENCIA">Directorio</option>
-              </select>
+            <div className="text-right hidden md:block">
+              <span className="text-xs font-bold text-slate-500 dark:text-gray-400 block">
+                Mostrando <strong className="text-emerald-700 dark:text-brand-gold font-mono">{filteredItems.length}</strong> trámites en
+              </span>
+              <span className="text-xs font-black uppercase text-slate-900 dark:text-white">
+                {MAILBOX_TABS.find((t) => t.id === activeMailbox)?.label}
+              </span>
             </div>
           </div>
 
-          {/* Segmented Status Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            {FILTER_TABS.map((tab) => {
-              const isActive = activeFilter === tab.id;
+          {/* 5 Official Mailbox Tabs */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+            {MAILBOX_TABS.map((tab) => {
+              const isActive = activeMailbox === tab.id;
+              const Icon = tab.icon;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => dispatch(setActiveFilter(tab.id))}
-                  className={`px-3.5 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all ${
+                  onClick={() => dispatch(setActiveMailbox(tab.id as any))}
+                  className={`p-3 sm:p-3.5 rounded-2xl flex flex-col justify-between text-left transition-all cursor-pointer border ${
                     isActive
-                      ? 'bg-slate-900 dark:bg-brand-gold text-white dark:text-black shadow-sm'
-                      : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      ? 'bg-gradient-to-br from-emerald-600 to-teal-800 text-white border-emerald-400 shadow-lg shadow-emerald-600/30 scale-[1.02]'
+                      : 'bg-slate-100/90 dark:bg-white/5 text-slate-700 dark:text-gray-300 hover:border-emerald-500 border-slate-200 dark:border-white/10'
                   }`}
                 >
-                  {tab.label}
+                  <div className="flex items-center justify-between w-full mb-2">
+                    <div className={`p-2 rounded-xl ${isActive ? 'bg-white/20 text-white' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'}`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span
+                      className={`font-mono text-xs font-black px-2.5 py-0.5 rounded-full ${
+                        isActive
+                          ? 'bg-white text-slate-950 shadow-xs'
+                          : tab.count > 0
+                          ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40'
+                          : 'bg-slate-200 dark:bg-white/10 text-slate-500'
+                      }`}
+                    >
+                      {tab.count}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="font-black text-xs sm:text-sm block truncate">
+                      {tab.label}
+                    </span>
+                    <span className={`text-[10px] block truncate font-medium ${isActive ? 'text-emerald-100' : 'text-slate-500 dark:text-gray-400'}`}>
+                      {tab.desc}
+                    </span>
+                  </div>
                 </button>
               );
             })}
@@ -304,33 +484,33 @@ export const CorrespondenceHub: React.FC = () => {
 
         </div>
 
-        {/* Route Sheets List / Grid */}
+        {/* Route Sheets Grid */}
         {isLoading ? (
-          <div className="text-center py-20 bg-white/40 dark:bg-black/20 rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
-            <Clock className="w-10 h-10 text-brand-gold animate-spin mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-600 dark:text-gray-300">Cargando Hojas de Ruta...</p>
+          <div className="text-center py-24 bg-white/40 dark:bg-black/20 rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
+            <Clock className="w-12 h-12 text-brand-gold animate-spin mx-auto mb-3" />
+            <p className="text-base font-bold text-slate-600 dark:text-gray-300">Cargando correspondencia oficial...</p>
           </div>
         ) : filteredItems.length === 0 ? (
-          <div className="text-center py-20 bg-white/60 dark:bg-black/20 rounded-3xl border border-dashed border-slate-200 dark:border-white/10 space-y-3">
-            <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto" />
+          <div className="text-center py-24 bg-white/60 dark:bg-black/20 rounded-3xl border border-dashed border-slate-200 dark:border-white/10 space-y-4">
+            <FolderArchive className="w-14 h-14 text-slate-300 dark:text-slate-600 mx-auto" />
             <div>
-              <h3 className="text-base font-bold text-slate-800 dark:text-white">
-                No se encontraron Hojas de Ruta
+              <h3 className="text-lg font-bold text-slate-800 dark:text-white">
+                Bandeja vacía en {MAILBOX_TABS.find((t) => t.id === activeMailbox)?.label}
               </h3>
-              <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 max-w-sm mx-auto">
-                No hay trámites que coincidan con los filtros seleccionados o aún no se han radicado documentos.
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
+                No hay trámites en custodia o registro que coincidan con los criterios actuales.
               </p>
             </div>
             <button
               onClick={() => setIsNewModalOpen(true)}
-              className="inline-flex items-center gap-2 text-xs font-black bg-brand-gold text-black px-4 py-2 rounded-xl shadow-md transition-transform hover:scale-105 active:scale-95"
+              className="inline-flex items-center gap-2 text-xs sm:text-sm font-black bg-brand-gold text-black px-6 py-3 rounded-2xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Generar primera Hoja de Ruta</span>
+              <span>+ Radicar nueva Hoja de Ruta</span>
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6">
             {filteredItems.map((item) => (
               <div
                 key={item.id}
@@ -348,70 +528,79 @@ export const CorrespondenceHub: React.FC = () => {
                   }`}
                 />
 
-                <div className="space-y-3 pt-1">
+                <div className="space-y-3.5 pt-1">
                   {/* Top Line: Code & Status */}
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-mono text-xs font-black text-emerald-950 dark:text-emerald-200 bg-emerald-500/25 dark:bg-emerald-950/80 px-3 py-1 rounded-xl border border-emerald-500/60 dark:border-emerald-400/70 shadow-[0_0_14px_rgba(16,185,129,0.35)] tracking-wider">
+                  <div className="flex items-center justify-between gap-2.5">
+                    <span className="font-mono text-xs sm:text-sm font-black text-emerald-950 dark:text-emerald-200 bg-emerald-500/25 dark:bg-emerald-950/90 px-3.5 py-1 rounded-xl border border-emerald-500/60 dark:border-emerald-400/80 shadow-[0_0_15px_rgba(16,185,129,0.35)] tracking-wider">
                       {item.hrCode}
                     </span>
-                    <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-sm ${getStatusBadge(item.status)}`}>
+                    <span className={`text-[11px] font-black uppercase px-3 py-0.5 rounded-full border shadow-sm ${getStatusBadge(item.status)}`}>
                       {item.status}
                     </span>
                   </div>
 
+                  {/* SLA Indicator */}
+                  <div>
+                    {getSlaBadge(item.createdAt, item.status)}
+                  </div>
+
                   {/* Reference / Asunto */}
                   <div>
-                    <h4 className="text-xs sm:text-sm font-black text-slate-950 dark:text-gray-100 line-clamp-2 uppercase leading-snug group-hover:text-emerald-700 dark:group-hover:text-brand-gold transition-colors">
+                    <h4 className="text-sm sm:text-base font-black text-slate-950 dark:text-gray-100 line-clamp-2 uppercase leading-snug group-hover:text-emerald-700 dark:group-hover:text-brand-gold transition-colors">
                       {item.reference}
                     </h4>
                     {item.cite && (
-                      <span className="text-[10.5px] text-emerald-800 dark:text-emerald-300/90 font-mono font-bold block mt-1">
+                      <span className="text-xs text-emerald-800 dark:text-emerald-300/90 font-mono font-bold block mt-1.5">
                         CITE: {item.cite} • {item.pageCount || 1} fojas
                       </span>
                     )}
                   </div>
 
                   {/* Sender & Area Info */}
-                  <div className="space-y-1.5 pt-2 border-t border-emerald-500/25 dark:border-emerald-500/30 text-xs">
-                    <div className="flex items-center gap-1.5 text-slate-800 dark:text-gray-200">
-                      <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                  <div className="space-y-2 pt-2.5 border-t border-emerald-500/25 dark:border-emerald-500/30 text-xs sm:text-sm">
+                    <div className="flex items-center gap-2 text-slate-800 dark:text-gray-200">
+                      <User className="w-4 h-4 text-brand-gold shrink-0" />
                       <span className="font-bold truncate">{item.senderName}</span>
                     </div>
 
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-emerald-300/80">
-                      <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                      <span className="text-[11px] font-semibold truncate">
+                    <div className="flex items-center gap-2 text-slate-600 dark:text-emerald-300/85">
+                      <Building2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="text-xs font-semibold truncate">
                         {item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo')}
                       </span>
                     </div>
                   </div>
+
+                  {/* Archive Location Pill if Archived */}
+                  {item.archiveLocation && (
+                    <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-2">
+                      <FolderArchive className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                      <span className="truncate">Archivo: <strong>{item.archiveLocation}</strong></span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Bottom Bar: Location & Quick Print */}
-                <div className="mt-4 pt-3 border-t border-emerald-500/25 dark:border-emerald-500/30 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-slate-700 dark:text-gray-300">
-                    <span className="text-slate-500 dark:text-gray-400 font-normal">En:</span>
-                    <span className="text-emerald-800 dark:text-brand-gold uppercase truncate max-w-[130px] font-black">
+                {/* Bottom Bar: Custody Location & Quick Print */}
+                <div className="mt-5 pt-3.5 border-t border-emerald-500/25 dark:border-emerald-500/30 flex items-center justify-between text-xs sm:text-sm">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-gray-300">
+                    <span className="text-slate-500 dark:text-gray-400 font-normal">Custodia:</span>
+                    <span className="text-emerald-800 dark:text-brand-gold uppercase truncate max-w-[140px] font-black">
                       {item.currentArea}
                     </span>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setPrintableItem(item);
-                      }}
-                      title="Imprimir Hoja de Ruta 1:1"
-                      className="p-1.5 rounded-xl bg-emerald-500/20 dark:bg-emerald-950/80 hover:bg-emerald-500/30 dark:hover:bg-emerald-900 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 dark:border-emerald-400/50 shadow-[0_0_12px_rgba(16,185,129,0.3)] transition-all"
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                    </button>
-                    <ChevronRight className="w-4 h-4 text-emerald-600 dark:text-emerald-400 group-hover:text-brand-gold group-hover:translate-x-1 transition-all" />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setPrintableItem(item);
+                    }}
+                    title="Impresión rápida 1:1"
+                    className="p-2 rounded-xl hover:bg-emerald-500/20 text-slate-500 hover:text-emerald-700 dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <Printer className="w-4 h-4 text-brand-gold" />
+                  </button>
                 </div>
-
               </div>
             ))}
           </div>
@@ -460,6 +649,25 @@ export const CorrespondenceHub: React.FC = () => {
             dispatch(fetchRouteSheets());
             dispatch(fetchCorrespondenceStats());
           }}
+        />
+      )}
+
+      {/* Internal Chat Drawer / Intercom */}
+      {isChatOpen && (
+        <CorrespondenceInternalChatDrawer
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          onSelectRouteSheetByCode={handleSelectRouteSheetByCode}
+          currentRouteSheet={selectedItem}
+        />
+      )}
+
+      {/* Export Report / Libro de Registro Modal */}
+      {isExportModalOpen && (
+        <CorrespondenceReportExportModal
+          items={items}
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
         />
       )}
     </div>

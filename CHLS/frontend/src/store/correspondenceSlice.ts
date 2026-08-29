@@ -11,6 +11,7 @@ interface CorrespondenceState {
   isSaving: boolean;
   error: string | null;
   activeFilter: string;
+  activeMailbox: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL';
   searchQuery: string;
 }
 
@@ -23,6 +24,7 @@ const initialState: CorrespondenceState = {
   isSaving: false,
   error: null,
   activeFilter: 'ALL',
+  activeMailbox: 'ALL',
   searchQuery: '',
 };
 
@@ -30,7 +32,15 @@ const initialState: CorrespondenceState = {
 export const fetchRouteSheets = createAsyncThunk(
   'correspondence/fetchRouteSheets',
   async (
-    params: { status?: string; priority?: string; area?: string; search?: string; senderType?: string } | void,
+    params: {
+      status?: string;
+      priority?: string;
+      area?: string;
+      search?: string;
+      senderType?: string;
+      mailbox?: string;
+      userArea?: string;
+    } | void,
     { rejectWithValue }
   ) => {
     try {
@@ -41,6 +51,48 @@ export const fetchRouteSheets = createAsyncThunk(
       };
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Error al cargar Hojas de Ruta');
+    }
+  }
+);
+
+export const archiveRouteSheet = createAsyncThunk(
+  'correspondence/archive',
+  async (
+    {
+      routeSheetId,
+      data,
+    }: {
+      routeSheetId: string;
+      data: { archiveLocation: string; archiveBox?: string; archiveNotes?: string };
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/archive`, data);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al archivar Hoja de Ruta');
+    }
+  }
+);
+
+export const unarchiveRouteSheet = createAsyncThunk(
+  'correspondence/unarchive',
+  async (
+    {
+      routeSheetId,
+      data,
+    }: {
+      routeSheetId: string;
+      data: { unarchiveReason: string; targetArea?: string };
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/unarchive`, data);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al desarchivar Hoja de Ruta');
     }
   }
 );
@@ -105,6 +157,21 @@ export const updateRouteSheetStatus = createAsyncThunk(
   }
 );
 
+export const mergeRouteSheets = createAsyncThunk(
+  'correspondence/mergeRouteSheets',
+  async (
+    data: { targetRouteSheetId: string; sourceRouteSheetIds: string[]; reason: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post('/correspondence/route-sheets/merge', data);
+      return response.data.data; // Consolidate target route sheet
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al fusionar Hojas de Ruta');
+    }
+  }
+);
+
 export const analyzeTextWithAi = createAsyncThunk(
   'correspondence/analyzeWithAi',
   async (text: string, { rejectWithValue }) => {
@@ -117,12 +184,48 @@ export const analyzeTextWithAi = createAsyncThunk(
   }
 );
 
+export const uploadRouteSheetDocuments = createAsyncThunk(
+  'correspondence/uploadDocuments',
+  async (
+    { routeSheetId, files }: { routeSheetId: string; files: File[] },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      const formData = new FormData();
+      files.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await api.post(
+        `/correspondence/route-sheets/${routeSheetId}/documents`,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
+
+      // Refresh item to include new documents
+      dispatch(fetchRouteSheetById(routeSheetId));
+      dispatch(fetchRouteSheets());
+
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al digitalizar documentos');
+    }
+  }
+);
+
 export const correspondenceSlice = createSlice({
   name: 'correspondence',
   initialState,
   reducers: {
     setActiveFilter: (state, action: PayloadAction<string>) => {
       state.activeFilter = action.payload;
+    },
+    setActiveMailbox: (state, action: PayloadAction<'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL'>) => {
+      state.activeMailbox = action.payload;
     },
     setSearchQuery: (state, action: PayloadAction<string>) => {
       state.searchQuery = action.payload;
@@ -217,11 +320,42 @@ export const correspondenceSlice = createSlice({
           state.items[index] = action.payload;
         }
       });
+
+    // mergeRouteSheets
+    builder
+      .addCase(mergeRouteSheets.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      });
+
+    // archiveRouteSheet
+    builder
+      .addCase(archiveRouteSheet.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      });
+
+    // unarchiveRouteSheet
+    builder
+      .addCase(unarchiveRouteSheet.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      });
   },
 });
 
 export const {
   setActiveFilter,
+  setActiveMailbox,
   setSearchQuery,
   setSelectedItem,
   handleRealtimeCreated,

@@ -64,6 +64,13 @@ export const UpdateStatusSchema = z.object({
   currentArea: z.string().optional().nullable(),
 });
 
+export const MergeRouteSheetsSchema = z.object({
+  targetRouteSheetId: z.string().min(1, 'La Hoja de Ruta matriz es obligatoria'),
+  sourceRouteSheetIds: z.array(z.string()).min(1, 'Debes seleccionar al menos una Hoja de Ruta a fusionar'),
+  reason: z.string().min(3, 'El motivo de la acumulación/fusión es obligatorio'),
+});
+
 export type CreateRouteSheetInput = z.infer<typeof CreateRouteSheetSchema>;
 export type AddMovementInput = z.infer<typeof AddMovementSchema>;
 export type UpdateStatusInput = z.infer<typeof UpdateStatusSchema>;
+export type MergeRouteSheetsInput = z.infer<typeof MergeRouteSheetsSchema>;

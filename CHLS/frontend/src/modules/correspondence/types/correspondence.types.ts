@@ -67,6 +67,11 @@ export interface RouteSheetItem {
   currentAssigneeId?: string | null;
   aiSummary?: string | null;
   suggestedArea?: string | null;
+  archiveLocation?: string | null;
+  archiveBox?: string | null;
+  archiveNotes?: string | null;
+  archivedAt?: string | null;
+  archivedById?: string | null;
   createdById: string;
   createdAt: string;
   updatedAt: string;

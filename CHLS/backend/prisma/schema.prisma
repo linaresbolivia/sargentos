@@ -964,6 +964,13 @@ model RouteSheet {
   aiSummary             String?               // Resumen inteligente
   suggestedArea         String?
   
+  // Archivo Institucional & Central
+  archiveLocation       String?               // Ubicación física: ej. ARCHIVADOR CENTRAL / TOMO 2026-TES / GAVETA 03
+  archiveBox            String?               // N° de Caja / Gaveta
+  archiveNotes          String?               // Motivo de archivo / Auto de conclusión
+  archivedAt            DateTime?
+  archivedById          String?
+  
   createdById           String
   createdBy             User                  @relation("CreatedRouteSheets", fields: [createdById], references: [id])
   
@@ -1015,5 +1022,23 @@ model CorrDocument {
 
   @@map("corr_documents")
 }
+
+model CorrChatMessage {
+  id             String      @id @default(uuid())
+  channel        String      @default("GENERAL") // GENERAL, SECRETARIA, GERENCIA, TESORERIA, CONTRATACIONES, CASETA
+  senderUserId   String
+  senderName     String
+  senderArea     String      @default("SECRETARIA_GENERAL")
+  message        String
+  routeSheetCode String?     // ej. 08-193 (enlace interactivo a la Hoja de Ruta)
+  fileUrl        String?     // URL de descarga del archivo adjunto
+  fileName       String?     // Nombre original del archivo (ej. Cotizacion_Arena.pdf)
+  fileType       String?     // application/pdf, image/png, etc.
+  fileSize       Int?        // Tamaño en bytes
+  createdAt      DateTime    @default(now())
+
+  @@map("corr_chat_messages")
+}
+
 
 
