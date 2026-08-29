@@ -2,6 +2,8 @@ import { PrismaClient, RouteSheetPriority, RouteSheetSenderType, RouteSheetStatu
 import { CreateRouteSheetInput, AddMovementInput, UpdateStatusInput, MergeRouteSheetsInput } from '../domain/correspondence.dto';
 import { socketService } from '@config/socket';
 import { logger } from '@config/logger';
+import path from 'path';
+import fs from 'fs';
 
 export class RouteSheetService {
   constructor(private prisma: PrismaClient) {}
@@ -14,11 +16,9 @@ export class RouteSheetService {
     // 1. Obtener punto de corte inicial configurado para el año si existe
     let initialCutoff = 1;
     try {
-      const setting = await (this.prisma as any).corrSetting.findUnique({
-        where: { key: 'GLOBAL_SETTINGS' },
-      });
-      if (setting && setting.value) {
-        const val = setting.value as any;
+      const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
+      if (fs.existsSync(configFilePath)) {
+        const val = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
         if (val.gestiones && val.gestiones[year] && val.gestiones[year].initialCorrelative) {
           initialCutoff = Number(val.gestiones[year].initialCorrelative) || 1;
         } else if (val.initialCorrelativeNumber) {

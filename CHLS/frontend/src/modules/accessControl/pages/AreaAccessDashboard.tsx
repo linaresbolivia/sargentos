@@ -797,42 +797,42 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
       
       {/* Ambient background lighting */}
       <div className={`absolute top-0 right-1/4 w-[600px] h-[350px] ${isPiscina ? 'bg-cyan-500/10' : 'bg-emerald-500/10'} rounded-full blur-[140px] pointer-events-none -z-0`}></div>
-      <div className="absolute bottom-0 left-1/4 w-[500px] h-[350px] bg-brand-gold/10 rounded-full blur-[140px] pointer-events-none -z-0"></div>
-
+      <div className="absolute bottom-0 left-1/4 w-[500px] h-[350px] bg-brand-gold/1 rounded-full blur-[140px] pointer-events-none -z-0"></div>
+      
       {/* Top Header */}
-      <header className="relative z-10 w-full p-4 lg:px-8 flex justify-between items-center border-b border-gray-200 dark:border-white/10 bg-white/80 dark:bg-black/40 backdrop-blur-md">
-        <div className="flex items-center gap-3.5">
+      <header className={`relative z-10 w-full p-4 lg:px-8 flex justify-between items-center border-b border-slate-200 dark:border-white/10 bg-white/90 ${isPiscina ? 'dark:bg-gradient-to-r dark:from-[#061e27] dark:via-[#03141a] dark:to-[#020b0e]' : 'dark:bg-gradient-to-r dark:from-[#082015] dark:via-[#04140d] dark:to-[#020b07]'} backdrop-blur-xl shadow-[0_0_30px_rgba(16,185,129,0.12)] transition-all`}>
+        <div className="flex items-center gap-4">
           <BackButton to="/access-selection" title="Volver a Selección de Puntos" />
           <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
-              <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold tracking-widest uppercase ${isPiscina ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'}`}>
+              <span className={`px-3 py-0.5 rounded-full text-[10px] font-black tracking-widest uppercase ${isPiscina ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-xs' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs'}`}>
                 {isPiscina ? 'ÁREA ACUÁTICA' : 'ÁREA FITNESS'}
               </span>
-              <span className="text-xs text-gray-400 font-medium">Control de Acceso</span>
+              <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">Control de Acceso</span>
             </div>
-            <h1 className="text-xl lg:text-2xl font-extrabold text-gray-900 dark:text-white serif-brand tracking-tight flex items-center gap-2">
-              {isPiscina ? <Waves className="w-6 h-6 text-cyan-400" /> : <Dumbbell className="w-6 h-6 text-emerald-400" />}
-              {isPiscina ? 'Acceso a Piscina' : 'Acceso a Gimnasio'}
+            <h1 className="text-xl lg:text-2xl font-black text-slate-900 dark:text-white serif-brand tracking-tight flex items-center gap-2">
+              {isPiscina ? <Waves className="w-6 h-6 text-cyan-400 drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]" /> : <Dumbbell className="w-6 h-6 text-emerald-400 drop-shadow-[0_0_10px_rgba(16,185,129,0.5)]" />}
+              {isPiscina ? 'Acceso a Piscina Semi-Olímpica' : 'Acceso a Gimnasio VIP'}
             </h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-xs font-semibold">
+          <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-slate-100 dark:bg-black/60 border border-slate-200 dark:border-white/10 text-xs font-bold shadow-inner">
             <Clock className="w-4 h-4 text-brand-gold animate-pulse" />
-            <span className="text-gray-500 dark:text-gray-400">{format(currentTime, "EEEE dd 'de' MMMM", { locale: es })}</span>
-            <span className="text-brand-gold font-mono font-bold text-sm">{format(currentTime, 'HH:mm:ss')}</span>
+            <span className="text-slate-600 dark:text-gray-400">{format(currentTime, "EEEE dd 'de' MMMM", { locale: es })}</span>
+            <span className="text-brand-gold font-mono font-black text-sm">{format(currentTime, 'HH:mm:ss')}</span>
           </div>
 
           {/* Temperature Badge in Piscina */}
           {isPiscina && (
             <button
               onClick={() => { setShowTempModal(true); fetchTempHistory(); }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-extrabold tracking-wider uppercase transition-all shadow-sm ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl border-2 text-xs font-black tracking-wider uppercase transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ${
                 stats.poolTemp?.needsCheck
-                  ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 animate-pulse'
-                  : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/25'
+                  ? 'bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.4)] animate-pulse'
+                  : 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/40 hover:bg-cyan-500/25 shadow-[0_0_15px_rgba(6,182,212,0.2)]'
               }`}
               title="Control de Temperatura del Agua (Cada 2 Horas)"
             >
@@ -847,20 +847,20 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
           {/* Area Lockers & Capacity Config Button */}
           <button
             onClick={() => setShowConfigModal(true)}
-            className="p-2 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-brand-gold/20 hover:text-brand-gold text-gray-700 dark:text-gray-300 transition-all border border-gray-200 dark:border-white/10 shadow-sm"
+            className="p-2.5 rounded-2xl bg-slate-100 dark:bg-white/10 hover:bg-brand-gold/20 hover:text-brand-gold text-slate-700 dark:text-gray-300 transition-all border border-slate-200 dark:border-white/10 shadow-sm hover:scale-105 active:scale-95 cursor-pointer"
             title="Configurar Capacidad Total y Casilleros Existentes"
           >
-            <Settings className="w-4 h-4" />
+            <Settings className="w-4 h-4 text-brand-gold" />
           </button>
 
           <ThemeToggle />
 
           <button 
             onClick={() => navigate(`/access/${currentArea.toLowerCase()}/reports`)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-gold/15 hover:bg-brand-gold hover:text-black text-brand-gold transition-all text-xs font-extrabold tracking-wider uppercase border border-brand-gold/30 shadow-sm"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 transition-all duration-300 text-xs font-black tracking-wider uppercase shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] hover:scale-105 active:scale-95 cursor-pointer"
             title="Abrir Generador de Reportes e Historial"
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-4 h-4 text-slate-950" />
             Reportes
           </button>
         </div>
@@ -868,17 +868,17 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
 
       {/* PROMPT / ALERT BANNER: Pool Temperature Control every 2 hours */}
       {isPiscina && stats.poolTemp?.needsCheck && (
-        <div className="relative z-10 w-full max-w-[1700px] mx-auto px-4 lg:px-8 pt-4">
-          <div className="p-3.5 rounded-2xl bg-amber-500/15 border-2 border-amber-500/40 backdrop-blur-md flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg shadow-amber-500/5">
+        <div className="relative z-10 w-full max-w-[1720px] mx-auto px-4 lg:px-8 pt-4">
+          <div className="p-4 rounded-3xl bg-amber-500/15 border-2 border-amber-500/40 backdrop-blur-xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-[0_0_30px_rgba(245,158,11,0.15)]">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-black shrink-0">
-                <AlertTriangle className="w-5 h-5 animate-pulse" />
+              <div className="w-11 h-11 rounded-2xl bg-amber-500/25 text-amber-400 flex items-center justify-center font-black shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.3)]">
+                <AlertTriangle className="w-6 h-6 animate-pulse" />
               </div>
               <div>
                 <h4 className="text-xs sm:text-sm font-black text-amber-400 uppercase tracking-wide">
                   ⚠️ Control Periódico de Piscina Requerido (Cada 2 Horas)
                 </h4>
-                <p className="text-xs text-gray-700 dark:text-gray-300">
+                <p className="text-xs text-slate-700 dark:text-gray-300 font-medium">
                   {stats.poolTemp?.recordedAt
                     ? `Última medición registrada hace ${stats.poolTemp.diffMinutes} minutos (${stats.poolTemp.temperature}°C). Por favor registre la temperatura actual.`
                     : 'Aún no se ha registrado la temperatura del agua hoy. Por favor realice la medición.'}
@@ -887,100 +887,124 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
             </div>
             <button
               onClick={() => { setShowTempModal(true); fetchTempHistory(); }}
-              className="px-4 py-2 rounded-xl bg-amber-500 text-black font-extrabold text-xs uppercase tracking-wider hover:bg-amber-400 transition-all shadow-md shrink-0 flex items-center gap-1.5"
+              className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider hover:from-amber-300 hover:to-yellow-400 transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.4)] shrink-0 flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer"
             >
-              <Thermometer className="w-4 h-4" />
+              <Thermometer className="w-4 h-4 text-slate-950" />
               Registrar Temperatura Ahora
             </button>
           </div>
         </div>
       )}
 
-      {/* 4 KPI Metric Cards */}
-      <div className="relative z-10 w-full max-w-[1700px] mx-auto px-4 lg:px-8 pt-4">
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* 4 KPI Metric Cards con Resplandor según Color de Área */}
+      <div className="relative z-10 w-full max-w-[1720px] mx-auto px-4 lg:px-8 pt-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           
-          <div className={`p-4 rounded-2xl border backdrop-blur-md flex items-center justify-between ${isPiscina ? 'bg-cyan-500/10 border-cyan-500/30' : 'bg-emerald-500/10 border-emerald-500/30'} shadow-sm`}>
+          {/* Card 1: Dentro Ahora (Cian Neón en Piscina / Verde Esmeralda en Gimnasio) */}
+          <div className={`group p-5 rounded-3xl border-2 backdrop-blur-xl flex items-center justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer ${
+            isPiscina
+              ? 'bg-white/90 dark:bg-gradient-to-br dark:from-[#06242e] dark:via-[#03151c] dark:to-[#010a0e] border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:shadow-[0_0_50px_rgba(6,182,212,0.5),0_0_80px_rgba(6,182,212,0.2)]'
+              : 'bg-white/90 dark:bg-gradient-to-br dark:from-[#08291a] dark:via-[#04170e] dark:to-[#020b07] border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5),0_0_80px_rgba(16,185,129,0.2)]'
+          }`}>
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Dentro Ahora</p>
-              <h3 className={`text-2xl lg:text-3xl font-black ${isPiscina ? 'text-cyan-400' : 'text-emerald-400'} mt-0.5 tracking-tight`}>
-                {stats.currentlyInside} <span className="text-xs font-bold text-gray-400">/ {stats.maxCapacity || 50}</span>
+              <p className={`text-[10px] font-black uppercase tracking-widest ${isPiscina ? 'text-cyan-500 dark:text-cyan-400' : 'text-emerald-500 dark:text-emerald-400'}`}>
+                Dentro Ahora
+              </p>
+              <h3 className={`text-2xl lg:text-3xl font-black ${isPiscina ? 'text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(6,182,212,0.3)]' : 'text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]'} mt-0.5 tracking-tight`}>
+                {stats.currentlyInside} <span className="text-xs font-bold text-slate-400 dark:text-gray-400">/ {stats.maxCapacity || 50}</span>
               </h3>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+              <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">
                 {Math.round((stats.currentlyInside / (stats.maxCapacity || 50)) * 100)}% de ocupación
               </span>
             </div>
-            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isPiscina ? 'bg-cyan-500/20 text-cyan-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+            <div className={`w-13 h-13 rounded-2xl flex items-center justify-center border transition-transform duration-300 group-hover:scale-110 ${
+              isPiscina
+                ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.3)]'
+                : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)]'
+            }`}>
               <Users className="w-6 h-6 animate-pulse" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border border-brand-gold/30 bg-brand-gold/10 backdrop-blur-md flex items-center justify-between shadow-sm">
+          {/* Card 2: Lockers Disponibles (Oro 24K / Amber Aura) */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#362a08] dark:via-[#211a04] dark:to-[#120e02] border-2 border-amber-500/30 dark:border-amber-500/40 hover:border-amber-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:shadow-[0_0_50px_rgba(245,158,11,0.5),0_0_80px_rgba(245,158,11,0.2)] flex items-center justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Lockers Disponibles</p>
-              <h3 className="text-2xl lg:text-3xl font-black text-brand-gold mt-0.5 tracking-tight">
-                {stats.lockersAvailable !== undefined ? stats.lockersAvailable : Math.max((stats.totalLockers || 50) - stats.lockersInUse, 0)} <span className="text-xs font-bold text-gray-400">/ {stats.totalLockers || 50}</span>
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
+                Lockers Disponibles
+              </p>
+              <h3 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(234,179,8,0.3)] mt-0.5 tracking-tight">
+                {stats.lockersAvailable !== undefined ? stats.lockersAvailable : Math.max((stats.totalLockers || 50) - stats.lockersInUse, 0)} <span className="text-xs font-bold text-slate-400 dark:text-gray-400">/ {stats.totalLockers || 50}</span>
               </h3>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+              <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">
                 {stats.lockersInUse} asignados ({stats.totalLockers ? Math.round((stats.lockersInUse / stats.totalLockers) * 100) : 0}% uso)
               </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-brand-gold/20 text-brand-gold flex items-center justify-center">
+            <div className="w-13 h-13 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-transform duration-300 group-hover:scale-110">
               <Key className="w-6 h-6" />
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl border border-blue-500/20 bg-blue-500/10 backdrop-blur-md flex items-center justify-between shadow-sm">
+          {/* Card 3: Toallas Prestadas (Royal Blue Aura) */}
+          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0b1e3b] dark:via-[#061224] dark:to-[#030914] border-2 border-blue-500/30 dark:border-blue-500/40 hover:border-blue-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(59,130,246,0.15)] hover:shadow-[0_0_50px_rgba(59,130,246,0.5),0_0_80px_rgba(59,130,246,0.2)] flex items-center justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer">
             <div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Toallas Prestadas</p>
-              <h3 className="text-2xl lg:text-3xl font-black text-blue-400 mt-0.5 tracking-tight">
+              <p className="text-[10px] font-black uppercase tracking-widest text-blue-600 dark:text-blue-400">
+                Toallas Prestadas
+              </p>
+              <h3 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(59,130,246,0.3)] mt-0.5 tracking-tight">
                 {stats.towelsLoanedToday}
               </h3>
-              <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Con número entregadas hoy</span>
+              <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">
+                Con número entregadas hoy
+              </span>
             </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center">
+            <div className="w-13 h-13 rounded-2xl bg-blue-500/15 border border-blue-500/30 text-blue-400 flex items-center justify-center shadow-[0_0_15px_rgba(59,130,246,0.3)] transition-transform duration-300 group-hover:scale-110">
               <Layers className="w-6 h-6" />
             </div>
           </div>
 
+          {/* Card 4: Temperatura 5C & 3C (Piscina) / Total Ingresos (Gimnasio) */}
           {isPiscina ? (
             <div 
               onClick={() => setShowConfigModal(true)}
-              className="p-4 rounded-2xl border border-cyan-500/30 bg-cyan-500/10 backdrop-blur-md flex items-center justify-between shadow-sm cursor-pointer hover:border-cyan-400 transition-colors group"
+              className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#06312f] dark:via-[#041f1e] dark:to-[#02100f] border-2 border-teal-500/30 dark:border-teal-500/40 hover:border-teal-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(20,184,166,0.15)] hover:shadow-[0_0_50px_rgba(20,184,166,0.5),0_0_80px_rgba(20,184,166,0.2)] flex items-center justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer"
             >
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                <p className="text-[10px] font-black uppercase tracking-widest text-teal-600 dark:text-teal-400 flex items-center gap-1">
                   Piscinas 5C & 3C
-                  <span className="text-[9px] text-cyan-400 font-extrabold uppercase">(Configurar)</span>
+                  <span className="text-[9px] text-cyan-400 font-black uppercase">(Configurar)</span>
                 </p>
                 <div className="flex items-baseline gap-2 mt-0.5">
-                  <h3 className="text-xl sm:text-2xl font-black text-cyan-400 tracking-tight group-hover:scale-105 transition-transform font-mono">
+                  <h3 className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-300 tracking-tight font-mono drop-shadow-[0_0_10px_rgba(20,184,166,0.3)]">
                     5C: {(stats.facilities?.find(f => f.name.includes('5'))?.value || configFacilities.find(f => f.name.includes('5'))?.value || '30')}°
                   </h3>
-                  <span className="text-gray-400 font-bold">&bull;</span>
-                  <h3 className="text-xl sm:text-2xl font-black text-cyan-400 tracking-tight group-hover:scale-105 transition-transform font-mono">
+                  <span className="text-slate-400 dark:text-gray-400 font-bold">&bull;</span>
+                  <h3 className="text-xl sm:text-2xl font-black text-teal-700 dark:text-teal-300 tracking-tight font-mono drop-shadow-[0_0_10px_rgba(20,184,166,0.3)]">
                     3C: {(stats.facilities?.find(f => f.name.includes('3'))?.value || configFacilities.find(f => f.name.includes('3'))?.value || '30')}°
                   </h3>
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">
+                <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">
                   {stats.totalToday} ingresos registrados hoy
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:bg-cyan-500/30 transition-colors">
+              <div className="w-13 h-13 rounded-2xl bg-teal-500/15 border border-teal-500/30 text-teal-400 flex items-center justify-center shadow-[0_0_15px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-110">
                 <Waves className="w-6 h-6" />
               </div>
             </div>
           ) : (
-            <div className="p-4 rounded-2xl border border-purple-500/20 bg-purple-500/10 backdrop-blur-md flex items-center justify-between shadow-sm">
+            <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#2a0e3d] dark:via-[#190726] dark:to-[#0c0314] border-2 border-purple-500/30 dark:border-purple-500/40 hover:border-purple-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:shadow-[0_0_50px_rgba(168,85,247,0.5),0_0_80px_rgba(168,85,247,0.2)] flex items-center justify-between transition-all duration-300 hover:scale-[1.03] cursor-pointer">
               <div>
-                <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Total Ingresos Hoy</p>
-                <h3 className="text-2xl lg:text-3xl font-black text-purple-400 mt-0.5 tracking-tight">
+                <p className="text-[10px] font-black uppercase tracking-widest text-purple-600 dark:text-purple-400">
+                  Total Ingresos Hoy
+                </p>
+                <h3 className="text-2xl lg:text-3xl font-black text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(168,85,247,0.3)] mt-0.5 tracking-tight">
                   {stats.totalToday}
                 </h3>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium">Afluencia acumulada</span>
+                <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">
+                  Afluencia acumulada
+                </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6" />
+              <div className="w-13 h-13 rounded-2xl bg-purple-500/15 border border-purple-500/30 text-purple-400 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.3)] transition-transform duration-300 group-hover:scale-110">
+                <Dumbbell className="w-6 h-6" />
               </div>
             </div>
           )}

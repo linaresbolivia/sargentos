@@ -14,6 +14,7 @@ import WhatsAppConnectorModal from '../components/WhatsAppConnectorModal';
 import logoClub from '../../../assets/logo.png';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
+import { ThemeToggle } from '@shared/components/ThemeToggle';
 
 interface PqrsTicket {
   id: string;
@@ -866,6 +867,7 @@ export const PqrsDashboard: React.FC = () => {
           <button onClick={() => fetchTickets()} className="glass-button-secondary flex items-center gap-2">
             <RefreshCcw size={16} /> Actualizar
           </button>
+          <ThemeToggle />
         </div>
       </div>
 

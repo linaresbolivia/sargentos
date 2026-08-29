@@ -118,16 +118,16 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
   const pendingCount = activeRes.filter(r => r.status === 'PENDING').length;
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className="space-y-5 animate-fade-in">
       
       {/* Date & Sport Navigation Bar */}
-      <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4 bg-white/5 dark:bg-black/30 p-4 rounded-2xl border border-gray-200 dark:border-white/10">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white/80 dark:bg-[#081c13]/90 p-4 sm:p-5 rounded-2xl border border-emerald-500/30 dark:border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.1)] backdrop-blur-md">
         
         {/* Date Navigator */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => onChangeDate(subDays(selectedDate, 1))}
-            className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-brand-gold transition-colors"
+            className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-white/15 text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
             title="Día anterior"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -144,14 +144,14 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                   dateInputRef.current?.focus();
                 }
               }}
-              className="flex items-center gap-2 px-3 py-1.5 bg-black/50 hover:bg-black/70 rounded-xl border border-brand-gold/30 hover:border-brand-gold text-left transition-all group shadow-sm cursor-pointer"
+              className="flex items-center gap-2.5 px-4 py-2 bg-slate-100 dark:bg-black/60 hover:bg-black/80 rounded-xl border-2 border-brand-gold/40 hover:border-brand-gold text-left transition-all duration-300 group shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:shadow-[0_0_25px_rgba(234,179,8,0.3)] cursor-pointer"
               title="Haz clic para abrir el selector de calendario"
             >
               <CalendarIcon className="w-4 h-4 text-brand-gold group-hover:scale-110 transition-transform" />
-              <span className="font-bold text-sm text-white capitalize">
+              <span className="font-black text-sm text-slate-900 dark:text-white capitalize">
                 {format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}
               </span>
-              <span className="text-[10px] text-brand-gold/80 bg-brand-gold/10 px-1.5 py-0.5 rounded border border-brand-gold/20 font-mono">
+              <span className="text-[10px] font-black text-slate-900 bg-brand-gold px-2 py-0.5 rounded-md font-mono shadow-xs">
                 📅 Calendario
               </span>
             </button>
@@ -172,7 +172,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
           <button
             onClick={() => onChangeDate(addDays(selectedDate, 1))}
-            className="p-2 rounded-xl bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 text-brand-gold transition-colors"
+            className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-white/15 text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
             title="Día siguiente"
           >
             <ChevronRight className="w-5 h-5" />
@@ -180,20 +180,20 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
           <button
             onClick={() => onChangeDate(new Date())}
-            className="px-3 py-1.5 rounded-xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold text-xs font-bold hover:bg-brand-gold/25 transition-colors ml-1"
+            className="px-3.5 py-2 rounded-xl bg-brand-gold/20 border border-brand-gold/40 text-slate-900 dark:text-brand-gold text-xs font-black hover:bg-brand-gold/30 transition-all ml-1 cursor-pointer hover:scale-105"
           >
             Hoy
           </button>
         </div>
 
         {/* Sport Filter Tabs */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
           <button
             onClick={() => onChangeSport('ALL')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+            className={`px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all duration-300 cursor-pointer ${
               selectedSport === 'ALL'
-                ? 'bg-brand-gold text-[#0a150e] shadow-[0_0_10px_rgba(204,161,75,0.4)]'
-                : 'bg-black/30 text-gray-400 hover:text-white border border-white/5'
+                ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-105'
+                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-emerald-500/40'
             }`}
           >
             Todos ({courts.length})
@@ -205,10 +205,10 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
               <button
                 key={sport}
                 onClick={() => onChangeSport(sport)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                className={`px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all duration-300 cursor-pointer ${
                   isSelected
-                    ? 'bg-brand-gold text-[#0a150e] shadow-[0_0_10px_rgba(204,161,75,0.4)]'
-                    : 'bg-black/30 text-gray-400 hover:text-white border border-white/5'
+                    ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-105'
+                    : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-emerald-500/40'
                 }`}
               >
                 {sport} ({count})
@@ -222,41 +222,41 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
       {/* Mini KPIs & Legend */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-gray-400 font-medium">Estado en vivo:</span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span className="text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider text-[10px]">Estado en vivo:</span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
             Disponible
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-brand-gold/15 text-brand-gold border border-brand-gold/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 text-amber-800 dark:text-brand-gold border border-amber-500/40 font-bold shadow-xs">
             <span className="w-2 h-2 rounded-full bg-brand-gold"></span>
             Reserva Socio ({memberBookings})
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/15 text-amber-300 border border-amber-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-500/40 font-bold shadow-xs">
             <Dumbbell className="w-3.5 h-3.5" />
             Clases ({classesCount})
           </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-rose-500/15 text-rose-300 border border-rose-500/30">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/40 font-bold shadow-xs">
             <Wrench className="w-3.5 h-3.5" />
             Mantenimiento ({maintenanceCount})
           </span>
           {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 animate-pulse font-bold">
-              {pendingCount} Pendientes de aprobación
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-2 border-yellow-500/50 animate-pulse font-black shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+              ⚠️ {pendingCount} Pendientes de aprobación
             </span>
           )}
         </div>
 
         <button
           onClick={() => onOpenCreateBlock(undefined, selectedSport !== 'ALL' ? selectedSport : undefined)}
-          className="glass-button-primary px-3.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
+          className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:shadow-[0_0_30px_rgba(234,179,8,0.5)] transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer uppercase tracking-wider"
         >
-          <Sparkles className="w-4 h-4" />
+          <Sparkles className="w-4 h-4 text-slate-950" />
           <span>+ Añadir Ocupación / Clases</span>
         </button>
       </div>
 
       {/* Grid Timeline Header & Matrix Container */}
-      <div className="overflow-x-auto border border-gray-200 dark:border-white/10 rounded-2xl bg-white/5 dark:bg-black/20">
+      <div className="overflow-x-auto border-2 border-emerald-500/40 rounded-3xl bg-white/90 dark:bg-black/40 backdrop-blur-xl shadow-[0_0_35px_rgba(16,185,129,0.12)]">
         
         {/* Timeline Matrix */}
         <div className="min-w-[1360px]">

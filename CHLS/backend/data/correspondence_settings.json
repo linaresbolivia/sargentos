@@ -1,0 +1,94 @@
+{
+  "areas": [
+    {
+      "id": "1",
+      "name": "SECRETARÍA GENERAL",
+      "manager": "Lic. María del Pilar Atanacio",
+      "position": "Secretaria de Gerencia General",
+      "canReceiveExternal": true
+    },
+    {
+      "id": "2",
+      "name": "GERENCIA GENERAL",
+      "manager": "Ing. Gerente General",
+      "position": "Máxima Autoridad Ejecutiva (MAE)",
+      "canReceiveExternal": true
+    },
+    {
+      "id": "3",
+      "name": "TESORERÍA Y FINANZAS",
+      "manager": "Lic. Jefe de Finanzas & Tesorería",
+      "position": "Jefe de Departamento",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "4",
+      "name": "CONTRATACIONES Y ADQUISICIONES",
+      "manager": "Lic. Encargado de Compras",
+      "position": "Responsable de Adquisiciones",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "5",
+      "name": "COMISIÓN HÍPICA",
+      "manager": "Capitán de Hípica",
+      "position": "Capitán Ecuestre",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "6",
+      "name": "CAPITANÍA DEPORTES / TENIS",
+      "manager": "Capitán de Deportes",
+      "position": "Capitán de Complejo",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "7",
+      "name": "ASESORÍA LEGAL",
+      "manager": "Dr. Asesor Legal Principal",
+      "position": "Asesor Jurídico",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "8",
+      "name": "MANTENIMIENTO Y OBRAS",
+      "manager": "Ing. Jefe de Mantenimiento",
+      "position": "Jefe de Infraestructura",
+      "canReceiveExternal": false
+    },
+    {
+      "id": "9",
+      "name": "CASETA DE ENTRADA",
+      "manager": "Jefe de Guardia",
+      "position": "Control de Puerta",
+      "canReceiveExternal": true
+    }
+  ],
+  "stamps": [
+    "FAVOR SU ATENCIÓN",
+    "FAVOR REALIZAR EL PAGO",
+    "PARA INFORME TÉCNICO / LEGAL",
+    "PARA SU CONOCIMIENTO Y FINES",
+    "PARA VISTO BUENO Y FIRMA",
+    "OBSERVADO / SOLICITAR SUBSANACIÓN",
+    "TRÁMITE CONCLUIDO / ARCHIVAR"
+  ],
+  "routingMode": "VIA_SECRETARIA_GERENCIA",
+  "defaultSlaDays": 5,
+  "socioSubsanacionDays": 10,
+  "gestiones": {
+    "2026": {
+      "initialCorrelative": 1
+    }
+  },
+  "smtp": {
+    "enabled": false,
+    "host": "smtp.gmail.com",
+    "port": 587,
+    "secure": false,
+    "user": "",
+    "pass": "",
+    "fromEmail": "correspondencia@chls.bo",
+    "fromName": "Club Hípico Los Sargentos — Correspondencia"
+  }
+}

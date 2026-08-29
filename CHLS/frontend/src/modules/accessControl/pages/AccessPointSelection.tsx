@@ -136,133 +136,133 @@ export const AccessPointSelection: React.FC = () => {
           </p>
         </div>
 
-        {/* 3 Interactive Point Cards */}
+        {/* 3 Interactive Point Cards con Resplandor según Color de Área */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           
-          {/* Card 1: Caseta de Ingreso (Portería General) */}
+          {/* Card 1: Caseta de Ingreso (Oro 24K Aura) */}
           <div 
             onClick={() => navigate('/gatehouse')}
-            className="group relative bg-white dark:bg-[#0c120f] border-2 border-gray-200 dark:border-brand-gold/20 hover:border-brand-gold rounded-3xl p-8 transition-all duration-500 cursor-pointer shadow-sm hover:shadow-[0_0_40px_rgba(212,175,55,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#2e2308] dark:via-[#1a1403] dark:to-[#0d0a02] border-2 border-amber-500/30 dark:border-brand-gold/40 hover:border-brand-gold rounded-3xl p-8 transition-all duration-500 cursor-pointer backdrop-blur-xl shadow-[0_0_25px_rgba(234,179,8,0.18)] hover:shadow-[0_0_60px_rgba(234,179,8,0.5),0_0_100px_rgba(234,179,8,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-brand-gold/10 rounded-bl-[100px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-brand-gold/20"></div>
+            <div className="absolute top-0 right-0 w-36 h-36 bg-brand-gold/15 rounded-bl-[120px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-brand-gold/25"></div>
 
             <div>
               <div className="flex justify-between items-start mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-gold to-yellow-600 flex items-center justify-center text-black shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 via-brand-gold to-yellow-600 flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(234,179,8,0.4)] group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(234,179,8,0.6)] transition-all duration-300">
                   <ShieldCheck className="w-8 h-8" />
                 </div>
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-brand-gold/15 text-brand-gold border border-brand-gold/30">
+                <span className="px-3.5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-brand-gold/20 text-brand-gold border border-brand-gold/40 shadow-xs">
                   Acceso Principal
                 </span>
               </div>
 
-              <span className="text-[11px] font-extrabold tracking-widest uppercase text-brand-gold block mb-1">
+              <span className="text-[11px] font-black tracking-widest uppercase text-brand-gold block mb-1">
                 PUNTO 01
               </span>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-brand-gold transition-colors serif-brand">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 group-hover:text-brand-gold transition-colors serif-brand">
                 Caseta de Ingreso
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-gray-300 mb-6 leading-relaxed font-medium">
                 Control de portería principal. Validación de socios, lectura de carnet/QR, registro de vehículos, transeúntes e invitados al Club.
               </p>
             </div>
 
-            <div className="pt-6 border-t border-gray-100 dark:border-white/10">
-              <div className="flex items-center justify-between text-xs font-semibold">
-                <span className="text-gray-500 flex items-center gap-1.5">
+            <div className="pt-6 border-t border-slate-200 dark:border-white/10">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-500 dark:text-gray-400 flex items-center gap-1.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Registro al Club
                 </span>
-                <span className="flex items-center gap-1 text-brand-gold group-hover:translate-x-1.5 transition-transform">
+                <span className="flex items-center gap-1 text-brand-gold font-black group-hover:translate-x-2 transition-transform">
                   Entrar a Caseta <ChevronRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Card 2: Piscina */}
+          {/* Card 2: Piscina (Cian Neón Aura) */}
           <div 
             onClick={() => navigate('/access/piscina')}
-            className="group relative bg-white dark:bg-[#0c120f] border-2 border-gray-200 dark:border-cyan-500/20 hover:border-cyan-400 rounded-3xl p-8 transition-all duration-500 cursor-pointer shadow-sm hover:shadow-[0_0_40px_rgba(6,182,212,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#06242e] dark:via-[#03151c] dark:to-[#010a0e] border-2 border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-400 rounded-3xl p-8 transition-all duration-500 cursor-pointer backdrop-blur-xl shadow-[0_0_25px_rgba(6,182,212,0.18)] hover:shadow-[0_0_60px_rgba(6,182,212,0.5),0_0_100px_rgba(6,182,212,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-bl-[100px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-cyan-500/20"></div>
+            <div className="absolute top-0 right-0 w-36 h-36 bg-cyan-500/15 rounded-bl-[120px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-cyan-500/25"></div>
 
             <div>
               <div className="flex justify-between items-start mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)] group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(6,182,212,0.6)] transition-all duration-300">
                   <Waves className="w-8 h-8" />
                 </div>
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                <span className="px-3.5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shadow-xs">
                   Área Acuática
                 </span>
               </div>
 
-              <span className="text-[11px] font-extrabold tracking-widest uppercase text-cyan-400 block mb-1">
+              <span className="text-[11px] font-black tracking-widest uppercase text-cyan-400 block mb-1">
                 PUNTO 02
               </span>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-cyan-400 transition-colors serif-brand">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 group-hover:text-cyan-400 transition-colors serif-brand">
                 Área de Piscina
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-gray-300 mb-6 leading-relaxed font-medium">
                 Control de concurrencia en piscina temperada. Registro rápido con teclado, asignación de llaves de vestidor y entrega de toallas.
               </p>
             </div>
 
-            <div className="pt-6 border-t border-gray-100 dark:border-white/10">
+            <div className="pt-6 border-t border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></div>
-                  <span className="text-xs text-gray-500">Dentro ahora:</span>
-                  <span className="text-xs font-bold text-cyan-400">{summary.piscinaInside} socios</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] animate-ping"></div>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">Dentro ahora:</span>
+                  <span className="text-xs font-black text-cyan-500 dark:text-cyan-300 font-mono">{summary.piscinaInside} socios</span>
                 </div>
-                <span className="text-[11px] text-gray-400 font-medium">Hoy: {summary.piscinaToday}</span>
+                <span className="text-[11px] text-slate-400 dark:text-gray-400 font-medium">Hoy: {summary.piscinaToday}</span>
               </div>
-              <div className="flex items-center justify-end text-xs font-semibold text-cyan-400 group-hover:translate-x-1.5 transition-transform">
-                <span className="flex items-center gap-1">
+              <div className="flex items-center justify-end text-xs font-bold text-cyan-500 dark:text-cyan-400 group-hover:translate-x-2 transition-transform">
+                <span className="flex items-center gap-1 font-black">
                   Gestionar Piscina <ChevronRight className="w-4 h-4" />
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Card 3: Gimnasio */}
+          {/* Card 3: Gimnasio (Verde Esmeralda Aura) */}
           <div 
             onClick={() => navigate('/access/gimnasio')}
-            className="group relative bg-white dark:bg-[#0c120f] border-2 border-gray-200 dark:border-emerald-500/20 hover:border-emerald-400 rounded-3xl p-8 transition-all duration-500 cursor-pointer shadow-sm hover:shadow-[0_0_40px_rgba(16,185,129,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#08291a] dark:via-[#04170e] dark:to-[#020b07] border-2 border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-400 rounded-3xl p-8 transition-all duration-500 cursor-pointer backdrop-blur-xl shadow-[0_0_25px_rgba(16,185,129,0.18)] hover:shadow-[0_0_60px_rgba(16,185,129,0.5),0_0_100px_rgba(16,185,129,0.25)] flex flex-col justify-between hover:-translate-y-2 overflow-hidden"
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-[100px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-emerald-500/20"></div>
+            <div className="absolute top-0 right-0 w-36 h-36 bg-emerald-500/15 rounded-bl-[120px] pointer-events-none transition-all group-hover:scale-125 group-hover:bg-emerald-500/25"></div>
 
             <div>
               <div className="flex justify-between items-start mb-6">
-                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform duration-300">
+                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-700 flex items-center justify-center text-slate-950 shadow-[0_0_20px_rgba(16,185,129,0.4)] group-hover:scale-110 group-hover:shadow-[0_0_30px_rgba(16,185,129,0.6)] transition-all duration-300">
                   <Dumbbell className="w-8 h-8" />
                 </div>
-                <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="px-3.5 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs">
                   Área Fitness
                 </span>
               </div>
 
-              <span className="text-[11px] font-extrabold tracking-widest uppercase text-emerald-400 block mb-1">
+              <span className="text-[11px] font-black tracking-widest uppercase text-emerald-400 block mb-1">
                 PUNTO 03
               </span>
-              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3 group-hover:text-emerald-400 transition-colors serif-brand">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-3 group-hover:text-emerald-400 transition-colors serif-brand">
                 Área de Gimnasio
               </h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6 leading-relaxed">
+              <p className="text-sm text-slate-600 dark:text-gray-300 mb-6 leading-relaxed font-medium">
                 Control de asistencia a sala de máquinas y musculación. Asignación de casilleros, toallas y registro de profesores/externos.
               </p>
             </div>
 
-            <div className="pt-6 border-t border-gray-100 dark:border-white/10">
+            <div className="pt-6 border-t border-slate-200 dark:border-white/10">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-                  <span className="text-xs text-gray-500">Dentro ahora:</span>
-                  <span className="text-xs font-bold text-emerald-400">{summary.gimnasioInside} socios</span>
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399] animate-ping"></div>
+                  <span className="text-xs text-slate-500 dark:text-gray-400 font-medium">Dentro ahora:</span>
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-300 font-mono">{summary.gimnasioInside} socios</span>
                 </div>
-                <span className="text-[11px] text-gray-400 font-medium">Hoy: {summary.gimnasioToday}</span>
+                <span className="text-[11px] text-slate-400 dark:text-gray-400 font-medium">Hoy: {summary.gimnasioToday}</span>
               </div>
-              <div className="flex items-center justify-end text-xs font-semibold text-emerald-400 group-hover:translate-x-1.5 transition-transform">
-                <span className="flex items-center gap-1">
+              <div className="flex items-center justify-end text-xs font-bold text-emerald-600 dark:text-emerald-400 group-hover:translate-x-2 transition-transform">
+                <span className="flex items-center gap-1 font-black">
                   Gestionar Gimnasio <ChevronRight className="w-4 h-4" />
                 </span>
               </div>

@@ -1,5 +1,7 @@
 import nodemailer from 'nodemailer';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import fs from 'fs';
 
 export interface SmtpConfig {
   enabled: boolean;
@@ -24,13 +26,10 @@ export class CorrespondenceEmailService {
    */
   public async getSmtpConfig(): Promise<SmtpConfig> {
     try {
-      const setting = await (this.prisma as any).corrSetting.findUnique({
-        where: { key: 'GLOBAL_SETTINGS' },
-      });
-
-      if (setting && setting.value) {
-        const val = setting.value as any;
-        if (val.smtp) {
+      const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
+      if (fs.existsSync(configFilePath)) {
+        const val = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+        if (val && val.smtp) {
           return {
             enabled: !!val.smtp.enabled,
             host: val.smtp.host || process.env.SMTP_HOST || 'smtp.gmail.com',

@@ -31,6 +31,7 @@ import { compressImage } from '@shared/utils/imageCompressor';
 import WhatsAppConnectorModal from '@modules/pqrs/components/WhatsAppConnectorModal';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
+import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { 
   CreditCard, 
   Eye, 
@@ -260,38 +261,38 @@ export const CourtAdminDashboard: React.FC = () => {
 
 
   return (
-    <div className="space-y-6 animate-fade-in p-4 sm:p-6 max-w-[1600px] mx-auto">
+    <div className="space-y-7 animate-fade-in p-4 sm:p-6 lg:p-8 max-w-[1720px] mx-auto">
       
       {/* Top Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gradient-to-r from-brand-green/30 via-brand-green/10 to-transparent p-6 rounded-3xl border border-brand-gold/20 shadow-xl">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-5 bg-white/90 dark:bg-gradient-to-r dark:from-[#082015] dark:via-[#04140d] dark:to-[#020b07] p-6 sm:p-7 rounded-3xl border border-emerald-500/40 shadow-[0_0_35px_rgba(16,185,129,0.15)] backdrop-blur-xl transition-all">
         <div className="flex items-center gap-4">
           <BackButton to="/" title="Volver al Menú Principal" />
           <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white serif-brand tracking-tight">
-                Gestión de <span className="text-brand-gold">Canchas & Espacios Deportivos</span>
+              <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white serif-brand tracking-tight">
+                Gestión de <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-brand-gold to-yellow-500 drop-shadow-[0_0_15px_rgba(234,179,8,0.3)]">Canchas & Espacios Deportivos</span>
               </h1>
             </div>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Control en vivo, cronograma de clases de tenis, torneos, mantenimiento y reservas de socios.
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-emerald-300/80 font-medium mt-1">
+              Control en vivo, cronograma de clases continuas, torneos, mantenimiento y reservas de socios.
             </p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => setShowWhatsAppModal(true)}
-            className={`px-3.5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 border transition-all ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 border-2 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer ${
               waReservasConnected
-                ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:bg-emerald-500/25'
-                : 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25'
+                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-900 dark:text-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-500/30'
+                : 'bg-amber-500/20 border-amber-500/40 text-amber-900 dark:text-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.2)] hover:bg-amber-500/30'
             }`}
             title="Canal 1: Vincular WhatsApp exclusivo para confirmaciones y QR de Reservas Web"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-4 h-4 text-brand-gold" />
             <span>{waReservasConnected ? 'Canal 1 Reservas: Conectado' : 'Canal 1: Conectar WhatsApp Reservas'}</span>
-            <span className={`w-2 h-2 rounded-full ${waReservasConnected ? 'bg-emerald-400 shadow-[0_0_8px_#34d399] animate-pulse' : 'bg-amber-400'}`} />
+            <span className={`w-2.5 h-2.5 rounded-full ${waReservasConnected ? 'bg-emerald-400 shadow-[0_0_10px_#34d399] animate-pulse' : 'bg-amber-400 animate-ping'}`} />
           </button>
 
           <button 
@@ -299,106 +300,127 @@ export const CourtAdminDashboard: React.FC = () => {
               setSelectedCourtForEdit(null);
               setIsCourtEditModalOpen(true);
             }}
-            className="px-3.5 py-2.5 rounded-xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/40 text-brand-gold text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
+            className="px-4 py-2.5 rounded-2xl bg-white/10 dark:bg-brand-gold/15 hover:bg-brand-gold/25 border-2 border-brand-gold/40 hover:border-brand-gold text-slate-800 dark:text-brand-gold text-xs font-black flex items-center gap-2 transition-all duration-300 shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:shadow-[0_0_25px_rgba(234,179,8,0.3)] hover:scale-105 active:scale-95 cursor-pointer"
             title="Editar canchas, aranceles y estado de espacios deportivos"
           >
-            <MapPin className="w-4 h-4" />
+            <MapPin className="w-4 h-4 text-brand-gold" />
             <span>⚙️ Canchas & Tarifas</span>
           </button>
 
           <button 
             onClick={() => handleOpenBlockModal()}
-            className="glass-button-primary px-4 py-2.5 text-xs font-bold flex items-center gap-2 shadow-goldGlow"
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs flex items-center gap-2 shadow-[0_0_25px_rgba(234,179,8,0.4)] hover:shadow-[0_0_35px_rgba(234,179,8,0.6)] border border-yellow-200/50 transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer uppercase tracking-wider"
           >
-            <Sparkles className="w-4 h-4" />
+            <Sparkles className="w-4 h-4 text-slate-950" />
             <span>+ Programar Clases / Ocupaciones</span>
           </button>
           
           <button 
             onClick={() => { fetchReservations(); fetchCourts(); checkWaStatus(); }}
             disabled={loading}
-            className="px-3.5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold border border-white/10 flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2.5 rounded-2xl bg-slate-100 dark:bg-white/5 hover:bg-white/15 text-slate-700 dark:text-gray-300 text-xs font-bold border border-slate-200 dark:border-white/10 flex items-center gap-1.5 transition-all cursor-pointer hover:scale-105 active:scale-95"
             title="Actualizar datos"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-brand-gold' : ''}`} />
             <span className="hidden sm:inline">Actualizar</span>
           </button>
+          <ThemeToggle />
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* KPI Cards con Resplandor según Color Institucional */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 sm:gap-5">
         
-        {/* Total */}
-        <div className="glass-panel p-4 border-l-4 border-brand-gold relative overflow-hidden">
-          <div className="absolute -right-3 -bottom-3 text-brand-gold/15 dark:text-brand-gold/10">
-            <CalendarDays size={70} />
+        {/* 1. Total Reservas (Sky Blue Aura) */}
+        <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#091e36] dark:via-[#051324] dark:to-[#020a14] border border-sky-500/30 dark:border-sky-500/40 hover:border-sky-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(14,165,233,0.15)] hover:shadow-[0_0_50px_rgba(14,165,233,0.5),0_0_80px_rgba(14,165,233,0.2)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer relative overflow-hidden">
+          <div className="w-13 h-13 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(14,165,233,0.5)]">
+            <CalendarDays className="w-6 h-6 text-sky-400" />
           </div>
-          <div className="relative z-10">
-            <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold mb-1">Total Reservas</p>
-            <h3 className="text-2xl font-bold theme-text">{totalCount}</h3>
+          <div>
+            <span className="text-[10px] font-black text-sky-600 dark:text-sky-400 uppercase tracking-widest block">
+              Total Reservas
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(14,165,233,0.3)]">
+              {totalCount}
+            </span>
           </div>
         </div>
         
-        {/* Aprobadas */}
-        <div className="glass-panel p-4 border-l-4 border-emerald-500 relative overflow-hidden">
-          <div className="absolute -right-3 -bottom-3 text-emerald-500/15 dark:text-emerald-500/10">
-            <CheckCircle size={70} />
+        {/* 2. Aprobadas (Emerald Green Aura) */}
+        <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0a3120] dark:via-[#051e13] dark:to-[#020f09] border border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.15)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5),0_0_80px_rgba(16,185,129,0.2)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer relative overflow-hidden">
+          <div className="w-13 h-13 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]">
+            <CheckCircle className="w-6 h-6 text-emerald-400" />
           </div>
-          <div className="relative z-10">
-            <p className="text-[10px] text-emerald-400 uppercase tracking-widest font-bold mb-1">Aprobadas</p>
-            <h3 className="text-2xl font-bold theme-text">{approvedCount}</h3>
-          </div>
-        </div>
-
-        {/* Pagos Verificados */}
-        <div className="glass-panel p-4 border-l-4 border-teal-500 relative overflow-hidden">
-          <div className="absolute -right-3 -bottom-3 text-teal-500/15 dark:text-teal-500/10">
-            <Check size={70} />
-          </div>
-          <div className="relative z-10">
-            <p className="text-[10px] text-teal-400 uppercase tracking-widest font-bold mb-1">Pagos Verificados</p>
-            <h3 className="text-2xl font-bold text-teal-300">{verifiedPaymentsCount}</h3>
+          <div>
+            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">
+              Aprobadas
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white font-mono drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]">
+              {approvedCount}
+            </span>
           </div>
         </div>
 
-        {/* Pagos Pendientes */}
-        <div className="glass-panel p-4 border-l-4 border-amber-500 relative overflow-hidden">
-          <div className="absolute -right-3 -bottom-3 text-amber-500/15 dark:text-amber-500/10">
-            <Clock size={70} />
+        {/* 3. Pagos Verificados (Teal Aura) */}
+        <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#06312f] dark:via-[#041f1e] dark:to-[#02100f] border border-teal-500/30 dark:border-teal-500/40 hover:border-teal-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(20,184,166,0.15)] hover:shadow-[0_0_50px_rgba(20,184,166,0.5),0_0_80px_rgba(20,184,166,0.2)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer relative overflow-hidden">
+          <div className="w-13 h-13 rounded-2xl bg-teal-500/15 text-teal-600 dark:text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(20,184,166,0.5)]">
+            <Check className="w-6 h-6 text-teal-400" />
           </div>
-          <div className="relative z-10">
-            <p className="text-[10px] text-amber-400 uppercase tracking-widest font-bold mb-1">Pendientes Pago</p>
-            <h3 className="text-2xl font-bold text-amber-300">{pendingPaymentsCount}</h3>
+          <div>
+            <span className="text-[10px] font-black text-teal-600 dark:text-teal-400 uppercase tracking-widest block">
+              Pagos Verificados
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-teal-700 dark:text-teal-300 font-mono drop-shadow-[0_0_10px_rgba(20,184,166,0.3)]">
+              {verifiedPaymentsCount}
+            </span>
           </div>
         </div>
 
-        {/* Clases / Bloqueos */}
-        <div className="glass-panel p-4 border-l-4 border-indigo-500 relative overflow-hidden">
-          <div className="absolute -right-3 -bottom-3 text-indigo-500/15 dark:text-indigo-500/10">
-            <Dumbbell size={70} />
+        {/* 4. Pendientes Pago (Oro 24K / Amber Aura) */}
+        <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#362a08] dark:via-[#211a04] dark:to-[#120e02] border border-amber-500/30 dark:border-amber-500/40 hover:border-amber-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(245,158,11,0.15)] hover:shadow-[0_0_50px_rgba(245,158,11,0.5),0_0_80px_rgba(245,158,11,0.2)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer relative overflow-hidden">
+          <div className="w-13 h-13 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(245,158,11,0.5)]">
+            <Clock className="w-6 h-6 text-amber-400" />
           </div>
-          <div className="relative z-10">
-            <p className="text-[10px] text-indigo-400 uppercase tracking-widest font-bold mb-1">Clases & Bloqueos</p>
-            <h3 className="text-2xl font-bold theme-text">{classesAndBlocksCount}</h3>
+          <div>
+            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest block">
+              Pendientes Pago
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-amber-700 dark:text-amber-300 font-mono drop-shadow-[0_0_10px_rgba(245,158,11,0.3)]">
+              {pendingPaymentsCount}
+            </span>
+          </div>
+        </div>
+
+        {/* 5. Clases & Bloqueos (Royal Purple Aura) */}
+        <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#2a0e3d] dark:via-[#190726] dark:to-[#0c0314] border border-purple-500/30 dark:border-purple-500/40 hover:border-purple-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.15)] hover:shadow-[0_0_50px_rgba(168,85,247,0.5),0_0_80px_rgba(168,85,247,0.2)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer relative overflow-hidden">
+          <div className="w-13 h-13 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+            <Dumbbell className="w-6 h-6 text-purple-400" />
+          </div>
+          <div>
+            <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 uppercase tracking-widest block">
+              Clases & Bloqueos
+            </span>
+            <span className="text-2xl sm:text-3xl font-black text-purple-700 dark:text-purple-300 font-mono drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+              {classesAndBlocksCount}
+            </span>
           </div>
         </div>
 
       </div>
 
       {/* Main Content Area */}
-      <div className="glass-panel p-5 sm:p-6 space-y-6">
+      <div className="bg-white/90 dark:bg-[#07130c]/90 border border-emerald-500/30 dark:border-emerald-500/40 p-5 sm:p-7 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.12)] backdrop-blur-xl space-y-6">
         
         {/* View Switcher Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 dark:border-white/10 pb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-white/10 pb-5">
           
           <div>
-            <h2 className="text-lg font-bold text-brand-gold uppercase tracking-wider serif-brand">
+            <h2 className="text-lg font-black text-slate-900 dark:text-brand-gold uppercase tracking-wider serif-brand">
               {viewMode === 'TIMELINE' && 'Cronograma Deportivo en Vivo (Matriz Canchas × Horas)'}
               {viewMode === 'CALENDAR' && 'Calendario Mensual de Reservas'}
               {viewMode === 'LIST' && 'Registro General de Reservas y Pagos'}
             </h2>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-slate-500 dark:text-emerald-300/70 font-medium">
               {viewMode === 'TIMELINE' && 'Visualiza la disponibilidad, clases continuas y reservas turno a turno.'}
               {viewMode === 'CALENDAR' && 'Explora el volumen diario de actividad del club en cada fecha.'}
               {viewMode === 'LIST' && 'Filtra y verifica pagos QR, solicitudes de socios y bloques deportivos.'}
@@ -406,27 +428,33 @@ export const CourtAdminDashboard: React.FC = () => {
           </div>
 
           {/* View Mode Buttons */}
-          <div className="flex bg-gray-100 dark:bg-black/50 rounded-xl p-1 border border-gray-200 dark:border-white/10 self-stretch sm:self-auto">
+          <div className="flex bg-slate-100 dark:bg-black/60 rounded-2xl p-1.5 border border-slate-200 dark:border-white/10 self-stretch sm:self-auto shadow-inner">
             <button 
               onClick={() => setViewMode('TIMELINE')}
-              className={`flex-1 sm:flex-none px-3.5 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-all ${
-                viewMode === 'TIMELINE' ? 'bg-brand-gold text-black shadow-md' : 'text-gray-400 hover:text-white'
+              className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black transition-all duration-300 cursor-pointer ${
+                viewMode === 'TIMELINE' 
+                  ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-[1.02]' 
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <LayoutGrid size={15} /> Cronograma en Vivo
             </button>
             <button 
               onClick={() => setViewMode('CALENDAR')}
-              className={`flex-1 sm:flex-none px-3.5 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-all ${
-                viewMode === 'CALENDAR' ? 'bg-brand-gold text-black shadow-md' : 'text-gray-400 hover:text-white'
+              className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black transition-all duration-300 cursor-pointer ${
+                viewMode === 'CALENDAR' 
+                  ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-[1.02]' 
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <Grid size={15} /> Calendario
             </button>
             <button 
               onClick={() => setViewMode('LIST')}
-              className={`flex-1 sm:flex-none px-3.5 py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold transition-all ${
-                viewMode === 'LIST' ? 'bg-brand-gold text-black shadow-md' : 'text-gray-400 hover:text-white'
+              className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 text-xs font-black transition-all duration-300 cursor-pointer ${
+                viewMode === 'LIST' 
+                  ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-[1.02]' 
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
               <ListIcon size={15} /> Lista & Pagos

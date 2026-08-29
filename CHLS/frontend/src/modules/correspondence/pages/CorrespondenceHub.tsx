@@ -388,7 +388,7 @@ export const CorrespondenceHub: React.FC = () => {
                 Hojas Ahorradas
               </span>
               <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.totalSheetsSaved || 90} <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">hojas</span>
+                {stats?.ecoMetrics?.totalSheetsSaved ?? 0} <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">hojas</span>
               </span>
             </div>
           </div>
@@ -403,7 +403,7 @@ export const CorrespondenceHub: React.FC = () => {
                 Árboles Protegidos
               </span>
               <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.treesSaved || '0.01'} <span className="text-xs font-bold text-brand-gold">árboles</span>
+                {typeof stats?.ecoMetrics?.treesSaved === 'number' ? stats.ecoMetrics.treesSaved.toFixed(2) : '0.00'} <span className="text-xs font-bold text-brand-gold">árboles</span>
               </span>
             </div>
           </div>
@@ -418,7 +418,7 @@ export const CorrespondenceHub: React.FC = () => {
                 Agua Preservada
               </span>
               <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.waterSavedLiters || 900} <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">litros</span>
+                {stats?.ecoMetrics?.waterSavedLiters ?? 0} <span className="text-xs font-bold text-cyan-600 dark:text-cyan-400">litros</span>
               </span>
             </div>
           </div>
@@ -433,7 +433,7 @@ export const CorrespondenceHub: React.FC = () => {
                 CO₂ Evitado
               </span>
               <span className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-mono">
-                {stats?.ecoMetrics?.co2SavedKg || '0.45'} <span className="text-xs font-bold text-purple-600 dark:text-purple-400">kg CO₂</span>
+                {typeof stats?.ecoMetrics?.co2SavedKg === 'number' ? stats.ecoMetrics.co2SavedKg.toFixed(2) : '0.00'} <span className="text-xs font-bold text-purple-600 dark:text-purple-400">kg CO₂</span>
               </span>
             </div>
           </div>

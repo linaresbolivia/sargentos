@@ -99,13 +99,21 @@ export const MemberHistoryModal: React.FC<MemberHistoryModalProps> = ({ isOpen, 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#050806] w-full max-w-4xl max-h-[90vh] rounded-3xl shadow-2xl border border-gray-200 dark:border-brand-gold/20 flex flex-col overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="bg-white/95 dark:bg-gradient-to-br dark:from-[#09291b] dark:via-[#051c12] dark:to-[#020e08] w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-[0_0_50px_rgba(16,185,129,0.3)] border-2 border-emerald-500/40 dark:border-emerald-400/50 flex flex-col overflow-hidden backdrop-blur-2xl">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/5 flex justify-between items-center bg-gray-50/50 dark:bg-black/20">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Reporte de Accesos por Socio</h2>
-          <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white rounded-full hover:bg-gray-200 dark:hover:bg-white/10 transition-colors">
+        <div className="px-8 py-5 border-b border-emerald-500/30 dark:border-white/10 flex justify-between items-center bg-slate-50/80 dark:bg-black/40">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/40 shadow-xs">
+              <Clock className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <span className="text-[10px] font-black uppercase text-brand-gold tracking-widest block">Reporte Histórico</span>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white serif-brand">Accesos & Asistencia por Socio</h2>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white rounded-2xl hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -114,22 +122,22 @@ export const MemberHistoryModal: React.FC<MemberHistoryModalProps> = ({ isOpen, 
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Top Control Bar: Filters & Search */}
           <div className="p-6 pb-2 relative z-20">
-            <div className="flex flex-col gap-4 bg-gray-50 dark:bg-black/20 p-6 rounded-3xl border border-gray-200 dark:border-brand-gold/20 max-w-3xl mx-auto shadow-sm">
+            <div className="flex flex-col gap-4 bg-slate-100/70 dark:bg-black/40 p-6 rounded-3xl border-2 border-emerald-500/30 max-w-3xl mx-auto shadow-inner">
               
               {/* Date Filters Column */}
               <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Filtrar por Rango de Fechas</label>
+                <label className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest text-center">Filtrar por Rango de Fechas</label>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                   <input 
                     type="date" 
-                    className="w-full sm:w-48 bg-white dark:bg-black/40 border border-gray-200 dark:border-brand-gold/20 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3.5 focus:outline-none focus:border-brand-gold transition-colors text-center dark:[color-scheme:dark]"
+                    className="w-full sm:w-48 bg-white dark:bg-black/50 border-2 border-emerald-500/30 text-slate-900 dark:text-white text-sm font-bold rounded-2xl px-4 py-3 focus:outline-none focus:border-emerald-400 transition-colors text-center dark:[color-scheme:dark]"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
                   />
-                  <span className="text-gray-400 text-sm font-bold">a</span>
+                  <span className="text-slate-400 font-bold">a</span>
                   <input 
                     type="date" 
-                    className="w-full sm:w-48 bg-white dark:bg-black/40 border border-gray-200 dark:border-brand-gold/20 text-gray-900 dark:text-white text-sm rounded-xl px-4 py-3.5 focus:outline-none focus:border-brand-gold transition-colors text-center dark:[color-scheme:dark]"
+                    className="w-full sm:w-48 bg-white dark:bg-black/50 border-2 border-emerald-500/30 text-slate-900 dark:text-white text-sm font-bold rounded-2xl px-4 py-3 focus:outline-none focus:border-emerald-400 transition-colors text-center dark:[color-scheme:dark]"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
                   />
@@ -144,36 +152,36 @@ export const MemberHistoryModal: React.FC<MemberHistoryModalProps> = ({ isOpen, 
                         fetchGlobalLogs(startDate, endDate);
                       }
                     }}
-                    className="w-full sm:w-auto bg-brand-gold text-white hover:bg-[#b8860b] shadow-lg shadow-brand-gold/20 transition-all px-8 py-3.5 rounded-xl text-sm font-bold"
+                    className="w-full sm:w-auto bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 hover:from-amber-300 hover:to-yellow-400 shadow-[0_0_20px_rgba(234,179,8,0.3)] hover:scale-105 active:scale-95 transition-all px-8 py-3.5 rounded-2xl text-xs font-black uppercase tracking-wider cursor-pointer"
                   >
-                    Generar
+                    Generar Reporte
                   </button>
                 </div>
               </div>
 
               {/* Separator */}
               <div className="flex items-center gap-4 py-1">
-                <div className="h-px bg-gray-200 dark:bg-brand-gold/20 flex-1"></div>
-                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">O</span>
-                <div className="h-px bg-gray-200 dark:bg-brand-gold/20 flex-1"></div>
+                <div className="h-px bg-emerald-500/20 flex-1"></div>
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">O</span>
+                <div className="h-px bg-emerald-500/20 flex-1"></div>
               </div>
 
               {/* Search Bar Column */}
               <div className="flex flex-col gap-2 relative">
-                <label className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider text-center">Búsqueda de Socio Específico</label>
+                <label className="text-xs font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest text-center">Búsqueda de Socio Específico</label>
                 <div className="relative max-w-xl mx-auto w-full">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-brand-gold" />
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-400" />
                   <input
                     type="text"
                     placeholder="Buscar socio por nombre, CI o placa..."
                     value={searchQuery}
                     onChange={(e) => handleSearch(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    className="w-full bg-white dark:bg-black/40 border border-gray-200 dark:border-brand-gold/20 rounded-xl py-3.5 pl-12 pr-4 text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold transition-colors"
+                    className="w-full bg-white dark:bg-black/50 border-2 border-emerald-500/30 rounded-2xl py-3.5 pl-12 pr-4 text-slate-900 dark:text-white font-bold focus:outline-none focus:border-emerald-400 transition-colors"
                   />
                   {loadingSearch && (
                     <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-5 h-5 text-brand-gold animate-spin" />
+                      <Loader2 className="w-5 h-5 text-emerald-400 animate-spin" />
                     </div>
                   )}
                 </div>

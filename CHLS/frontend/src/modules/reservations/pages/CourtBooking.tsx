@@ -48,6 +48,7 @@ import { format, addDays, startOfToday, parseISO, isSameDay, isBefore, isSaturda
 import { es } from 'date-fns/locale';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
+import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { compressImage } from '@shared/utils/imageCompressor';
 
 interface Court {
@@ -1066,6 +1067,9 @@ export const CourtBooking: React.FC = () => {
           >
             <HelpCircle className="w-4 h-4 text-brand-gold" />
           </button>
+
+          {/* Theme Mode Toggle */}
+          <ThemeToggle />
 
           {/* Salir */}
           <button

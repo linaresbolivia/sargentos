@@ -577,60 +577,73 @@ export class CorrespondenceController {
     }
   }
 
-  // 16. Get Global Settings (Areas, Stamps, Routing, SMTP Email)
+  // 16. Get Global Settings (Areas, Stamps, Routing, SMTP Email, Gestiones)
   public async getSettings(_req: Request, res: Response) {
     try {
-      const setting = await (this.prisma as any).corrSetting.findUnique({
-        where: { key: 'GLOBAL_SETTINGS' },
-      });
-
-      if (setting && setting.value) {
-        return res.status(200).json({
-          success: true,
-          data: setting.value,
-        });
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
       }
 
-      // Default settings
-      const defaults = {
-        areas: [
-          { id: '1', name: 'SECRETARÍA GENERAL', manager: 'Lic. María del Pilar Atanacio', position: 'Secretaria de Gerencia General', canReceiveExternal: true },
-          { id: '2', name: 'GERENCIA GENERAL', manager: 'Ing. Gerente General', position: 'Máxima Autoridad Ejecutiva (MAE)', canReceiveExternal: true },
-          { id: '3', name: 'TESORERÍA Y FINANZAS', manager: 'Lic. Jefe de Finanzas & Tesorería', position: 'Jefe de Departamento', canReceiveExternal: false },
-          { id: '4', name: 'CONTRATACIONES Y ADQUISICIONES', manager: 'Lic. Encargado de Compras', position: 'Responsable de Adquisiciones', canReceiveExternal: false },
-          { id: '5', name: 'COMISIÓN HÍPICA', manager: 'Capitán de Hípica', position: 'Capitán Ecuestre', canReceiveExternal: false },
-          { id: '6', name: 'CAPITANÍA DEPORTES / TENIS', manager: 'Capitán de Deportes', position: 'Capitán de Complejo', canReceiveExternal: false },
-          { id: '7', name: 'ASESORÍA LEGAL', manager: 'Dr. Asesor Legal Principal', position: 'Asesor Jurídico', canReceiveExternal: false },
-          { id: '8', name: 'MANTENIMIENTO Y OBRAS', manager: 'Ing. Jefe de Mantenimiento', position: 'Jefe de Infraestructura', canReceiveExternal: false },
-          { id: '9', name: 'CASETA DE ENTRADA', manager: 'Jefe de Guardia', position: 'Control de Puerta', canReceiveExternal: true },
-        ],
-        stamps: [
-          'FAVOR SU ATENCIÓN',
-          'FAVOR REALIZAR EL PAGO',
-          'PARA INFORME TÉCNICO / LEGAL',
-          'PARA SU CONOCIMIENTO Y FINES',
-          'PARA VISTO BUENO Y FIRMA',
-          'OBSERVADO / SOLICITAR SUBSANACIÓN',
-          'TRÁMITE CONCLUIDO / ARCHIVAR',
-        ],
-        routingMode: 'VIA_SECRETARIA_GERENCIA',
-        defaultSlaDays: 5,
-        socioSubsanacionDays: 10,
-        smtp: {
-          enabled: false,
-          host: 'smtp.gmail.com',
-          port: 587,
-          secure: false,
-          user: '',
-          pass: '',
-          fromEmail: 'correspondencia@chls.bo',
-          fromName: 'Club Hípico Los Sargentos — Correspondencia',
-        },
-      };
+      const configFilePath = path.join(dataDir, 'correspondence_settings.json');
+      let configData: any = null;
+
+      if (fs.existsSync(configFilePath)) {
+        try {
+          configData = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+        } catch (err) {
+          logger.warn('Could not parse correspondence_settings.json, recreating defaults');
+        }
+      }
+
+      if (!configData) {
+        configData = {
+          areas: [
+            { id: '1', name: 'SECRETARÍA GENERAL', manager: 'Lic. María del Pilar Atanacio', position: 'Secretaria de Gerencia General', canReceiveExternal: true },
+            { id: '2', name: 'GERENCIA GENERAL', manager: 'Ing. Gerente General', position: 'Máxima Autoridad Ejecutiva (MAE)', canReceiveExternal: true },
+            { id: '3', name: 'TESORERÍA Y FINANZAS', manager: 'Lic. Jefe de Finanzas & Tesorería', position: 'Jefe de Departamento', canReceiveExternal: false },
+            { id: '4', name: 'CONTRATACIONES Y ADQUISICIONES', manager: 'Lic. Encargado de Compras', position: 'Responsable de Adquisiciones', canReceiveExternal: false },
+            { id: '5', name: 'COMISIÓN HÍPICA', manager: 'Capitán de Hípica', position: 'Capitán Ecuestre', canReceiveExternal: false },
+            { id: '6', name: 'CAPITANÍA DEPORTES / TENIS', manager: 'Capitán de Deportes', position: 'Capitán de Complejo', canReceiveExternal: false },
+            { id: '7', name: 'ASESORÍA LEGAL', manager: 'Dr. Asesor Legal Principal', position: 'Asesor Jurídico', canReceiveExternal: false },
+            { id: '8', name: 'MANTENIMIENTO Y OBRAS', manager: 'Ing. Jefe de Mantenimiento', position: 'Jefe de Infraestructura', canReceiveExternal: false },
+            { id: '9', name: 'CASETA DE ENTRADA', manager: 'Jefe de Guardia', position: 'Control de Puerta', canReceiveExternal: true },
+          ],
+          stamps: [
+            'FAVOR SU ATENCIÓN',
+            'FAVOR REALIZAR EL PAGO',
+            'PARA INFORME TÉCNICO / LEGAL',
+            'PARA SU CONOCIMIENTO Y FINES',
+            'PARA VISTO BUENO Y FIRMA',
+            'OBSERVADO / SOLICITAR SUBSANACIÓN',
+            'TRÁMITE CONCLUIDO / ARCHIVAR',
+          ],
+          routingMode: 'VIA_SECRETARIA_GERENCIA',
+          defaultSlaDays: 5,
+          socioSubsanacionDays: 10,
+          currentGestion: 2026,
+          initialCorrelativeNumber: 1,
+          prefixFormat: 'HR-{YYYY}-{CORR}',
+          gestiones: {
+            '2026': { initialCorrelative: 1, label: 'Gestión 2026' }
+          },
+          smtp: {
+            enabled: false,
+            host: 'smtp.gmail.com',
+            port: 587,
+            secure: false,
+            user: '',
+            pass: '',
+            fromEmail: 'correspondencia@chls.bo',
+            fromName: 'Club Hípico Los Sargentos — Correspondencia',
+          },
+        };
+        fs.writeFileSync(configFilePath, JSON.stringify(configData, null, 2), 'utf8');
+      }
 
       return res.status(200).json({
         success: true,
-        data: defaults,
+        data: configData,
       });
     } catch (error: any) {
       logger.error('Error fetching settings:', error);
@@ -646,22 +659,18 @@ export class CorrespondenceController {
   public async saveSettings(req: Request, res: Response) {
     try {
       const payload = req.body;
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
 
-      const saved = await (this.prisma as any).corrSetting.upsert({
-        where: { key: 'GLOBAL_SETTINGS' },
-        create: {
-          key: 'GLOBAL_SETTINGS',
-          value: payload,
-        },
-        update: {
-          value: payload,
-        },
-      });
+      const configFilePath = path.join(dataDir, 'correspondence_settings.json');
+      fs.writeFileSync(configFilePath, JSON.stringify(payload, null, 2), 'utf8');
 
       return res.status(200).json({
         success: true,
         message: 'Parámetros y configuración guardados con éxito',
-        data: saved.value,
+        data: payload,
       });
     } catch (error: any) {
       logger.error('Error saving settings:', error);

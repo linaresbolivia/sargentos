@@ -13,6 +13,7 @@ import {
   Clock, 
   UserPlus, 
   ShieldAlert,
+  ShieldCheck,
   AlertTriangle,
   Check,
   Waves,
@@ -217,21 +218,23 @@ export const GatehouseDashboard: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#050806] text-gray-900 dark:text-white flex flex-col font-sans transition-colors duration-200">
-      {/* Header */}
-      <header className="h-16 border-b border-gray-200 dark:border-brand-gold/20 flex items-center justify-between px-6 bg-white dark:bg-[#0a100d] shrink-0 transition-colors duration-200">
-        <div className="flex items-center gap-3.5">
-          <BackButton to="/" title="Volver al Menú Principal" />
+    <div className="min-h-screen bg-slate-50 dark:bg-[#050806] text-slate-900 dark:text-white flex flex-col font-sans transition-colors duration-200">
+      {/* Top Header */}
+      <header className="h-20 border-b border-emerald-500/30 dark:border-emerald-500/40 flex items-center justify-between px-6 lg:px-8 bg-white/90 dark:bg-gradient-to-r dark:from-[#061c12] dark:via-[#04140d] dark:to-[#020b07] backdrop-blur-xl shadow-[0_0_25px_rgba(16,185,129,0.12)] shrink-0 transition-all">
+        <div className="flex items-center gap-4">
+          <BackButton to="/access-selection" title="Volver a Selección de Puntos" />
           <CrestLogo size="sm" />
           <div>
             <span className="text-[10px] font-black uppercase text-brand-gold tracking-widest leading-none block">Club Hípico Los Sargentos</span>
-            <h1 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white serif-brand leading-tight">Control de Garita Principal</h1>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white serif-brand leading-tight tracking-tight">
+              Control de Garita & Portería Principal
+            </h1>
           </div>
         </div>
         <div className="flex items-center gap-3 sm:gap-4">
           <button
             onClick={() => setIsInvoiceModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/30 hover:to-teal-600/30 text-emerald-700 dark:text-emerald-300 border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/30 hover:to-teal-600/30 text-emerald-800 dark:text-emerald-300 border-2 border-emerald-500/40 text-xs font-black shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all hover:scale-105 active:scale-95 cursor-pointer"
             title="Recepción rápida de facturas (Luz, Agua, Gas, etc.)"
           >
             <Receipt className="w-4 h-4 text-emerald-500" />
@@ -240,10 +243,10 @@ export const GatehouseDashboard: React.FC = () => {
           <ThemeToggle />
           <button 
             onClick={() => dispatch(logout())}
-            className="flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors text-sm"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl text-slate-600 dark:text-gray-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all text-xs font-bold"
           >
             <LogOut className="w-4 h-4" />
-            <span>Salir</span>
+            <span className="hidden sm:inline">Salir</span>
           </button>
         </div>
       </header>
@@ -252,23 +255,36 @@ export const GatehouseDashboard: React.FC = () => {
       <div className="flex-1 flex flex-col xl:flex-row overflow-hidden">
         
         {/* Left/Center Panel - Search & Decision */}
-        <div className="flex-1 p-4 md:p-8 flex flex-col gap-6 md:gap-8 overflow-y-auto custom-scrollbar bg-gray-50 dark:bg-[#050806] transition-colors duration-200">
+        <div className="flex-1 p-4 md:p-8 flex flex-col gap-6 md:gap-8 overflow-y-auto custom-scrollbar bg-slate-50 dark:bg-[#030906] transition-colors duration-200 relative overflow-hidden">
           
-          {/* Search Bar */}
-          <div className="relative max-w-3xl mx-auto w-full mt-6 group">
-            <div className="flex justify-center gap-6 mb-4">
-              <label className="flex items-center gap-2 cursor-pointer">
+          {/* Ambient background lighting */}
+          <div className="absolute top-0 right-1/4 w-[650px] h-[450px] bg-emerald-500/15 rounded-full blur-[150px] pointer-events-none -z-0"></div>
+          <div className="absolute top-1/3 left-1/4 w-[550px] h-[400px] bg-brand-gold/10 rounded-full blur-[140px] pointer-events-none -z-0"></div>
+          <div className="absolute bottom-0 right-1/3 w-[700px] h-[450px] bg-teal-500/10 rounded-full blur-[160px] pointer-events-none -z-0"></div>
+
+          {/* Search Bar Container */}
+          <div className="relative max-w-3xl mx-auto w-full mt-2 group z-10">
+            <div className="flex justify-center gap-3 sm:gap-5 mb-4">
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-2xl cursor-pointer transition-all border-2 ${
+                searchType === 'SOCIO'
+                  ? 'bg-gradient-to-r from-emerald-600/25 to-teal-600/25 border-emerald-400 text-slate-950 dark:text-emerald-300 font-black shadow-[0_0_20px_rgba(16,185,129,0.35)]'
+                  : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 font-bold'
+              }`}>
                 <input 
                   type="radio" 
                   name="searchType" 
                   value="SOCIO"
                   checked={searchType === 'SOCIO'} 
                   onChange={() => { setSearchType('SOCIO'); setSearchResults([]); setSearchTerm(''); setHasSearched(false); }} 
-                  className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4" 
+                  className="text-emerald-500 focus:ring-emerald-500 accent-emerald-500 w-4 h-4" 
                 /> 
-                <span className="text-gray-700 dark:text-gray-300 font-medium">Socio</span>
+                <span>Socio CHLS</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-2xl cursor-pointer transition-all border-2 ${
+                searchType === 'RECIPROCITY'
+                  ? 'bg-gradient-to-r from-amber-500/25 to-yellow-500/25 border-brand-gold text-slate-950 dark:text-brand-gold font-black shadow-[0_0_20px_rgba(234,179,8,0.35)]'
+                  : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 font-bold'
+              }`}>
                 <input 
                   type="radio" 
                   name="searchType" 
@@ -277,29 +293,33 @@ export const GatehouseDashboard: React.FC = () => {
                   onChange={() => { setSearchType('RECIPROCITY'); setSearchResults([]); setSearchTerm(''); setHasSearched(false); }} 
                   className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4" 
                 /> 
-                <span className="text-gray-700 dark:text-gray-300 font-medium">Socio de Reciprocidad</span>
+                <span>Reciprocidad</span>
               </label>
-              <label className="flex items-center gap-2 cursor-pointer">
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-2xl cursor-pointer transition-all border-2 ${
+                searchType === 'EXTERNAL'
+                  ? 'bg-gradient-to-r from-purple-500/25 to-indigo-500/25 border-purple-400 text-slate-950 dark:text-purple-300 font-black shadow-[0_0_20px_rgba(168,85,247,0.35)]'
+                  : 'bg-white/40 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-300 font-bold'
+              }`}>
                 <input 
                   type="radio" 
                   name="searchType" 
                   value="EXTERNAL"
                   checked={searchType === 'EXTERNAL'} 
                   onChange={() => { setSearchType('EXTERNAL'); setSearchResults([]); setSearchTerm(''); setHasSearched(false); }} 
-                  className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4" 
+                  className="text-purple-500 focus:ring-purple-500 accent-purple-500 w-4 h-4" 
                 /> 
-                <span className="text-gray-700 dark:text-gray-300 font-medium">Externo</span>
+                <span>Externo / Visita</span>
               </label>
             </div>
 
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                <Search className="h-6 w-6 text-brand-gold transition-transform group-focus-within:scale-110" />
+                <Search className="h-6 w-6 text-emerald-400 transition-transform group-focus-within:scale-110" />
               </div>
               <input 
                 ref={searchRef}
                 type="text"
-                placeholder={searchType === 'SOCIO' ? "Buscar miembros o ID o nombre" : `Buscar ${searchType === 'RECIPROCITY' ? 'socio de reciprocidad' : 'externo'}...`}
+                placeholder={searchType === 'SOCIO' ? "Buscar por Nº carnet, CI, nombre o apellido..." : `Buscar ${searchType === 'RECIPROCITY' ? 'socio de reciprocidad' : 'externo'}...`}
                 value={searchTerm}
                 onChange={handleSearch}
               onKeyDown={(e) => {
@@ -317,37 +337,24 @@ export const GatehouseDashboard: React.FC = () => {
                   }
                 }
               }}
-              className="block w-full pl-16 pr-6 py-5 border-2 border-brand-gold/40 dark:border-brand-gold rounded-full leading-5 bg-[#133825] dark:bg-[#141816] text-white placeholder-brand-gold/40 dark:placeholder-gray-400 focus:outline-none focus:border-brand-gold focus:shadow-[0_0_40px_rgba(204,161,75,0.3)] shadow-[0_10px_40px_rgba(19,56,37,0.2)] dark:shadow-none text-lg transition-all"
+              className="block w-full pl-16 pr-6 py-5 border-2 border-emerald-500/40 dark:border-emerald-500/50 rounded-3xl leading-5 bg-white/90 dark:bg-gradient-to-r dark:from-[#062217] dark:via-[#041911] dark:to-[#020f0a] text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-400 focus:outline-none focus:border-emerald-400 focus:shadow-[0_0_45px_rgba(16,185,129,0.45)] shadow-[0_10px_35px_rgba(16,185,129,0.15)] text-lg backdrop-blur-xl transition-all"
             />
           </div>
 
-          {searchType !== 'SOCIO' && searchTerm.length >= 2 && searchResults.length === 0 && hasSearched && !selectedMember && (
-            <div className="text-center mt-2 max-w-3xl mx-auto">
-              <p className="text-gray-500 mb-4">No se encontró a nadie con ese nombre o documento.</p>
-              <button
-                onClick={() => setIsStandaloneModalOpen(true)}
-                className="px-6 py-3 bg-brand-gold text-[#0a2014] font-bold rounded-xl hover:bg-brand-gold/90 transition-colors shadow-lg"
-              >
-                <UserPlus className="w-5 h-5 inline mr-2" />
-                Registrar Nuevo {searchType === 'RECIPROCITY' ? 'Socio de Reciprocidad' : 'Externo'}
-              </button>
-            </div>
-          )}
-            
-          {/* Search Dropdown */}
-            {searchResults.length > 1 && !selectedMember && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-[#0d2116] border border-gray-200 dark:border-brand-gold/20 rounded-xl shadow-[0_10px_30px_rgba(204,161,75,0.1)] z-20 max-h-60 overflow-y-auto">
-                {searchResults.map(member => (
+            {/* Autocomplete Results Dropdown */}
+            {searchResults.length > 0 && !selectedMember && (
+              <div className="absolute z-50 w-full mt-2 bg-white/95 dark:bg-[#071d14]/95 border-2 border-emerald-500/40 rounded-3xl shadow-[0_0_40px_rgba(16,185,129,0.25)] max-h-80 overflow-y-auto backdrop-blur-2xl">
+                {searchResults.map((member) => (
                   <div 
                     key={member.personId}
                     onClick={() => handleSelectMember(member, true)}
-                    className="px-4 py-3 border-b border-gray-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors"
+                    className="px-6 py-4 border-b border-slate-100 dark:border-white/5 flex items-center justify-between cursor-pointer hover:bg-emerald-500/10 transition-colors"
                   >
                     <div>
-                      <p className="font-semibold text-gray-900 dark:text-gray-200">{member.fullName}</p>
-                      <p className="text-xs text-gray-500">ID: {member.documentId} | Membresía: {member.membershipNumber} ({member.membershipType})</p>
+                      <p className="font-bold text-slate-900 dark:text-white">{member.fullName}</p>
+                      <p className="text-xs text-slate-500 dark:text-gray-400">ID: {member.documentId} | Membresía: <span className="text-emerald-400 font-bold">{member.membershipNumber}</span> ({member.membershipType})</p>
                     </div>
-                    <div className={`w-3 h-3 rounded-full ${member.status === 'GRANTED' ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                    <div className={`w-3.5 h-3.5 rounded-full ${member.status === 'GRANTED' ? 'bg-emerald-500 shadow-[0_0_8px_#10b981]' : 'bg-rose-500 shadow-[0_0_8px_#f43f5e]'}`}></div>
                   </div>
                 ))}
               </div>
@@ -355,24 +362,23 @@ export const GatehouseDashboard: React.FC = () => {
           </div>
 
           {selectedMember ? (
-            <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full mt-2">
+            <div className="flex flex-col gap-6 max-w-5xl mx-auto w-full mt-2 z-10">
               
               {/* Top Row: Profile & Status (Symmetrical) */}
               <div className="flex flex-col lg:flex-row gap-6 items-stretch">
                 {/* Member Card */}
-                <div className="flex-1 w-full bg-white dark:bg-[#0d2116] rounded-2xl border border-gray-200 dark:border-brand-gold/20 p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200 flex flex-col justify-center">
+                <div className="flex-1 w-full bg-white/90 dark:bg-gradient-to-br dark:from-[#09291b] dark:via-[#051c12] dark:to-[#020e08] rounded-3xl border-2 border-emerald-500/40 p-7 shadow-[0_0_30px_rgba(16,185,129,0.2)] backdrop-blur-xl transition-all duration-300 flex flex-col justify-center">
                   <div className="flex flex-col items-center text-center">
-                    <div className="w-24 h-24 rounded-full mb-4 overflow-hidden flex items-center justify-center border-2 border-brand-gold/50 shadow-[0_0_15px_rgba(204,161,75,0.4)] bg-gradient-to-br from-[#dfc285] via-[#cca14b] to-[#b08b26]">
+                    <div className="w-24 h-24 rounded-full mb-4 overflow-hidden flex items-center justify-center border-2 border-brand-gold/60 shadow-[0_0_20px_rgba(234,179,8,0.4)] bg-gradient-to-br from-amber-300 via-brand-gold to-yellow-600">
                       {selectedMember.photoUrl ? (
                         <img src={selectedMember.photoUrl} alt="Socio" className="w-full h-full object-cover" />
                       ) : (
-                        <span className="text-4xl font-bold text-[#0a1d13] drop-shadow-md">{selectedMember.fullName.charAt(0)}</span>
+                        <span className="text-4xl font-black text-slate-950 drop-shadow-md">{selectedMember.fullName.charAt(0)}</span>
                       )}
                     </div>
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{selectedMember.fullName}</h2>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-1">CI/ID: <span className="text-gray-900 dark:text-gray-200">{selectedMember.documentId}</span></p>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">Membresía: <span className="text-brand-gold">{selectedMember.membershipNumber} ({selectedMember.membershipType})</span></p>
-
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-1 serif-brand">{selectedMember.fullName}</h2>
+                    <p className="text-slate-500 dark:text-gray-300 text-sm mb-1 font-medium">CI/ID: <span className="text-slate-900 dark:text-white font-mono font-bold">{selectedMember.documentId}</span></p>
+                    <p className="text-slate-500 dark:text-gray-300 text-sm font-medium">Membresía: <span className="text-emerald-400 font-bold">{selectedMember.membershipNumber} ({selectedMember.membershipType})</span></p>
                   </div>
                 </div>
 
@@ -383,17 +389,17 @@ export const GatehouseDashboard: React.FC = () => {
 
                   if (isExiting) {
                     return (
-                      <div className="flex-1 w-full rounded-2xl border p-6 shadow-xl bg-gradient-to-br from-amber-500/15 via-orange-500/10 to-amber-500/5 dark:bg-[#1a120b] border-amber-500/50 dark:border-amber-500/40 flex flex-col items-center justify-center text-center">
+                      <div className="flex-1 w-full rounded-3xl border-2 p-7 shadow-[0_0_35px_rgba(245,158,11,0.25)] bg-white/90 dark:bg-gradient-to-br dark:from-[#362a08] dark:via-[#211a04] dark:to-[#120e02] border-amber-500/50 backdrop-blur-xl flex flex-col items-center justify-center text-center">
                         <LogOut className="w-20 h-20 text-amber-400 mb-3 animate-pulse" />
                         <h2 className="text-2xl font-black text-amber-400 uppercase tracking-wide mb-1">
                           Registrando Salida del Club
                         </h2>
                         {hasPendingLoans ? (
-                          <p className="text-amber-200 font-bold text-xs bg-amber-500/20 px-3 py-1 rounded-lg border border-amber-500/40 mt-1">
+                          <p className="text-amber-200 font-bold text-xs bg-amber-500/20 px-3 py-1 rounded-xl border border-amber-500/40 mt-1">
                             ⚠️ Insumos de Piscina/Gimnasio pendientes por entregar en Caseta
                           </p>
                         ) : (
-                          <p className="text-gray-300 text-xs">
+                          <p className="text-slate-600 dark:text-gray-300 text-xs font-medium">
                             Socio/Invitado registrado actualmente dentro del Club Hípico.
                           </p>
                         )}
@@ -402,27 +408,27 @@ export const GatehouseDashboard: React.FC = () => {
                   }
 
                   return (
-                    <div className={`flex-1 w-full rounded-2xl border p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200 flex flex-col items-center justify-center text-center ${
+                    <div className={`flex-1 w-full rounded-3xl border-2 p-7 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-xl transition-all duration-300 flex flex-col items-center justify-center text-center ${
                       selectedMember.status === 'GRANTED' 
-                        ? 'bg-gradient-to-br from-brand-gold/10 to-[#133825]/5 dark:bg-[#0d2116] border-brand-gold/40 dark:border-brand-gold/30' 
-                        : 'bg-red-50 dark:bg-[#1a0f0f] border-red-200 dark:border-red-500/30'
+                        ? 'bg-white/90 dark:bg-gradient-to-br dark:from-[#093120] dark:via-[#051e13] dark:to-[#020f09] border-emerald-500/50 shadow-[0_0_45px_rgba(16,185,129,0.35)]' 
+                        : 'bg-white/90 dark:bg-gradient-to-br dark:from-[#330c0c] dark:via-[#1f0606] dark:to-[#100303] border-rose-500/50 shadow-[0_0_45px_rgba(244,63,94,0.35)]'
                     }`}>
                       {selectedMember.status === 'GRANTED' ? (
                         <>
-                          <CheckCircle className="w-24 h-24 text-[#cca14b] mb-4" />
-                          <h2 className="text-3xl font-bold text-[#cca14b] tracking-wide mb-2">Acceso Concedido</h2>
-                          <p className="text-gray-300">Sin deuda pendiente.</p>
+                          <CheckCircle className="w-22 h-22 text-emerald-400 mb-3 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                          <h2 className="text-3xl font-black text-emerald-400 tracking-wide mb-2 serif-brand">Acceso Concedido</h2>
+                          <p className="text-slate-600 dark:text-gray-300 font-medium">Sin deuda pendiente &bull; Membresía Vigente</p>
                           {selectedMember.lastPaymentDate && (
-                            <p className="text-sm text-gray-500 mt-1">Último pago: {new Date(selectedMember.lastPaymentDate).toLocaleDateString()}</p>
+                            <p className="text-xs text-slate-400 dark:text-gray-400 mt-1">Último pago: {new Date(selectedMember.lastPaymentDate).toLocaleDateString()}</p>
                           )}
                         </>
                       ) : (
                         <>
-                          <XCircle className="w-24 h-24 text-red-500 mb-4" />
-                          <h2 className="text-3xl font-bold text-red-600 dark:text-red-500 tracking-wide mb-2">Acceso Denegado</h2>
-                          <p className="text-gray-800 dark:text-gray-300 font-medium">{selectedMember.reason || 'Restricción Administrativa'}</p>
+                          <XCircle className="w-22 h-22 text-rose-500 mb-3 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]" />
+                          <h2 className="text-3xl font-black text-rose-500 tracking-wide mb-2 serif-brand">Acceso Denegado</h2>
+                          <p className="text-slate-800 dark:text-gray-200 font-bold">{selectedMember.reason || 'Restricción Administrativa'}</p>
                           {selectedMember.totalDebt > 0 && (
-                            <p className="text-red-600 dark:text-red-400 font-bold mt-2 text-lg">Deuda Pendiente: ${selectedMember.totalDebt.toLocaleString()}</p>
+                            <p className="text-rose-500 dark:text-rose-400 font-black mt-2 text-lg">Deuda Pendiente: ${selectedMember.totalDebt.toLocaleString()}</p>
                           )}
                         </>
                       )}
@@ -433,23 +439,23 @@ export const GatehouseDashboard: React.FC = () => {
 
               {/* Warning Banner: Insumos Pendientes de Devolución */}
               {selectedMember.pendingAreaLoans && selectedMember.pendingAreaLoans.length > 0 && (
-                <div className="w-full bg-gradient-to-r from-amber-500/20 via-red-500/20 to-amber-500/20 border-2 border-amber-500/60 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse">
+                <div className="w-full bg-gradient-to-r from-amber-500/20 via-red-500/20 to-amber-500/20 border-2 border-amber-500/60 rounded-3xl p-5 shadow-[0_0_30px_rgba(245,158,11,0.2)] flex flex-col md:flex-row items-start md:items-center justify-between gap-4 animate-pulse backdrop-blur-xl">
                   <div className="flex items-center gap-3.5">
-                    <div className="w-11 h-11 rounded-xl bg-amber-500/30 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/30 border border-amber-500/50 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_15px_rgba(245,158,11,0.4)]">
                       <ShieldAlert className="w-6 h-6" />
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider">
+                        <span className="px-2.5 py-0.5 rounded-full bg-amber-500 text-black text-[10px] font-black uppercase tracking-wider">
                           ¡Alerta Caseta!
                         </span>
-                        <h4 className="font-extrabold text-sm text-amber-400 uppercase tracking-wide">
+                        <h4 className="font-black text-sm text-amber-400 uppercase tracking-wide">
                           Insumos del Club Pendientes de Devolución
                         </h4>
                       </div>
-                      <div className="text-xs text-gray-200 mt-1 flex flex-wrap gap-2">
+                      <div className="text-xs text-slate-800 dark:text-gray-200 mt-1 flex flex-wrap gap-2">
                         {selectedMember.pendingAreaLoans.map((loan) => (
-                          <span key={loan.id} className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-black/50 border border-amber-500/40 text-white font-medium text-xs">
+                          <span key={loan.id} className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-black/50 border border-amber-500/40 text-white font-bold text-xs">
                             {loan.area === 'PISCINA' ? <Waves className="w-3.5 h-3.5 text-cyan-400" /> : <Dumbbell className="w-3.5 h-3.5 text-emerald-400" />}
                             <strong>{loan.area}:</strong> 
                             {loan.lockerKey ? ` Casillero #${loan.lockerKey}` : ''}
@@ -461,7 +467,7 @@ export const GatehouseDashboard: React.FC = () => {
                   </div>
                   
                   <div className="text-right shrink-0">
-                    <span className="text-[11px] text-amber-300 font-semibold bg-black/40 px-3 py-1.5 rounded-xl border border-amber-500/30">
+                    <span className="text-xs text-amber-300 font-bold bg-black/50 px-3.5 py-2 rounded-2xl border border-amber-500/40">
                       👉 Solicitar entrega antes de permitir salida
                     </span>
                   </div>
@@ -469,7 +475,7 @@ export const GatehouseDashboard: React.FC = () => {
               )}
 
               {/* Bottom Row: Entry/Exit Form */}
-              <div className="w-full bg-white dark:bg-[#0d2116] rounded-2xl border border-gray-200 dark:border-brand-gold/20 p-6 shadow-xl dark:shadow-[0_4px_20px_rgba(204,161,75,0.05)] transition-colors duration-200">
+              <div className="w-full bg-white/90 dark:bg-gradient-to-br dark:from-[#09291b] dark:via-[#051c12] dark:to-[#020e08] rounded-3xl border-2 border-emerald-500/40 p-7 shadow-[0_0_35px_rgba(16,185,129,0.2)] backdrop-blur-xl transition-all duration-300">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-6">
                   {/* Left Column */}
                   <div className="flex flex-col gap-6">
@@ -479,17 +485,17 @@ export const GatehouseDashboard: React.FC = () => {
                       return (
                         <div className="flex flex-col">
                           <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-semibold text-brand-gold tracking-wide">
+                            <h3 className="text-xs font-black uppercase text-emerald-400 tracking-wider">
                               Tipo de Acceso
                             </h3>
                             {isVipGuest && (
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40 flex items-center gap-1">
+                              <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40 flex items-center gap-1 shadow-xs">
                                 🔒 Invitado VIP (Fijo)
                               </span>
                             )}
                           </div>
                           <div className="flex flex-wrap gap-4">
-                            <label className={`flex items-center gap-1.5 ${isVipGuest ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+                            <label className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${accessPersonType === 'SOCIO' && !isVipGuest ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold' : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300'} ${isVipGuest ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
                               <input 
                                 ref={socioRadioRef}
                                 type="radio" 
@@ -510,11 +516,11 @@ export const GatehouseDashboard: React.FC = () => {
                                     }
                                   }
                                 }}
-                                className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
+                                className="text-emerald-500 focus:ring-emerald-500 accent-emerald-500 w-4 h-4"
                               />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Socio</span>
+                              <span className="text-sm font-bold">Socio</span>
                             </label>
-                            <label className={`flex items-center gap-1.5 ${isVipGuest ? 'opacity-90 cursor-not-allowed font-extrabold text-brand-gold' : 'cursor-pointer'}`}>
+                            <label className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${accessPersonType === 'GUEST' || isVipGuest ? 'bg-amber-500/20 border-brand-gold text-brand-gold font-bold' : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300'} ${isVipGuest ? 'opacity-90 cursor-not-allowed font-extrabold text-brand-gold' : 'cursor-pointer'}`}>
                               <input 
                                 ref={guestRadioRef}
                                 type="radio" 
@@ -540,7 +546,7 @@ export const GatehouseDashboard: React.FC = () => {
                                 }}
                                 className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
                               />
-                              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              <span className="text-sm font-bold">
                                 {isVipGuest ? 'Invitado VIP' : 'Invitado'}
                               </span>
                             </label>
@@ -551,7 +557,7 @@ export const GatehouseDashboard: React.FC = () => {
                               <button 
                                 type="button"
                                 onClick={() => setIsGuestModalOpen(true)}
-                                className="w-full bg-brand-gold/10 hover:bg-brand-gold/20 text-brand-gold transition-colors py-2 px-6 rounded-xl text-sm font-bold flex items-center justify-center gap-2 border border-brand-gold/30 shadow-[0_4px_15px_rgba(204,161,75,0.1)]"
+                                className="w-full bg-brand-gold/15 hover:bg-brand-gold/25 text-brand-gold transition-colors py-2.5 px-6 rounded-2xl text-sm font-black flex items-center justify-center gap-2 border-2 border-brand-gold/40 shadow-[0_0_20px_rgba(234,179,8,0.2)]"
                               >
                                 <UserPlus className="w-4 h-4" />
                                 Registrar Invitado
@@ -564,11 +570,11 @@ export const GatehouseDashboard: React.FC = () => {
 
                     {/* Registro de Acceso */}
                     <div className="flex flex-col">
-                      <h3 className="text-sm font-semibold text-brand-gold tracking-wide mb-3">
+                      <h3 className="text-xs font-black uppercase text-emerald-400 tracking-wider mb-3">
                         Registro de Acceso
                       </h3>
-                      <div className="flex flex-wrap gap-5">
-                        <label className="flex items-center gap-2 cursor-pointer">
+                      <div className="flex flex-wrap gap-4">
+                        <label className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${accessMethod === 'VEHICLE' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold' : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300'} cursor-pointer`}>
                           <input 
                             ref={vehicleRadioRef}
                             type="radio" 
@@ -585,62 +591,26 @@ export const GatehouseDashboard: React.FC = () => {
                               } else if (e.key === 'Tab') {
                                 e.preventDefault();
                                 if (e.shiftKey) {
-                                  setAccessMethod('PEDESTRIAN');
-                                  setVehiclePlate('');
-                                  pedestrianRadioRef.current?.focus();
-                                } else {
-                                  setAccessMethod('TAXI');
-                                  setVehiclePlate('');
-                                  taxiRadioRef.current?.focus();
-                                }
-                              }
-                            }}
-                            className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
-                          />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Vehicular</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input 
-                            ref={taxiRadioRef}
-                            type="radio" 
-                            name="accessMethod" 
-                            value="TAXI" 
-                            checked={accessMethod === 'TAXI'} 
-                            onChange={() => {
-                              setAccessMethod('TAXI');
-                              setVehiclePlate('');
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') {
-                                e.preventDefault();
-                                handleRegisterAccess();
-                              } else if (e.key === 'Tab') {
-                                e.preventDefault();
-                                if (e.shiftKey) {
-                                  setAccessMethod('VEHICLE');
-                                  vehicleRadioRef.current?.focus();
+                                  socioRadioRef.current?.focus();
                                 } else {
                                   setAccessMethod('PEDESTRIAN');
-                                  setVehiclePlate('');
                                   pedestrianRadioRef.current?.focus();
                                 }
                               }
                             }}
-                            className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
+                            className="text-emerald-500 focus:ring-emerald-500 accent-emerald-500 w-4 h-4"
                           />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">En Taxi</span>
+                          <Car className="w-4 h-4 text-emerald-400" />
+                          <span className="text-sm font-bold">Vehículo</span>
                         </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
+                        <label className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${accessMethod === 'PEDESTRIAN' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold' : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300'} cursor-pointer`}>
                           <input 
                             ref={pedestrianRadioRef}
                             type="radio" 
                             name="accessMethod" 
                             value="PEDESTRIAN" 
                             checked={accessMethod === 'PEDESTRIAN'} 
-                            onChange={() => {
-                              setAccessMethod('PEDESTRIAN');
-                              setVehiclePlate('');
-                            }}
+                            onChange={() => setAccessMethod('PEDESTRIAN')}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -648,28 +618,55 @@ export const GatehouseDashboard: React.FC = () => {
                               } else if (e.key === 'Tab') {
                                 e.preventDefault();
                                 if (e.shiftKey) {
-                                  setAccessMethod('TAXI');
-                                  setVehiclePlate('');
-                                  taxiRadioRef.current?.focus();
-                                } else {
                                   setAccessMethod('VEHICLE');
                                   vehicleRadioRef.current?.focus();
+                                } else {
+                                  setAccessMethod('TAXI');
+                                  taxiRadioRef.current?.focus();
                                 }
                               }
                             }}
-                            className="text-brand-gold focus:ring-brand-gold accent-brand-gold w-4 h-4"
+                            className="text-emerald-500 focus:ring-emerald-500 accent-emerald-500 w-4 h-4"
                           />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Peatonal</span>
+                          <span className="text-sm font-bold">Peatón</span>
+                        </label>
+                        <label className={`flex items-center gap-2 px-3.5 py-2 rounded-xl border ${accessMethod === 'TAXI' ? 'bg-emerald-500/20 border-emerald-400 text-emerald-300 font-bold' : 'border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300'} cursor-pointer`}>
+                          <input 
+                            ref={taxiRadioRef}
+                            type="radio" 
+                            name="accessMethod" 
+                            value="TAXI" 
+                            checked={accessMethod === 'TAXI'} 
+                            onChange={() => setAccessMethod('TAXI')}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleRegisterAccess();
+                              } else if (e.key === 'Tab') {
+                                e.preventDefault();
+                                if (e.shiftKey) {
+                                  setAccessMethod('PEDESTRIAN');
+                                  pedestrianRadioRef.current?.focus();
+                                } else {
+                                  if (accessMethod === 'VEHICLE') {
+                                    plateRef.current?.focus();
+                                  }
+                                }
+                              }
+                            }}
+                            className="text-emerald-500 focus:ring-emerald-500 accent-emerald-500 w-4 h-4"
+                          />
+                          <span className="text-sm font-bold">Taxi / App</span>
                         </label>
                       </div>
                     </div>
 
                     {/* Placa del Vehículo */}
                     <div className="flex flex-col">
-                      <label className="block text-xs text-gray-500 dark:text-gray-400 font-medium tracking-wide mb-2">Placa del Vehículo</label>
+                      <label className="block text-xs text-slate-500 dark:text-gray-400 font-black uppercase tracking-wider mb-2">Placa del Vehículo</label>
                       <div className="relative">
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <Car className="h-4 w-4 text-gray-400 dark:text-gray-500" />
+                          <Car className="h-4 w-4 text-emerald-400" />
                         </div>
                         {selectedMember.vehicles && selectedMember.vehicles.length > 0 ? (
                           <select 
@@ -682,7 +679,7 @@ export const GatehouseDashboard: React.FC = () => {
                                 handleRegisterAccess();
                               }
                             }}
-                            className="w-full bg-gray-50 dark:bg-black/40 border border-gray-300 dark:border-brand-gold/20 rounded-lg pl-10 pr-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold/50 appearance-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-slate-50 dark:bg-black/50 border-2 border-emerald-500/30 rounded-2xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400 appearance-none transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold"
                             disabled={accessMethod !== 'VEHICLE'}
                           >
                             <option value="">Ingresó a pie / Otro vehículo</option>
@@ -703,7 +700,7 @@ export const GatehouseDashboard: React.FC = () => {
                                 handleRegisterAccess();
                               }
                             }}
-                            className="w-full bg-gray-50 dark:bg-black/40 border border-gray-300 dark:border-brand-gold/20 rounded-lg pl-10 pr-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold/50 placeholder:text-gray-400 dark:placeholder:text-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="w-full bg-slate-50 dark:bg-black/50 border-2 border-emerald-500/30 rounded-2xl pl-10 pr-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400 placeholder:text-slate-400 dark:placeholder:text-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-bold uppercase font-mono"
                             disabled={accessMethod !== 'VEHICLE'}
                           />
                         )}
@@ -714,12 +711,12 @@ export const GatehouseDashboard: React.FC = () => {
                   {/* Right Column */}
                   <div className="flex flex-col h-full">
                     <div className="flex-1 flex flex-col">
-                      <h3 className="text-sm font-semibold text-brand-gold tracking-wide mb-3">Observaciones</h3>
+                      <h3 className="text-xs font-black uppercase text-emerald-400 tracking-wider mb-3">Observaciones</h3>
                       <textarea 
                         placeholder="Compañantes, novedades, etc."
                         value={observation}
                         onChange={(e) => setObservation(e.target.value)}
-                        className="w-full flex-1 min-h-[120px] bg-gray-50 dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-3 text-gray-900 dark:text-white focus:outline-none focus:border-brand-gold/50 placeholder:text-gray-400 dark:placeholder:text-gray-600 transition-colors resize-none"
+                        className="w-full flex-1 min-h-[120px] bg-slate-50 dark:bg-black/50 border-2 border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-400 placeholder:text-slate-400 dark:placeholder:text-gray-500 transition-colors resize-none font-medium"
                       />
                     </div>
                   </div>
@@ -730,16 +727,16 @@ export const GatehouseDashboard: React.FC = () => {
                     <button 
                       onClick={() => handleRegisterAccess(false)}
                       disabled={isSubmitting}
-                      className={`flex-1 ${(actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? 'bg-amber-600 hover:bg-amber-500 border-amber-400' : 'bg-[#133825] hover:bg-[#1a4a31] dark:bg-[#1a4a31] dark:hover:bg-[#205b3c] border-brand-gold'} text-white font-extrabold py-4 px-6 rounded-xl transition-all flex items-center justify-center gap-2 tracking-wider border-2 shadow-lg cursor-pointer`}
+                      className={`flex-1 ${(actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 shadow-[0_0_25px_rgba(245,158,11,0.4)]' : 'bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 hover:from-emerald-400 hover:to-teal-400 text-slate-950 shadow-[0_0_30px_rgba(16,185,129,0.4)]'} font-black py-4 px-8 rounded-2xl transition-all flex items-center justify-center gap-2 tracking-wider uppercase text-sm cursor-pointer hover:scale-105 active:scale-95`}
                     >
-                      {isSubmitting ? 'Registrando...' : ((actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? '🚪 Registrar Salida del Club' : 'Registrar Ingreso')}
+                      {isSubmitting ? 'Registrando...' : ((actionType === 'EXIT' || selectedMember.currentLocation === 'INSIDE') ? '🚪 Registrar Salida del Club' : '✓ Registrar Ingreso al Club')}
                     </button>
                   ) : (
                     <>
                       <button 
                         onClick={() => handleRegisterAccess(false)}
                         disabled={isSubmitting}
-                        className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-xl shadow-lg transition-colors text-sm tracking-wide disabled:opacity-50"
+                        className="flex-1 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white font-black py-4 rounded-2xl shadow-[0_0_25px_rgba(244,63,94,0.4)] transition-all text-sm tracking-wide disabled:opacity-50 hover:scale-105 active:scale-95 cursor-pointer uppercase"
                       >
                         {isSubmitting ? 'Registrando...' : 'Registrar Denegación'}
                       </button>
@@ -753,10 +750,10 @@ export const GatehouseDashboard: React.FC = () => {
                           }, 50);
                         }}
                         disabled={isSubmitting}
-                        className="px-6 bg-amber-600 hover:bg-amber-500 border-2 border-amber-400 text-white font-black py-4 rounded-xl shadow-lg transition-all text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shrink-0"
+                        className="px-6 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-black py-4 rounded-2xl shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all text-xs uppercase tracking-wider flex items-center gap-2 cursor-pointer shrink-0 hover:scale-105 active:scale-95"
                         title="Registrar Salida de la persona aunque el pase/membresía esté denegado"
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-4 h-4 text-slate-950" />
                         <span>🚪 Registrar Salida</span>
                       </button>
 
@@ -767,7 +764,7 @@ export const GatehouseDashboard: React.FC = () => {
                           }
                         }}
                         disabled={isSubmitting}
-                        className="px-6 bg-transparent border border-red-500/50 text-red-400 hover:bg-red-500/10 font-bold py-4 rounded-xl transition-colors text-sm flex items-center gap-2"
+                        className="px-6 bg-transparent border-2 border-rose-500/50 text-rose-400 hover:bg-rose-500/15 font-black py-4 rounded-2xl transition-all text-xs flex items-center gap-2 hover:scale-105 active:scale-95 cursor-pointer uppercase"
                       >
                         <AlertCircle className="w-4 h-4" /> Forzar Acceso
                       </button>
@@ -779,49 +776,54 @@ export const GatehouseDashboard: React.FC = () => {
           ) : (
             <>
               {!selectedMember && searchResults.length === 0 && (
-            <div className="flex-1 flex flex-col items-center justify-center opacity-90 py-10 relative overflow-hidden">
-              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-brand-gold/10 via-transparent to-transparent rounded-full w-full h-full max-w-3xl mx-auto opacity-60 blur-3xl pointer-events-none"></div>
+            <div className="flex-1 flex flex-col items-center justify-center py-6 sm:py-10 relative overflow-hidden z-10">
               
-              <div className="w-full max-w-2xl glass-panel bg-[#133825] dark:bg-[#0a2014]/90 p-12 rounded-[2rem] relative z-10 flex flex-col items-center border-2 border-brand-gold shadow-[0_0_50px_rgba(19,56,37,0.3)] dark:shadow-[0_0_50px_rgba(10,32,20,0.5)] overflow-hidden">
+              {/* Standby Central Card Ultra-Lujo Verde Esmeralda */}
+              <div className="w-full max-w-3xl bg-white/95 dark:bg-gradient-to-br dark:from-[#092d1e] dark:via-[#051c12] dark:to-[#020e08] p-10 sm:p-14 rounded-[3rem] relative z-10 flex flex-col items-center border-2 border-emerald-500/40 dark:border-emerald-400/50 shadow-[0_0_60px_rgba(16,185,129,0.25),0_0_120px_rgba(16,185,129,0.12)] backdrop-blur-2xl overflow-hidden group hover:border-emerald-400 transition-all duration-500">
                 
+                {/* Radiant Cyber Sonar Rings */}
                 <div className="relative mb-10">
-                  <div className="absolute inset-0 border-2 border-brand-gold/80 shadow-[0_0_20px_rgba(204,161,75,0.6)] rounded-full animate-ping" style={{ animationDuration: '2.5s' }}></div>
-                  <div className="absolute inset-[-30px] border-2 border-brand-gold/60 shadow-[0_0_15px_rgba(204,161,75,0.4)] rounded-full animate-ping" style={{ animationDuration: '3.5s', animationDelay: '0.8s' }}></div>
-                  <div className="absolute inset-[-60px] border border-brand-gold/40 shadow-[0_0_10px_rgba(204,161,75,0.2)] rounded-full animate-ping" style={{ animationDuration: '4.5s', animationDelay: '1.6s' }}></div>
+                  <div className="absolute inset-0 border-2 border-emerald-400/50 shadow-[0_0_30px_rgba(16,185,129,0.5)] rounded-full animate-ping" style={{ animationDuration: '2.5s' }}></div>
+                  <div className="absolute inset-[-25px] border-2 border-brand-gold/60 shadow-[0_0_25px_rgba(234,179,8,0.5)] rounded-full animate-ping" style={{ animationDuration: '3.5s', animationDelay: '0.8s' }}></div>
+                  <div className="absolute inset-[-50px] border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.3)] rounded-full animate-ping" style={{ animationDuration: '4.5s', animationDelay: '1.6s' }}></div>
                   
-                  <div className="w-40 h-40 bg-white/5 backdrop-blur-md border border-brand-gold/40 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_60px_rgba(212,175,55,0.2)]">
+                  <div className="w-44 h-44 bg-gradient-to-br from-emerald-500/20 via-black/60 to-brand-gold/20 backdrop-blur-xl border-2 border-emerald-400/60 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_50px_rgba(16,185,129,0.4)] group-hover:scale-105 transition-transform duration-500">
                     <CrestLogo size="lg" />
                   </div>
                 </div>
+
+                <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-800 dark:text-emerald-300 text-xs font-black uppercase tracking-widest mb-4 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  Sistema de Seguridad & Garita Activo
+                </div>
                 
-                <h2 className="text-3xl md:text-4xl font-bold text-brand-gold tracking-[0.1em] mb-6 drop-shadow-2xl text-center">
+                <h2 className="text-3xl sm:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 tracking-[0.08em] mb-4 text-center serif-brand drop-shadow-[0_0_20px_rgba(234,179,8,0.4)]">
                   PUNTO DE CONTROL INGRESO
                 </h2>
                 
-                <div className="h-[1px] w-48 bg-gradient-to-r from-transparent via-brand-gold/40 to-transparent mb-8"></div>
+                <div className="h-1 w-32 bg-gradient-to-r from-transparent via-emerald-400 to-transparent mb-6 rounded-full"></div>
                 
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6 text-center max-w-md relative overflow-hidden group mb-6">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-brand-gold/30 to-transparent transform -translate-x-full group-hover:animate-[shimmer_2s_infinite]"></div>
-                  <p className="text-white/80 text-sm font-light tracking-wide leading-relaxed">
-                    Sistema de seguridad activo. Ingrese el <span className="text-brand-gold font-medium">ID</span>, <span className="text-brand-gold font-medium">Nombre</span> o <span className="text-brand-gold font-medium">Placa</span> del vehículo para validar el acceso.
+                <div className="bg-slate-100/80 dark:bg-black/50 backdrop-blur-md border border-emerald-500/30 rounded-2xl p-5 text-center max-w-lg relative overflow-hidden shadow-inner mb-8">
+                  <p className="text-slate-700 dark:text-gray-200 text-sm font-medium leading-relaxed">
+                    Sistema de seguridad activo en tiempo real. Ingrese el <strong className="text-brand-gold">Nº Carnet / CI</strong>, <strong className="text-brand-gold">Nombre</strong> o <strong className="text-brand-gold">Placa</strong> del vehículo en la barra superior para validar el acceso al Club.
                   </p>
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-4">
+                <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full max-w-md">
                   <button
                     onClick={() => setIsHistoryModalOpen(true)}
-                    className="w-72 h-[52px] whitespace-nowrap px-6 bg-[#133825]/40 hover:bg-brand-gold/10 border border-brand-gold/30 rounded-xl text-white/90 hover:text-white font-medium tracking-wide transition-all shadow-[0_0_15px_rgba(204,161,75,0.05)] hover:shadow-[0_0_25px_rgba(204,161,75,0.2)] flex items-center justify-center gap-3"
+                    className="flex-1 w-full sm:w-auto h-13 px-6 bg-emerald-500/15 hover:bg-emerald-500/25 border-2 border-emerald-500/40 hover:border-emerald-400 text-emerald-800 dark:text-emerald-300 font-black text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:shadow-[0_0_30px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
                   >
-                    <Clock className="w-4 h-4 text-brand-gold opacity-80" />
-                    Ver Historial por Socio
+                    <Clock className="w-4 h-4 text-emerald-400" />
+                    Historial por Socio
                   </button>
 
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="w-72 h-[52px] whitespace-nowrap px-6 bg-[#133825]/40 hover:bg-brand-gold/10 border border-brand-gold/30 rounded-xl text-white/90 hover:text-white font-medium tracking-wide transition-all shadow-[0_0_15px_rgba(204,161,75,0.05)] hover:shadow-[0_0_25px_rgba(204,161,75,0.2)] flex items-center justify-center gap-3"
+                    className="flex-1 w-full sm:w-auto h-13 px-6 bg-brand-gold/15 hover:bg-brand-gold/25 border-2 border-brand-gold/40 hover:border-brand-gold text-amber-900 dark:text-brand-gold font-black text-xs uppercase tracking-wider rounded-2xl transition-all duration-300 shadow-[0_0_20px_rgba(234,179,8,0.2)] hover:shadow-[0_0_30px_rgba(234,179,8,0.4)] hover:scale-105 active:scale-95 flex items-center justify-center gap-2.5 cursor-pointer"
                   >
-                    <Edit2 className="w-4 h-4 text-brand-gold opacity-80" />
-                    Editar Accesos Recientes
+                    <Edit2 className="w-4 h-4 text-brand-gold" />
+                    Editar Recientes
                   </button>
                 </div>
                 

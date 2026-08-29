@@ -5,6 +5,7 @@ import { AppDispatch, RootState } from '@store/store';
 import { fetchCurrentProfile } from '@store/membersSlice';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
+import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { 
   Users, 
   CalendarCheck, 
@@ -177,6 +178,8 @@ export const MemberDashboard: React.FC = () => {
               <div className="hidden sm:block">
                 <LanguageToggle />
               </div>
+
+              <ThemeToggle />
 
               <button 
                 onClick={handleLogout}
