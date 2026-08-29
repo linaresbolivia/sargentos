@@ -14,7 +14,7 @@ export class RouteSheetService {
     // 1. Obtener punto de corte inicial configurado para el año si existe
     let initialCutoff = 1;
     try {
-      const setting = await this.prisma.corrSetting.findUnique({
+      const setting = await (this.prisma as any).corrSetting.findUnique({
         where: { key: 'GLOBAL_SETTINGS' },
       });
       if (setting && setting.value) {
@@ -311,7 +311,7 @@ export class RouteSheetService {
       });
 
       // 2. Actualizar estado y ubicación de archivo
-      return tx.routeSheet.update({
+      return (tx.routeSheet as any).update({
         where: { id },
         data: {
           status: 'CONCLUIDO',

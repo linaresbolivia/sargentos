@@ -39,7 +39,7 @@ export class CorrespondenceController {
   private chatService: CorrespondenceChatService;
   private emailService: CorrespondenceEmailService;
 
-  constructor(private prisma: PrismaClient) {
+  constructor(private prisma: PrismaClient = new PrismaClient()) {
     this.router = Router();
     this.routeSheetService = new RouteSheetService(prisma);
     this.chatService = new CorrespondenceChatService(prisma);
@@ -411,83 +411,6 @@ export class CorrespondenceController {
     }
   }
 
-  // 9. Get Settings & Configuration
-  public async getSettings(_req: Request, res: Response) {
-    try {
-      const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
-      let configData: any = null;
-
-      if (fs.existsSync(configFilePath)) {
-        configData = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
-      }
-
-      const defaultSettings = {
-        areas: [
-          { id: '1', name: 'ALMACÉN', manager: 'Maria del Pilar Atanacio', position: 'Encargada de Almacén', canReceiveExternal: false },
-          { id: '2', name: 'SECRETARÍA GENERAL', manager: 'Secretaría', position: 'Secretaría de Gerencia General', canReceiveExternal: true },
-          { id: '3', name: 'GERENCIA GENERAL', manager: 'MSc. Tito N. Tornero Rodríguez', position: 'Gerente General', canReceiveExternal: true },
-          { id: '4', name: 'CONTRATACIONES Y ADQUISICIONES', manager: 'Lic. Ian Benjamín Pinto Morales', position: 'Responsable de Contrataciones', canReceiveExternal: false },
-          { id: '5', name: 'TESORERÍA Y FINANZAS', manager: 'Lic. Meneses', position: 'Jefe de Tesorería', canReceiveExternal: false },
-          { id: '6', name: 'COMISIÓN HÍPICA', manager: 'Capitanía Hípica', position: 'Responsable de Cuadras y Establos', canReceiveExternal: true },
-          { id: '7', name: 'CAPITANÍA DEPORTES / TENIS', manager: 'Capitán de Deportes', position: 'Coordinador Deportivo', canReceiveExternal: true },
-          { id: '8', name: 'ASESORÍA LEGAL', manager: 'Dr. Asesor Jurídico', position: 'Asesor Legal', canReceiveExternal: true },
-          { id: '9', name: 'MANTENIMIENTO Y OBRAS', manager: 'Ing. de Mantenimiento', position: 'Jefe de Infraestructura', canReceiveExternal: false },
-          { id: '10', name: 'DIRECTORIO / PRESIDENCIA', manager: 'Directorio CHLS', position: 'Junta Directiva', canReceiveExternal: true },
-        ],
-        stamps: [
-          'FAVOR SU ATENCIÓN',
-          'FAVOR REALIZAR EL PAGO',
-          'PARA INFORME TÉCNICO / LEGAL',
-          'PARA SU CONOCIMIENTO Y FINES',
-          'PARA VISTO BUENO / AUTORIZACIÓN',
-          'OBSERVADO / SOLICITAR SUBSANACIÓN',
-          'TRÁMITE CONCLUIDO / ARCHIVAR',
-        ],
-        routingMode: 'VIA_SECRETARIA_GERENCIA', // 'LIBRE' o 'VIA_SECRETARIA_GERENCIA'
-        defaultSlaDays: 5,
-        socioSubsanacionDays: 10,
-      };
-
-      return res.status(200).json({
-        success: true,
-        data: configData || defaultSettings,
-      });
-    } catch (error: any) {
-      logger.error('Error getting correspondence settings:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Error al obtener la configuración',
-        error: error.message,
-      });
-    }
-  }
-
-  // 10. Save Settings & Configuration
-  public async saveSettings(req: Request, res: Response) {
-    try {
-      const dataDir = path.join(process.cwd(), 'data');
-      if (!fs.existsSync(dataDir)) {
-        fs.mkdirSync(dataDir, { recursive: true });
-      }
-
-      const configFilePath = path.join(dataDir, 'correspondence_settings.json');
-      fs.writeFileSync(configFilePath, JSON.stringify(req.body, null, 2), 'utf8');
-
-      return res.status(200).json({
-        success: true,
-        message: 'Configuración y parámetros de correspondencia guardados exitosamente',
-        data: req.body,
-      });
-    } catch (error: any) {
-      logger.error('Error saving correspondence settings:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Error al guardar la configuración',
-        error: error.message,
-      });
-    }
-  }
-
   // 11. Get Internal Chat Messages
   public async getChatMessages(req: Request, res: Response) {
     try {
@@ -657,7 +580,7 @@ export class CorrespondenceController {
   // 16. Get Global Settings (Areas, Stamps, Routing, SMTP Email)
   public async getSettings(_req: Request, res: Response) {
     try {
-      const setting = await this.prisma.corrSetting.findUnique({
+      const setting = await (this.prisma as any).corrSetting.findUnique({
         where: { key: 'GLOBAL_SETTINGS' },
       });
 
@@ -724,7 +647,7 @@ export class CorrespondenceController {
     try {
       const payload = req.body;
 
-      const saved = await this.prisma.corrSetting.upsert({
+      const saved = await (this.prisma as any).corrSetting.upsert({
         where: { key: 'GLOBAL_SETTINGS' },
         create: {
           key: 'GLOBAL_SETTINGS',

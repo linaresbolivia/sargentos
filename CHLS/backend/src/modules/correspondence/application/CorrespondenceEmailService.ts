@@ -24,7 +24,7 @@ export class CorrespondenceEmailService {
    */
   public async getSmtpConfig(): Promise<SmtpConfig> {
     try {
-      const setting = await this.prisma.corrSetting.findUnique({
+      const setting = await (this.prisma as any).corrSetting.findUnique({
         where: { key: 'GLOBAL_SETTINGS' },
       });
 

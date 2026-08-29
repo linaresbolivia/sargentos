@@ -478,13 +478,10 @@ export const SuperAdminDashboard = () => {
             <BackButton to="/" title="Volver al Portal Principal" />
             <CrestLogo size="sm" />
             <div>
-              <h1 className="text-2xl sm:text-3xl font-black text-white flex items-center gap-2.5">
-                <span>Gestión de Usuarios & Perfiles</span>
-                <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
-                  SUPERADMIN 360°
-                </span>
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                Gestión de Usuarios & Perfiles
               </h1>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">
+              <p className="text-xs text-slate-400 font-medium mt-1">
                 Gobierno de personal administrativo, jefaturas de área, portería y padrón de socios del Club.
               </p>
             </div>
@@ -528,55 +525,61 @@ export const SuperAdminDashboard = () => {
           </div>
         </header>
 
-        {/* 5 KPI Metric Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-xs">
-            <div className="p-3 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 shrink-0">
+        {/* 5 KPI Metric Cards con Resplandor Vibrante acorde a su color */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
+          
+          {/* 1. Total Usuarios - Azul Radiante */}
+          <div className="bg-gradient-to-br from-blue-950/40 via-slate-900/80 to-slate-950 border border-blue-500/30 hover:border-blue-400/60 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-md shadow-[0_0_25px_rgba(59,130,246,0.18)] hover:shadow-[0_0_35px_rgba(59,130,246,0.32)] transition-all duration-300 group hover:-translate-y-0.5">
+            <div className="p-3 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-400 shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.35)] group-hover:scale-105 transition-transform">
               <Users className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{metrics.total}</div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Usuarios</div>
+              <div className="text-2xl font-black text-white group-hover:text-blue-200 transition-colors">{metrics.total}</div>
+              <div className="text-[11px] font-bold text-blue-300/80 uppercase tracking-wider">Total Usuarios</div>
             </div>
           </div>
 
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-xs">
-            <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 shrink-0">
+          {/* 2. Personal / Staff - Verde Esmeralda Radiante */}
+          <div className="bg-gradient-to-br from-emerald-950/40 via-slate-900/80 to-slate-950 border border-emerald-500/30 hover:border-emerald-400/60 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-md shadow-[0_0_25px_rgba(16,185,129,0.18)] hover:shadow-[0_0_35px_rgba(16,185,129,0.32)] transition-all duration-300 group hover:-translate-y-0.5">
+            <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(16,185,129,0.35)] group-hover:scale-105 transition-transform">
               <Briefcase className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{metrics.staff}</div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Personal / Staff</div>
+              <div className="text-2xl font-black text-white group-hover:text-emerald-200 transition-colors">{metrics.staff}</div>
+              <div className="text-[11px] font-bold text-emerald-300/80 uppercase tracking-wider">Personal / Staff</div>
             </div>
           </div>
 
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-xs">
-            <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/30 text-brand-gold shrink-0">
+          {/* 3. Socios del Club - Oro Lujo Radiante */}
+          <div className="bg-gradient-to-br from-amber-950/40 via-slate-900/80 to-slate-950 border border-amber-500/35 hover:border-amber-400/70 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-md shadow-[0_0_25px_rgba(212,175,55,0.22)] hover:shadow-[0_0_35px_rgba(212,175,55,0.4)] transition-all duration-300 group hover:-translate-y-0.5">
+            <div className="p-3 rounded-xl bg-amber-500/20 border border-amber-500/40 text-brand-gold shrink-0 shadow-[0_0_15px_rgba(212,175,55,0.4)] group-hover:scale-105 transition-transform">
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{metrics.members}</div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Socios del Club</div>
+              <div className="text-2xl font-black text-white group-hover:text-amber-200 transition-colors">{metrics.members}</div>
+              <div className="text-[11px] font-bold text-amber-300/80 uppercase tracking-wider">Socios del Club</div>
             </div>
           </div>
 
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-xs">
-            <div className="p-3 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 shrink-0">
+          {/* 4. SuperAdmins TI - Púrpura Real Radiante */}
+          <div className="bg-gradient-to-br from-purple-950/40 via-slate-900/80 to-slate-950 border border-purple-500/30 hover:border-purple-400/60 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-md shadow-[0_0_25px_rgba(168,85,247,0.18)] hover:shadow-[0_0_35px_rgba(168,85,247,0.32)] transition-all duration-300 group hover:-translate-y-0.5">
+            <div className="p-3 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-400 shrink-0 shadow-[0_0_15px_rgba(168,85,247,0.35)] group-hover:scale-105 transition-transform">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{metrics.superAdmins}</div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">SuperAdmins TI</div>
+              <div className="text-2xl font-black text-white group-hover:text-purple-200 transition-colors">{metrics.superAdmins}</div>
+              <div className="text-[11px] font-bold text-purple-300/80 uppercase tracking-wider">SuperAdmins TI</div>
             </div>
           </div>
 
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-xs col-span-2 sm:col-span-1">
-            <div className="p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-400 shrink-0">
+          {/* 5. Inactivos / Bloq. - Carmesí / Rose Radiante */}
+          <div className="bg-gradient-to-br from-rose-950/40 via-slate-900/80 to-slate-950 border border-rose-500/30 hover:border-rose-400/60 rounded-2xl p-4 flex items-center gap-3.5 backdrop-blur-md shadow-[0_0_25px_rgba(244,63,94,0.18)] hover:shadow-[0_0_35px_rgba(244,63,94,0.32)] transition-all duration-300 group hover:-translate-y-0.5 col-span-2 sm:col-span-1">
+            <div className="p-3 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-400 shrink-0 shadow-[0_0_15px_rgba(244,63,94,0.35)] group-hover:scale-105 transition-transform">
               <XCircle className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-2xl font-black text-white">{metrics.inactive}</div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Inactivos / Bloq.</div>
+              <div className="text-2xl font-black text-white group-hover:text-rose-200 transition-colors">{metrics.inactive}</div>
+              <div className="text-[11px] font-bold text-rose-300/80 uppercase tracking-wider">Inactivos / Bloq.</div>
             </div>
           </div>
         </div>
