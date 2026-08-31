@@ -1,12 +1,14 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { api } from '@config/api';
-import { RouteSheetItem, CorrespondenceStats } from '../modules/correspondence/types/correspondence.types';
+import { RouteSheetItem, CorrespondenceStats, CorrespondenceWorkflow } from '../modules/correspondence/types/correspondence.types';
 
 interface CorrespondenceState {
   items: RouteSheetItem[];
   total: number;
   selectedItem: RouteSheetItem | null;
   stats: CorrespondenceStats | null;
+  workflow: CorrespondenceWorkflow | null;
+  settings: any | null;
   isLoading: boolean;
   isSaving: boolean;
   error: string | null;
@@ -23,6 +25,8 @@ const initialState: CorrespondenceState = {
   total: 0,
   selectedItem: null,
   stats: null,
+  workflow: null,
+  settings: null,
   isLoading: false,
   isSaving: false,
   error: null,
@@ -222,6 +226,74 @@ export const uploadRouteSheetDocuments = createAsyncThunk(
   }
 );
 
+export const notifySlaAlert = createAsyncThunk(
+  'correspondence/notifySlaAlert',
+  async (
+    {
+      routeSheetId,
+      channel,
+      note,
+      customPhone,
+      customEmail,
+    }: {
+      routeSheetId: string;
+      channel: 'WHATSAPP' | 'EMAIL' | 'BOTH';
+      note?: string;
+      customPhone?: string;
+      customEmail?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/notify-sla`, {
+        channel,
+        note,
+        customPhone,
+        customEmail,
+      });
+      return response.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al emitir alerta SLA');
+    }
+  }
+);
+
+export const fetchWorkflowSettings = createAsyncThunk(
+  'correspondence/fetchWorkflowSettings',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/correspondence/settings');
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al obtener organigrama y flujos');
+    }
+  }
+);
+
+export const saveWorkflowSettings = createAsyncThunk(
+  'correspondence/saveWorkflowSettings',
+  async (payload: any, { rejectWithValue }) => {
+    try {
+      const response = await api.post('/correspondence/settings', payload);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al guardar organigrama');
+    }
+  }
+);
+
+export const fetchSlaSummary = createAsyncThunk(
+  'correspondence/fetchSlaSummary',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await api.get('/correspondence/sla-summary');
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al obtener resumen SLA');
+    }
+  }
+);
+
 export const correspondenceSlice = createSlice({
   name: 'correspondence',
   initialState,
@@ -264,8 +336,36 @@ export const correspondenceSlice = createSlice({
         }
       }
     },
+    updateWorkflowLocal: (state, action: PayloadAction<CorrespondenceWorkflow>) => {
+      state.workflow = action.payload;
+    },
   },
   extraReducers: (builder) => {
+    // fetchWorkflowSettings
+    builder
+      .addCase(fetchWorkflowSettings.fulfilled, (state, action) => {
+        state.settings = action.payload;
+        if (action.payload?.workflow) {
+          state.workflow = action.payload.workflow;
+        }
+      });
+
+    // saveWorkflowSettings
+    builder
+      .addCase(saveWorkflowSettings.pending, (state) => {
+        state.isSaving = true;
+      })
+      .addCase(saveWorkflowSettings.fulfilled, (state, action) => {
+        state.isSaving = false;
+        state.settings = action.payload;
+        if (action.payload?.workflow) {
+          state.workflow = action.payload.workflow;
+        }
+      })
+      .addCase(saveWorkflowSettings.rejected, (state) => {
+        state.isSaving = false;
+      });
+
     // fetchRouteSheets
     builder
       .addCase(fetchRouteSheets.pending, (state) => {
@@ -311,11 +411,10 @@ export const correspondenceSlice = createSlice({
     // addMovement
     builder
       .addCase(addMovement.fulfilled, (state, action) => {
-        const { routeSheet } = action.payload;
-        state.selectedItem = routeSheet;
-        const index = state.items.findIndex((i) => i.id === routeSheet.id);
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
         if (index !== -1) {
-          state.items[index] = routeSheet;
+          state.items[index] = action.payload;
         }
       });
 
@@ -369,6 +468,7 @@ export const {
   setSelectedItem,
   handleRealtimeCreated,
   handleRealtimeUpdated,
+  updateWorkflowLocal,
 } = correspondenceSlice.actions;
 
 export default correspondenceSlice.reducer;

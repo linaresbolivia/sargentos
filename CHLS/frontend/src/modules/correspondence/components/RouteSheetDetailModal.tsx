@@ -7,6 +7,8 @@ import { PrintableRouteSheet } from './PrintableRouteSheet';
 import { AddMovementModal } from './AddMovementModal';
 import { MergeRouteSheetsModal } from './MergeRouteSheetsModal';
 import { ArchiveRouteSheetModal } from './ArchiveRouteSheetModal';
+import { CorrespondenceTimelineView } from './CorrespondenceTimelineView';
+import { SlaUrgencyAlertModal } from './SlaUrgencyAlertModal';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   X,
@@ -34,6 +36,8 @@ import {
   FileCheck,
   Image as ImageIcon,
   FileSpreadsheet,
+  Layers,
+  Bell,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -45,10 +49,12 @@ interface RouteSheetDetailModalProps {
 
 export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ item, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const [activeTab, setActiveTab] = useState<'TIMELINE' | 'MOVEMENTS'>('TIMELINE');
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAddMovementModal, setShowAddMovementModal] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
+  const [showSlaModal, setShowSlaModal] = useState(false);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
   if (!item) return null;
@@ -165,9 +171,60 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
             </div>
           </div>
 
+          {/* View Mode Tabs & Actions Bar */}
+          <div className="px-6 sm:px-8 py-2.5 bg-slate-100/70 dark:bg-black/40 border-b border-slate-200 dark:border-white/5 flex justify-between items-center flex-wrap gap-2">
+            <div className="flex items-center gap-2 bg-slate-200/80 dark:bg-white/10 p-1 rounded-2xl">
+              <button
+                type="button"
+                onClick={() => setActiveTab('TIMELINE')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'TIMELINE'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>🧭 Timeline Visual 360°</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('MOVEMENTS')}
+                className={`px-4 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 cursor-pointer ${
+                  activeTab === 'MOVEMENTS'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>📋 Proveídos & Expediente Digital ({movements.length})</span>
+              </button>
+            </div>
+
+            {/* Quick SLA Trigger Button */}
+            {item.status !== 'CONCLUIDO' && (
+              <button
+                type="button"
+                onClick={() => setShowSlaModal(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 text-red-600 dark:text-red-400 border border-red-500/30 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5 animate-pulse" />
+                <span>Alertar Vencimiento SLA</span>
+              </button>
+            )}
+          </div>
+
           {/* Modal Content */}
           <div className="p-6 sm:p-8 overflow-y-auto space-y-6 flex-1 text-sm">
             
+            {activeTab === 'TIMELINE' ? (
+              <CorrespondenceTimelineView
+                item={item}
+                onOpenSlaModal={() => setShowSlaModal(true)}
+                onAddMovement={() => setShowAddMovementModal(true)}
+              />
+            ) : (
+              <>
             {/* If Archived: Show Archive Location Banner */}
             {item.archiveLocation && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 to-emerald-500/15 border-2 border-emerald-500/40 flex items-start gap-3.5 shadow-md animate-fadeIn">
@@ -490,6 +547,9 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
               )}
             </div>
 
+            </>
+            )}
+
           </div>
 
           {/* Footer Bar */}
@@ -548,6 +608,15 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
         <ArchiveRouteSheetModal
           isOpen={showArchiveModal}
           onClose={() => setShowArchiveModal(false)}
+          item={item}
+        />
+      )}
+
+      {/* Submodal for SLA Urgency Alert */}
+      {showSlaModal && (
+        <SlaUrgencyAlertModal
+          isOpen={showSlaModal}
+          onClose={() => setShowSlaModal(false)}
           item={item}
         />
       )}

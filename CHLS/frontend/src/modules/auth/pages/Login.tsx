@@ -68,15 +68,16 @@ export const Login: React.FC = () => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5 relative">
-            <label className="text-xs font-medium text-gray-300 px-1">{t('login.emailLabel')}</label>
+            <label className="text-xs font-medium text-gray-300 px-1">Usuario / Área / Correo Institucional</label>
             <div className="relative flex items-center">
               <Mail size={16} className="absolute left-3 text-gray-500" />
               <input
-                type="email"
-                placeholder={t('login.emailPlaceholder')}
+                type="text"
+                placeholder="Ej. tecnologia, gerencia, caja..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full glass-input pl-10"
+                className="w-full glass-input pl-10 text-white placeholder-gray-400"
+                autoComplete="username"
                 required
               />
             </div>

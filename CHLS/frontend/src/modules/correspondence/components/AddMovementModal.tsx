@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@store/store';
+import React, { useState, useMemo } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@store/store';
 import { addMovement, uploadRouteSheetDocuments } from '@store/correspondenceSlice';
+import { DigitalSignaturePad } from './DigitalSignaturePad';
 import {
   X,
   Send,
@@ -66,6 +67,21 @@ const QUICK_STAMPS = [
 
 export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onClose, item }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const workflow = useSelector((state: RootState) => state.correspondence.workflow);
+
+  // Compute recommended destinations from active organigram & workflow rules
+  const recommendedDestinations = useMemo(() => {
+    if (!workflow || !workflow.nodes || !workflow.edges) return [];
+    const currentAreaUpper = item.currentArea.toUpperCase();
+    const currentNode = workflow.nodes.find(
+      (n) => n.areaKey?.toUpperCase() === currentAreaUpper || n.title.toUpperCase().includes(currentAreaUpper)
+    );
+    if (!currentNode) return [];
+
+    const targetEdges = workflow.edges.filter((e) => e.source === currentNode.id);
+    const targetNodeIds = targetEdges.map((e) => e.target);
+    return workflow.nodes.filter((n) => targetNodeIds.includes(n.id));
+  }, [workflow, item.currentArea]);
 
   const [targetArea, setTargetArea] = useState('TESORERÍA Y FINANZAS');
   const [targetPersonName, setTargetPersonName] = useState(
@@ -76,6 +92,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   const [quickStamp, setQuickStamp] = useState('FAVOR REALIZAR EL PAGO');
   const [instruction, setInstruction] = useState('Favor realizar el pago según presupuesto adjunto.');
   const [newStatus, setNewStatus] = useState<string>('DERIVADO');
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [movementFiles, setMovementFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -126,6 +143,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
             ccPersons: ccPersonsText.trim() || null,
             instruction: instruction.trim(),
             quickStamp,
+            signatureUrl,
             newStatus,
           },
         })
@@ -206,6 +224,47 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                 </span>
 
                 <div className="space-y-3">
+                  {/* Recommended Destinations from Organigram */}
+                  {recommendedDestinations.length > 0 && (
+                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-1.5 animate-fadeIn">
+                      <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
+                        <Sparkles className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
+                        <span>Rutas Jerárquicas Recomendadas (Organigrama):</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {recommendedDestinations.map((dest) => {
+                          const areaKey = dest.areaKey || dest.title.toUpperCase();
+                          const isSelected = targetArea.toUpperCase() === areaKey.toUpperCase();
+                          return (
+                            <button
+                              key={dest.id}
+                              type="button"
+                              onClick={() => {
+                                setTargetArea(areaKey);
+                                if (dest.manager) {
+                                  setTargetPersonName(dest.manager);
+                                }
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30 scale-105'
+                                  : 'bg-white dark:bg-black/40 text-slate-800 dark:text-emerald-300 border-slate-300 dark:border-emerald-500/30 hover:bg-emerald-500/15'
+                              }`}
+                            >
+                              <ArrowRight className="w-3 h-3 text-brand-gold" />
+                              <span>{dest.title}</span>
+                              {dest.slaHours && (
+                                <span className="text-[10px] font-mono opacity-80">
+                                  ({dest.slaHours}h)
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
                       Área o Departamento de Destino
@@ -423,6 +482,15 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   <option value="CONCLUIDO">CONCLUIDO (Atendido y finalizado)</option>
                 </select>
               </div>
+
+              {/* 6. Firma Digital & Sello Institucional */}
+              <DigitalSignaturePad
+                signerName={item.currentArea}
+                signerArea={item.currentArea}
+                signerPosition={AREA_RESPONSIBLES[item.currentArea]?.title}
+                onSignatureChange={setSignatureUrl}
+                initialSignature={signatureUrl}
+              />
 
             </div>
 

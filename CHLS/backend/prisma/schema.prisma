@@ -1035,6 +1035,8 @@ model CorrChatMessage {
   fileName       String?     // Nombre original del archivo (ej. Cotizacion_Arena.pdf)
   fileType       String?     // application/pdf, image/png, etc.
   fileSize       Int?        // Tamaño en bytes
+  status         String      @default("SENT") // SENT (1 palomita), DELIVERED (2 palomitas grises), READ (2 palomitas celestes)
+  readAt         DateTime?
   createdAt      DateTime    @default(now())
 
   @@map("corr_chat_messages")

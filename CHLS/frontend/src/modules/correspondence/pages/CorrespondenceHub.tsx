@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
@@ -20,6 +20,8 @@ import { PrintableRouteSheet } from '../components/PrintableRouteSheet';
 import { CorrespondenceConfigModal } from '../components/CorrespondenceConfigModal';
 import { CorrespondenceInternalChatDrawer } from '../components/CorrespondenceInternalChatDrawer';
 import { CorrespondenceReportExportModal } from '../components/CorrespondenceReportExportModal';
+import { ChlsWorkflowCanvasModal } from '../components/ChlsWorkflowCanvasModal';
+import toast from 'react-hot-toast';
 import {
   Search,
   Plus,
@@ -49,6 +51,8 @@ import {
   MapPin,
   FileSpreadsheet,
   Calendar,
+  Eye,
+  GitBranch,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -76,13 +80,18 @@ export const CorrespondenceHub: React.FC = () => {
   const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem, selectedGestion } = useSelector(
     (state: RootState) => state.correspondence
   );
+  const currentUser = useSelector((state: RootState) => state.auth.user);
 
   const [currentPerspective, setCurrentPerspective] = useState('SECRETARIA_GENERAL');
+  const [slaFilter, setSlaFilter] = useState<'ALL' | 'OVERDUE' | 'WARNING' | 'ON_TIME'>('ALL');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
+  const [channelUnreadCounts, setChannelUnreadCounts] = useState<Record<string, number>>({});
   const [printableItem, setPrintableItem] = useState<RouteSheetItem | null>(null);
 
   const handleSelectRouteSheetByCode = (hrCode: string) => {
@@ -108,12 +117,21 @@ export const CorrespondenceHub: React.FC = () => {
     }
   }, [urlCode, items, dispatch]);
 
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   useEffect(() => {
     dispatch(fetchRouteSheets({ year: selectedGestion === 'ALL' ? undefined : selectedGestion }));
     dispatch(fetchCorrespondenceStats());
 
     // Socket.io Realtime Listener
-    const socket = io(window.location.origin || 'http://localhost:5000');
+    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socket = io(socketUrl, {
+      withCredentials: true,
+      transports: ['websocket', 'polling'],
+    });
     socket.on('correspondence:created', (data: RouteSheetItem) => {
       dispatch(handleRealtimeCreated(data));
       dispatch(fetchCorrespondenceStats());
@@ -122,6 +140,76 @@ export const CorrespondenceHub: React.FC = () => {
     socket.on('correspondence:updated', (data: any) => {
       dispatch(handleRealtimeUpdated(data));
       dispatch(fetchCorrespondenceStats());
+    });
+
+    // Realtime Internal Chat Notification & WhatsApp Global Counter
+    socket.on('correspondence:chat:message', (newMsg: any) => {
+      const user = currentUserRef.current;
+      const currentUName = (
+        (user as any)?.username ||
+        user?.email?.split('@')[0] ||
+        ''
+      ).toLowerCase();
+
+      const isMe =
+        (user?.id && user.id === newMsg.senderUserId) ||
+        (currentUName && currentUName === newMsg.senderUserId?.toLowerCase()) ||
+        (currentUName && currentUName === newMsg.senderName?.toLowerCase()) ||
+        (user?.email && user.email.toLowerCase().startsWith(newMsg.senderUserId?.toLowerCase()));
+
+      // If the message was sent by the current user, NEVER show unread bubble or notification
+      if (isMe) return;
+
+      setUnreadChatCount((prev) => prev + 1);
+      setChannelUnreadCounts((prev) => ({
+        ...prev,
+        [newMsg.channel || 'GENERAL']: (prev[newMsg.channel || 'GENERAL'] || 0) + 1,
+      }));
+
+      // WhatsApp style popup toast
+      toast(
+        (t) => (
+          <div
+            onClick={() => {
+              setIsChatOpen(true);
+              setUnreadChatCount(0);
+              toast.dismiss(t.id);
+            }}
+            className="flex items-start gap-3 cursor-pointer select-none"
+          >
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[#128C7E] to-[#25D366] text-slate-950 flex items-center justify-center font-black text-sm shrink-0 shadow-[0_0_15px_rgba(37,211,102,0.6)]">
+              💬
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-black text-xs text-emerald-400 truncate">
+                  {newMsg.senderName} ({newMsg.senderArea})
+                </span>
+                <span className="text-[10px] text-gray-400 font-mono">Ahora</span>
+              </div>
+              <p className="text-xs text-white line-clamp-2 mt-0.5 font-medium">
+                {newMsg.message || (newMsg.fileName ? `📎 Adjuntó: ${newMsg.fileName}` : 'Nuevo mensaje de coordinación')}
+              </p>
+              {newMsg.routeSheetCode && (
+                <span className="inline-block mt-1 text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono">
+                  Expediente: {newMsg.routeSheetCode}
+                </span>
+              )}
+            </div>
+          </div>
+        ),
+        {
+          duration: 5000,
+          position: 'top-right',
+          style: {
+            background: '#111b21',
+            color: '#fff',
+            border: '2px solid rgba(37,211,102,0.6)',
+            borderRadius: '18px',
+            boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
+          },
+        }
+      );
     });
 
     return () => {
@@ -150,22 +238,23 @@ export const CorrespondenceHub: React.FC = () => {
       )
   ).length;
 
-  const archiveCount = items.filter(
-    (i) => i.status === 'CONCLUIDO' || i.status === 'ANULADO' || Boolean(i.archiveLocation)
+  const archivedCount = items.filter(
+    (i) => i.status === 'CONCLUIDO' || i.status === 'ANULADO' || i.currentArea === 'ARCHIVO_CENTRAL' || !!i.archiveLocation
   ).length;
 
-  const totalCount = items.length;
+  const allCount = items.length;
 
   const MAILBOX_TABS = [
     { id: 'INBOX', label: 'Bandeja de Entrada', icon: Inbox, count: inboxCount, desc: 'En mi despacho / Pendientes' },
     { id: 'OUTBOX', label: 'Bandeja de Salida', icon: SendIcon, count: outboxCount, desc: 'Derivados a otras áreas' },
     { id: 'COPIES', label: 'Copias C.C.', icon: FileText, count: copiesCount, desc: 'Conocimiento e informativas' },
-    { id: 'ARCHIVED', label: 'Archivo Central', icon: FolderArchive, count: archiveCount, desc: 'Custodia definitiva' },
-    { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: totalCount, desc: 'Supervisión institucional' },
+    { id: 'ARCHIVED', label: 'Archivo Central', icon: FolderArchive, count: archivedCount, desc: 'Custodia definitiva' },
+    { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: allCount, desc: 'Supervisión institucional' },
   ];
 
   // Client-side Filter by Active Mailbox
   const filteredItems = items.filter((item) => {
+    // 1. Mailbox Filter
     if (activeMailbox === 'INBOX') {
       if (item.currentArea !== currentPerspective || item.status === 'CONCLUIDO' || item.status === 'ANULADO') {
         return false;
@@ -183,19 +272,25 @@ export const CorrespondenceHub: React.FC = () => {
       );
       if (!hasCopy) return false;
     } else if (activeMailbox === 'ARCHIVED') {
-      if (item.status !== 'CONCLUIDO' && item.status !== 'ANULADO' && !item.archiveLocation) {
-        return false;
-      }
+      const isArchived = item.status === 'CONCLUIDO' || item.status === 'ANULADO' || item.currentArea === 'ARCHIVO_CENTRAL' || !!item.archiveLocation;
+      if (!isArchived) return false;
     }
 
-    // Filter by Annual Management (Gestión)
+    // 2. SLA Filter
+    if (slaFilter !== 'ALL') {
+      if (slaFilter === 'OVERDUE' && item.slaStatus !== 'OVERDUE' && !item.isOverdue) return false;
+      if (slaFilter === 'WARNING' && item.slaStatus !== 'WARNING') return false;
+      if (slaFilter === 'ON_TIME' && item.slaStatus !== 'ON_TIME') return false;
+    }
+
+    // 3. Filter by Annual Management (Gestión)
     if (selectedGestion !== 'ALL') {
       if (item.year && Number(item.year) !== Number(selectedGestion)) {
         return false;
       }
     }
 
-    // Search query
+    // 4. Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const matchCode = item.hrCode.toLowerCase().includes(q);
@@ -227,33 +322,34 @@ export const CorrespondenceHub: React.FC = () => {
     }
   };
 
-  const getSlaBadge = (createdAt: string, status: string) => {
-    if (status === 'CONCLUIDO') {
+  const getSlaBadge = (item: RouteSheetItem) => {
+    if (item.status === 'CONCLUIDO') {
       return (
         <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-400 bg-emerald-500/15 px-2.5 py-0.5 rounded-lg border border-emerald-500/30">
-          ✓ Trámite Concluido
+          ✓ Concluido
         </span>
       );
     }
-    const hours = (Date.now() - new Date(createdAt).getTime()) / (1000 * 60 * 60);
-    if (hours < 24) {
+    if (item.slaStatus === 'OVERDUE' || item.isOverdue) {
       return (
-        <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-lg border border-emerald-500/40 flex items-center gap-1">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-          <span>SLA &lt;24h (Óptimo)</span>
+        <span className="text-[10px] font-black text-red-800 dark:text-red-300 bg-red-500/20 px-2.5 py-0.5 rounded-lg border border-red-500/40 animate-pulse flex items-center gap-1">
+          <AlertTriangle className="w-3 h-3 text-red-500" />
+          <span>{item.slaLabel || 'SLA Vencido'}</span>
         </span>
       );
     }
-    if (hours < 48) {
+    if (item.slaStatus === 'WARNING') {
       return (
-        <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 bg-amber-500/15 px-2.5 py-0.5 rounded-lg border border-amber-500/40">
-          ⏱️ SLA 24h-48h (En Curso)
+        <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 bg-amber-500/20 px-2.5 py-0.5 rounded-lg border border-amber-500/40 flex items-center gap-1">
+          <Clock className="w-3 h-3 text-amber-500" />
+          <span>{item.slaLabel || 'SLA Por Vencer'}</span>
         </span>
       );
     }
     return (
-      <span className="text-[10px] font-black text-rose-800 dark:text-rose-300 bg-rose-500/20 px-2.5 py-0.5 rounded-lg border border-rose-500/40 animate-pulse">
-        ⚠️ SLA &gt;48h (Atención Requerida)
+      <span className="text-[10px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 px-2.5 py-0.5 rounded-lg border border-emerald-500/40 flex items-center gap-1">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+        <span>{item.slaLabel || 'En Plazo SLA'}</span>
       </span>
     );
   };
@@ -333,6 +429,15 @@ export const CorrespondenceHub: React.FC = () => {
           </button>
 
           <button
+            onClick={() => setIsWorkflowModalOpen(true)}
+            title="Diseñador Visual de Organigrama & Flujos de Derivación (Canvas 360°)"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-teal-500/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-800 dark:text-emerald-300 border-2 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.25)] text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer"
+          >
+            <GitBranch className="w-4 h-4 text-emerald-500 dark:text-emerald-400 animate-pulse" />
+            <span className="hidden xl:inline">Organigrama & Flujos</span>
+          </button>
+
+          <button
             onClick={() => setIsInvoiceModalOpen(true)}
             title="Recepción rápida de facturas (Luz, Agua, Gas, etc.)"
             className="flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold shadow-xs transition-all hover:scale-105 active:scale-95"
@@ -359,15 +464,24 @@ export const CorrespondenceHub: React.FC = () => {
             <span>+ Nueva Hoja de Ruta</span>
           </button>
 
-          {/* Chat Interno situado al extremo derecho */}
+          {/* Chat Interno situado al extremo derecho con Globo Notificador */}
           <button
-            onClick={() => setIsChatOpen(true)}
-            title="Chat Interno & Coordinación entre Áreas CHLS"
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-300 border-2 border-emerald-500/50 text-xs font-black shadow-md shadow-emerald-500/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            onClick={() => {
+              setIsChatOpen(true);
+              setUnreadChatCount(0);
+            }}
+            title="Chat Interno & Coordinación entre Áreas CHLS (WhatsApp Style)"
+            className="relative flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-300 border-2 border-emerald-500/50 text-xs font-black shadow-md shadow-emerald-500/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
             <MessageSquare className="w-4 h-4 text-brand-gold" />
             <span>Chat Interno</span>
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            {unreadChatCount > 0 ? (
+              <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-red-600 border border-white text-white shadow-[0_0_12px_rgba(239,68,68,0.9)] animate-bounce">
+                {unreadChatCount}
+              </span>
+            ) : (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
           </button>
         </div>
       </header>
@@ -512,6 +626,67 @@ export const CorrespondenceHub: React.FC = () => {
             })}
           </div>
 
+          {/* SLA Semaphor Quick Filter */}
+          <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-white/10 flex-wrap gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-brand-gold" />
+              <span className="font-black text-slate-700 dark:text-gray-300 uppercase text-[11px] tracking-wider">
+                Semáforo SLA de Cumplimiento:
+              </span>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setSlaFilter('ALL')}
+                className={`px-3 py-1 rounded-xl font-bold transition-all text-xs cursor-pointer ${
+                  slaFilter === 'ALL'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-950 shadow-xs'
+                    : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-400 hover:text-slate-900'
+                }`}
+              >
+                Todos ({items.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSlaFilter('OVERDUE')}
+                className={`px-3 py-1 rounded-xl font-black transition-all text-xs cursor-pointer flex items-center gap-1 ${
+                  slaFilter === 'OVERDUE'
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                    : 'bg-red-500/15 text-red-700 dark:text-red-400 hover:bg-red-500/25 border border-red-500/30'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                <span>🔴 Vencidos ({items.filter((i) => i.slaStatus === 'OVERDUE' || i.isOverdue).length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSlaFilter('WARNING')}
+                className={`px-3 py-1 rounded-xl font-black transition-all text-xs cursor-pointer flex items-center gap-1 ${
+                  slaFilter === 'WARNING'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                    : 'bg-amber-500/15 text-amber-700 dark:text-amber-400 hover:bg-amber-500/25 border border-amber-500/30'
+                }`}
+              >
+                <span>🟡 Por Vencer ({items.filter((i) => i.slaStatus === 'WARNING').length})</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSlaFilter('ON_TIME')}
+                className={`px-3 py-1 rounded-xl font-black transition-all text-xs cursor-pointer flex items-center gap-1 ${
+                  slaFilter === 'ON_TIME'
+                    ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                    : 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-500/25 border border-emerald-500/30'
+                }`}
+              >
+                <span>🟢 En Plazo ({items.filter((i) => i.slaStatus === 'ON_TIME').length})</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
         {/* Route Sheets Grid */}
@@ -571,7 +746,7 @@ export const CorrespondenceHub: React.FC = () => {
 
                   {/* SLA Indicator */}
                   <div>
-                    {getSlaBadge(item.createdAt, item.status)}
+                    {getSlaBadge(item)}
                   </div>
 
                   {/* Reference / Asunto */}
@@ -682,6 +857,32 @@ export const CorrespondenceHub: React.FC = () => {
         />
       )}
 
+      {/* Floating WhatsApp Style Chat Widget Button */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
+        <button
+          onClick={() => {
+            setIsChatOpen(true);
+            setUnreadChatCount(0);
+          }}
+          title="Chat Interno & Coordinación de Despacho (WhatsApp Style)"
+          className="relative group p-4 rounded-full bg-gradient-to-tr from-[#128C7E] via-[#25D366] to-emerald-400 hover:from-emerald-400 hover:to-[#25D366] text-slate-950 font-black shadow-[0_0_30px_rgba(37,211,102,0.6)] hover:shadow-[0_0_50px_rgba(37,211,102,0.9)] transition-all duration-300 hover:scale-110 active:scale-95 cursor-pointer flex items-center justify-center border-2 border-white/40"
+        >
+          <MessageSquare className="w-6 h-6 text-slate-950 fill-current" />
+          
+          {/* Floating WhatsApp Notification Badge / Globe */}
+          {unreadChatCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 min-w-6 h-6 px-1.5 rounded-full bg-red-600 border-2 border-white text-white font-black text-xs flex items-center justify-center shadow-lg animate-bounce">
+              {unreadChatCount}
+            </span>
+          )}
+
+          {/* Floating tooltip label */}
+          <span className="absolute right-full mr-3 px-3 py-1.5 rounded-xl bg-slate-900/95 text-white text-xs font-bold whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none shadow-xl border border-emerald-500/30">
+            💬 Chat Interno de Coordinación
+          </span>
+        </button>
+      </div>
+
       {/* Internal Chat Drawer / Intercom */}
       {isChatOpen && (
         <CorrespondenceInternalChatDrawer
@@ -689,6 +890,13 @@ export const CorrespondenceHub: React.FC = () => {
           onClose={() => setIsChatOpen(false)}
           onSelectRouteSheetByCode={handleSelectRouteSheetByCode}
           currentRouteSheet={selectedItem}
+          channelUnreadCounts={channelUnreadCounts}
+          onClearChannelUnread={(chId) => {
+            setChannelUnreadCounts((prev) => ({
+              ...prev,
+              [chId]: 0,
+            }));
+          }}
         />
       )}
 
@@ -698,6 +906,14 @@ export const CorrespondenceHub: React.FC = () => {
           items={items}
           isOpen={isExportModalOpen}
           onClose={() => setIsExportModalOpen(false)}
+        />
+      )}
+
+      {/* CHLS Organigram & Workflow Canvas Modal */}
+      {isWorkflowModalOpen && (
+        <ChlsWorkflowCanvasModal
+          isOpen={isWorkflowModalOpen}
+          onClose={() => setIsWorkflowModalOpen(false)}
         />
       )}
     </div>

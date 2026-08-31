@@ -22,8 +22,11 @@ export class LoginUseCase {
   ) {}
 
   public async execute(input: LoginInput): Promise<Result<AuthResponseDto>> {
-    // 1. Validate email input format
-    const emailResult = Email.create(input.email);
+    // 1. Normalize and validate email/username input
+    const rawInput = (input.email || '').trim().toLowerCase();
+    const formattedEmail = rawInput.includes('@') ? rawInput : `${rawInput}@sargentos.com.bo`;
+
+    const emailResult = Email.create(formattedEmail);
     if (emailResult.isFailure) {
       return Result.fail<AuthResponseDto>('Credenciales inválidas.');
     }

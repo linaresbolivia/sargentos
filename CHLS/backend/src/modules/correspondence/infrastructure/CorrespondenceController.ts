@@ -6,6 +6,7 @@ import { CorrespondenceChatService } from '../application/CorrespondenceChatServ
 import { CorrespondenceEmailService } from '../application/CorrespondenceEmailService';
 import { CreateRouteSheetSchema, AddMovementSchema, UpdateStatusSchema, MergeRouteSheetsSchema } from '../domain/correspondence.dto';
 import { logger } from '@config/logger';
+import { socketService } from '@config/socket';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -52,19 +53,24 @@ export class CorrespondenceController {
     this.router.use(authenticate);
 
     // Internal Chat & Coordination
+    this.router.get('/chat/contacts', this.getChatContacts.bind(this));
+    this.router.get('/chat/presence', this.getChatPresence.bind(this));
     this.router.get('/chat/messages', this.getChatMessages.bind(this));
     this.router.post('/chat/messages', this.sendChatMessage.bind(this));
+    this.router.put('/chat/read', this.markChatAsRead.bind(this));
     this.router.post('/chat/upload', upload.single('file'), this.uploadChatFile.bind(this));
 
     // List & Stats
     this.router.get('/route-sheets', this.listRouteSheets.bind(this));
     this.router.get('/stats', this.getStats.bind(this));
+    this.router.get('/sla-summary', this.getSlaSummary.bind(this));
     this.router.get('/route-sheets/:idOrCode', this.getRouteSheetByIdOrCode.bind(this));
 
     // Create & Manage
     this.router.post('/route-sheets', this.createRouteSheet.bind(this));
     this.router.post('/route-sheets/merge', this.mergeRouteSheets.bind(this));
     this.router.post('/route-sheets/:id/movements', this.addMovement.bind(this));
+    this.router.post('/route-sheets/:id/notify-sla', this.notifySlaAlert.bind(this));
     this.router.patch('/route-sheets/:id/status', this.updateStatus.bind(this));
     this.router.post('/route-sheets/:id/archive', this.archiveRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/unarchive', this.unarchiveRouteSheet.bind(this));
@@ -154,7 +160,8 @@ export class CorrespondenceController {
   public async createRouteSheet(req: Request, res: Response) {
     try {
       const validated = CreateRouteSheetSchema.parse(req.body);
-      const userId = (req as any).user?.id;
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
@@ -195,7 +202,8 @@ export class CorrespondenceController {
   public async mergeRouteSheets(req: Request, res: Response) {
     try {
       const validated = MergeRouteSheetsSchema.parse(req.body);
-      const userId = (req as any).user?.id || 'SYSTEM_ADMIN';
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id || 'SYSTEM_ADMIN';
 
       const result = await this.routeSheetService.mergeRouteSheets(validated, userId);
 
@@ -226,7 +234,8 @@ export class CorrespondenceController {
     try {
       const { id } = req.params;
       const validated = AddMovementSchema.parse(req.body);
-      const userId = (req as any).user?.id;
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id;
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
@@ -411,11 +420,116 @@ export class CorrespondenceController {
     }
   }
 
-  // 11. Get Internal Chat Messages
+  // 11. Get Internal Chat Contacts / Users Directory
+  public async getChatContacts(req: Request, res: Response) {
+    try {
+      const users = await this.prisma.user.findMany({
+        where: { isActive: true },
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          phone: true,
+          roles: {
+            select: { name: true },
+          },
+        },
+        orderBy: { firstName: 'asc' },
+      });
+
+      const currentUserEmail = (req as any).user?.email || '';
+      const currentUsername = currentUserEmail.split('@')[0].toLowerCase();
+
+      // Find all DM messages involving this user to calculate recent conversation sorting
+      const allDmMessages = await this.prisma.corrChatMessage.findMany({
+        where: {
+          channel: {
+            startsWith: 'dm_',
+            contains: currentUsername,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      // Map other user -> latest message
+      const latestMsgByContact = new Map<string, { message: string; createdAt: Date; senderUserId: string }>();
+      for (const msg of allDmMessages) {
+        const parts = msg.channel.split('_').slice(1);
+        const otherUser = parts.find((p) => p !== currentUsername) || parts[0];
+        if (otherUser && !latestMsgByContact.has(otherUser)) {
+          latestMsgByContact.set(otherUser, {
+            message: msg.message || (msg.fileName ? `📎 ${msg.fileName}` : 'Archivo adjunto'),
+            createdAt: msg.createdAt,
+            senderUserId: msg.senderUserId,
+          });
+        }
+      }
+
+      const contacts = users.map((u) => {
+        const username = u.email.split('@')[0].toLowerCase();
+        const role = u.roles[0]?.name || 'STAFF';
+        const lastMsg = latestMsgByContact.get(username);
+        return {
+          id: u.id,
+          username,
+          email: u.email,
+          name: `${u.firstName || ''} ${u.lastName || ''}`.trim() || username,
+          role,
+          phone: u.phone,
+          lastMessage: lastMsg ? lastMsg.message : null,
+          lastMessageAt: lastMsg ? lastMsg.createdAt.toISOString() : null,
+        };
+      });
+
+      // Sort contacts: Most recent message first, then alphabetical!
+      contacts.sort((a, b) => {
+        if (a.lastMessageAt && b.lastMessageAt) {
+          return new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime();
+        }
+        if (a.lastMessageAt) return -1;
+        if (b.lastMessageAt) return 1;
+        return a.name.localeCompare(b.name);
+      });
+
+      return res.status(200).json({
+        success: true,
+        data: contacts,
+      });
+    } catch (error: any) {
+      logger.error('Error fetching chat contacts:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener contactos para chat',
+        error: error.message,
+      });
+    }
+  }
+
+  // 12. Get Real-time User Presence Map
+  public async getChatPresence(req: Request, res: Response) {
+    try {
+      const presence = socketService.getAllPresence();
+      return res.status(200).json({
+        success: true,
+        data: presence,
+      });
+    } catch (error: any) {
+      logger.error('Error fetching chat presence:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener estado de presencia',
+        error: error.message,
+      });
+    }
+  }
+
+  // 13. Get Internal Chat Messages
   public async getChatMessages(req: Request, res: Response) {
     try {
       const channel = (req.query.channel as string) || 'GENERAL';
-      const messages = await this.chatService.getMessages(channel);
+      const readerUserId = (req as any).user?.id || (req as any).user?.email;
+      const messages = await this.chatService.getMessages(channel, 80, readerUserId);
       return res.status(200).json({
         success: true,
         data: messages,
@@ -430,13 +544,35 @@ export class CorrespondenceController {
     }
   }
 
+  // 14. Mark Chat Messages as Read
+  public async markChatAsRead(req: Request, res: Response) {
+    try {
+      const { channel } = req.body;
+      const readerUserId = (req as any).user?.id || (req as any).user?.email;
+      const result = await this.chatService.markAsRead(channel, readerUserId);
+      return res.status(200).json({
+        success: true,
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error('Error marking chat as read:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al marcar mensajes como leídos',
+        error: error.message,
+      });
+    }
+  }
+
   // 12. Send Internal Chat Message
   public async sendChatMessage(req: Request, res: Response) {
     try {
       const { channel, message, routeSheetCode, senderArea, fileUrl, fileName, fileType, fileSize } = req.body;
       const user = (req as any).user;
-      const senderName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Funcionario CHLS';
+      const fullName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
+      const senderName = fullName || user?.username || user?.email || 'Funcionario CHLS';
       const senderUserId = user?.id || 'SYSTEM';
+      const effectiveArea = senderArea || user?.area || user?.department || 'CHLS';
 
       if ((!message || !message.trim()) && !fileUrl) {
         return res.status(400).json({
@@ -449,7 +585,7 @@ export class CorrespondenceController {
         channel: channel || 'GENERAL',
         senderUserId,
         senderName,
-        senderArea: senderArea || 'SECRETARIA_GENERAL',
+        senderArea: effectiveArea,
         message: (message || '').trim(),
         routeSheetCode: routeSheetCode ? routeSheetCode.trim() : null,
         fileUrl: fileUrl || null,
@@ -712,6 +848,60 @@ export class CorrespondenceController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Error al conectar con el servidor SMTP',
+      });
+    }
+  }
+
+  // 19. Get SLA Performance Summary
+  public async getSlaSummary(req: Request, res: Response) {
+    try {
+      const summary = await this.routeSheetService.getSlaSummary();
+      return res.status(200).json({
+        success: true,
+        data: summary,
+      });
+    } catch (error: any) {
+      logger.error('Error retrieving SLA performance summary:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al calcular resumen SLA',
+      });
+    }
+  }
+
+  // 20. Send Immediate SLA Urgency Alert
+  public async notifySlaAlert(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { channel, note, customPhone, customEmail } = req.body;
+      const user = (req as any).user;
+
+      const senderUser = {
+        id: user?.id || 'system',
+        name: user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : 'Control de Gestión',
+      };
+
+      const result = await this.routeSheetService.notifySlaAlert(
+        id,
+        {
+          channel: channel || 'BOTH',
+          note: note || undefined,
+          customPhone: customPhone || undefined,
+          customEmail: customEmail || undefined,
+        },
+        senderUser
+      );
+
+      return res.status(200).json({
+        success: true,
+        data: result,
+        message: result.message,
+      });
+    } catch (error: any) {
+      logger.error('Error sending SLA alert:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al enviar alerta SLA',
       });
     }
   }

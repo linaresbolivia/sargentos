@@ -277,4 +277,124 @@ export class CorrespondenceEmailService {
       return false;
     }
   }
+
+  /**
+   * Envía correo de Alerta de Vencimiento SLA al responsable del Área
+   */
+  public async sendSlaAlertEmail(
+    routeSheet: any,
+    targetInfo: { name: string; email: string; area: string },
+    slaData: { deadlineText: string; statusLabel: string; isOverdue: boolean },
+    urgencyNote?: string
+  ): Promise<boolean> {
+    try {
+      const config = await this.getSmtpConfig();
+      if (!config.enabled || !config.user || !config.pass) {
+        return false;
+      }
+
+      if (!targetInfo.email || !targetInfo.email.includes('@')) {
+        return false;
+      }
+
+      const transporter = this.createTransporter(config);
+      const origin = process.env.FRONTEND_URL || 'http://localhost:5173';
+      const trackingUrl = `${origin}/correspondencia?code=${encodeURIComponent(routeSheet.hrCode)}`;
+
+      const badgeColor = slaData.isOverdue ? '#ef4444' : '#f59e0b';
+      const badgeBg = slaData.isOverdue ? '#fee2e2' : '#fef3c7';
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 20px; }
+            .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+            .header { background: linear-gradient(135deg, #7f1d1d 0%, #991b1b 50%, #b91c1c 100%); padding: 30px 25px; text-align: center; color: #ffffff; }
+            .badge-sla { display: inline-block; background: ${badgeBg}; color: ${badgeColor}; font-weight: 900; font-size: 11px; padding: 6px 16px; border-radius: 20px; text-transform: uppercase; letter-spacing: 1.5px; border: 1px solid ${badgeColor}; margin-bottom: 12px; }
+            .title { font-size: 20px; font-weight: 900; color: #ffffff; margin: 0; letter-spacing: 1px; }
+            .content { padding: 30px; color: #334155; }
+            .card { background: #f8fafc; border-left: 4px solid ${badgeColor}; border-radius: 12px; padding: 18px; margin: 20px 0; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 13px; }
+            .table td { padding: 8px 10px; border-bottom: 1px solid #f1f5f9; }
+            .btn { display: block; width: fit-content; margin: 25px auto; background: #059669; color: #ffffff !important; text-decoration: none; padding: 12px 26px; border-radius: 12px; font-weight: 800; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
+            .footer { background: #f8fafc; padding: 20px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <div class="badge-sla">⚠️ Notificación de Urgencia Institucional</div>
+              <div class="title">ALERTA DE CUMPLIMIENTO DE PLAZO (SLA)</div>
+              <p style="color: #fca5a5; font-size: 12px; margin: 6px 0 0 0; text-transform: uppercase; font-weight: 700;">Club Hípico Los Sargentos — Control de Gestión</p>
+            </div>
+            <div class="content">
+              <p style="font-size: 14px;"><strong>Estimado(a) ${targetInfo.name || targetInfo.area}:</strong></p>
+              <p style="font-size: 13px; line-height: 1.6;">
+                Se le recuerda que el siguiente trámite institucional en custodia de su departamento se encuentra <strong>${slaData.statusLabel}</strong>:
+              </p>
+
+              <div class="card">
+                <div style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase;">Hoja de Ruta</div>
+                <div style="font-size: 22px; font-weight: 900; color: #0f172a; font-family: monospace;">${routeSheet.hrCode}</div>
+                <div style="margin-top: 6px; font-size: 12px; color: ${badgeColor}; font-weight: 800;">
+                  Fecha Límite de Atención: ${slaData.deadlineText}
+                </div>
+              </div>
+
+              <table class="table">
+                <tr>
+                  <td style="font-weight: 800; color: #64748b; width: 35%;">ASUNTO:</td>
+                  <td style="font-weight: 700; color: #0f172a;">${routeSheet.reference}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 800; color: #64748b;">REMITENTE:</td>
+                  <td style="font-weight: 700;">${routeSheet.senderName} (${routeSheet.senderArea || routeSheet.senderType})</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 800; color: #64748b;">PRIORIDAD:</td>
+                  <td style="font-weight: 800; color: #b91c1c;">${routeSheet.priority}</td>
+                </tr>
+                <tr>
+                  <td style="font-weight: 800; color: #64748b;">ÁREA ACTUAL:</td>
+                  <td style="font-weight: 800; color: #047857;">${routeSheet.currentArea}</td>
+                </tr>
+              </table>
+
+              ${urgencyNote ? `
+              <div style="background: #fffbeb; border: 1px solid #fef3c7; border-radius: 10px; padding: 14px; margin-top: 15px; font-size: 12px; color: #92400e;">
+                <strong>Nota del Remitente / Gerencia:</strong><br>
+                "${urgencyNote}"
+              </div>
+              ` : ''}
+
+              <a href="${trackingUrl}" target="_blank" class="btn">
+                ⚡ Atender y Proveer Trámite Ahora
+              </a>
+            </div>
+            <div class="footer">
+              Club Hípico Los Sargentos — Sistema Automatizado de Correspondencia<br>
+              Generado automáticamente según la política de tiempos SLA institucional.
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: `"${config.fromName}" <${config.fromEmail}>`,
+        to: targetInfo.email,
+        subject: `[URGENTE CHLS] Alerta SLA: ${routeSheet.hrCode} — ${routeSheet.reference.substring(0, 45)}`,
+        html,
+      });
+
+      console.log(`[CorrespondenceEmailService] Alerta SLA enviada a ${targetInfo.email} para HR ${routeSheet.hrCode}`);
+      return true;
+    } catch (err) {
+      console.error('[CorrespondenceEmailService] Error al enviar alerta SLA:', err);
+      return false;
+    }
+  }
 }

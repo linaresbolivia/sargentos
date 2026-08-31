@@ -238,17 +238,26 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
 
                     {/* Stamp & Signature Replica */}
                     <div className="w-52 text-right flex flex-col items-end justify-end shrink-0 pt-1">
-                      <div className="border-t border-slate-400 w-40 pt-1 text-center">
-                        <div className="font-bold text-[9.5px] text-blue-900 leading-tight">
-                          {mov.sourceUser?.firstName} {mov.sourceUser?.lastName}
+                      {mov.signatureUrl ? (
+                        <div className="flex flex-col items-center">
+                          <img src={mov.signatureUrl} alt="Firma/Sello" className="max-h-16 max-w-[150px] object-contain mb-0.5" />
+                          <div className="text-[7.5px] font-bold text-blue-900 uppercase tracking-tighter">
+                            ✓ Firma / Sello Electrónico CHLS
+                          </div>
                         </div>
-                        <div className="text-[8px] font-bold text-blue-800 tracking-tight leading-tight uppercase">
-                          {mov.sourceArea || 'GERENCIA GENERAL'}
+                      ) : (
+                        <div className="border-t border-slate-400 w-40 pt-1 text-center">
+                          <div className="font-bold text-[9.5px] text-blue-900 leading-tight">
+                            {mov.sourceUser?.firstName} {mov.sourceUser?.lastName}
+                          </div>
+                          <div className="text-[8px] font-bold text-blue-800 tracking-tight leading-tight uppercase">
+                            {mov.sourceArea || 'GERENCIA GENERAL'}
+                          </div>
+                          <div className="text-[7px] text-slate-500 font-bold">
+                            CLUB HÍPICO LOS SARGENTOS
+                          </div>
                         </div>
-                        <div className="text-[7px] text-slate-500 font-bold">
-                          CLUB HÍPICO LOS SARGENTOS
-                        </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 ) : (

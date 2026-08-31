@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Upload, 
-  Maximize2, 
-  Minimize2, 
-  Sparkles, 
-  BookOpen, 
+import {
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  BookOpen,
   RotateCcw,
   ZoomIn,
   ZoomOut,
@@ -207,7 +207,7 @@ export const MagicBookViewer: React.FC = () => {
     const step = (now: number) => {
       const elapsed = now - startTime;
       const t = Math.min(1, elapsed / duration);
-      
+
       // Smooth and lightweight cubic bezier easing
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       const current = startProgress + (targetProgress - startProgress) * ease;
@@ -494,12 +494,12 @@ export const MagicBookViewer: React.FC = () => {
         if (context) {
           context.imageSmoothingEnabled = true;
           context.imageSmoothingQuality = 'high';
-          await (page as any).render({ 
-            canvasContext: context, 
+          await (page as any).render({
+            canvasContext: context,
             viewport,
             intent: 'print', // Print-quality vector text rendering mode
           } as any).promise;
-          
+
           // Ultra High-Definition WebP format (0.95 quality) for sharp text & optimized payload size
           const dataUrl = canvas.toDataURL('image/webp', 0.95);
           renderedImages.push(dataUrl.length > 50 ? dataUrl : canvas.toDataURL('image/jpeg', 0.95));
@@ -562,10 +562,10 @@ export const MagicBookViewer: React.FC = () => {
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
     if (!document.fullscreenElement) {
-      containerRef.current.requestFullscreen().catch(() => {});
+      containerRef.current.requestFullscreen().catch(() => { });
       setIsFullscreen(true);
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
       setIsFullscreen(false);
     }
   };
@@ -582,9 +582,9 @@ export const MagicBookViewer: React.FC = () => {
 
     return (
       <div className="relative w-full h-full bg-[#fdfcf7] flex items-center justify-center overflow-hidden">
-        <img 
-          src={pdfPages[pageIndex]} 
-          alt={`Página ${pageIndex + 1}`} 
+        <img
+          src={pdfPages[pageIndex]}
+          alt={`Página ${pageIndex + 1}`}
           className="w-full h-full object-contain select-none pointer-events-none"
           style={{
             imageRendering: '-webkit-optimize-contrast',
@@ -592,7 +592,7 @@ export const MagicBookViewer: React.FC = () => {
           }}
         />
         {/* Subtle Paper Grain & Ambient Gutter Shadow */}
-        <div 
+        <div
           className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: `radial-gradient(circle at center, transparent 60%, rgba(0,0,0,0.08) 100%), linear-gradient(${side === 'left' ? 'to right' : 'to left'}, rgba(0,0,0,0.12) 0%, transparent 8%)`
@@ -748,8 +748,8 @@ export const MagicBookViewer: React.FC = () => {
   const shadowIntensity = Math.sin(flipProgress * Math.PI);
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className={`relative w-full rounded-3xl overflow-hidden border border-brand-gold/30 shadow-[0_0_50px_rgba(0,0,0,0.8)] flex flex-col ${isFullscreen ? 'fixed inset-0 z-50 rounded-none h-screen w-screen' : 'min-h-[600px] sm:min-h-[660px] md:min-h-[720px]'}`}
       style={{
         backgroundImage: `radial-gradient(ellipse at center, rgba(0, 0, 0, 0.1) 20%, rgba(0, 20, 10, 0.38) 100%), url(${lawnBgUrl})`,
@@ -777,10 +777,10 @@ export const MagicBookViewer: React.FC = () => {
       {!isFullscreen && (
         <div className="relative z-20 w-full px-6 py-4 flex flex-wrap justify-between items-center gap-3 border-b border-brand-gold/20 bg-black/75 backdrop-blur-md">
           <div className="flex items-center gap-3">
-            <img 
-              src={logoUrl} 
-              alt="Club Hípico Los Sargentos" 
-              className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)] cursor-pointer hover:scale-105 transition-transform" 
+            <img
+              src={logoUrl}
+              alt="Club Hípico Los Sargentos"
+              className="h-10 sm:h-12 w-auto object-contain drop-shadow- [0_4px_12px_rgba(0,0,0,0.8)] cursor-pointer hover:scale-105 transition-transform"
               onClick={handleResetToDefault}
               title="Club Hípico Los Sargentos - Clic para restaurar edición oficial"
             />
@@ -788,12 +788,12 @@ export const MagicBookViewer: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              accept="application/pdf" 
-              className="hidden" 
-              onChange={handlePdfUpload} 
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="application/pdf"
+              className="hidden"
+              onChange={handlePdfUpload}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
@@ -887,7 +887,7 @@ export const MagicBookViewer: React.FC = () => {
       )}
 
       {/* 3. The Hyperrealistic 3D Stage (No overflow clipping for 3D page elevation) */}
-      <div 
+      <div
         ref={bookStageRef}
         onMouseDown={handleDragStart}
         onMouseMove={handleDragMove}
@@ -914,7 +914,7 @@ export const MagicBookViewer: React.FC = () => {
             </button>
           </div>
         )}
-        
+
         {/* Navigation Arrow Left */}
         <button
           onClick={handlePrevPage}
@@ -936,14 +936,14 @@ export const MagicBookViewer: React.FC = () => {
         </button>
 
         {/* 3D Book Chassis with Exact PDF Aspect Ratio & Reclined Tabletop Tilt */}
-        <div 
+        <div
           className="relative transition-all duration-300 ease-out flex items-center justify-center"
-          style={{ 
+          style={{
             width: '100%',
-            maxWidth: isSinglePageMode 
+            maxWidth: isSinglePageMode
               ? `min(calc(62vh * ${activeSingleRatio}), 88vw)`
               : `min(calc(62vh * ${activeSpreadRatio}), 94vw)`,
-            height: isSinglePageMode 
+            height: isSinglePageMode
               ? `min(460px, calc(88vw / ${activeSingleRatio}))`
               : `min(480px, calc(94vw / ${activeSpreadRatio}))`,
             maxHeight: isFullscreen ? 'calc(100vh - 120px)' : '65vh',
@@ -953,7 +953,7 @@ export const MagicBookViewer: React.FC = () => {
           }}
         >
           {/* Active Spread Frame - Pure Book (No Outer Frame) */}
-          <div 
+          <div
             className="relative z-10 w-full h-full flex rounded-2xl bg-[#09140f] shadow-[0_35px_90px_rgba(0,0,0,0.9)]"
             style={{ transformStyle: 'preserve-3d' }}
           >
@@ -961,7 +961,7 @@ export const MagicBookViewer: React.FC = () => {
             {!isSinglePageMode && (
               <>
                 {/* LEFT BOTTOM PAPER BLOCK */}
-                <div 
+                <div
                   className="absolute bottom-0 left-0 w-1/2 pointer-events-none z-0 overflow-hidden"
                   style={{
                     height: `${leftThickness}px`,
@@ -974,7 +974,7 @@ export const MagicBookViewer: React.FC = () => {
                 />
 
                 {/* RIGHT BOTTOM PAPER BLOCK */}
-                <div 
+                <div
                   className="absolute bottom-0 right-0 w-1/2 pointer-events-none z-0 overflow-hidden"
                   style={{
                     height: `${rightThickness}px`,
@@ -987,7 +987,7 @@ export const MagicBookViewer: React.FC = () => {
                 />
 
                 {/* LEFT OUTER SIDE PAPER BLOCK */}
-                <div 
+                <div
                   className="absolute top-0 bottom-0 left-0 pointer-events-none z-0 overflow-hidden"
                   style={{
                     width: `${leftThickness}px`,
@@ -1000,7 +1000,7 @@ export const MagicBookViewer: React.FC = () => {
                 />
 
                 {/* RIGHT OUTER SIDE PAPER BLOCK */}
-                <div 
+                <div
                   className="absolute top-0 bottom-0 right-0 pointer-events-none z-0 overflow-hidden"
                   style={{
                     width: `${rightThickness}px`,
@@ -1028,15 +1028,15 @@ export const MagicBookViewer: React.FC = () => {
                   {isFlipping && flipDirection === 'BACKWARD'
                     ? renderPage(Math.max(0, currentPage - 2), 'left')
                     : isFlipping && flipDirection === 'FORWARD'
-                    ? renderPage(currentPage + 2, 'left')
-                    : renderPage(currentPage, 'left')}
+                      ? renderPage(currentPage + 2, 'left')
+                      : renderPage(currentPage, 'left')}
 
                   {/* Spine Valley Shadow */}
                   <div className="absolute top-0 bottom-0 right-0 w-14 bg-gradient-to-l from-black/50 via-black/20 to-transparent pointer-events-none z-10"></div>
 
                   {/* Projected Drop Shadow during Backward Flip */}
                   {isFlipping && flipDirection === 'BACKWARD' && (
-                    <div 
+                    <div
                       className="absolute inset-0 pointer-events-none z-20"
                       style={{
                         background: `linear-gradient(to right, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, transparent 60%)`,
@@ -1050,15 +1050,15 @@ export const MagicBookViewer: React.FC = () => {
                   {isFlipping && flipDirection === 'FORWARD'
                     ? renderPage(currentPage + 3, 'right')
                     : isFlipping && flipDirection === 'BACKWARD'
-                    ? renderPage(Math.max(0, currentPage - 1), 'right')
-                    : renderPage(currentPage + 1, 'right')}
+                      ? renderPage(Math.max(0, currentPage - 1), 'right')
+                      : renderPage(currentPage + 1, 'right')}
 
                   {/* Spine Valley Shadow */}
                   <div className="absolute top-0 bottom-0 left-0 w-14 bg-gradient-to-r from-black/50 via-black/20 to-transparent pointer-events-none z-10"></div>
 
                   {/* Projected Drop Shadow during Forward Flip */}
                   {isFlipping && flipDirection === 'FORWARD' && (
-                    <div 
+                    <div
                       className="absolute inset-0 pointer-events-none z-20"
                       style={{
                         background: `linear-gradient(to left, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, transparent 60%)`,
@@ -1068,7 +1068,7 @@ export const MagicBookViewer: React.FC = () => {
 
                   {/* Interactive Dog-Ear Corner Curl Hint */}
                   {!isFlipping && currentPage + 2 < totalPages && (
-                    <div 
+                    <div
                       onClick={handleNextPage}
                       className="absolute bottom-0 right-0 w-16 h-16 cursor-pointer z-30 group"
                       title="Haz clic para pasar la hoja"
@@ -1080,7 +1080,7 @@ export const MagicBookViewer: React.FC = () => {
 
                 {/* 3. HYPERREALISTIC 3D FORWARD TURNING LEAF (Arched paper bending) */}
                 {isFlipping && flipDirection === 'FORWARD' && (
-                  <div 
+                  <div
                     className="absolute top-0 bottom-0 right-0 w-1/2 h-full z-30 pointer-events-none bg-white"
                     style={{
                       transformOrigin: '0% 50%',
@@ -1094,9 +1094,9 @@ export const MagicBookViewer: React.FC = () => {
                     }}
                   >
                     {/* Front Face of Turning Sheet (showing current right page, visible 0deg -> 90deg) */}
-                    <div 
+                    <div
                       className="absolute inset-0 w-full h-full overflow-hidden border-r-2 border-amber-300/80 rounded-r-sm bg-white"
-                      style={{ 
+                      style={{
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
                         visibility: flipProgress < 0.5 ? 'visible' : 'hidden',
@@ -1104,9 +1104,9 @@ export const MagicBookViewer: React.FC = () => {
                       }}
                     >
                       {renderPage(currentPage + 1, 'right')}
-                      
+
                       {/* Dynamic Specular Highlights & Paper Flex Cylinder Shadow */}
-                      <div 
+                      <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           background: `linear-gradient(to right, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, rgba(255,255,255,${shadowIntensity * 0.6}) 45%, rgba(0,0,0,${shadowIntensity * 0.45}) 100%)`,
@@ -1116,9 +1116,9 @@ export const MagicBookViewer: React.FC = () => {
                     </div>
 
                     {/* Back Face of Turning Sheet (showing next left page, visible 90deg -> 180deg, rotated 180deg) */}
-                    <div 
+                    <div
                       className="absolute inset-0 w-full h-full overflow-hidden border-l-2 border-amber-300/80 rounded-l-sm bg-white"
-                      style={{ 
+                      style={{
                         transform: 'rotateY(180deg)',
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
@@ -1129,7 +1129,7 @@ export const MagicBookViewer: React.FC = () => {
                       {renderPage(currentPage + 2, 'left')}
 
                       {/* Dynamic Specular Highlights for Back Face */}
-                      <div 
+                      <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           background: `linear-gradient(to left, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, rgba(255,255,255,${shadowIntensity * 0.6}) 45%, rgba(0,0,0,${shadowIntensity * 0.4}) 100%)`,
@@ -1142,7 +1142,7 @@ export const MagicBookViewer: React.FC = () => {
 
                 {/* 4. HYPERREALISTIC 3D BACKWARD TURNING LEAF (Arched paper bending) */}
                 {isFlipping && flipDirection === 'BACKWARD' && (
-                  <div 
+                  <div
                     className="absolute top-0 bottom-0 left-0 w-1/2 h-full z-30 pointer-events-none bg-white"
                     style={{
                       transformOrigin: '100% 50%',
@@ -1156,9 +1156,9 @@ export const MagicBookViewer: React.FC = () => {
                     }}
                   >
                     {/* Front Face of Turning Sheet (showing current left page, visible 0deg -> 90deg) */}
-                    <div 
+                    <div
                       className="absolute inset-0 w-full h-full overflow-hidden border-l-2 border-amber-300/80 rounded-l-sm bg-white"
-                      style={{ 
+                      style={{
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
                         visibility: flipProgress < 0.5 ? 'visible' : 'hidden',
@@ -1167,7 +1167,7 @@ export const MagicBookViewer: React.FC = () => {
                     >
                       {renderPage(currentPage, 'left')}
 
-                      <div 
+                      <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           background: `linear-gradient(to left, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, rgba(255,255,255,${shadowIntensity * 0.6}) 45%, rgba(0,0,0,${shadowIntensity * 0.45}) 100%)`,
@@ -1177,9 +1177,9 @@ export const MagicBookViewer: React.FC = () => {
                     </div>
 
                     {/* Back Face of Turning Sheet (showing previous right page, visible 90deg -> 180deg, rotated 180deg) */}
-                    <div 
+                    <div
                       className="absolute inset-0 w-full h-full overflow-hidden border-r-2 border-amber-300/80 rounded-r-sm bg-white"
-                      style={{ 
+                      style={{
                         transform: 'rotateY(180deg)',
                         backfaceVisibility: 'hidden',
                         WebkitBackfaceVisibility: 'hidden',
@@ -1189,7 +1189,7 @@ export const MagicBookViewer: React.FC = () => {
                     >
                       {renderPage(Math.max(0, currentPage - 1), 'right')}
 
-                      <div 
+                      <div
                         className="absolute inset-0 pointer-events-none"
                         style={{
                           background: `linear-gradient(to right, rgba(0,0,0,${shadowIntensity * 0.5}) 0%, rgba(255,255,255,${shadowIntensity * 0.6}) 45%, rgba(0,0,0,${shadowIntensity * 0.4}) 100%)`,
@@ -1211,11 +1211,11 @@ export const MagicBookViewer: React.FC = () => {
 
       {/* 4. Bottom Navigation & Control Scrub Bar */}
       <div className="relative z-20 px-6 py-4 bg-black/80 backdrop-blur-md border-t border-brand-gold/20 flex flex-col sm:flex-row justify-between items-center gap-4">
-        
+
         {/* Page Counter Indicator */}
         <div className="flex items-center gap-3 text-xs text-gray-300">
           <span className="font-mono text-brand-gold font-bold">
-            {isSinglePageMode 
+            {isSinglePageMode
               ? `Pág. ${currentPage + 1} de ${totalPages}`
               : `Pág. ${currentPage + 1} - ${Math.min(currentPage + 2, totalPages)} de ${totalPages}`}
           </span>

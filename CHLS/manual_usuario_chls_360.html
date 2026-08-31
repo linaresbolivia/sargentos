@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Manual Oficial de Usuario y Operaciones - CHLS 360°</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap');
+
+    @page {
+      size: A4 portrait;
+      margin: 18mm 15mm 20mm 15mm;
+      @bottom-right {
+        content: counter(page);
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      color: #1a202c;
+      background: #ffffff;
+      margin: 0;
+      padding: 0;
+      font-size: 11pt;
+      line-height: 1.5;
+    }
+
+    .page-break {
+      page-break-before: always;
+      break-before: page;
+    }
+
+    /* COVER PAGE */
+    .cover-page {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 40px 30px;
+      background: linear-gradient(145deg, #061c12 0%, #0d3822 50%, #020c07 100%);
+      color: #ffffff;
+      border: 3px solid #d4af37;
+      border-radius: 12px;
+      position: relative;
+    }
+
+    .cover-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 2px solid rgba(212, 175, 55, 0.4);
+      padding-bottom: 20px;
+    }
+
+    .cover-badge {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(212, 175, 55, 0.2);
+      border: 1px solid #d4af37;
+      color: #ffd700;
+      font-weight: 800;
+      font-size: 10pt;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      border-radius: 30px;
+    }
+
+    .cover-title-container {
+      text-align: center;
+      margin: 40px 0;
+    }
+
+    .cover-title {
+      font-size: 30pt;
+      font-weight: 900;
+      color: #ffffff;
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin: 0 0 15px 0;
+    }
+
+    .cover-title span {
+      background: linear-gradient(to right, #ffd700, #ffae19);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .cover-subtitle {
+      font-size: 14pt;
+      font-weight: 600;
+      color: #6ee7b7;
+      margin-bottom: 25px;
+    }
+
+    .cover-description {
+      font-size: 11pt;
+      color: #cbd5e1;
+      max-width: 600px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    .cover-meta {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(110, 231, 183, 0.3);
+      border-radius: 8px;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      font-size: 9.5pt;
+      color: #e2e8f0;
+    }
+
+    .cover-meta strong {
+      color: #ffd700;
+    }
+
+    /* HEADERS & TYPOGRAPHY */
+    h1 {
+      font-size: 18pt;
+      font-weight: 800;
+      color: #064e3b;
+      border-bottom: 2px solid #10b981;
+      padding-bottom: 6px;
+      margin-top: 24px;
+      margin-bottom: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    h2 {
+      font-size: 13pt;
+      font-weight: 700;
+      color: #047857;
+      margin-top: 18px;
+      margin-bottom: 10px;
+      border-left: 4px solid #d4af37;
+      padding-left: 10px;
+    }
+
+    h3 {
+      font-size: 11.5pt;
+      font-weight: 700;
+      color: #1f2937;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    p, li {
+      font-size: 10pt;
+      color: #334155;
+      line-height: 1.55;
+    }
+
+    /* BOXES & ALERTS */
+    .info-box {
+      background: #f0fdf4;
+      border: 1px solid #86efac;
+      border-left: 5px solid #10b981;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+    }
+
+    .gold-box {
+      background: #fffbeb;
+      border: 1px solid #fde68a;
+      border-left: 5px solid #f59e0b;
+      border-radius: 6px;
+      padding: 12px 16px;
+      margin: 14px 0;
+    }
+
+    .step-box {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 10px 14px;
+      border-radius: 8px;
+    }
+
+    .step-number {
+      background: #064e3b;
+      color: #ffd700;
+      font-weight: 900;
+      font-size: 11pt;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+
+    .step-content {
+      flex: 1;
+    }
+
+    .step-content strong {
+      color: #0f172a;
+      font-size: 10.5pt;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    /* TABLES */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 14px 0;
+      font-size: 9pt;
+    }
+
+    th {
+      background: #064e3b;
+      color: #ffffff;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 10px;
+      border: 1px solid #047857;
+      text-align: left;
+    }
+
+    td {
+      padding: 7px 10px;
+      border: 1px solid #cbd5e1;
+      color: #1e293b;
+    }
+
+    tr:nth-child(even) {
+      background: #f8fafc;
+    }
+
+    .code-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 8.5pt;
+      border: 1px solid #cbd5e1;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 7.5pt;
+      text-transform: uppercase;
+    }
+
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    .badge-gold {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+    }
+
+    /* DIAGRAM FLOWS */
+    .flow-card {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      margin: 16px 0;
+    }
+
+    .flow-steps {
+      display: flex;
+      justify-content: space-between;
+      position: relative;
+      margin-top: 10px;
+    }
+
+    .flow-node {
+      background: #1e293b;
+      border: 1px solid #10b981;
+      padding: 8px 12px;
+      border-radius: 6px;
+      text-align: center;
+      width: 18%;
+      font-size: 8pt;
+      font-weight: 700;
+      color: #6ee7b7;
+    }
+
+    .flow-node span {
+      display: block;
+      color: #ffd700;
+      font-size: 7pt;
+      margin-top: 2px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== COVER PAGE ==================== -->
+  <div class="cover-page">
+    <div class="cover-header">
+      <div>
+        <h3 style="color:#ffd700; margin:0; font-size:14pt; letter-spacing:1px;">CLUB HÍPICO LOS SARGENTOS</h3>
+        <span style="color:#94a3b8; font-size:9pt; text-transform:uppercase;">Sistema Oficial de Gestión Documental & Correspondencia</span>
+      </div>
+      <div class="cover-badge">CHLS 360° ENTERPRISE</div>
+    </div>
+
+    <div class="cover-title-container">
+      <h1 class="cover-title">MANUAL OFICIAL DE <span>USUARIO Y OPERACIONES</span></h1>
+      <div class="cover-subtitle">Guía Integral de Radicación, Derivación, Fusiones, Organigrama y Chat Interno</div>
+      <p class="cover-description">
+        Procedimientos oficiales para la administración de correspondencia institucional, flujos jerárquicos aprobados, control de plazos SLA y custodia definitiva en Archivo Central bajo la iniciativa institucional Cero Papel.
+      </p>
+    </div>
+
+    <div class="cover-meta">
+      <div><strong>Versión:</strong> 3.5 Oficial (Gestión 2026)</div>
+      <div><strong>Aprobado por:</strong> Gerencia General (MAE)</div>
+      <div><strong>Área Responsable:</strong> Sistemas & TI / Secretaría</div>
+      <div><strong>Fecha de Emisión:</strong> Agosto 2026</div>
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ==================== SECTION 1: ACCESO ==================== -->
+  <h1>1. Acceso al Sistema & Gestión de Usuarios</h1>
+  
+  <p>
+    El sistema cuenta con autenticación por roles vinculada a la estructura oficial del Club Hípico Los Sargentos. Todos los funcionarios pueden acceder con su identificador de área directo sin necesidad de digitar el dominio de correo electrónico.
+  </p>
+
+  <div class="gold-box">
+    <strong>🔑 Parámetros Universales de Acceso Inicial:</strong><br>
+    • <strong>URL del Sistema:</strong> <span class="code-badge">http://localhost:5173/login</span><br>
+    • <strong>Contraseña Universal de Despacho:</strong> <span class="code-badge">12</span><br>
+    • <strong>Formato de Usuario:</strong> Solo escribir el nombre del área en minúsculas (Ej. <span class="code-badge">tecnologia</span>, <span class="code-badge">gerencia</span>, <span class="code-badge">caja</span>).
+  </div>
+
+  <h2>1.1. Directorio de Cuentas y Accesos por Área</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rama del Organigrama</th>
+        <th>Cargo / Dependencia Oficial</th>
+        <th>Usuario de Acceso</th>
+        <th>Contraseña</th>
+        <th>Permisos Principales</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Despacho MAE</strong></td>
+        <td>Gerencia General</td>
+        <td><span class="code-badge">gerencia</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Acceso Total</span></td>
+      </tr>
+      <tr>
+        <td><strong>Despacho MAE</strong></td>
+        <td>Secretaría de Despacho</td>
+        <td><span class="code-badge">secretaria</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Radicación Central</span></td>
+      </tr>
+      <tr>
+        <td><strong>Staff</strong></td>
+        <td>Asesoría Legal</td>
+        <td><span class="code-badge">legal</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Dictámenes / Contratos</span></td>
+      </tr>
+      <tr>
+        <td><strong>Staff</strong></td>
+        <td>Coordinación Comercial</td>
+        <td><span class="code-badge">comercial</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Convenios / Publicidad</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Subgerente Financiero y RRHH</td>
+        <td><span class="code-badge">finanzas</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Finanzas / Presupuestos</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Encargado de Contabilidad</td>
+        <td><span class="code-badge">contabilidad</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Comprobantes / Balances</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Recaudaciones y Caja</td>
+        <td><span class="code-badge">caja</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Cobros / Cuotas</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Contrataciones y Compras</td>
+        <td><span class="code-badge">contrataciones</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Licitaciones / Pedidos</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Recursos Humanos</td>
+        <td><span class="code-badge">rrhh</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Planillas / Personal</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Almacén Central</td>
+        <td><span class="code-badge">almacen</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Inventarios / Stock</span></td>
+      </tr>
+      <tr>
+        <td><strong>Finanzas</strong></td>
+        <td>Archivo Central</td>
+        <td><span class="code-badge">archivo</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Custodia Definitiva</span></td>
+      </tr>
+      <tr>
+        <td><strong>Atención Socio</strong></td>
+        <td>Subgerencia de Atención al Socio</td>
+        <td><span class="code-badge">atencionsocio</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Trámites Socios</span></td>
+      </tr>
+      <tr>
+        <td><strong>Atención Socio</strong></td>
+        <td>Módulo Especialista A.T.S.</td>
+        <td><span class="code-badge">ats</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Atención Directa</span></td>
+      </tr>
+      <tr>
+        <td><strong>Atención Socio</strong></td>
+        <td>Recepción Central & Caseta</td>
+        <td><span class="code-badge">recepcion</span> / <span class="code-badge">caseta</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Recepción Puerta</span></td>
+      </tr>
+      <tr>
+        <td><strong>Tecnología</strong></td>
+        <td>Encargado de Sistemas & TI</td>
+        <td><span class="code-badge">tecnologia</span> / <span class="code-badge">superadmin</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-green">Administración Total</span></td>
+      </tr>
+      <tr>
+        <td><strong>Mantenimiento</strong></td>
+        <td>Jefe de Mantenimiento & Obras</td>
+        <td><span class="code-badge">mantenimiento</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Obras / Infraestructura</span></td>
+      </tr>
+      <tr>
+        <td><strong>Área Hípica</strong></td>
+        <td>Jefatura Área Hípica</td>
+        <td><span class="code-badge">hipica</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Caballerizas / Salto</span></td>
+      </tr>
+      <tr>
+        <td><strong>Deportes</strong></td>
+        <td>Gimnasio & Piscinas</td>
+        <td><span class="code-badge">gimnasio</span> / <span class="code-badge">guardavidas</span></td>
+        <td><span class="code-badge">12</span></td>
+        <td><span class="status-badge badge-gold">Actividades Acuáticas</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>1.2. Crear y Modificar Funcionarios (Administrador TI)</h2>
+  <div class="step-box">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <strong>Acceder al Módulo de Administración:</strong>
+      Ingresar con usuario <span class="code-badge">superadmin</span> o <span class="code-badge">tecnologia</span> y dirigirse a <em>Configuración & Usuarios</em> (<span class="code-badge">/admin</span>).
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <strong>Crear Nuevo Funcionario:</strong>
+      Hacer clic en <strong>[ + Nuevo Usuario ]</strong>, ingresar Nombre, Apellidos, Usuario (ej. <span class="code-badge">auditoria</span>), Teléfono móvil para WhatsApp y asignar su Dependencia en el Organigrama.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <strong>Modificar o Desactivar Usuario:</strong>
+      Hacer clic en <strong>[ ✏️ Editar ]</strong> sobre cualquier fila para cambiar contraseña o desmarcar <em>"Usuario Activo"</em> para dar de baja accesos al cesar funciones.
+    </div>
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ==================== SECTION 2: CICLO DE VIDA ==================== -->
+  <h1>2. Ciclo de Vida de una Hoja de Ruta</h1>
+
+  <p>
+    Toda correspondencia que ingresa al Club genera un código correlativo inmutable (ej. <span class="code-badge">HR-2026-00015</span>) acompañado de un código QR para trazabilidad física y digital en tiempo real.
+  </p>
+
+  <div class="flow-card">
+    <div style="font-size:9.5pt; font-weight:700; color:#ffd700; margin-bottom:8px;">FLUJO DE ESTADOS DE LA HOJA DE RUTA:</div>
+    <div class="flow-steps">
+      <div class="flow-node">1. REGISTRADO<span>Caseta / Secretaría</span></div>
+      <div class="flow-node">2. EN REVISIÓN<span>Despacho MAE</span></div>
+      <div class="flow-node">3. EN PROCESO<span>Unidad Operativa</span></div>
+      <div class="flow-node">4. FUSIONADO<span>Anexo a Matriz</span></div>
+      <div class="flow-node">5. ARCHIVADO<span>Archivo Central</span></div>
+    </div>
+  </div>
+
+  <h2>2.1. Radicación General de Correspondencia</h2>
+  <div class="step-box">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <strong>Iniciar Radicación:</strong>
+      En el menú de Correspondencia (<span class="code-badge">/correspondencia</span>), hacer clic en el botón dorado <strong>[ + Nueva Hoja de Ruta ]</strong>.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <strong>Ingreso de Datos:</strong>
+      Completar Remitente / Razón Social, Referencia / Asunto, Cantidad de Fojas, Tipo de Documento (Carta, Solicitud, Factura, etc.) y Despacho de Destino Inicial.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <strong>Digitalización de Antecedentes:</strong>
+      Adjuntar los documentos escaneados en formato PDF o imagen fotográfica clara del documento físico.
+    </div>
+  </div>
+
+  <h2>2.2. Recepción Rápida de Facturas en Caseta (Puerta)</h2>
+  <p>
+    Diseñado especialmente para el personal de portería y caseta de ingreso con el fin de evitar demoras y pérdidas de facturas de servicios básicos y proveedores:
+  </p>
+  <div class="info-box">
+    <strong>Procedimiento en Caseta:</strong><br>
+    1. Hacer clic en el botón verde <strong>[ 🧾 Recibir Factura (Caseta) ]</strong>.<br>
+    2. Seleccionar la empresa proveedora (<em>DELAPAZ, EPSAS, YPFB, Entel, etc.</em>).<br>
+    3. Digitar el número de factura y el monto en Bolivianos (Bs.).<br>
+    4. Tomar la foto con el celular o escáner y hacer clic en <strong>[ Radicar y Derivar a Tesorería ]</strong>. El sistema notifica al instante a Contabilidad.
+  </div>
+
+  <h2>2.3. Impresión de Carátula Oficial & Rótulo Adhesivo con QR</h2>
+  <p>
+    Para mantener la concordancia perfecta entre el folder físico y el expediente digital:
+  </p>
+  <ul>
+    <li><strong>Impresión de Carátula (<span class="code-badge">A4</span>):</strong> Hace clic en <strong>[ 🖨️ Imprimir Carátula ]</strong> para generar el documento oficial con membrete del Club, datos del remitente y la cuadrícula para sellos físicos.</li>
+    <li><strong>Rótulo Térmico con QR (<span class="code-badge">Sticker Adhesivo</span>):</strong> Hace clic en <strong>[ 🏷️ Imprimir Rótulo QR ]</strong> para imprimir la etiqueta adhesiva que se coloca en la tapa del folder. Cualquier directivo o funcionario que escanee este QR con su smartphone abrirá el expediente digital de inmediato.</li>
+  </ul>
+
+  <div class="page-break"></div>
+
+  <!-- ==================== SECTION 3: DERIVACIÓN ==================== -->
+  <h1>3. Secuencia de Derivación & Proveídos Digitales</h1>
+
+  <p>
+    La derivación formal transfiere la custodia y responsabilidad del expediente a otra dependencia siguiendo las líneas de mando del Organigrama.
+  </p>
+
+  <h2>3.1. Pasos para Derivar un Expediente</h2>
+  <div class="step-box">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <strong>Seleccionar Trámite:</strong>
+      Desde tu <em>Bandeja de Entrada</em>, haz clic sobre la Hoja de Ruta a tramitar.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <strong>Definir Proveído e Instrucción:</strong>
+      En la pestaña <em>Derivación & Proveído</em>, selecciona el <strong>Área de Destino</strong> y la <strong>Instrucción Oficial</strong> (ej. <em>"Para su atención y trámite", "Elaborar informe técnico", "Proceder con pago", "Dictamen legal"</em>).
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <strong>Firma Digital en Pantalla:</strong>
+      Dibuja tu rúbrica en el recuadro digital táctil o con el ratón. Esto genera una firma electrónica con estampa de tiempo criptográfica.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">4</div>
+    <div class="step-content">
+      <strong>Confirmar Envío:</strong>
+      Presiona <strong>[ Derivar Expediente Oficial ]</strong>. El trámite pasará a tu <em>Bandeja de Salida</em> y aparecerá de inmediato en la bandeja del destinatario con sonido de alerta.
+    </div>
+  </div>
+
+  <h2>3.2. Semaforización y Plazos de Atención (SLA)</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Estado del Semáforo</th>
+        <th>Condición de Tiempo</th>
+        <th>Acción del Sistema</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="status-badge badge-green">🟢 EN PLAZO</span></td>
+        <td>Más de 6 horas restantes antes del límite fijado</td>
+        <td>Trámite en curso ordinario</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge badge-gold">🟡 POR VENCER</span></td>
+        <td>Menos de 6 horas restantes para el plazo SLA</td>
+        <td>Alerta visual ámbar en la bandeja del responsable</td>
+      </tr>
+      <tr>
+        <td><span class="status-badge badge-red">🔴 VENCIDO</span></td>
+        <td>Plazo reglamentario sobrepasado</td>
+        <td>Notificación de auditoría prioritaria a Gerencia General</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ==================== SECTION 4: FUSIONES ==================== -->
+  <h1>4. Fusión & Agrupación de Expedientes</h1>
+  
+  <p>
+    La <strong>Fusión</strong> permite incorporar expedientes secundarios o relacionados (cotizaciones, informes técnicos posteriores, facturas) dentro de un <strong>Expediente Matriz</strong> para mantener un solo legajo consolidado.
+  </p>
+
+  <div class="info-box">
+    <strong>Procedimiento de Fusión:</strong><br>
+    1. Abrir el <strong>Expediente Principal / Matriz</strong> (ej. <span class="code-badge">HR-2026-00001</span>).<br>
+    2. Hacer clic en el botón <strong>[ 🔗 Fusionar Expedientes ]</strong>.<br>
+    3. Seleccionar la Hoja de Ruta secundaria a anexar (ej. <span class="code-badge">HR-2026-00004</span>) y redactar el motivo de la incorporación.<br>
+    4. Confirmar la operación. El expediente secundario quedará marcado como <span class="status-badge badge-gold">FUSIONADO</span> y sus antecedentes formarán parte del expediente matriz.
+  </div>
+
+  <div class="page-break"></div>
+
+  <!-- ==================== SECTION 5: ORGANIGRAMA ==================== -->
+  <h1>5. Diseñador Visual del Organigrama & Flujos (Canvas 360°)</h1>
+
+  <p>
+    El Organigrama Interactivo del Club Hípico Los Sargentos modela en tiempo real las 38 posiciones jerárquicas y define los canales autorizados de derivación.
+  </p>
+
+  <h2>5.1. Operaciones en el Lienzo Canvas</h2>
+  <ul>
+    <li><strong>Acceso:</strong> Clic en el botón superior con resplandor verde <strong>[ 🌲 Organigrama & Flujos ]</strong>.</li>
+    <li><strong>Navegación:</strong> Clic sostenido en el fondo para desplazarse (Pan) y rueda del ratón para Zoom.</li>
+    <li><strong>Crear Conector (Derivación Autorizada):</strong> Clic sostenido en el punto inferior de un cargo y arrastrar hasta el punto superior del cargo receptor.</li>
+  </ul>
+
+  <div class="gold-box">
+    <strong>⚡ Reglas de Interacción con Conectores:</strong><br>
+    • <strong>1 Clic sobre el conector / línea o etiqueta:</strong> Selecciona el conector con resplandor neón dorado y abre el <em>Inspector de Conexión</em> en el panel lateral.<br>
+    • <strong>Doble Clic (2 Clics) sobre el conector o etiqueta:</strong> <strong>Suelta y desconecta</strong> el vínculo de inmediato con confirmación en pantalla.<br>
+    • <strong>Tecla Supr / Delete:</strong> Al tener seleccionado un conector, presionar la tecla <span class="code-badge">Supr</span> para soltarlo instantáneamente.<br>
+    • <strong>Guardado:</strong> Al finalizar cambios, presionar <strong>[ 💾 Guardar Organigrama ]</strong> para aplicar la estructura a la base de datos institucional.
+  </div>
+
+  <!-- ==================== SECTION 6: CHAT WHATSAPP ==================== -->
+  <h1>6. Chat Interno Departamental Estilo WhatsApp</h1>
+
+  <p>
+    Intercomunicador departamental estructurado por el Organigrama Oficial con soporte multimedia y transferencias de archivos en tiempo real.
+  </p>
+
+  <div class="step-box">
+    <div class="step-number">1</div>
+    <div class="step-content">
+      <strong>Acceso Rápido:</strong>
+      Hacer clic en el botón flotante verde neón inferior derecho o en <strong>[ 💬 Chat Interno ]</strong> en la cabecera.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">2</div>
+    <div class="step-content">
+      <strong>Navegación por Organigrama:</strong>
+      En la barra lateral izquierda, seleccionar el despacho deseado (Gerencia, Finanzas, Legal, Compras, Hípica, etc.) o utilizar el buscador en tiempo real.
+    </div>
+  </div>
+  <div class="step-box">
+    <div class="step-number">3</div>
+    <div class="step-content">
+      <strong>Mensajería & Transferencia de Documentos:</strong>
+      Enviar textos, respuestas rápidas, fotos o PDFs arrastrándolos directamente a la pantalla (<em>Drag & Drop</em>). El destinatario recibe confirmación con <strong>doble check celeste (<span class="code-badge">✓✓</span>)</strong> y timbre audible.
+    </div>
+  </div>
+
+  <!-- ==================== SECTION 7: ARCHIVO ==================== -->
+  <h1>7. Conclusión & Custodia en Archivo Central</h1>
+
+  <p>
+    Al completarse todas las fases del trámite, se concluye formalmente y se registra la ubicación física en el repositorio central:
+  </p>
+  <div class="info-box">
+    <strong>Protocolo de Cierre:</strong><br>
+    1. Seleccionar la acción <strong>[ Concluir y Archivar ]</strong>.<br>
+    2. El expediente pasa a <strong>ARCHIVO CENTRAL</strong>.<br>
+    3. El Responsable de Archivo digita la ubicación física topográfica: <strong>Caja</strong> (ej. <span class="code-badge">CAJA-2026-A12</span>) y <strong>Estante/Balda</strong> (ej. <span class="code-badge">ESTANTE-04 / BALDA-B</span>).<br>
+    4. El expediente queda en <strong>Custodia Definitiva Inmutable</strong> listo para consultas históricas instantáneas mediante su código QR.
+  </div>
+
+  <div style="margin-top:40px; padding-top:20px; border-top:1px solid #cbd5e1; text-align:center; font-size:9pt; color:#64748b;">
+    <strong>CLUB HÍPICO LOS SARGENTOS</strong> • Sistema Oficial de Correspondencia & Hojas de Ruta CHLS 360°<br>
+    <em>La Paz, Bolivia — Iniciativa Cero Papel & Transformación Digital</em>
+  </div>
+
+</body>
+</html>

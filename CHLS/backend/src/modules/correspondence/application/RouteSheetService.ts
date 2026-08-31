@@ -2,11 +2,176 @@ import { PrismaClient, RouteSheetPriority, RouteSheetSenderType, RouteSheetStatu
 import { CreateRouteSheetInput, AddMovementInput, UpdateStatusInput, MergeRouteSheetsInput } from '../domain/correspondence.dto';
 import { socketService } from '@config/socket';
 import { logger } from '@config/logger';
+import { whatsappManager } from '../../whatsapp/infrastructure/whatsappService';
+import { CorrespondenceEmailService } from './CorrespondenceEmailService';
 import path from 'path';
 import fs from 'fs';
 
+export interface SlaDetails {
+  slaStatus: 'ON_TIME' | 'WARNING' | 'OVERDUE' | 'COMPLETED';
+  slaDeadline: string;
+  slaDaysTotal: number;
+  slaDaysRemaining: number;
+  slaHoursRemaining: number;
+  slaProgressPercent: number;
+  slaLabel: string;
+  isOverdue: boolean;
+}
+
 export class RouteSheetService {
-  constructor(private prisma: PrismaClient) {}
+  private emailService: CorrespondenceEmailService;
+
+  constructor(private prisma: PrismaClient) {
+    this.emailService = new CorrespondenceEmailService(prisma);
+  }
+
+  /**
+   * Obtiene la configuración general del módulo de correspondencia
+   */
+  private getSettingsConfig(): any {
+    try {
+      const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
+      if (fs.existsSync(configFilePath)) {
+        return JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
+      }
+    } catch (err) {
+      console.error('[RouteSheetService] Error al leer configuración:', err);
+    }
+    return { defaultSlaDays: 5, areas: [] };
+  }
+
+  /**
+   * Calcula el estado SLA y métricas de cumplimiento de una Hoja de Ruta
+   */
+  public calculateSla(routeSheet: any, defaultDays: number = 5): SlaDetails {
+    const createdAt = new Date(routeSheet.createdAt || Date.now());
+    const isFinished = routeSheet.status === 'CONCLUIDO' || routeSheet.status === 'ANULADO';
+
+    // Determinar días totales permitidos según prioridad
+    let totalHoursAllowed = defaultDays * 24;
+    let daysTotal = defaultDays;
+
+    switch (routeSheet.priority) {
+      case 'URGENTE':
+        totalHoursAllowed = 24; // 1 día calendario
+        daysTotal = 1;
+        break;
+      case 'ALTA':
+        totalHoursAllowed = 48; // 2 días calendario
+        daysTotal = 2;
+        break;
+      case 'BAJA':
+        totalHoursAllowed = 10 * 24; // 10 días
+        daysTotal = 10;
+        break;
+      case 'NORMAL':
+      default:
+        totalHoursAllowed = defaultDays * 24;
+        daysTotal = defaultDays;
+        break;
+    }
+
+    const deadline = new Date(createdAt.getTime() + totalHoursAllowed * 3600 * 1000);
+    const now = new Date();
+    const totalMs = totalHoursAllowed * 3600 * 1000;
+
+    if (isFinished) {
+      const finishedAt = routeSheet.archivedAt ? new Date(routeSheet.archivedAt) : new Date(routeSheet.updatedAt || now);
+      const isMetOnTime = finishedAt.getTime() <= deadline.getTime();
+      return {
+        slaStatus: 'COMPLETED',
+        slaDeadline: deadline.toISOString(),
+        slaDaysTotal: daysTotal,
+        slaDaysRemaining: 0,
+        slaHoursRemaining: 0,
+        slaProgressPercent: 100,
+        slaLabel: isMetOnTime ? 'Concluido en Plazo' : 'Concluido fuera de Plazo',
+        isOverdue: !isMetOnTime,
+      };
+    }
+
+    const remainingMs = deadline.getTime() - now.getTime();
+    const elapsedMs = now.getTime() - createdAt.getTime();
+    const progressPercent = Math.min(100, Math.max(0, Math.round((elapsedMs / totalMs) * 100)));
+
+    const remainingHours = Math.round(remainingMs / (3600 * 1000));
+    const remainingDays = Number((remainingMs / (24 * 3600 * 1000)).toFixed(1));
+
+    let slaStatus: 'ON_TIME' | 'WARNING' | 'OVERDUE' = 'ON_TIME';
+    let slaLabel = '';
+    let isOverdue = false;
+
+    if (remainingMs < 0) {
+      slaStatus = 'OVERDUE';
+      isOverdue = true;
+      const overdueDays = Math.abs(Math.floor(remainingDays));
+      const overdueHours = Math.abs(remainingHours);
+      slaLabel = overdueDays >= 1 ? `Vencido hace ${overdueDays}d` : `Vencido hace ${overdueHours}h`;
+    } else if (remainingHours <= 24 || progressPercent >= 70) {
+      slaStatus = 'WARNING';
+      slaLabel = remainingHours > 24 ? `Quedan ${Math.ceil(remainingDays)}d` : `Quedan ${remainingHours}h`;
+    } else {
+      slaStatus = 'ON_TIME';
+      slaLabel = remainingDays >= 1 ? `Quedan ${Math.ceil(remainingDays)}d` : `Quedan ${remainingHours}h`;
+    }
+
+    return {
+      slaStatus,
+      slaDeadline: deadline.toISOString(),
+      slaDaysTotal: daysTotal,
+      slaDaysRemaining: remainingDays,
+      slaHoursRemaining: remainingHours,
+      slaProgressPercent: progressPercent,
+      slaLabel,
+      isOverdue,
+    };
+  }
+
+  /**
+   * Enriquece una Hoja de Ruta con SLA y tiempos de permanencia en cada movimiento
+   */
+  private enrichRouteSheet(item: any, defaultDays: number = 5): any {
+    if (!item) return null;
+
+    const sla = this.calculateSla(item, defaultDays);
+
+    // Calcular tiempos de permanencia entre movimientos (dwell times)
+    const movements = item.movements || [];
+    const enrichedMovements = movements.map((mov: any, idx: number) => {
+      const start = new Date(mov.createdAt).getTime();
+      const end = idx < movements.length - 1
+        ? new Date(movements[idx + 1].createdAt).getTime()
+        : (item.status === 'CONCLUIDO' && item.archivedAt ? new Date(item.archivedAt).getTime() : Date.now());
+
+      const diffMs = Math.max(0, end - start);
+      const diffMins = Math.floor(diffMs / (60 * 1000));
+      const diffHours = Math.floor(diffMs / (3600 * 1000));
+      const diffDays = Math.floor(diffMs / (24 * 3600 * 1000));
+
+      let durationFormatted = '< 1 min';
+      if (diffDays >= 1) {
+        const remHours = diffHours % 24;
+        durationFormatted = remHours > 0 ? `${diffDays}d ${remHours}h` : `${diffDays}d`;
+      } else if (diffHours >= 1) {
+        const remMins = diffMins % 60;
+        durationFormatted = remMins > 0 ? `${diffHours}h ${remMins}m` : `${diffHours}h`;
+      } else if (diffMins >= 1) {
+        durationFormatted = `${diffMins} min`;
+      }
+
+      return {
+        ...mov,
+        durationFormatted,
+        durationMs: diffMs,
+      };
+    });
+
+    return {
+      ...item,
+      movements: enrichedMovements,
+      ...sla,
+    };
+  }
 
   /**
    * Genera el siguiente código correlativo de Hoja de Ruta
@@ -252,7 +417,7 @@ export class RouteSheetService {
       }
     }
 
-    const [items, total] = await Promise.all([
+    const [rawItems, total] = await Promise.all([
       this.prisma.routeSheet.findMany({
         where,
         take: limit,
@@ -278,6 +443,10 @@ export class RouteSheetService {
       }),
       this.prisma.routeSheet.count({ where }),
     ]);
+
+    const settings = this.getSettingsConfig();
+    const defaultDays = Number(settings.defaultSlaDays) || 5;
+    const items = rawItems.map((item) => this.enrichRouteSheet(item, defaultDays));
 
     return { items, total };
   }
@@ -334,13 +503,15 @@ export class RouteSheetService {
       });
     });
 
+    const enriched = this.enrichRouteSheet(updated);
+
     try {
-      socketService.getIo()?.emit('correspondence:updated', updated);
+      socketService.getIo()?.emit('correspondence:updated', enriched);
     } catch (sockErr) {
       logger.warn('Socket broadcast error on archive', sockErr);
     }
 
-    return updated;
+    return enriched;
   }
 
   /**
@@ -355,26 +526,30 @@ export class RouteSheetService {
     if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
 
     const nextSeq = routeSheet.movements.length + 1;
+    const destArea = data.targetArea || 'SECRETARIA_GENERAL';
 
     const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Crear proveído de reapertura
       await tx.hrMovement.create({
         data: {
           routeSheetId: id,
           sequenceNumber: nextSeq,
           sourceUserId: data.userId,
           sourceArea: 'ARCHIVO_CENTRAL',
-          targetArea: data.targetArea,
-          targetPersonName: 'Reapertura de Trámite',
-          instruction: `DESARCHIVO Y REAPERTURA DE EXPEDIENTE: Se retira del Archivo Central y se reasigna a ${data.targetArea}.\nMotivo justificado: ${data.unarchiveReason.trim()}`,
-          quickStamp: 'DESARCHIVADO',
+          targetArea: destArea,
+          targetPersonName: 'Reapertura de Expediente',
+          instruction: `REAPERTURA Y DESARCHIVO DE EXPEDIENTE.\nMotivo: ${data.unarchiveReason.trim()}\nDerivado a: ${destArea} para prosecución del trámite.`,
+          quickStamp: 'EXPEDIENTE REABIERTO',
         },
       });
 
-      return tx.routeSheet.update({
+      // 2. Actualizar estado y remover custodia de archivo
+      return (tx.routeSheet as any).update({
         where: { id },
         data: {
           status: 'EN_PROCESO',
-          currentArea: data.targetArea,
+          currentArea: destArea,
+          archiveNotes: `Reabierto el ${new Date().toLocaleDateString('es-BO')}: ${data.unarchiveReason.trim()}`,
         },
         include: {
           person: true,
@@ -388,13 +563,15 @@ export class RouteSheetService {
       });
     });
 
+    const enriched = this.enrichRouteSheet(updated);
+
     try {
-      socketService.getIo()?.emit('correspondence:updated', updated);
+      socketService.getIo()?.emit('correspondence:updated', enriched);
     } catch (sockErr) {
       logger.warn('Socket broadcast error on unarchive', sockErr);
     }
 
-    return updated;
+    return enriched;
   }
 
   /**
@@ -425,7 +602,7 @@ export class RouteSheetService {
       },
     });
 
-    return routeSheet;
+    return this.enrichRouteSheet(routeSheet);
   }
 
   /**
@@ -494,6 +671,8 @@ export class RouteSheetService {
       return { movement, routeSheet: updatedHr };
     });
 
+    const enrichedRouteSheet = this.enrichRouteSheet(result.routeSheet);
+
     try {
       socketService.getIo()?.emit('correspondence:updated', {
         id: routeSheetId,
@@ -505,7 +684,7 @@ export class RouteSheetService {
       logger.warn('Socket emit error on correspondence:updated', err);
     }
 
-    return result;
+    return { movement: result.movement, routeSheet: enrichedRouteSheet };
   }
 
   /**
@@ -529,6 +708,8 @@ export class RouteSheetService {
       },
     });
 
+    const enriched = this.enrichRouteSheet(updated);
+
     try {
       socketService.getIo()?.emit('correspondence:updated', {
         id: routeSheetId,
@@ -539,7 +720,7 @@ export class RouteSheetService {
       logger.warn('Socket emit error on correspondence:updated', err);
     }
 
-    return updated;
+    return enriched;
   }
 
   /**
@@ -641,6 +822,8 @@ export class RouteSheetService {
       return updatedTarget;
     });
 
+    const enriched = this.enrichRouteSheet(result);
+
     try {
       socketService.getIo()?.emit('correspondence:updated', {
         id: targetRouteSheetId,
@@ -660,7 +843,161 @@ export class RouteSheetService {
       logger.warn('Socket emit error on correspondence:updated', err);
     }
 
-    return result;
+    return enriched;
+  }
+
+  /**
+   * Enviar Alerta SLA de Urgencia (WhatsApp y/o Email) al área responsable
+   */
+  public async notifySlaAlert(
+    routeSheetId: string,
+    options: { channel: 'WHATSAPP' | 'EMAIL' | 'BOTH'; note?: string; customPhone?: string; customEmail?: string },
+    senderUser: { id: string; name: string }
+  ) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheetId },
+      include: {
+        person: true,
+        createdBy: true,
+        movements: { orderBy: { sequenceNumber: 'asc' }, include: { sourceUser: true } },
+      },
+    });
+
+    if (!routeSheet) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    const settings = this.getSettingsConfig();
+    const sla = this.calculateSla(routeSheet, Number(settings.defaultSlaDays) || 5);
+
+    // Buscar información de contacto del área actual en settings
+    const targetAreaConfig = settings.areas?.find(
+      (a: any) => a.name?.toUpperCase() === routeSheet.currentArea?.toUpperCase()
+    );
+
+    const managerName = targetAreaConfig?.manager || routeSheet.currentArea;
+    const targetEmail = options.customEmail || targetAreaConfig?.email || 'correspondencia@chls.bo';
+    const targetPhone = options.customPhone || targetAreaConfig?.phone || '';
+
+    const results: { whatsapp: boolean; email: boolean; message: string } = {
+      whatsapp: false,
+      email: false,
+      message: '',
+    };
+
+    const origin = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const trackingUrl = `${origin}/correspondencia?code=${encodeURIComponent(routeSheet.hrCode)}`;
+    const deadlineFormatted = new Date(sla.slaDeadline).toLocaleDateString('es-BO', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+
+    // 1. Enviar Email si corresponde
+    if (options.channel === 'EMAIL' || options.channel === 'BOTH') {
+      results.email = await this.emailService.sendSlaAlertEmail(
+        routeSheet,
+        { name: managerName, email: targetEmail, area: routeSheet.currentArea },
+        {
+          deadlineText: deadlineFormatted,
+          statusLabel: sla.slaLabel,
+          isOverdue: sla.isOverdue,
+        },
+        options.note
+      );
+    }
+
+    // 2. Enviar WhatsApp si corresponde y hay teléfono
+    if ((options.channel === 'WHATSAPP' || options.channel === 'BOTH') && targetPhone) {
+      try {
+        const waClient = whatsappManager.getInstance('chls-callcenter');
+        if (waClient.status === 'CONNECTED') {
+          const waText = `🚨 *ALERTA INSTITUCIONAL DE PLAZO SLA — CHLS* 🚨\n\nEstimado(a) *${managerName}* (${routeSheet.currentArea}):\nLe recordamos la atención urgente del siguiente trámite:\n\n📄 *Hoja de Ruta:* ${routeSheet.hrCode}\n📌 *Asunto:* ${routeSheet.reference}\n⏳ *Prioridad:* ${routeSheet.priority}\n⚠️ *Estado:* ${sla.slaLabel} (Límite: ${deadlineFormatted})\n${options.note ? `\n📝 *Nota:* "${options.note}"\n` : ''}\n🔗 *Consultar trámite:* ${trackingUrl}`;
+
+          await waClient.sendBulk([{ nombre: managerName, telefono: targetPhone }], waText);
+          results.whatsapp = true;
+        } else {
+          logger.warn('[RouteSheetService] WhatsApp no conectado para enviar alerta SLA');
+        }
+      } catch (waErr: any) {
+        logger.error('[RouteSheetService] Error enviando WhatsApp SLA:', waErr);
+      }
+    }
+
+    // 3. Registrar mensaje en el chat interno institucional
+    try {
+      await this.prisma.corrChatMessage.create({
+        data: {
+          channel: 'GENERAL',
+          senderUserId: senderUser.id,
+          senderName: `⚡ Sistema SLA (${senderUser.name})`,
+          senderArea: 'CONTROL_DE_GESTION',
+          message: `🚨 Se emitió una ALERTA SLA de urgencia para la Hoja de Ruta [${routeSheet.hrCode}] dirigida a ${routeSheet.currentArea}.\nEstado: ${sla.slaLabel}. Límite: ${deadlineFormatted}.${options.note ? `\nNota: "${options.note}"` : ''}`,
+          routeSheetCode: routeSheet.hrCode,
+        },
+      });
+    } catch (chatErr) {
+      console.error('[RouteSheetService] Error registrando chat log:', chatErr);
+    }
+
+    results.message = `Alerta emitida exitosamente para ${routeSheet.hrCode} (${sla.slaLabel})`;
+    return results;
+  }
+
+  /**
+   * Resumen Global de Cumplimiento SLA
+   */
+  public async getSlaSummary() {
+    const activeSheets = await this.prisma.routeSheet.findMany({
+      where: {
+        status: { notIn: ['CONCLUIDO', 'ANULADO'] },
+      },
+      include: { movements: true },
+    });
+
+    const settings = this.getSettingsConfig();
+    const defaultDays = Number(settings.defaultSlaDays) || 5;
+
+    let onTimeCount = 0;
+    let warningCount = 0;
+    let overdueCount = 0;
+
+    const areaStats: Record<string, { total: number; onTime: number; warning: number; overdue: number }> = {};
+
+    for (const sheet of activeSheets) {
+      const sla = this.calculateSla(sheet, defaultDays);
+      const area = sheet.currentArea || 'SIN_AREA';
+
+      if (!areaStats[area]) {
+        areaStats[area] = { total: 0, onTime: 0, warning: 0, overdue: 0 };
+      }
+      areaStats[area].total += 1;
+
+      if (sla.slaStatus === 'OVERDUE') {
+        overdueCount++;
+        areaStats[area].overdue += 1;
+      } else if (sla.slaStatus === 'WARNING') {
+        warningCount++;
+        areaStats[area].warning += 1;
+      } else {
+        onTimeCount++;
+        areaStats[area].onTime += 1;
+      }
+    }
+
+    const totalActive = activeSheets.length;
+    const complianceRate = totalActive > 0 ? Math.round(((onTimeCount + warningCount) / totalActive) * 100) : 100;
+
+    return {
+      totalActive,
+      onTimeCount,
+      warningCount,
+      overdueCount,
+      complianceRate,
+      areaBreakdown: Object.entries(areaStats).map(([area, data]) => ({ area, ...data })),
+    };
   }
 
   /**

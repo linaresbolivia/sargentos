@@ -23,6 +23,8 @@ export interface HrMovement {
   instruction: string;
   quickStamp?: string | null;
   signatureUrl?: string | null;
+  durationFormatted?: string;
+  durationMs?: number;
   receivedAt?: string | null;
   createdAt: string;
   sourceUser?: {
@@ -90,6 +92,15 @@ export interface RouteSheetItem {
   } | null;
   movements?: HrMovement[];
   documents?: CorrDocument[];
+  // SLA Fields
+  slaStatus?: 'ON_TIME' | 'WARNING' | 'OVERDUE' | 'COMPLETED';
+  slaDeadline?: string;
+  slaDaysTotal?: number;
+  slaDaysRemaining?: number;
+  slaHoursRemaining?: number;
+  slaProgressPercent?: number;
+  slaLabel?: string;
+  isOverdue?: boolean;
 }
 
 export interface EcoMetrics {
@@ -97,6 +108,51 @@ export interface EcoMetrics {
   treesSaved: number;
   waterSavedLiters: number;
   co2SavedKg: number;
+}
+
+export interface SlaSummary {
+  totalActive: number;
+  onTimeCount: number;
+  warningCount: number;
+  overdueCount: number;
+  complianceRate: number;
+  areaBreakdown: Array<{
+    area: string;
+    total: number;
+    onTime: number;
+    warning: number;
+    overdue: number;
+  }>;
+}
+
+export interface WorkflowNode {
+  id: string;
+  type: 'DIRECTORIO' | 'GERENCIA' | 'SECRETARIA' | 'LEGAL' | 'FINANZAS' | 'COMPRAS' | 'OPERACIONES' | 'DEPORTES' | 'RECEPCION' | 'ARCHIVO' | 'CONDICIONAL' | 'FUSION';
+  title: string;
+  subtitle: string;
+  manager?: string;
+  areaKey?: string;
+  x: number;
+  y: number;
+  slaHours?: number;
+  canReceiveExternal?: boolean;
+  autoCcArea?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface WorkflowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  style?: 'HIERARCHICAL' | 'OPERATIONAL' | 'CONCLUSION' | 'CONDITIONAL';
+  conditionText?: string;
+}
+
+export interface CorrespondenceWorkflow {
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
 }
 
 export interface CorrespondenceStats {
@@ -108,4 +164,6 @@ export interface CorrespondenceStats {
   concluidos: number;
   areaDistribution: Array<{ name: string; total: number }>;
   ecoMetrics: EcoMetrics;
+  slaSummary?: SlaSummary;
+  workflow?: CorrespondenceWorkflow;
 }
