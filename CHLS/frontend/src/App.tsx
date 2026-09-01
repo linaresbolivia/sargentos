@@ -30,6 +30,7 @@ import { CorrespondenceHub } from './modules/correspondence/pages/Correspondence
 
 import { MainPortal } from '@shared/pages/MainPortal';
 import { VirtualKeyboardProvider, VirtualKeyboard } from '@shared/components/VirtualKeyboard';
+import { GlobalPresenceTracker } from '@shared/components/GlobalPresenceTracker';
 
 // Smart Dashboard Redirect Component
 const DashboardRedirect: React.FC = () => {
@@ -57,6 +58,9 @@ export const App: React.FC = () => {
   return (
     <VirtualKeyboardProvider>
       <BrowserRouter>
+        {/* Global Realtime Presence across all devices */}
+        <GlobalPresenceTracker />
+
         {/* Toast Notification Container with customized glass styling */}
         <Toaster
           position="top-right"

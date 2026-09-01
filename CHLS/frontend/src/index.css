@@ -36,6 +36,41 @@
     font-family: 'Arial', Helvetica, sans-serif;
   }
 
+  /* WhatsApp Web Style Emoji Picker Customization */
+  .EmojiPickerReact {
+    --epr-bg-color: #111b21 !important;
+    --epr-category-label-bg-color: #111b21 !important;
+    --epr-category-label-text-color: #00a884 !important;
+    --epr-search-input-bg-color: #202c33 !important;
+    --epr-search-input-text-color: #ffffff !important;
+    --epr-search-border-color: rgba(16, 185, 129, 0.3) !important;
+    --epr-preview-text-color: #e9edef !important;
+    --epr-highlight-color: #00a884 !important;
+    --epr-hover-bg-color: #202c33 !important;
+    --epr-focus-bg-color: #202c33 !important;
+    --epr-text-color: #e9edef !important;
+    border: 1px solid rgba(16, 185, 129, 0.25) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+    font-family: inherit !important;
+  }
+  .EmojiPickerReact .epr-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  }
+  .EmojiPickerReact .epr-search-container input {
+    border-radius: 12px !important;
+  }
+  .EmojiPickerReact .epr-category-nav {
+    padding: 6px !important;
+  }
+  .EmojiPickerReact .epr-cat-btn:hover {
+    background-color: rgba(0, 168, 132, 0.15) !important;
+    border-radius: 8px !important;
+  }
+  .EmojiPickerReact .epr-cat-btn.epr-active {
+    border-bottom: 2px solid #00a884 !important;
+  }
+
   /* Custom Premium Scrollbar */
   ::-webkit-scrollbar {
     width: 5px;

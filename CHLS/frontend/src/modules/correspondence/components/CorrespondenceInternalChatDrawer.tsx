@@ -3,6 +3,10 @@ import { useSelector } from 'react-redux';
 import { RootState } from '@store/store';
 import { api } from '@config/api';
 import { io, Socket } from 'socket.io-client';
+import EmojiPicker, { Theme, EmojiStyle, EmojiClickData } from 'emoji-picker-react';
+import { CrestLogo } from '@shared/components/CrestLogo';
+import { WhatsAppEmojiText } from '@shared/components/WhatsAppEmojiRenderer';
+import { WhatsAppRichInput, WhatsAppRichInputHandle } from '@shared/components/WhatsAppRichInput';
 import {
   X,
   Send,
@@ -32,6 +36,8 @@ import {
   Lock,
   Circle,
   Radio,
+  Reply,
+  Bell,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RouteSheetItem } from '../types/correspondence.types';
@@ -72,6 +78,9 @@ interface ChatMessage {
   fileSize?: number | null;
   status?: 'SENT' | 'DELIVERED' | 'READ';
   readAt?: string | null;
+  replyToId?: string | null;
+  replyToSenderName?: string | null;
+  replyToText?: string | null;
   createdAt: string;
 }
 
@@ -403,7 +412,64 @@ const PRESET_QUICK_MESSAGES = [
   'Revisar documentación digitalizada adjunta 📎',
 ];
 
-const EMOJI_PICKER_QUICK = ['👍', '📑', '💰', '⚠️', '✅', '🚀', '⚖️', '🐴', '✍️', '👀', '📌', '🤝'];
+// Colección completa de Emoticonos estilo WhatsApp Web organizados por categorías
+export const WHATSAPP_EMOJI_CATEGORIES = [
+  {
+    id: 'smileys',
+    name: 'Caritas y Emociones',
+    icon: '😊',
+    emojis: [
+      '😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '🙃', '😉', '😌', '😍', '🥰',
+      '😘', '😗', '😙', '😚', '😋', '😛', '😜', '🤪', '😝', '🤑', '🤗', '🤭', '🤫', '🤔', '🤐', '🤨',
+      '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔', '😪', '🤤', '😴', '😷', '🤒', '🤕',
+      '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁',
+      '☹️', '😮', '😯', '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖', '😣',
+      '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👻',
+      '👽', '🤖'
+    ],
+  },
+  {
+    id: 'gestures',
+    name: 'Manos y Gestos',
+    icon: '👍',
+    emojis: [
+      '👍', '👎', '👌', '🤌', '✌️', '🤞', '🫰', '🤟', '🤘', '🤙', '👈', '👉', '👆', '👇', '☝️', '👋',
+      '🤚', '🖐️', '✋', '🖖', '🫱', '🫲', '🫸', '🫷', '🫳', '🫴', '👏', '🙌', '👐', '🤲', '🤝', '🙏',
+      '✍️', '💅', '🤳', '💪', '🦾', '🦿', '🦵', '🦶', '👂', '🦻', '👃', '🫀', '🫁', '🧠', '🫵', '👥',
+      '👤', '🫂', '👨‍💻', '👩‍💻', '👨‍💼', '👩‍💼', '🕵️', '👮', '👷', '🧑‍🏫', '🧑‍⚕️', '🙋', '🙆', '🙅', '🤷'
+    ],
+  },
+  {
+    id: 'office',
+    name: 'Oficina y Documentos',
+    icon: '📑',
+    emojis: [
+      '✅', '✔️', '☑️', '❌', '❎', '⚠️', '🚨', '📌', '📍', '📎', '📁', '📂', '📄', '📃', '📑', '📊',
+      '📈', '📉', '📋', '🗓️', '📅', '📇', '🗂️', '🗳️', '🗃️', '🗄️', '💼', '💰', '💵', '💳', '🧾', '⚖️',
+      '🏛️', '🏢', '🏠', '🔑', '🔒', '🔓', '🔏', '🔐', '🔎', '🔍', '🖊️', '🖋️', '✒️', '📝', '✏️', '📦',
+      '📬', '📨', '✉️', '📧', '📠', '💻', '🖥️', '🖨️', '📱', '☎️', '📞', '⏰', '⏱️', '⏳', '⌛', '🔔'
+    ],
+  },
+  {
+    id: 'hearts',
+    name: 'Reacciones y Símbolos',
+    icon: '❤️',
+    emojis: [
+      '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❤️‍🔥', '❤️‍🩹', '❣️', '💕', '💞', '💓',
+      '💗', '💖', '💘', '💝', '💟', '✨', '⭐', '🌟', '💫', '💥', '🔥', '💯', '💢', '💬', '🗨️', '🗯️',
+      '💭', '💤', '🎉', '🎊', '🎈', '🎁', '🏆', '🥇', '🥈', '🥉', '🎯', '🚀', '💡', '🔥', '🔮', '🎖️'
+    ],
+  },
+  {
+    id: 'club',
+    name: 'Club y Deportes',
+    icon: '🐴',
+    emojis: [
+      '🐴', '🏇', '🐎', '🦄', '🎾', '🏊', '🏊‍♂️', '🏋️', '🏋️‍♂️', '🏃', '🏃‍♂️', '⚽', '🏀', '🥇', '🏆', '🌿',
+      '🌳', '☀️', '🌤️', '☕', '🍵', '🍽️', '🥪', '🍕', '🥗', '🍾', '🥂', '🍻', '🍹', '🚗', '🚙', '🚐'
+    ],
+  },
+];
 
 // Helper to play synthesized WhatsApp notification chime
 const playMessageChime = () => {
@@ -502,6 +568,10 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
   const [showSearch, setShowSearch] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showQuickMessages, setShowQuickMessages] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+  const [activeEmojiCategory, setActiveEmojiCategory] = useState('smileys');
+  const [emojiSearchFilter, setEmojiSearchFilter] = useState('');
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -509,6 +579,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const richInputRef = useRef<WhatsAppRichInputHandle>(null);
   const socketRef = useRef<Socket | null>(null);
 
   // Sync attached HR code if currentRouteSheet changes
@@ -539,6 +610,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
   useEffect(() => {
     if (isOpen) {
       fetchContactsAndPresence();
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
     }
   }, [isOpen]);
 
@@ -592,6 +666,28 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
+  // Helper robusto para determinar si un mensaje fue enviado por el usuario actual
+  const isMessageFromMe = useCallback(
+    (msg: ChatMessage) => {
+      if (!msg) return false;
+      const uId = currentUser?.id?.toLowerCase();
+      const uEmail = currentUser?.email?.toLowerCase();
+      const uName = currentUsername?.toLowerCase();
+      const sUserId = msg.senderUserId?.toLowerCase() || '';
+      const sName = msg.senderName?.toLowerCase() || '';
+      const fullName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim().toLowerCase();
+
+      if (uId && sUserId === uId) return true;
+      if (uEmail && (sUserId === uEmail || sName === uEmail)) return true;
+      if (uName && (sUserId === uName || sName === uName)) return true;
+      if (fullName && sName === fullName) return true;
+      if (uName && (sUserId.includes(uName) || sName.includes(uName))) return true;
+      if (uEmail && (sUserId.includes(uEmail.split('@')[0]) || sName.includes(uEmail.split('@')[0]))) return true;
+      return false;
+    },
+    [currentUser, currentUsername]
+  );
+
   // Realtime Socket listener & Presence Heartbeat
   useEffect(() => {
     const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
@@ -623,24 +719,48 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
     const handleIncomingMessage = (newMsg: ChatMessage) => {
       const user = currentUserRef.current;
+      const uId = user?.id?.toLowerCase();
+      const uEmail = user?.email?.toLowerCase();
       const currentUName = (
         (user as any)?.username ||
         user?.email?.split('@')[0] ||
         ''
       ).toLowerCase();
+      const sUserId = newMsg.senderUserId?.toLowerCase() || '';
+      const sName = newMsg.senderName?.toLowerCase() || '';
+      const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim().toLowerCase();
 
       const isMe =
-        (user?.id && user.id === newMsg.senderUserId) ||
-        (currentUName && currentUName === newMsg.senderUserId?.toLowerCase()) ||
-        (currentUName && currentUName === newMsg.senderName?.toLowerCase()) ||
-        (user?.email && user.email.toLowerCase().startsWith(newMsg.senderUserId?.toLowerCase()));
+        (uId && sUserId === uId) ||
+        (uEmail && (sUserId === uEmail || sName === uEmail)) ||
+        (currentUName && (sUserId === currentUName || sName === currentUName)) ||
+        (fullName && sName === fullName) ||
+        (currentUName && (sUserId.includes(currentUName) || sName.includes(currentUName))) ||
+        (uEmail && (sUserId.includes(uEmail.split('@')[0]) || sName.includes(uEmail.split('@')[0])));
 
       // Check if message belongs to current channel or DM
       if (newMsg.channel === activeChannel || activeChannel === 'ALL') {
         setMessages((prev) => {
-          if (prev.some((m) => m.id === newMsg.id)) return prev;
-          return [...prev, newMsg];
+          let updated = prev;
+          // Si el otro usuario me mandó un mensaje en este chat directo, mis mensajes previos ya fueron leídos por él
+          if (!isMe && activeChannel.startsWith('dm_')) {
+            updated = updated.map((m) => {
+              const isMyMsg = isMessageFromMe(m);
+              if (isMyMsg && m.status !== 'READ') {
+                return { ...m, status: 'READ', readAt: newMsg.createdAt };
+              }
+              return m;
+            });
+          }
+
+          if (updated.some((m) => m.id === newMsg.id)) return updated;
+          return [...updated, newMsg];
         });
+
+        // Confirmar lectura al servidor si tengo el chat abierto
+        if (!isMe && isOpen && activeChannel.startsWith('dm_')) {
+          api.put('/correspondence/chat/read', { channel: activeChannel }).catch(() => {});
+        }
       }
 
       // Update contact's last message and timestamp in state to float to top of list
@@ -666,6 +786,41 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
       // ONLY play sound or trigger notifications if message was sent by someone ELSE
       if (!isMe) {
         playMessageChime();
+
+        // Native Desktop Web Notification (cuando está minimizado o en segundo plano)
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          if (document.hidden || newMsg.channel !== activeChannel) {
+            try {
+              const bodyText = newMsg.message
+                ? newMsg.message.substring(0, 90)
+                : newMsg.fileName
+                ? `📎 ${newMsg.fileName}`
+                : 'Nuevo mensaje en correspondencia';
+
+              const notif = new Notification(`💬 ${newMsg.senderName} (${newMsg.senderArea})`, {
+                body: bodyText,
+                icon: '/src/assets/logo.png',
+                tag: newMsg.id,
+              });
+
+              notif.onclick = () => {
+                window.focus();
+                if (newMsg.channel.startsWith('dm_')) {
+                  const parts = newMsg.channel.split('_').slice(1);
+                  const other = parts.find((p) => p.toLowerCase() !== currentUName) || parts[0];
+                  const match = contacts.find((c) => c.username.toLowerCase() === other.toLowerCase());
+                  if (match) setSelectedContact(match);
+                } else {
+                  setSelectedContact(null);
+                  setActiveChannel(newMsg.channel);
+                }
+              };
+            } catch (notifErr) {
+              console.warn('Error launching browser notification', notifErr);
+            }
+          }
+        }
+
         if (newMsg.channel !== activeChannel) {
           toast(
             `💬 ${newMsg.senderName} (${newMsg.senderArea}): ${newMsg.message.substring(0, 45)}...`,
@@ -685,14 +840,21 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
     const handleReadReceipt = (data: { channel: string; readerUserId: string; readAt: string }) => {
       if (data.channel === activeChannel) {
-        setMessages((prev) =>
-          prev.map((m) => {
-            if (m.senderUserId !== data.readerUserId) {
-              return { ...m, status: 'READ', readAt: data.readAt };
-            }
-            return m;
-          })
-        );
+        const reader = (data.readerUserId || '').toLowerCase();
+        const myUName = currentUsername.toLowerCase();
+
+        // Solo actualizar a READ si el lector fue el destinatario (alguien distinto al usuario actual)
+        if (reader && reader !== myUName && !myUName.includes(reader) && !reader.includes(myUName)) {
+          setMessages((prev) =>
+            prev.map((m) => {
+              const isMyMsg = isMessageFromMe(m);
+              if (isMyMsg && m.status !== 'READ') {
+                return { ...m, status: 'READ', readAt: data.readAt };
+              }
+              return m;
+            })
+          );
+        }
       }
     };
 
@@ -831,11 +993,23 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         }
       }
 
-      // 2. Send message
+      // 2. Send message with optional Reply payload
       const effectiveArea =
         (currentUser as any)?.area ||
         (currentUser as any)?.department ||
         'CHLS';
+
+      const replyPayload = replyingTo
+        ? {
+            replyToId: replyingTo.id,
+            replyToSenderName: replyingTo.senderName,
+            replyToText: replyingTo.message
+              ? replyingTo.message.substring(0, 140)
+              : replyingTo.fileName
+              ? `📎 ${replyingTo.fileName}`
+              : 'Mensaje citado',
+          }
+        : {};
 
       const response = await api.post('/correspondence/chat/messages', {
         channel: activeChannel,
@@ -846,12 +1020,18 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         fileName,
         fileType,
         fileSize,
+        ...replyPayload,
       });
 
       if (response.data.success) {
+        if (richInputRef.current) {
+          richInputRef.current.clear();
+        }
         setInputText('');
         setAttachedFile(null);
+        setReplyingTo(null);
         setShowEmojis(false);
+        setShowQuickMessages(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         const createdMsg = response.data.data;
@@ -922,6 +1102,40 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
     );
   });
 
+  // Helper robusto para obtener el estado de presencia de un contacto
+  const getContactPresence = useCallback(
+    (c: ChatContact | null): UserPresenceStatus => {
+      if (!c) return 'OFFLINE';
+      const isMe =
+        c.username.toLowerCase() === currentUsername ||
+        (currentUser?.email && c.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+        (currentUser?.id && c.id === currentUser.id);
+
+      if (isMe) return 'ONLINE';
+
+      const uName = c.username?.toLowerCase() || '';
+      const email = c.email?.toLowerCase() || '';
+      const prefix = email ? email.split('@')[0] : uName;
+      const id = c.id?.toLowerCase() || '';
+
+      const p =
+        presenceMap[uName] ||
+        presenceMap[prefix] ||
+        (email && presenceMap[email]) ||
+        (id && presenceMap[id]) ||
+        Object.values(presenceMap).find(
+          (item) =>
+            item.username?.toLowerCase() === uName ||
+            item.username?.toLowerCase() === prefix ||
+            item.userId?.toLowerCase() === id ||
+            (email && item.username?.toLowerCase() === email)
+        );
+
+      return p?.status || 'OFFLINE';
+    },
+    [currentUsername, currentUser, presenceMap]
+  );
+
   // Calculate presence statistics across all contacts
   const presenceCounts = useMemo(() => {
     let online = 0;
@@ -929,10 +1143,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
     let offline = 0;
 
     contacts.forEach((c) => {
-      const isMe = c.username.toLowerCase() === currentUsername;
-      const p = presenceMap[c.username.toLowerCase()];
-      const status: UserPresenceStatus = isMe ? 'ONLINE' : (p?.status || 'OFFLINE');
-
+      const status = getContactPresence(c);
       if (status === 'ONLINE') online++;
       else if (status === 'AWAY') away++;
       else offline++;
@@ -944,15 +1155,13 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
       away,
       offline,
     };
-  }, [contacts, presenceMap, currentUsername]);
+  }, [contacts, getContactPresence]);
 
   // Filter and sort contacts by most recent message, search query AND selected presence status
   const filteredContacts = useMemo(() => {
     return contacts
       .filter((c) => {
-        const isMe = c.username.toLowerCase() === currentUsername;
-        const p = presenceMap[c.username.toLowerCase()];
-        const status: UserPresenceStatus = isMe ? 'ONLINE' : (p?.status || 'OFFLINE');
+        const status = getContactPresence(c);
 
         if (presenceFilter !== 'ALL' && status !== presenceFilter) {
           return false;
@@ -975,14 +1184,17 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         if (b.lastMessageAt) return 1;
         return a.name.localeCompare(b.name);
       });
-  }, [contacts, presenceMap, currentUsername, presenceFilter, sidebarSearch]);
+  }, [contacts, getContactPresence, presenceFilter, sidebarSearch]);
 
   // Target contact's real-time presence
-  const targetPresence = selectedContact
-    ? (selectedContact.username.toLowerCase() === currentUsername
-        ? { status: 'ONLINE' as UserPresenceStatus, lastSeen: new Date().toISOString() }
-        : (presenceMap[selectedContact.username.toLowerCase()] || { status: 'OFFLINE' as UserPresenceStatus, lastSeen: '' }))
-    : null;
+  const targetPresence = useMemo(() => {
+    if (!selectedContact) return null;
+    const status = getContactPresence(selectedContact);
+    return {
+      status,
+      lastSeen: status === 'ONLINE' ? new Date().toISOString() : '',
+    };
+  }, [selectedContact, getContactPresence]);
 
   return (
     <div
@@ -1024,19 +1236,20 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         {/* ========================================================================= */}
         <div className="w-80 sm:w-92 border-r border-emerald-500/25 bg-[#111b21] flex flex-col shrink-0">
           
-          {/* Sidebar Top Header */}
-          <div className="p-3.5 border-b border-emerald-500/25 bg-[#202c33] flex items-center justify-between">
+          {/* Sidebar Top Header with Official Club Crest */}
+          <div className="p-3 border-b border-emerald-500/25 bg-[#202c33] flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#128C7E] to-[#25D366] text-slate-950 flex items-center justify-center font-black text-base shadow-[0_0_15px_rgba(37,211,102,0.5)]">
-                💬
+              <div className="w-11 h-11 rounded-2xl bg-black/40 border border-brand-gold/40 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.3)] shrink-0">
+                <CrestLogo size="sm" className="w-full h-full" />
               </div>
-              <div>
-                <h3 className="font-black text-white text-sm leading-tight flex items-center gap-1.5">
-                  <span>Chat Interno CHLS</span>
+              <div className="min-w-0">
+                <h3 className="font-black text-white text-sm leading-tight flex items-center gap-1.5 truncate">
+                  <span className="text-brand-gold font-serif">CHLS</span>
+                  <span className="text-gray-200">Chat Interno</span>
                 </h3>
-                <span className="text-[10.5px] font-bold text-emerald-400 flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span>Conectado como @{currentUsername}</span>
+                <span className="text-[10.5px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="truncate">Conectado como @{currentUsername}</span>
                 </span>
               </div>
             </div>
@@ -1079,7 +1292,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 onClick={() => setPresenceFilter('ALL')}
                 className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide transition-all cursor-pointer select-none whitespace-nowrap ${
                   presenceFilter === 'ALL'
-                    ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                    ? 'bg-gradient-to-r from-brand-gold to-yellow-400 text-slate-950 shadow-xs font-black'
                     : 'bg-[#202c33] text-gray-400 hover:text-white'
                 }`}
               >
@@ -1091,8 +1304,8 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 onClick={() => setPresenceFilter('ONLINE')}
                 className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
                   presenceFilter === 'ONLINE'
-                    ? 'bg-emerald-500 text-slate-950 shadow-xs'
-                    : 'bg-[#202c33] text-emerald-400 hover:bg-emerald-500/20'
+                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
+                    : 'bg-[#202c33] text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -1104,8 +1317,8 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 onClick={() => setPresenceFilter('AWAY')}
                 className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
                   presenceFilter === 'AWAY'
-                    ? 'bg-amber-400 text-slate-950 shadow-xs'
-                    : 'bg-[#202c33] text-amber-400 hover:bg-amber-500/20'
+                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
+                    : 'bg-[#202c33] text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
@@ -1117,11 +1330,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 onClick={() => setPresenceFilter('OFFLINE')}
                 className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
                   presenceFilter === 'OFFLINE'
-                    ? 'bg-slate-500 text-white shadow-xs'
-                    : 'bg-[#202c33] text-gray-400 hover:text-gray-200'
+                    ? 'bg-purple-500 text-white shadow-md font-black'
+                    : 'bg-[#202c33] text-purple-300 hover:bg-purple-500/20 border border-purple-500/30'
                 }`}
               >
-                <span className="w-2 h-2 rounded-full bg-gray-500" />
+                <span className="w-2 h-2 rounded-full bg-purple-400" />
                 <span>Desconectados ({presenceCounts.offline})</span>
               </button>
             </div>
@@ -1197,39 +1410,55 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 const dmChannel = getDmChannelId(currentUsername, contact.username);
                 const unread = channelUnreadCounts[dmChannel] || channelUnreadCounts[contact.username] || 0;
 
-                const presence = presenceMap[contact.username.toLowerCase()];
-                const status: UserPresenceStatus = isMe ? 'ONLINE' : (presence?.status || 'OFFLINE');
+                const status = getContactPresence(contact);
+
+                // Paleta de 3 colores según estado: Verde (ONLINE), Amarillo (AWAY), Lila (OFFLINE)
+                const isOnline = status === 'ONLINE';
+                const isAway = status === 'AWAY';
+                const isOffline = status === 'OFFLINE';
 
                 return (
                   <button
                     key={contact.id}
                     type="button"
                     onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer select-none group relative ${
+                    className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer select-none group relative border ${
                       isSelected
-                        ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-500/20 border border-emerald-400'
-                        : 'hover:bg-[#202c33] text-gray-300 border border-transparent'
+                        ? isOnline
+                          ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-500/20 border-emerald-400'
+                          : isAway
+                          ? 'bg-gradient-to-r from-amber-600/90 to-yellow-700/90 text-white shadow-md shadow-amber-500/20 border-amber-400'
+                          : 'bg-gradient-to-r from-purple-700/90 to-indigo-800/90 text-white shadow-md shadow-purple-500/20 border-purple-400'
+                        : isOnline
+                        ? 'bg-[#122319]/60 hover:bg-[#152e20] text-gray-200 border-emerald-500/30'
+                        : isAway
+                        ? 'bg-[#242013]/60 hover:bg-[#332b17] text-gray-200 border-amber-500/30'
+                        : 'bg-[#1b1526]/60 hover:bg-[#251d36] text-gray-200 border-purple-500/30'
                     }`}
                   >
-                    {/* User Avatar with Initials & Dynamic Presence Status Dot */}
+                    {/* User Avatar with Initials & Dynamic Presence Color: Verde, Amarillo, Lila */}
                     <div className="relative shrink-0">
                       <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-inner uppercase ${
+                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-inner uppercase border ${
                           isSelected
-                            ? 'bg-black/30 text-emerald-300 border border-emerald-400/40'
-                            : 'bg-gradient-to-br from-[#1b3829] to-[#0c1f15] text-emerald-400 border border-emerald-500/30 group-hover:border-emerald-400'
+                            ? 'bg-black/30 text-white border-white/40'
+                            : isOnline
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)] group-hover:border-emerald-400'
+                            : isAway
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)] group-hover:border-amber-400'
+                            : 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)] group-hover:border-purple-400'
                         }`}
                       >
                         {contact.name.substring(0, 2)}
                       </div>
 
                       {/* Presence Status Dot */}
-                      {status === 'ONLINE' ? (
+                      {isOnline ? (
                         <span
                           title="En línea (Activo)"
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#111b21] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse"
+                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse"
                         />
-                      ) : status === 'AWAY' ? (
+                      ) : isAway ? (
                         <span
                           title="Ausente (Inactivo)"
                           className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(245,158,11,0.9)]"
@@ -1237,7 +1466,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       ) : (
                         <span
                           title="Desconectado"
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-gray-500 border-2 border-[#111b21] opacity-75"
+                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-purple-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(168,85,247,0.7)]"
                         />
                       )}
                     </div>
@@ -1247,7 +1476,13 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       <div className="flex items-center justify-between gap-1">
                         <h4
                           className={`text-xs font-black truncate ${
-                            isSelected ? 'text-white' : 'text-gray-100 group-hover:text-emerald-300'
+                            isSelected
+                              ? 'text-white'
+                              : isOnline
+                              ? 'text-emerald-100 group-hover:text-emerald-300'
+                              : isAway
+                              ? 'text-amber-100 group-hover:text-amber-300'
+                              : 'text-purple-100 group-hover:text-purple-300'
                           }`}
                         >
                           {contact.name} {isMe && <span className="text-[10px] text-brand-gold font-normal">(Tú)</span>}
@@ -1274,31 +1509,53 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       <div className="flex items-center justify-between gap-1 mt-0.5">
                         {contact.lastMessage ? (
                           <p
-                            className={`text-[11px] truncate font-medium max-w-[150px] ${
-                              isSelected ? 'text-emerald-100' : 'text-gray-400 group-hover:text-gray-300'
+                            className={`text-[11px] truncate font-medium max-w-[145px] ${
+                              isSelected
+                                ? 'text-white/90'
+                                : isOnline
+                                ? 'text-emerald-200/70 group-hover:text-emerald-100'
+                                : isAway
+                                ? 'text-amber-200/70 group-hover:text-amber-100'
+                                : 'text-purple-200/70 group-hover:text-purple-100'
                             }`}
                           >
-                            <span className="text-emerald-400 font-mono text-[10px] mr-1">@{contact.username}:</span>
+                            <span
+                              className={`font-mono text-[10px] mr-1 ${
+                                isOnline ? 'text-emerald-400' : isAway ? 'text-amber-400' : 'text-purple-400'
+                              }`}
+                            >
+                              @{contact.username}:
+                            </span>
                             <span>{contact.lastMessage}</span>
                           </p>
                         ) : (
-                          <span className={`text-[11px] font-mono truncate ${isSelected ? 'text-emerald-100' : 'text-emerald-400'}`}>
+                          <span
+                            className={`text-[11px] font-mono truncate ${
+                              isSelected
+                                ? 'text-white/90'
+                                : isOnline
+                                ? 'text-emerald-400'
+                                : isAway
+                                ? 'text-amber-400'
+                                : 'text-purple-300/80'
+                            }`}
+                          >
                             @{contact.username}
                           </span>
                         )}
 
-                        {/* Status Label Pill */}
-                        {status === 'ONLINE' ? (
-                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase shrink-0">
+                        {/* Status Label Pill con Lila, Verde y Amarillo */}
+                        {isOnline ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 uppercase shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.25)]">
                             En línea
                           </span>
-                        ) : status === 'AWAY' ? (
-                          <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 uppercase shrink-0">
+                        ) : isAway ? (
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.25)]">
                             Ausente
                           </span>
                         ) : (
-                          <span className="text-[9px] font-bold text-gray-400 uppercase truncate max-w-[80px] shrink-0">
-                            {contact.role.replace('MODULO_', '')}
+                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase truncate max-w-[95px] shrink-0 shadow-[0_0_8px_rgba(168,85,247,0.15)]">
+                            {contact.role.replace('MODULO_', '') || 'Offline'}
                           </span>
                         )}
                       </div>
@@ -1442,7 +1699,15 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
             <div className="flex items-center gap-3">
               <div className="relative">
                 {selectedContact ? (
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-700 text-white font-black flex items-center justify-center text-sm uppercase shadow-[0_0_15px_rgba(16,185,129,0.4)]">
+                  <div
+                    className={`w-10 h-10 rounded-2xl text-white font-black flex items-center justify-center text-sm uppercase shadow-lg border ${
+                      targetPresence?.status === 'ONLINE'
+                        ? 'bg-gradient-to-tr from-emerald-600 to-teal-700 border-emerald-400/50 shadow-[0_0_15px_rgba(16,185,129,0.4)]'
+                        : targetPresence?.status === 'AWAY'
+                        ? 'bg-gradient-to-tr from-amber-600 to-yellow-700 border-amber-400/50 shadow-[0_0_15px_rgba(245,158,11,0.4)]'
+                        : 'bg-gradient-to-tr from-purple-700 to-indigo-800 border-purple-400/50 shadow-[0_0_15px_rgba(168,85,247,0.3)]'
+                    }`}
+                  >
                     {selectedContact.name.substring(0, 2)}
                   </div>
                 ) : (
@@ -1454,11 +1719,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 {/* Header Presence Dot */}
                 {selectedContact && targetPresence ? (
                   targetPresence.status === 'ONLINE' ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-500 border-2 border-[#202c33] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse" />
                   ) : targetPresence.status === 'AWAY' ? (
                     <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
                   ) : (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-gray-500 border-2 border-[#202c33] opacity-75" />
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-purple-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(168,85,247,0.7)]" />
                   )
                 ) : (
                   <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#202c33] animate-pulse" />
@@ -1470,7 +1735,17 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                   <h2 className="text-base font-black text-white leading-tight truncate">
                     {selectedContact ? selectedContact.name : activeChannelInfo.label}
                   </h2>
-                  <span className="text-[9.5px] font-mono font-black uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0">
+                  <span
+                    className={`text-[9.5px] font-mono font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${
+                      !selectedContact
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : targetPresence?.status === 'ONLINE'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                        : targetPresence?.status === 'AWAY'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_8px_rgba(245,158,11,0.25)]'
+                        : 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-[0_0_8px_rgba(168,85,247,0.15)]'
+                    }`}
+                  >
                     {selectedContact ? `@${selectedContact.username}` : activeChannelInfo.position}
                   </span>
                 </div>
@@ -1487,9 +1762,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                         <span>Ausente • Sin actividad reciente</span>
                       </span>
                     ) : (
-                      <span className="text-gray-400 flex items-center gap-1 font-medium">
-                        <span className="w-2 h-2 rounded-full bg-gray-500" />
-                        <span>Desconectado</span>
+                      <span className="text-purple-300 flex items-center gap-1 font-medium">
+                        <span className="w-2 h-2 rounded-full bg-purple-400" />
+                        <span>Desconectado • Fuera de línea</span>
                       </span>
                     )
                   ) : (
@@ -1559,7 +1834,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
           {/* Messages Body with WhatsApp Wallpaper & Bubble Aesthetic */}
           <div
-            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5"
+            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 relative"
             style={{
               backgroundImage: `
                 radial-gradient(circle, rgba(16,185,129,0.06) 1px, transparent 1px),
@@ -1568,22 +1843,30 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
               backgroundSize: '20px 20px',
             }}
           >
+            {/* Elegant Background Club Watermark */}
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] overflow-hidden select-none">
+              <CrestLogo size="xl" className="w-80 h-96 scale-125 grayscale" />
+            </div>
+
             {isLoading ? (
-              <div className="text-center py-12 text-slate-400 text-xs font-bold animate-pulse">
+              <div className="text-center py-12 text-slate-400 text-xs font-bold animate-pulse relative z-10">
                 Cargando mensajes de la conversación...
               </div>
             ) : filteredMessages.length === 0 ? (
-              <div className="text-center py-16 space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto">
-                  <MessageSquare className="w-7 h-7" />
+              <div className="text-center py-16 space-y-4 relative z-10 animate-fadeIn">
+                <div className="w-20 h-24 p-2 rounded-2xl bg-black/40 border border-brand-gold/40 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(212,175,55,0.3)] animate-pulse">
+                  <CrestLogo size="md" className="w-full h-full" />
                 </div>
-                <h3 className="text-sm font-bold text-white">
-                  {searchFilter
-                    ? 'No se encontraron mensajes con ese criterio'
-                    : selectedContact
-                    ? `Inicia la conversación directa con ${selectedContact.name}`
-                    : `No hay mensajes aún en #${activeChannelInfo.label}`}
-                </h3>
+                <div className="space-y-1">
+                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                    {searchFilter
+                      ? 'No se encontraron mensajes con ese criterio'
+                      : selectedContact
+                      ? `Chat Directo con ${selectedContact.name}`
+                      : `Canal Institucional #${activeChannelInfo.label}`}
+                  </h3>
+                  <p className="text-xs text-brand-gold font-bold">Club Hípico Los Sargentos</p>
+                </div>
                 <p className="text-xs text-gray-400 max-w-sm mx-auto">
                   {selectedContact
                     ? `Escribe un mensaje o adjunta expedientes y archivos para coordinar directamente con @${selectedContact.username}.`
@@ -1592,44 +1875,83 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
               </div>
             ) : (
               filteredMessages.map((msg) => {
-                const isMe =
-                  currentUser?.id === msg.senderUserId ||
-                  currentUsername === msg.senderUserId?.toLowerCase() ||
-                  currentUsername === msg.senderName?.toLowerCase() ||
-                  (currentUser?.email && currentUser.email.toLowerCase().startsWith(msg.senderUserId?.toLowerCase()));
+                const isMe = isMessageFromMe(msg);
                 const senderColor = getSenderColor(msg.senderName);
 
                 return (
                   <div
                     key={msg.id}
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1`}
+                    id={`chat-msg-${msg.id}`}
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} space-y-1 group relative`}
                   >
-                    {/* WhatsApp-styled Message Bubble */}
-                    <div
-                      className={`max-w-[88%] sm:max-w-[75%] p-3.5 space-y-2 shadow-lg relative ${
-                        isMe
-                          ? 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-xs border border-emerald-500/30 shadow-[0_2px_8px_rgba(0,92,75,0.4)]'
-                          : 'bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-xs border border-slate-700/60 shadow-[0_2px_8px_rgba(32,44,51,0.4)]'
-                      }`}
-                    >
-                      {/* Incoming Sender Name Header (WhatsApp Group Style) */}
-                      {!isMe && (
-                        <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/10 text-[11px]">
-                          <span className={`font-black tracking-wide ${senderColor}`}>
-                            {msg.senderName}
-                          </span>
-                          <span className="text-[9.5px] font-bold text-brand-gold uppercase bg-black/30 px-1.5 py-0.5 rounded border border-white/5">
-                            {msg.senderArea}
-                          </span>
-                        </div>
+                    <div className="flex items-center gap-1.5 max-w-full">
+                      {/* Left Reply Action Button (for my own messages) */}
+                      {isMe && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReplyingTo(msg);
+                            richInputRef.current?.focus();
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white transition-all shadow-md cursor-pointer text-xs shrink-0"
+                          title="Citar / Responder a este mensaje"
+                        >
+                          <Reply className="w-3.5 h-3.5" />
+                        </button>
                       )}
 
-                      {/* Message text with links and emojis */}
-                      {msg.message && (
-                        <p className="text-xs sm:text-[13px] font-medium whitespace-pre-wrap leading-relaxed select-text">
-                          {msg.message}
-                        </p>
-                      )}
+                      {/* WhatsApp-styled Message Bubble */}
+                      <div
+                        className={`p-3.5 space-y-2 shadow-lg relative ${
+                          isMe
+                            ? 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-xs border border-emerald-500/30 shadow-[0_2px_8px_rgba(0,92,75,0.4)]'
+                            : 'bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-xs border border-slate-700/60 shadow-[0_2px_8px_rgba(32,44,51,0.4)]'
+                        }`}
+                        style={{ maxWidth: '85vw', width: 'fit-content' }}
+                      >
+                        {/* Incoming Sender Name Header (WhatsApp Group Style) */}
+                        {!isMe && (
+                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/10 text-[11px]">
+                            <span className={`font-black tracking-wide ${senderColor}`}>
+                              {msg.senderName}
+                            </span>
+                            <span className="text-[9.5px] font-bold text-brand-gold uppercase bg-black/30 px-1.5 py-0.5 rounded border border-white/5">
+                              {msg.senderArea}
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Quoted Message Header (WhatsApp Reply Block) */}
+                        {msg.replyToText && (
+                          <div
+                            onClick={() => {
+                              if (msg.replyToId) {
+                                const targetEl = document.getElementById(`chat-msg-${msg.replyToId}`);
+                                if (targetEl) {
+                                  targetEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  targetEl.classList.add('animate-pulse');
+                                  setTimeout(() => targetEl.classList.remove('animate-pulse'), 1500);
+                                }
+                              }
+                            }}
+                            className="p-2 rounded-xl bg-black/30 border-l-4 border-emerald-400 text-left mb-1.5 space-y-0.5 cursor-pointer hover:bg-black/40 transition-colors select-none"
+                          >
+                            <span className="text-[10.5px] font-black text-emerald-300 flex items-center gap-1 leading-tight">
+                              <Reply className="w-3 h-3 text-emerald-400" />
+                              <span>{msg.replyToSenderName || 'Mensaje citado'}</span>
+                            </span>
+                            <span className="text-[11px] text-gray-300 line-clamp-2 leading-tight block">
+                              <WhatsAppEmojiText text={msg.replyToText} size="sm" />
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Message text with links and WhatsApp graphical emojis */}
+                        {msg.message && (
+                          <div className="text-xs sm:text-[13px] font-medium leading-relaxed select-text">
+                            <WhatsAppEmojiText text={msg.message} size="md" />
+                          </div>
+                        )}
 
                       {/* Attached Image Preview */}
                       {msg.fileUrl && isImageFile(msg.fileType, msg.fileName) && (
@@ -1721,51 +2043,150 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                         )}
                       </div>
                     </div>
+
+                    {/* Right Reply Action Button (for incoming messages) */}
+                    {!isMe && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingTo(msg);
+                          richInputRef.current?.focus();
+                        }}
+                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white transition-all shadow-md cursor-pointer text-xs shrink-0"
+                        title="Citar / Responder a este mensaje"
+                      >
+                        <Reply className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                );
+                </div>
+              );
               })
             )}
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Quick Message Chips */}
-          <div className="px-4 py-2 bg-[#111b21] border-t border-emerald-500/20 shrink-0">
-            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
-              <span className="text-[10px] font-black uppercase text-brand-gold shrink-0 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-brand-gold" />
-                <span>Rápidas:</span>
-              </span>
-              {PRESET_QUICK_MESSAGES.map((quick) => (
+          {/* Quick Message Chips - Collapsible Centered 2-Row Responsive Layout */}
+          {showQuickMessages && (
+            <div className="px-3 py-2.5 bg-[#111b21] border-t border-emerald-500/30 shrink-0 flex flex-col items-center justify-center w-full animate-fadeIn shadow-2xl">
+              <div className="w-full flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-brand-gold tracking-wider select-none">
+                  <Sparkles className="w-3.5 h-3.5 text-brand-gold" />
+                  <span>Respuestas Rápidas Institucionales</span>
+                </div>
                 <button
-                  key={quick}
                   type="button"
-                  onClick={() => setInputText(quick)}
-                  className="text-[11px] font-bold px-2.5 py-1 rounded-xl bg-[#202c33] border border-white/10 text-gray-300 hover:border-emerald-400 hover:text-white whitespace-nowrap transition-all shadow-xs cursor-pointer select-none"
+                  onClick={() => setShowQuickMessages(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 text-xs transition-colors cursor-pointer"
+                  title="Cerrar respuestas rápidas"
                 >
-                  {quick}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          {/* Emojis Selector (Collapsible) */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 w-full max-w-4xl mx-auto justify-center">
+                {PRESET_QUICK_MESSAGES.map((quick) => (
+                  <button
+                    key={quick}
+                    type="button"
+                    onClick={() => {
+                      if (richInputRef.current) {
+                        richInputRef.current.setText(quick);
+                      } else {
+                        setInputText(quick);
+                      }
+                      setShowQuickMessages(false);
+                    }}
+                    className="w-full text-[11px] font-bold py-2 px-2.5 rounded-xl bg-[#202c33] border border-white/10 text-gray-300 hover:border-emerald-400 hover:text-white hover:bg-[#2a3942] text-center flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer select-none"
+                    title={quick}
+                  >
+                    <span className="truncate">
+                      <WhatsAppEmojiText text={quick} size="sm" />
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* WhatsApp Web Official Full Emoji Picker */}
           {showEmojis && (
-            <div className="px-5 py-2 bg-[#111b21] border-t border-emerald-500/20 flex items-center gap-2 overflow-x-auto scrollbar-none shrink-0 animate-fadeIn">
-              {EMOJI_PICKER_QUICK.map((emoji) => (
+            <div className="bg-[#111b21] border-t border-emerald-500/30 p-2 shrink-0 animate-fadeIn relative shadow-2xl flex flex-col items-center">
+              <div className="w-full flex justify-between items-center px-3 py-1 border-b border-white/10 mb-1.5">
+                <span className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+                  <Smile className="w-4 h-4 text-brand-gold" />
+                  <span>Emoticonos WhatsApp Web</span>
+                </span>
                 <button
-                  key={emoji}
                   type="button"
-                  onClick={() => setInputText((prev) => prev + emoji)}
-                  className="text-lg hover:scale-125 transition-transform p-1 cursor-pointer"
+                  onClick={() => setShowEmojis(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 text-xs transition-colors cursor-pointer"
+                  title="Cerrar emoticonos"
                 >
-                  {emoji}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
+              </div>
+
+              <div className="w-full flex justify-center">
+                <EmojiPicker
+                  theme={Theme.DARK}
+                  emojiStyle={EmojiStyle.APPLE}
+                  onEmojiClick={(emojiData: EmojiClickData) => {
+                    if (richInputRef.current) {
+                      richInputRef.current.insertEmoji(emojiData.emoji);
+                    } else {
+                      setInputText((prev) => prev + emojiData.emoji);
+                    }
+                  }}
+                  searchPlaceHolder="Buscar emoji..."
+                  skinTonesDisabled={false}
+                  searchDisabled={false}
+                  width="100%"
+                  height={350}
+                  previewConfig={{
+                    showPreview: true,
+                    defaultEmoji: '1f44d',
+                    defaultCaption: 'WhatsApp Web CHLS',
+                  }}
+                  lazyLoadEmojis={true}
+                />
+              </div>
             </div>
           )}
 
           {/* Input Message, File Upload & Attached HR Footer */}
           <div className="p-3.5 bg-[#202c33] border-t border-emerald-500/30 space-y-2.5 shrink-0">
+            
+            {/* Replying To Quote Banner (WhatsApp Style) */}
+            {replyingTo && (
+              <div className="flex items-center justify-between p-2.5 bg-[#111b21] border-l-4 border-emerald-400 rounded-xl border border-white/10 shadow-md animate-fadeIn">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <Reply className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-xs font-black text-emerald-400 block truncate">
+                      Respondiendo a {replyingTo.senderName}
+                    </span>
+                    <span className="text-[11px] text-gray-300 truncate block font-medium">
+                      {replyingTo.message ? (
+                        <WhatsAppEmojiText text={replyingTo.message} size="sm" />
+                      ) : replyingTo.fileName ? (
+                        `📎 ${replyingTo.fileName}`
+                      ) : (
+                        'Archivo adjunto'
+                      )}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyingTo(null)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-red-400 hover:bg-white/10 transition-colors ml-2 cursor-pointer shrink-0"
+                  title="Cancelar respuesta"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             
             {/* Top Pill Controls: Attached HR & Attached File */}
             <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
@@ -1826,8 +2247,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
               {/* Emoji Toggle Button */}
               <button
                 type="button"
-                onClick={() => setShowEmojis(!showEmojis)}
-                title="Emojis rápidos"
+                onClick={() => {
+                  setShowEmojis(!showEmojis);
+                  if (!showEmojis) setShowQuickMessages(false);
+                }}
+                title="Emoticonos WhatsApp Web"
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                   showEmojis
                     ? 'bg-amber-400 text-slate-950 border-amber-500 scale-105'
@@ -1835,6 +2259,23 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 }`}
               >
                 <Smile className="w-5 h-5" />
+              </button>
+
+              {/* Quick Responses Toggle Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowQuickMessages(!showQuickMessages);
+                  if (!showQuickMessages) setShowEmojis(false);
+                }}
+                title="Respuestas Rápidas Institucionales"
+                className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
+                  showQuickMessages
+                    ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25 scale-105 font-bold'
+                    : 'bg-[#111b21] border-white/10 text-brand-gold hover:border-brand-gold hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-5 h-5" />
               </button>
 
               {/* File Attachment Button */}
@@ -1851,16 +2292,17 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 <Paperclip className="w-5 h-5" />
               </button>
 
-              <input
-                type="text"
+              <WhatsAppRichInput
+                ref={richInputRef}
+                value={inputText}
+                onChange={(val) => setInputText(val)}
+                onEnterPress={() => handleSendMessage()}
                 placeholder={
                   selectedContact
-                    ? `Escribir mensaje privado para ${selectedContact.name}... (Enter para enviar)`
+                    ? `Escribir a @${selectedContact.username}... (Enter para enviar)`
                     : `Mensaje para #${activeChannelInfo.label}... (Enter para enviar)`
                 }
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                className="flex-1 bg-[#111b21] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white font-medium outline-none focus:border-emerald-500 shadow-xs"
+                disabled={isSending}
               />
 
               <button

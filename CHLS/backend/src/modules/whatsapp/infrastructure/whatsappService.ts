@@ -634,15 +634,35 @@ export class WhatsappClientInstance {
   private async handleMessageAck(msg: Message, ack: number) {
     try {
       if (msg.isStatus || msg.to.includes('@g.us')) return;
-      const contact = await msg.getContact();
-      let phone = contact.number || msg.to.replace(/@.*$/, '');
+      let phone = '';
+      try {
+        const contact = await msg.getContact();
+        phone = contact.number || msg.to.replace(/@.*$/, '');
+      } catch {
+        phone = msg.to.replace(/@.*$/, '');
+      }
       if (phone.includes(':')) phone = phone.split(':')[0];
 
       let status = 'SENT';
       if (ack === 2) status = 'DELIVERED';
-      if (ack === 3) status = 'READ';
+      if (ack >= 3) status = 'READ';
 
-      socketService.getIo().emit('whatsapp:message_ack', { phone, status, ack, clientId: this.clientId });
+      // Persistir el cambio de estado en la base de datos
+      try {
+        const chat = await prisma.whatsAppChat.findUnique({ where: { phone } });
+        if (chat) {
+          await prisma.whatsAppMessage.updateMany({
+            where: {
+              chatId: chat.id,
+              fromMe: true,
+              ...(status === 'DELIVERED' ? { status: 'SENT' } : { status: { not: 'READ' } })
+            },
+            data: { status }
+          });
+        }
+      } catch (dbErr) { }
+
+      socketService.getIo()?.emit('whatsapp:message_ack', { phone, status, ack, clientId: this.clientId });
     } catch (e) { }
   }
 

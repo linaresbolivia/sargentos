@@ -41,49 +41,56 @@ class SocketService {
       socket.emit('user:presence:all', this.getAllPresence());
 
       // User joins presence
-      socket.on('user:presence:join', (data: { userId?: string; username?: string }) => {
-        if (!data || (!data.username && !data.userId)) return;
-        const username = (data.username || data.userId || 'usuario').toLowerCase();
-        const userId = data.userId || username;
+      socket.on(
+        'user:presence:join',
+        (data: { userId?: string; username?: string; email?: string }) => {
+          if (!data || (!data.username && !data.userId && !data.email)) return;
+          const rawUName = (data.username || data.email || data.userId || 'usuario').toLowerCase();
+          const cleanUsername = rawUName.split('@')[0];
+          const userId = data.userId || cleanUsername;
+          const email = (data.email || (rawUName.includes('@') ? rawUName : `${cleanUsername}@sargentos.com.bo`)).toLowerCase();
 
-        this.socketToUser.set(socket.id, username);
+          this.socketToUser.set(socket.id, cleanUsername);
 
-        let userRecord = this.userPresence.get(username);
-        if (!userRecord) {
-          userRecord = {
-            userId,
-            username,
-            status: 'ONLINE',
-            lastSeen: new Date(),
-            sockets: new Set<string>(),
+          let userRecord = this.userPresence.get(cleanUsername);
+          if (!userRecord) {
+            userRecord = {
+              userId,
+              username: cleanUsername,
+              status: 'ONLINE',
+              lastSeen: new Date(),
+              sockets: new Set<string>(),
+            };
+            this.userPresence.set(cleanUsername, userRecord);
+          } else {
+            userRecord.status = 'ONLINE';
+            userRecord.lastSeen = new Date();
+            userRecord.userId = userId;
+          }
+
+          userRecord.sockets.add(socket.id);
+
+          const presencePayload: UserPresenceInfo = {
+            userId: userRecord.userId,
+            username: userRecord.username,
+            status: userRecord.status,
+            lastSeen: userRecord.lastSeen.toISOString(),
           };
-          this.userPresence.set(username, userRecord);
-        } else {
-          userRecord.status = 'ONLINE';
-          userRecord.lastSeen = new Date();
+
+          this.io?.emit('user:presence:update', presencePayload);
         }
-
-        userRecord.sockets.add(socket.id);
-
-        const presencePayload: UserPresenceInfo = {
-          userId: userRecord.userId,
-          username: userRecord.username,
-          status: userRecord.status,
-          lastSeen: userRecord.lastSeen.toISOString(),
-        };
-
-        this.io?.emit('user:presence:update', presencePayload);
-      });
+      );
 
       // User status heartbeat / update (e.g. ONLINE or AWAY)
       socket.on(
         'user:presence:heartbeat',
-        (data: { userId?: string; username?: string; status?: UserPresenceStatus }) => {
+        (data: { userId?: string; username?: string; email?: string; status?: UserPresenceStatus }) => {
           if (!data) return;
-          const username = (data.username || data.userId || '').toLowerCase();
-          if (!username) return;
+          const rawUName = (data.username || data.email || data.userId || '').toLowerCase();
+          const cleanUsername = rawUName.split('@')[0];
+          if (!cleanUsername) return;
 
-          let userRecord = this.userPresence.get(username);
+          let userRecord = this.userPresence.get(cleanUsername);
           if (userRecord) {
             userRecord.status = data.status || 'ONLINE';
             userRecord.lastSeen = new Date();
@@ -132,12 +139,16 @@ class SocketService {
   public getAllPresence(): Record<string, UserPresenceInfo> {
     const result: Record<string, UserPresenceInfo> = {};
     this.userPresence.forEach((val, key) => {
-      result[key] = {
+      const payload = {
         userId: val.userId,
         username: val.username,
         status: val.status,
         lastSeen: val.lastSeen.toISOString(),
       };
+      result[key.toLowerCase()] = payload;
+      if (val.userId) {
+        result[val.userId.toLowerCase()] = payload;
+      }
     });
     return result;
   }

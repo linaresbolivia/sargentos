@@ -528,8 +528,9 @@ export class CorrespondenceController {
   public async getChatMessages(req: Request, res: Response) {
     try {
       const channel = (req.query.channel as string) || 'GENERAL';
-      const readerUserId = (req as any).user?.id || (req as any).user?.email;
-      const messages = await this.chatService.getMessages(channel, 80, readerUserId);
+      const user = (req as any).user;
+      const readerIdentifier = user?.username || user?.email || user?.id || '';
+      const messages = await this.chatService.getMessages(channel, 80, readerIdentifier);
       return res.status(200).json({
         success: true,
         data: messages,
@@ -548,8 +549,9 @@ export class CorrespondenceController {
   public async markChatAsRead(req: Request, res: Response) {
     try {
       const { channel } = req.body;
-      const readerUserId = (req as any).user?.id || (req as any).user?.email;
-      const result = await this.chatService.markAsRead(channel, readerUserId);
+      const user = (req as any).user;
+      const readerIdentifier = user?.username || user?.email || user?.id || '';
+      const result = await this.chatService.markAsRead(channel, readerIdentifier);
       return res.status(200).json({
         success: true,
         data: result,
@@ -567,11 +569,25 @@ export class CorrespondenceController {
   // 12. Send Internal Chat Message
   public async sendChatMessage(req: Request, res: Response) {
     try {
-      const { channel, message, routeSheetCode, senderArea, fileUrl, fileName, fileType, fileSize } = req.body;
+      const {
+        channel,
+        message,
+        routeSheetCode,
+        senderArea,
+        fileUrl,
+        fileName,
+        fileType,
+        fileSize,
+        replyToId,
+        replyToSenderName,
+        replyToText,
+      } = req.body;
       const user = (req as any).user;
+      const username = user?.username || user?.email?.split('@')[0] || 'usuario';
+      const userEmail = user?.email || '';
       const fullName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
-      const senderName = fullName || user?.username || user?.email || 'Funcionario CHLS';
-      const senderUserId = user?.id || 'SYSTEM';
+      const senderName = fullName || username || userEmail || 'Funcionario CHLS';
+      const senderUserId = user?.id || username || userEmail || 'SYSTEM';
       const effectiveArea = senderArea || user?.area || user?.department || 'CHLS';
 
       if ((!message || !message.trim()) && !fileUrl) {
@@ -592,6 +608,9 @@ export class CorrespondenceController {
         fileName: fileName || null,
         fileType: fileType || null,
         fileSize: fileSize ? Number(fileSize) : null,
+        replyToId: replyToId || null,
+        replyToSenderName: replyToSenderName || null,
+        replyToText: replyToText || null,
       });
 
       return res.status(201).json({

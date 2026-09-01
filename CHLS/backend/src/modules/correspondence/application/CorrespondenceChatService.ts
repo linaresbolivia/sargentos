@@ -13,6 +13,9 @@ export interface SendChatMessageDto {
   fileName?: string | null;
   fileType?: string | null;
   fileSize?: number | null;
+  replyToId?: string | null;
+  replyToSenderName?: string | null;
+  replyToText?: string | null;
 }
 
 export class CorrespondenceChatService {
@@ -40,16 +43,41 @@ export class CorrespondenceChatService {
     }
   }
 
-  public async markAsRead(channel: string, readerUserId: string) {
+  public async markAsRead(channel: string, readerIdentifier: string) {
     try {
-      if (!channel || !readerUserId) return { count: 0 };
+      if (!channel || !readerIdentifier) return { count: 0 };
+      const readerLow = readerIdentifier.toLowerCase().trim();
+      const readerUsername = readerLow.split('@')[0];
 
-      // Update all messages in this channel not sent by this reader
-      const updated = await (this.prisma as any).corrChatMessage.updateMany({
+      // Find all unread messages in this channel
+      const unreadMessages = await (this.prisma as any).corrChatMessage.findMany({
         where: {
           channel,
-          senderUserId: { not: readerUserId },
           status: { not: 'READ' },
+        },
+      });
+
+      // Filter only incoming messages (messages sent by someone OTHER than reader)
+      const incomingMessageIds = unreadMessages
+        .filter((m: any) => {
+          const sUserId = (m.senderUserId || '').toLowerCase();
+          const sName = (m.senderName || '').toLowerCase();
+          const isFromReader =
+            sUserId === readerLow ||
+            sName === readerLow ||
+            sUserId.includes(readerUsername) ||
+            sName.includes(readerUsername) ||
+            sUserId.split('@')[0] === readerUsername ||
+            sName.split('@')[0] === readerUsername;
+          return !isFromReader;
+        })
+        .map((m: any) => m.id);
+
+      if (incomingMessageIds.length === 0) return { count: 0 };
+
+      const updated = await (this.prisma as any).corrChatMessage.updateMany({
+        where: {
+          id: { in: incomingMessageIds },
         },
         data: {
           status: 'READ',
@@ -61,7 +89,7 @@ export class CorrespondenceChatService {
         try {
           socketService.getIo()?.emit('correspondence:chat:read', {
             channel,
-            readerUserId,
+            readerUserId: readerUsername,
             readAt: new Date().toISOString(),
           });
         } catch (sockErr) {
@@ -82,12 +110,21 @@ export class CorrespondenceChatService {
       let initialStatus = 'SENT';
       if (data.channel.startsWith('dm_')) {
         const parts = data.channel.split('_').slice(1);
-        const senderUName = (data.senderName || data.senderUserId || '').toLowerCase();
-        const otherUsername = parts.find((p) => !senderUName.includes(p.toLowerCase())) || parts[0];
+        const senderLow = (data.senderName || data.senderUserId || '').toLowerCase();
+        const otherUsername = parts.find((p) => !senderLow.includes(p.toLowerCase())) || parts[0];
 
         if (otherUsername) {
+          const targetUName = otherUsername.toLowerCase().split('@')[0];
           const presenceMap = socketService.getAllPresence();
-          const targetPresence = presenceMap[otherUsername.toLowerCase()];
+          const targetPresence =
+            presenceMap[targetUName] ||
+            Object.values(presenceMap).find(
+              (p) =>
+                p.username.toLowerCase() === targetUName ||
+                p.username.toLowerCase().startsWith(targetUName) ||
+                p.userId?.toLowerCase() === targetUName
+            );
+
           if (targetPresence && (targetPresence.status === 'ONLINE' || targetPresence.status === 'AWAY')) {
             initialStatus = 'DELIVERED';
           }
@@ -110,6 +147,9 @@ export class CorrespondenceChatService {
           fileType: data.fileType || null,
           fileSize: data.fileSize || null,
           status: initialStatus,
+          replyToId: data.replyToId || null,
+          replyToSenderName: data.replyToSenderName || null,
+          replyToText: data.replyToText || null,
         },
       });
 
@@ -118,6 +158,13 @@ export class CorrespondenceChatService {
         socketService.getIo()?.emit('correspondence:chat:message', created);
       } catch (sockErr) {
         logger.warn('Socket broadcast error for chat message', sockErr);
+      }
+
+      // If sending a reply in DM, automatically mark incoming messages as READ
+      if (data.channel.startsWith('dm_')) {
+        this.markAsRead(data.channel, data.senderUserId || data.senderName).catch((err) => {
+          logger.warn('Non-blocking auto-read on reply in DM', err);
+        });
       }
 
       return created;
