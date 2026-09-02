@@ -5,6 +5,8 @@ import { archiveRouteSheet, fetchCorrespondenceStats, fetchRouteSheets } from '@
 import { RouteSheetItem } from '../types/correspondence.types';
 import { X, Archive, Building2, Layers, Check, FileText, AlertCircle, Sparkles, FolderArchive, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
+import SmartCorrespondenceInput from './SmartCorrespondenceInput';
+import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
 
 interface ArchiveRouteSheetModalProps {
   item: RouteSheetItem;
@@ -128,8 +130,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
               <MapPin className="w-4 h-4 text-brand-gold" />
               <span>1. Estante / Sector en Archivo Central:</span>
             </label>
-            <input
-              type="text"
+            <SmartCorrespondenceInput
               required
               value={archiveLocation}
               onChange={(e) => setArchiveLocation(e.target.value)}
@@ -157,8 +158,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
               <Layers className="w-4 h-4 text-brand-gold" />
               <span>2. Tomo, Archivador o N° de Caja / Gaveta:</span>
             </label>
-            <input
-              type="text"
+            <SmartCorrespondenceInput
               value={archiveBox}
               onChange={(e) => setArchiveBox(e.target.value)}
               placeholder="Ej. TOMO 2026-01 / GAVETA 04 o CAJA N° 12"
@@ -168,14 +168,22 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
 
           {/* 3. Motivo de Archivo / Auto de Conclusión */}
           <div className="space-y-2">
-            <label className="block text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
-              <FileText className="w-4 h-4 text-brand-gold" />
-              <span>3. Auto de Conclusión / Motivo de Cierre:</span>
+            <label className="block text-xs font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 flex items-center justify-between gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <FileText className="w-4 h-4 text-brand-gold" />
+                <span>3. Auto de Conclusión / Motivo de Cierre:</span>
+              </div>
+              <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Autocorrector de acentos & Predicción</span>
+              </span>
             </label>
-            <textarea
+            <SmartCorrespondenceTextarea
               rows={3}
               value={archiveNotes}
               onChange={(e) => setArchiveNotes(e.target.value)}
+              enablePrediction={true}
+              enableQuickPhrases={true}
               placeholder="Describa el motivo o resolución por la cual concluye el expediente..."
               className="w-full bg-slate-50 dark:bg-[#0c1a13] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-3.5 text-xs font-medium text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs resize-none"
             />

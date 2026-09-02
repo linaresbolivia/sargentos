@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { useDispatch } from 'react-redux';
-import { AppDispatch } from '@store/store';
-import { uploadRouteSheetDocuments } from '@store/correspondenceSlice';
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '@store/store';
+import { uploadRouteSheetDocuments, fetchRouteSheetById } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet } from './PrintableRouteSheet';
 import { AddMovementModal } from './AddMovementModal';
@@ -41,6 +41,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
+import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
 
 interface RouteSheetDetailModalProps {
   item: RouteSheetItem | null;
@@ -49,6 +50,11 @@ interface RouteSheetDetailModalProps {
 
 export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ item, onClose }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const selectedReduxItem = useSelector((state: RootState) => state.correspondence.selectedItem);
+  
+  // Usar la versión más reciente en Redux si coincide el ID para actualización reactiva en vivo
+  const currentItem = (selectedReduxItem && selectedReduxItem.id === item?.id) ? selectedReduxItem : item;
+
   const [activeTab, setActiveTab] = useState<'TIMELINE' | 'MOVEMENTS'>('TIMELINE');
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [showAddMovementModal, setShowAddMovementModal] = useState(false);
@@ -57,11 +63,11 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
   const [showSlaModal, setShowSlaModal] = useState(false);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
-  if (!item) return null;
+  if (!currentItem) return null;
 
-  const movements = item.movements || [];
-  const documents = item.documents || [];
-  const isFusedChild = item.currentArea.startsWith('FUSIONADO EN') || item.aiSummary?.startsWith('FUSIONADO');
+  const movements = currentItem.movements || [];
+  const documents = currentItem.documents || [];
+  const isFusedChild = currentItem.currentArea.startsWith('FUSIONADO EN') || currentItem.aiSummary?.startsWith('FUSIONADO');
 
   const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -69,7 +75,8 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
       setIsUploadingDocs(true);
       const toastId = toast.loading('Digitalizando y guardando documentos...');
       try {
-        await dispatch(uploadRouteSheetDocuments({ routeSheetId: item.id, files }));
+        await dispatch(uploadRouteSheetDocuments({ routeSheetId: currentItem.id, files }));
+        await dispatch(fetchRouteSheetById(currentItem.id));
         toast.success(`¡${files.length} documento(s) digitalizado(s) exitosamente!`, { id: toastId });
       } catch {
         toast.error('Error al digitalizar el documento', { id: toastId });
@@ -96,7 +103,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
     }
   };
 
-  const verificationUrl = `${window.location.origin}/correspondencia?code=${encodeURIComponent(item.hrCode)}`;
+  const verificationUrl = `${window.location.origin}/correspondencia?code=${encodeURIComponent(currentItem.hrCode)}`;
 
   return (
     <>
@@ -110,13 +117,13 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
               <div>
                 <div className="flex items-center gap-2.5">
                   <span className="font-mono text-sm font-black text-emerald-950 dark:text-emerald-300 bg-emerald-500/20 dark:bg-emerald-950/80 px-3 py-0.5 rounded-xl border border-emerald-500/40 tracking-wider">
-                    {item.hrCode}
+                    {currentItem.hrCode}
                   </span>
-                  <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-xs ${getStatusBadge(item.status)}`}>
-                    {item.status}
+                  <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-xs ${getStatusBadge(currentItem.status)}`}>
+                    {currentItem.status}
                   </span>
                   <span className="text-xs font-bold text-slate-500 dark:text-gray-400 font-mono">
-                    CITE: {item.cite || 'S/N'}
+                    CITE: {currentItem.cite || 'S/N'}
                   </span>
                 </div>
                 <h2 className="text-xl font-black text-slate-900 dark:text-white mt-1">
@@ -144,7 +151,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 </button>
               )}
 
-              {item.status !== 'CONCLUIDO' && (
+              {currentItem.status !== 'CONCLUIDO' && (
                 <button
                   onClick={() => setShowArchiveModal(true)}
                   className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 hover:bg-emerald-500/20 text-slate-800 dark:text-white hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-white/10 hover:border-emerald-500/50 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
@@ -202,7 +209,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
             </div>
 
             {/* Quick SLA Trigger Button */}
-            {item.status !== 'CONCLUIDO' && (
+            {currentItem.status !== 'CONCLUIDO' && (
               <button
                 type="button"
                 onClick={() => setShowSlaModal(true)}
@@ -219,14 +226,14 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
             
             {activeTab === 'TIMELINE' ? (
               <CorrespondenceTimelineView
-                item={item}
+                item={currentItem}
                 onOpenSlaModal={() => setShowSlaModal(true)}
                 onAddMovement={() => setShowAddMovementModal(true)}
               />
             ) : (
               <>
             {/* If Archived: Show Archive Location Banner */}
-            {item.archiveLocation && (
+            {currentItem.archiveLocation && (
               <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 to-emerald-500/15 border-2 border-emerald-500/40 flex items-start gap-3.5 shadow-md animate-fadeIn">
                 <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shrink-0 mt-0.5">
                   <FolderArchive className="w-5 h-5 text-brand-gold" />
@@ -236,19 +243,19 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                     <span className="text-xs font-black uppercase text-emerald-800 dark:text-emerald-300 tracking-wider">
                       Expediente Resguardado en Archivo Central
                     </span>
-                    {item.archivedAt && (
+                    {currentItem.archivedAt && (
                       <span className="text-[10.5px] font-mono text-slate-500 dark:text-gray-400">
-                        ({new Date(item.archivedAt).toLocaleDateString('es-BO')})
+                        ({new Date(currentItem.archivedAt).toLocaleDateString('es-BO')})
                       </span>
                     )}
                   </div>
                   <p className="text-xs font-bold text-slate-900 dark:text-white">
-                    Ubicación Topográfica: <strong className="text-emerald-700 dark:text-brand-gold">{item.archiveLocation}</strong>
-                    {item.archiveBox ? ` — ${item.archiveBox}` : ''}
+                    Ubicación Topográfica: <strong className="text-emerald-700 dark:text-brand-gold">{currentItem.archiveLocation}</strong>
+                    {currentItem.archiveBox ? ` — ${currentItem.archiveBox}` : ''}
                   </p>
-                  {item.archiveNotes && (
+                  {currentItem.archiveNotes && (
                     <p className="text-[11.5px] text-slate-600 dark:text-gray-300 italic">
-                      Auto de Conclusión: "{item.archiveNotes}"
+                      Auto de Conclusión: "{currentItem.archiveNotes}"
                     </p>
                   )}
                 </div>
@@ -261,7 +268,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
                 <div className="text-xs">
                   <strong className="block font-black uppercase text-sm">Trámite Acumulado y Fusionado</strong>
-                  Este expediente y sus antecedentes fueron fusionados formalmente en la Hoja de Ruta principal <strong>{item.currentArea}</strong>.
+                  Este expediente y sus antecedentes fueron fusionados formalmente en la Hoja de Ruta principal <strong>{currentItem.currentArea}</strong>.
                 </div>
               </div>
             )}
@@ -275,7 +282,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 </span>
               </div>
               <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-300">
-                {item.pageCount || 1} Folio(s)
+                {currentItem.pageCount || 1} Folio(s)
               </span>
             </div>
 
@@ -286,11 +293,11 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                   Referencia / Asunto
                 </span>
                 <p className="text-sm font-black text-slate-950 dark:text-white leading-relaxed uppercase">
-                  {item.reference}
+                  {currentItem.reference}
                 </p>
-                {item.attachmentDescription && (
+                {currentItem.attachmentDescription && (
                   <p className="text-xs text-slate-700 dark:text-gray-400 mt-2">
-                    <strong className="text-slate-950 dark:text-gray-200 font-bold">Adjunto:</strong> {item.attachmentDescription}
+                    <strong className="text-slate-950 dark:text-gray-200 font-bold">Adjunto:</strong> {currentItem.attachmentDescription}
                   </p>
                 )}
               </div>
@@ -303,10 +310,10 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 <div className="text-left">
                   <span className="text-[10px] font-black text-slate-500 uppercase block">Área Actual</span>
                   <span className="text-xs font-black text-emerald-900 dark:text-brand-gold uppercase block">
-                    {item.currentArea}
+                    {currentItem.currentArea}
                   </span>
                   <span className="text-[10px] text-slate-500 font-mono font-bold">
-                    {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(currentItem.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
               </div>
@@ -318,7 +325,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 <span className="text-slate-500 uppercase text-[10px] font-black block mb-0.5">Remitente</span>
                 <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-brand-gold" />
-                  {item.senderName}
+                  {currentItem.senderName}
                 </span>
               </div>
 
@@ -326,7 +333,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 <span className="text-slate-500 uppercase text-[10px] font-black block mb-0.5">Origen / Empresa</span>
                 <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                  {item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}
+                  {currentItem.senderArea || (currentItem.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}
                 </span>
               </div>
 
@@ -334,7 +341,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                 <span className="text-slate-500 uppercase text-[10px] font-black block mb-0.5">Radicado Por</span>
                 <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5">
                   <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                  {item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}
+                  {currentItem.createdBy?.firstName} {currentItem.createdBy?.lastName || 'Secretaría'}
                 </span>
               </div>
             </div>
@@ -441,7 +448,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
 
                         {/* Download / View Button */}
                         <a
-                          href={doc.fileUrl}
+                          href={getDocumentFullUrl(doc.fileUrl)}
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Abrir / Descargar documento original"
@@ -555,7 +562,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
           {/* Footer Bar */}
           <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-black/20 text-xs">
             <span className="text-slate-400 font-mono text-[11px]">
-              ID Sistema: {item.id}
+              ID Sistema: {currentItem.id}
             </span>
             <div className="flex items-center gap-3">
               <button
@@ -582,14 +589,14 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
         <AddMovementModal
           isOpen={showAddMovementModal}
           onClose={() => setShowAddMovementModal(false)}
-          item={item}
+          item={currentItem}
         />
       )}
 
       {/* Submodal for Printable Sheet */}
       {showPrintModal && (
         <PrintableRouteSheet
-          item={item}
+          item={currentItem}
           onClose={() => setShowPrintModal(false)}
         />
       )}
@@ -599,7 +606,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
         <MergeRouteSheetsModal
           isOpen={showMergeModal}
           onClose={() => setShowMergeModal(false)}
-          targetItem={item}
+          targetItem={currentItem}
         />
       )}
 
@@ -608,7 +615,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
         <ArchiveRouteSheetModal
           isOpen={showArchiveModal}
           onClose={() => setShowArchiveModal(false)}
-          item={item}
+          item={currentItem}
         />
       )}
 
@@ -617,7 +624,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
         <SlaUrgencyAlertModal
           isOpen={showSlaModal}
           onClose={() => setShowSlaModal(false)}
-          item={item}
+          item={currentItem}
         />
       )}
     </>

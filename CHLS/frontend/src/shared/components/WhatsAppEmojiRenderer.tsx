@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 /**
  * Convierte un caracter o secuencia de emoji Unicode a su identificador hex "unified"
@@ -27,6 +27,31 @@ export function getAppleEmojiUrl(emojiStr: string): string {
 // Regex universal para detectar cualquier emoji Unicode (incluye modificadores de tono de piel y secuencias ZWJ)
 export const EMOJI_REGEX = /(\p{Extended_Pictographic}(?:\u200D\p{Extended_Pictographic})*(?:\uFE0F|\uFE0E)?(?:\uD83C[\uDFFB-\uDFFF])?)/u;
 
+interface EmojiImageProps {
+  part: string;
+  sizeClass: string;
+}
+
+const EmojiImage: React.FC<EmojiImageProps> = ({ part, sizeClass }) => {
+  const [hasError, setHasError] = useState(false);
+  const imgUrl = useMemo(() => getAppleEmojiUrl(part), [part]);
+
+  if (hasError) {
+    return <span className="inline-block mx-[1px]">{part}</span>;
+  }
+
+  return (
+    <img
+      src={imgUrl}
+      alt={part}
+      title={part}
+      className={`inline-block ${sizeClass} mx-[1.5px] align-[-0.2em] pointer-events-none select-text`}
+      loading="lazy"
+      onError={() => setHasError(true)}
+    />
+  );
+};
+
 interface WhatsAppEmojiTextProps {
   text: string;
   className?: string;
@@ -35,6 +60,7 @@ interface WhatsAppEmojiTextProps {
 
 /**
  * Renderiza texto reemplazando emojis por los iconos gráficos oficiales de WhatsApp / Apple
+ * con manejo de estado puro en React para evitar corrupción del DOM.
  */
 export const WhatsAppEmojiText: React.FC<WhatsAppEmojiTextProps> = ({
   text,
@@ -46,35 +72,15 @@ export const WhatsAppEmojiText: React.FC<WhatsAppEmojiTextProps> = ({
   const sizeClass = size === 'sm' ? 'w-4 h-4' : size === 'lg' ? 'w-7 h-7' : 'w-5 h-5';
 
   // Dividir el texto conservando los emojis en los tokens
-  const parts = text.split(EMOJI_REGEX);
+  const parts = useMemo(() => text.split(EMOJI_REGEX), [text]);
 
   return (
     <span className={`inline-block leading-relaxed break-words whitespace-pre-wrap ${className}`}>
       {parts.map((part, index) => {
         if (!part) return null;
 
-        // Comprobar si esta parte es un emoji
         if (EMOJI_REGEX.test(part)) {
-          const imgUrl = getAppleEmojiUrl(part);
-          return (
-            <img
-              key={index}
-              src={imgUrl}
-              alt={part}
-              title={part}
-              className={`inline-block ${sizeClass} mx-[1.5px] align-[-0.2em] pointer-events-none select-text`}
-              loading="lazy"
-              onError={(e) => {
-                // Fallback a emoji de texto nativo si la imagen no existiera
-                const target = e.currentTarget;
-                target.style.display = 'none';
-                if (target.parentNode) {
-                  const textNode = document.createTextNode(part);
-                  target.parentNode.insertBefore(textNode, target);
-                }
-              }}
-            />
-          );
+          return <EmojiImage key={`${part}-${index}`} part={part} sizeClass={sizeClass} />;
         }
 
         return <span key={index}>{part}</span>;

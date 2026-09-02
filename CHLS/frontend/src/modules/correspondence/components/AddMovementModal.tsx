@@ -1,7 +1,7 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { addMovement, uploadRouteSheetDocuments } from '@store/correspondenceSlice';
+import { addMovement, uploadRouteSheetDocuments, fetchRouteSheetById, fetchRouteSheets } from '@store/correspondenceSlice';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 import {
   X,
@@ -18,42 +18,22 @@ import {
   UploadCloud,
   Trash2,
   FileCheck,
+  Search,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RouteSheetItem } from '../types/correspondence.types';
 import CrestLogo from '@shared/components/CrestLogo';
+import SmartCorrespondenceInput from './SmartCorrespondenceInput';
+import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
+import { getOrganigramDestinations, WorkflowNode, DEFAULT_ORGANIGRAM_NODES } from '../utils/organigramWorkflowService';
 
 interface AddMovementModalProps {
   isOpen: boolean;
   onClose: () => void;
   item: RouteSheetItem;
 }
-
-const CHLS_DESTINATION_AREAS = [
-  'SECRETARÍA GENERAL',
-  'GERENCIA GENERAL',
-  'TESORERÍA Y FINANZAS',
-  'CONTRATACIONES Y ADQUISICIONES',
-  'COMISIÓN HÍPICA',
-  'CAPITANÍA DEPORTES / TENIS',
-  'ASESORÍA LEGAL',
-  'MANTENIMIENTO Y OBRAS',
-  'DIRECTORIO / PRESIDENCIA',
-  'ALMACÉN',
-];
-
-const AREA_RESPONSIBLES: Record<string, { title: string; defaultPerson: string }> = {
-  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'Lic. María del Pilar Atanacio (Secretaria de Gerencia)' },
-  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Ing. Gerente General CHLS' },
-  'TESORERÍA Y FINANZAS': { title: 'Jefatura de Tesorería y Finanzas', defaultPerson: 'Lic. Jefe de Finanzas & Tesorería' },
-  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Lic. Encargado de Adquisiciones' },
-  'COMISIÓN HÍPICA': { title: 'Capitanía Hípica & Área Ecuestre', defaultPerson: 'Capitán de Comisión Hípica' },
-  'CAPITANÍA DEPORTES / TENIS': { title: 'Capitanía de Deportes & Tenis', defaultPerson: 'Capitán de Deportes' },
-  'ASESORÍA LEGAL': { title: 'Asesoría Jurídica Institucional', defaultPerson: 'Dr. Asesor Legal Principal' },
-  'MANTENIMIENTO Y OBRAS': { title: 'Jefatura de Infraestructura y Mantenimiento', defaultPerson: 'Ing. Jefe de Mantenimiento' },
-  'DIRECTORIO / PRESIDENCIA': { title: 'Directorio / Presidencia CHLS', defaultPerson: 'Directorio CHLS' },
-  'ALMACÉN': { title: 'Encargado de Almacén & Suministros', defaultPerson: 'Responsable de Almacén' },
-};
 
 const QUICK_STAMPS = [
   'FAVOR SU ATENCIÓN',
@@ -69,32 +49,41 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   const dispatch = useDispatch<AppDispatch>();
   const workflow = useSelector((state: RootState) => state.correspondence.workflow);
 
-  // Compute recommended destinations from active organigram & workflow rules
-  const recommendedDestinations = useMemo(() => {
-    if (!workflow || !workflow.nodes || !workflow.edges) return [];
-    const currentAreaUpper = item.currentArea.toUpperCase();
-    const currentNode = workflow.nodes.find(
-      (n) => n.areaKey?.toUpperCase() === currentAreaUpper || n.title.toUpperCase().includes(currentAreaUpper)
-    );
-    if (!currentNode) return [];
+  // Calcular todos los nombres de áreas oficiales disponibles
+  const allAvailableAreas = useMemo(() => {
+    const list = (workflow?.nodes && workflow.nodes.length > 0 ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES).map((n) => n.title || n.areaKey);
+    return Array.from(new Set(list)).filter((a): a is string => Boolean(a));
+  }, [workflow]);
 
-    const targetEdges = workflow.edges.filter((e) => e.source === currentNode.id);
-    const targetNodeIds = targetEdges.map((e) => e.target);
-    return workflow.nodes.filter((n) => targetNodeIds.includes(n.id));
-  }, [workflow, item.currentArea]);
+  // Calcular destinos parametrizados en el Organigrama Oficial para el área actual
+  const organigramInfo = useMemo(() => {
+    return getOrganigramDestinations(item.currentArea, workflow);
+  }, [item.currentArea, workflow]);
 
-  const [targetArea, setTargetArea] = useState('TESORERÍA Y FINANZAS');
-  const [targetPersonName, setTargetPersonName] = useState(
-    AREA_RESPONSIBLES['TESORERÍA Y FINANZAS']?.defaultPerson || ''
-  );
+  const [targetArea, setTargetArea] = useState<string>('');
+  const [targetPersonName, setTargetPersonName] = useState<string>('');
   const [selectedCcAreas, setSelectedCcAreas] = useState<string[]>([]);
   const [ccPersonsText, setCcPersonsText] = useState('');
-  const [quickStamp, setQuickStamp] = useState('FAVOR REALIZAR EL PAGO');
-  const [instruction, setInstruction] = useState('Favor realizar el pago según presupuesto adjunto.');
+  const [quickStamp, setQuickStamp] = useState('FAVOR SU ATENCIÓN');
+  const [instruction, setInstruction] = useState('Para su atención correspondiente según procedimientos institucionales.');
   const [newStatus, setNewStatus] = useState<string>('DERIVADO');
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const [movementFiles, setMovementFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [searchCcTerm, setSearchCcTerm] = useState('');
+  const [searchDestinationTerm, setSearchDestinationTerm] = useState('');
+
+  // Auto-seleccionar el primer destino conectado del organigrama
+  useEffect(() => {
+    if (organigramInfo.recommendedNodes && organigramInfo.recommendedNodes.length > 0) {
+      const firstDest = organigramInfo.recommendedNodes[0].node;
+      setTargetArea(firstDest.title);
+      setTargetPersonName(firstDest.manager || '');
+    } else {
+      setTargetArea('');
+      setTargetPersonName('');
+    }
+  }, [organigramInfo, item.currentArea]);
 
   if (!isOpen) return null;
 
@@ -110,6 +99,17 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       setInstruction(stamp);
       setNewStatus('DERIVADO');
     }
+  };
+
+  const handleSelectNode = (node: WorkflowNode) => {
+    setTargetArea(node.title);
+    if (node.manager) {
+      setTargetPersonName(node.manager);
+    }
+    toast.success(`Destino asignado: ${node.title} (${node.manager || 'Titular'})`, {
+      icon: '🧭',
+      duration: 3000,
+    });
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -131,13 +131,20 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       return;
     }
 
+    if (!targetArea.trim() || organigramInfo.recommendedNodes.length === 0) {
+      toast.error('No se puede derivar: este despacho no tiene conexiones autorizadas en el Organigrama.');
+      return;
+    }
+
     setIsSubmitting(true);
+    const toastId = toast.loading('Registrando proveído y derivación...');
+
     try {
       const action = await dispatch(
         addMovement({
           routeSheetId: item.id,
           data: {
-            targetArea,
+            targetArea: targetArea.trim(),
             targetPersonName: targetPersonName.trim() || null,
             ccAreas: selectedCcAreas,
             ccPersons: ccPersonsText.trim() || null,
@@ -152,6 +159,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       if (addMovement.fulfilled.match(action)) {
         // Upload documents attached to this movement/route sheet
         if (movementFiles.length > 0) {
+          toast.loading('Subiendo y digitalizando documentos adjuntos...', { id: toastId });
           try {
             await dispatch(
               uploadRouteSheetDocuments({
@@ -164,13 +172,17 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
           }
         }
 
-        toast.success('Derivación con copias y documentos digitalizados emitida exitosamente 🚀');
+        // Refrescar expediente y lista completa
+        await dispatch(fetchRouteSheetById(item.id));
+        await dispatch(fetchRouteSheets());
+
+        toast.success(`Derivación oficial enviada a ${targetArea} con éxito`, { id: toastId });
         onClose();
       } else {
-        toast.error('Error al agregar el proveído');
+        toast.error((action.payload as string) || 'Error al agregar el proveído', { id: toastId });
       }
     } catch {
-      toast.error('Error inesperado al guardar');
+      toast.error('Error inesperado al guardar', { id: toastId });
     } finally {
       setIsSubmitting(false);
     }
@@ -215,89 +227,78 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
             {/* Left Column: Destino Principal & Con Copia (C.C.) */}
             <div className="space-y-6">
               
-              {/* 1. Destino Principal */}
+              {/* 1. Destino Principal Parametrizado por Organigrama */}
               <div className="bg-slate-50/90 dark:bg-white/[0.02] p-5 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 shadow-sm">
-                <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-gray-200 flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-brand-gold" />
-                  <span>1. Destino Principal (Responsable)</span>
-                  <span className="text-red-500">*</span>
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-gray-200 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-brand-gold" />
+                    <span>1. Derivar a (Destino Organigrama CHLS)</span>
+                    <span className="text-red-500">*</span>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40">
+                    Línea de Mando
+                  </span>
+                </div>
 
                 <div className="space-y-3">
-                  {/* Recommended Destinations from Organigram */}
-                  {recommendedDestinations.length > 0 && (
-                    <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 space-y-1.5 animate-fadeIn">
-                      <div className="flex items-center gap-1.5 text-[11px] font-black text-emerald-800 dark:text-emerald-300 uppercase tracking-wider">
-                        <Sparkles className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
-                        <span>Rutas Jerárquicas Recomendadas (Organigrama):</span>
-                      </div>
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        {recommendedDestinations.map((dest) => {
-                          const areaKey = dest.areaKey || dest.title.toUpperCase();
-                          const isSelected = targetArea.toUpperCase() === areaKey.toUpperCase();
-                          return (
-                            <button
-                              key={dest.id}
-                              type="button"
-                              onClick={() => {
-                                setTargetArea(areaKey);
-                                if (dest.manager) {
-                                  setTargetPersonName(dest.manager);
-                                }
-                              }}
-                              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
-                                isSelected
-                                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30 scale-105'
-                                  : 'bg-white dark:bg-black/40 text-slate-800 dark:text-emerald-300 border-slate-300 dark:border-emerald-500/30 hover:bg-emerald-500/15'
-                              }`}
-                            >
-                              <ArrowRight className="w-3 h-3 text-brand-gold" />
-                              <span>{dest.title}</span>
-                              {dest.slaHours && (
-                                <span className="text-[10px] font-mono opacity-80">
-                                  ({dest.slaHours}h)
-                                </span>
-                              )}
-                            </button>
-                          );
-                        })}
+                  {/* Alerta si no hay conexiones en el organigrama */}
+                  {organigramInfo.recommendedNodes.length === 0 && (
+                    <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-2xl text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                      <div>
+                        <span className="font-black block">Sin líneas de derivación conectadas:</span>
+                        <span className="text-[11px] text-red-600 dark:text-red-400">
+                          {item.currentArea} no tiene conectores activos en el Organigrama 360°. Para habilitar destinos, traza sus líneas en <em>Organigrama & Flujos</em>.
+                        </span>
                       </div>
                     </div>
                   )}
 
+                  {/* Selector EXCLUSIVO de Destinos Conectados en el Organigrama */}
                   <div>
                     <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
-                      Área o Departamento de Destino
+                      Destino Autorizado por Conexión
                     </label>
                     <select
                       value={targetArea}
+                      disabled={organigramInfo.recommendedNodes.length === 0}
                       onChange={(e) => {
-                        const newArea = e.target.value;
-                        setTargetArea(newArea);
-                        if (AREA_RESPONSIBLES[newArea]) {
-                          setTargetPersonName(AREA_RESPONSIBLES[newArea].defaultPerson);
+                        const selArea = e.target.value;
+                        const found = organigramInfo.recommendedNodes.find(r => r.node.title === selArea);
+                        if (found) {
+                          handleSelectNode(found.node);
+                        } else {
+                          setTargetArea(selArea);
                         }
                       }}
-                      className="w-full bg-white dark:bg-[#070e0a] border-2 border-slate-300 dark:border-white/10 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-xs"
+                      className="w-full bg-white dark:bg-[#070e0a] border-2 border-slate-300 dark:border-white/10 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-xs disabled:opacity-50"
                     >
-                      {CHLS_DESTINATION_AREAS.map((a) => (
-                        <option key={a} value={a}>{a}</option>
-                      ))}
+                      {organigramInfo.recommendedNodes.length > 0 ? (
+                        organigramInfo.recommendedNodes.map(({ node, edgeLabel, direction }) => (
+                          <option key={node.id} value={node.title} className="bg-slate-900 text-white">
+                            {direction === 'DOWN' ? '↓' : '↑'} {node.title} — {node.manager || 'Titular'} ({edgeLabel})
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>
+                          ⛔ Sin conexiones autorizadas en el Organigrama
+                        </option>
+                      )}
                     </select>
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
                       <label className="block text-xs font-bold text-slate-700 dark:text-gray-300">
-                        Responsable / Jefatura de Despacho
+                        Responsable / Titular de Despacho
                       </label>
                       <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold">
-                        Titular de Área
+                        Persona Asignada
                       </span>
                     </div>
                     <input
                       type="text"
-                      placeholder="Ej. Lic. Gabriela Mendoza / Tesorería"
+                      placeholder="Nombre y cargo del responsable..."
                       value={targetPersonName}
                       onChange={(e) => setTargetPersonName(e.target.value)}
                       className="w-full bg-white dark:bg-[#070e0a] border border-slate-300 dark:border-white/10 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-xs"
@@ -306,7 +307,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                 </div>
               </div>
 
-              {/* 2. Con Copia a (C.C. Multi-Destinatarios) */}
+              {/* 2. Con Copia a (C.C. Informativo Limpio con Búsqueda) */}
               <div className="bg-slate-50/90 dark:bg-white/[0.02] p-5 rounded-3xl border border-slate-200 dark:border-white/5 space-y-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-gray-200 flex items-center gap-2">
@@ -320,13 +321,79 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   )}
                 </div>
 
+                {/* Badges de C.C. seleccionadas */}
+                {selectedCcAreas.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-100 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/10">
+                    {selectedCcAreas.map((area) => (
+                      <span
+                        key={area}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-900 dark:text-brand-gold text-xs font-bold border border-emerald-500/40"
+                      >
+                        <span>{area}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCcAreas((prev) => prev.filter((a) => a !== area))}
+                          className="hover:text-red-500 cursor-pointer font-black"
+                        >
+                          ✕
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Buscador de C.C. */}
+                <div className="space-y-2">
+                  <div className="relative">
+                    <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Buscar área para copia C.C. (ej. Asesoría, Contabilidad, Presidencia)..."
+                      value={searchCcTerm}
+                      onChange={(e) => setSearchCcTerm(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white dark:bg-black/50 border border-slate-300 dark:border-white/10 text-slate-900 dark:text-white outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  {searchCcTerm.trim().length > 0 && (
+                    <div className="max-h-36 overflow-y-auto space-y-1 p-1 bg-white dark:bg-[#070e0a] rounded-xl border border-slate-200 dark:border-white/10 shadow-lg">
+                      {organigramInfo.allNodes
+                        .filter((n) => n.title.toLowerCase().includes(searchCcTerm.toLowerCase()) && n.title !== targetArea)
+                        .map((n) => {
+                          const isAlreadyAdded = selectedCcAreas.includes(n.title);
+                          return (
+                            <button
+                              key={n.id}
+                              type="button"
+                              onClick={() => {
+                                if (isAlreadyAdded) {
+                                  setSelectedCcAreas((prev) => prev.filter((a) => a !== n.title));
+                                } else {
+                                  setSelectedCcAreas((prev) => [...prev, n.title]);
+                                }
+                              }}
+                              className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold flex items-center justify-between transition-colors ${
+                                isAlreadyAdded
+                                  ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300'
+                                  : 'hover:bg-slate-100 dark:hover:bg-white/5 text-slate-700 dark:text-gray-300'
+                              }`}
+                            >
+                              <span>{n.title}</span>
+                              {isAlreadyAdded ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <span className="text-[10px] text-brand-gold">+ Añadir</span>}
+                            </button>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+
                 <p className="text-xs text-slate-500 dark:text-gray-400">
                   Selecciona con un toque las áreas que deben recibir copia informativa del expediente:
                 </p>
 
                 {/* Chips de Selección de Áreas en C.C. */}
                 <div className="flex flex-wrap gap-2">
-                  {CHLS_DESTINATION_AREAS.filter((a) => a !== targetArea).map((area) => {
+                  {allAvailableAreas.filter((a) => a !== targetArea).map((area) => {
                     const isSelected = selectedCcAreas.includes(area);
                     return (
                       <button
@@ -358,8 +425,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   <label className="block text-xs font-bold text-slate-700 dark:text-gray-300 mb-1.5">
                     Personas o Cargos Específicos en C.C.
                   </label>
-                  <input
-                    type="text"
+                  <SmartCorrespondenceInput
                     placeholder="Ej. Asesoría Legal Externa, Auditoría Interna, etc."
                     value={ccPersonsText}
                     onChange={(e) => setCcPersonsText(e.target.value)}
@@ -401,16 +467,24 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
 
               {/* 4. Instrucción / Proveído */}
               <div className="bg-slate-50/90 dark:bg-white/[0.02] p-5 rounded-3xl border border-slate-200 dark:border-white/5 space-y-3 shadow-sm">
-                <label className="block text-xs font-black uppercase tracking-wider text-slate-900 dark:text-gray-200 flex items-center gap-2">
-                  <FileText className="w-4 h-4 text-brand-gold" />
-                  <span>4. Instrucción / Proveído del Trámite</span>
-                  <span className="text-red-500">*</span>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-900 dark:text-gray-200 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-brand-gold" />
+                    <span>4. Instrucción / Proveído del Trámite</span>
+                    <span className="text-red-500">*</span>
+                  </div>
+                  <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" />
+                    <span>Autocorrector de acentos & Predicción activa</span>
+                  </span>
                 </label>
-                <textarea
+                <SmartCorrespondenceTextarea
                   rows={3}
                   value={instruction}
                   onChange={(e) => setInstruction(e.target.value)}
                   required
+                  enablePrediction={true}
+                  enableQuickPhrases={true}
                   placeholder="Escribe la instrucción o proveído formal..."
                   className="w-full bg-white dark:bg-[#070e0a] border-2 border-slate-300 dark:border-white/10 rounded-2xl p-4 text-slate-950 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none leading-relaxed shadow-xs"
                 />
@@ -485,9 +559,9 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
 
               {/* 6. Firma Digital & Sello Institucional */}
               <DigitalSignaturePad
-                signerName={item.currentArea}
+                signerName={organigramInfo.currentNode?.manager || item.currentArea}
                 signerArea={item.currentArea}
-                signerPosition={AREA_RESPONSIBLES[item.currentArea]?.title}
+                signerPosition={organigramInfo.currentNode?.subtitle || organigramInfo.currentNode?.type || 'Titular de Despacho'}
                 onSignatureChange={setSignatureUrl}
                 initialSignature={signatureUrl}
               />
@@ -507,11 +581,17 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
             </button>
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !targetArea || organigramInfo.recommendedNodes.length === 0}
               className="flex items-center gap-2.5 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-slate-950 font-black px-8 py-3.5 rounded-2xl text-sm sm:text-base shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
             >
               <Send className="w-5 h-5 text-slate-950" />
-              <span>{isSubmitting ? 'Registrando...' : 'Emitir Proveído & Derivar'}</span>
+              <span>
+                {isSubmitting
+                  ? 'Registrando...'
+                  : organigramInfo.recommendedNodes.length === 0
+                  ? 'Sin Conexión en Organigrama'
+                  : 'Emitir Proveído & Derivar'}
+              </span>
             </button>
           </div>
 

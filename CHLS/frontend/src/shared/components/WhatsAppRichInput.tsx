@@ -151,6 +151,9 @@ export const WhatsAppRichInput = forwardRef<WhatsAppRichInputHandle, WhatsAppRic
           role="textbox"
           aria-multiline="false"
           spellCheck={true}
+          lang="es-BO"
+          autoCorrect="on"
+          autoCapitalize="sentences"
           className={`w-full max-h-28 overflow-y-auto px-4 py-2.5 bg-black/40 border border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 placeholder-gray-500 leading-normal custom-scrollbar ${className}`}
           style={{ minHeight: '38px', wordBreak: 'break-word' }}
         />

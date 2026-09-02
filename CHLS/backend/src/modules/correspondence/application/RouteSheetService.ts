@@ -175,46 +175,59 @@ export class RouteSheetService {
 
   /**
    * Genera el siguiente código correlativo de Hoja de Ruta
-   * Formato: HR-YYYY-00001 (con soporte de punto de corte inicial / gestión)
+   * Formato oficial solicitado: MM-XXX (donde MM = dos dígitos del mes, XXX = 3 dígitos correlativos por mes)
+   * Ejemplo: 09-001, 09-002, 10-001
    */
-  private async generateNextCode(year: number): Promise<{ hrCode: string; correlativeNumber: number }> {
-    // 1. Obtener punto de corte inicial configurado para el año si existe
-    let initialCutoff = 1;
-    try {
-      const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
-      if (fs.existsSync(configFilePath)) {
-        const val = JSON.parse(fs.readFileSync(configFilePath, 'utf8'));
-        if (val.gestiones && val.gestiones[year] && val.gestiones[year].initialCorrelative) {
-          initialCutoff = Number(val.gestiones[year].initialCorrelative) || 1;
-        } else if (val.initialCorrelativeNumber) {
-          initialCutoff = Number(val.initialCorrelativeNumber) || 1;
-        }
-      }
-    } catch (err) {
-      console.error('[RouteSheetService] Error al leer correlativo inicial:', err);
-    }
+  private async generateNextCode(nowDate: Date = new Date()): Promise<{ hrCode: string; correlativeNumber: number; year: number }> {
+    const year = nowDate.getFullYear();
+    const monthNum = nowDate.getMonth() + 1;
+    const monthStr = String(monthNum).padStart(2, '0');
 
-    const lastRecord = await this.prisma.routeSheet.findFirst({
-      where: { year },
-      orderBy: { correlativeNumber: 'desc' },
-      select: { correlativeNumber: true },
+    const startOfMonth = new Date(year, nowDate.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = new Date(year, nowDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // Obtener registros creados en este mes
+    const monthRecords = await this.prisma.routeSheet.findMany({
+      where: {
+        createdAt: {
+          gte: startOfMonth,
+          lte: endOfMonth,
+        },
+      },
+      select: { hrCode: true, correlativeNumber: true },
+      orderBy: { createdAt: 'asc' },
     });
 
-    let nextNumber = initialCutoff;
-    if (lastRecord && lastRecord.correlativeNumber) {
-      nextNumber = Math.max(lastRecord.correlativeNumber + 1, initialCutoff);
+    let maxSeq = 0;
+    for (const rec of monthRecords) {
+      if (rec.hrCode) {
+        const match = rec.hrCode.match(/^(\d{2})-(\d{3,})$/);
+        if (match && match[1] === monthStr) {
+          const num = parseInt(match[2], 10);
+          if (!isNaN(num) && num > maxSeq) {
+            maxSeq = num;
+          }
+        }
+      }
     }
 
-    const hrCode = `HR-${year}-${String(nextNumber).padStart(5, '0')}`;
-    return { hrCode, correlativeNumber: nextNumber };
+    if (maxSeq === 0 && monthRecords.length > 0) {
+      maxSeq = monthRecords.length;
+    }
+
+    const nextCorrelative = maxSeq + 1;
+    const nextSeqStr = String(nextCorrelative).padStart(3, '0');
+    const hrCode = `${monthStr}-${nextSeqStr}`;
+
+    return { hrCode, correlativeNumber: nextCorrelative, year };
   }
 
   /**
    * Crear nueva Hoja de Ruta
    */
   public async create(data: CreateRouteSheetInput, createdById: string) {
-    const currentYear = new Date().getFullYear();
-    const { hrCode, correlativeNumber } = await this.generateNextCode(currentYear);
+    const nowDate = new Date();
+    const { hrCode, correlativeNumber, year } = await this.generateNextCode(nowDate);
 
     const initialStatus: RouteSheetStatus = data.initialInstruction ? 'DERIVADO' : 'RECIBIDO';
     const targetArea = data.suggestedArea || data.initialArea || 'SECRETARIA_GENERAL';
@@ -223,7 +236,7 @@ export class RouteSheetService {
       const created = await tx.routeSheet.create({
         data: {
           hrCode,
-          year: currentYear,
+          year,
           correlativeNumber,
           senderType: data.senderType as RouteSheetSenderType,
           personId: data.personId || null,

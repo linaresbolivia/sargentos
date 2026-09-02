@@ -125,14 +125,14 @@ async function cleanAndSeedDatabase() {
 
   const defaultCorrSettings = {
     areas: [
-      { id: '1', name: 'SECRETARÍA GENERAL', manager: 'Lic. María del Pilar Atanacio', position: 'Secretaria de Gerencia General', canReceiveExternal: true },
-      { id: '2', name: 'GERENCIA GENERAL', manager: 'Ing. Gerente General', position: 'Máxima Autoridad Ejecutiva (MAE)', canReceiveExternal: true },
-      { id: '3', name: 'TESORERÍA Y FINANZAS', manager: 'Lic. Jefe de Finanzas & Tesorería', position: 'Jefe de Departamento', canReceiveExternal: false },
-      { id: '4', name: 'CONTRATACIONES Y ADQUISICIONES', manager: 'Lic. Encargado de Compras', position: 'Responsable de Adquisiciones', canReceiveExternal: false },
+      { id: '1', name: 'SECRETARÍA GENERAL', manager: 'María del Pilar Atanacio', position: 'Secretaria de Gerencia General', canReceiveExternal: true },
+      { id: '2', name: 'GERENCIA GENERAL', manager: 'Gerente General', position: 'Máxima Autoridad Ejecutiva (MAE)', canReceiveExternal: true },
+      { id: '3', name: 'TESORERÍA Y FINANZAS', manager: 'Jefe de Finanzas & Tesorería', position: 'Jefe de Departamento', canReceiveExternal: false },
+      { id: '4', name: 'CONTRATACIONES Y ADQUISICIONES', manager: 'Encargado de Compras', position: 'Responsable de Adquisiciones', canReceiveExternal: false },
       { id: '5', name: 'COMISIÓN HÍPICA', manager: 'Capitán de Hípica', position: 'Capitán Ecuestre', canReceiveExternal: false },
       { id: '6', name: 'CAPITANÍA DEPORTES / TENIS', manager: 'Capitán de Deportes', position: 'Capitán de Complejo', canReceiveExternal: false },
-      { id: '7', name: 'ASESORÍA LEGAL', manager: 'Dr. Asesor Legal Principal', position: 'Asesor Jurídico', canReceiveExternal: false },
-      { id: '8', name: 'MANTENIMIENTO Y OBRAS', manager: 'Ing. Jefe de Mantenimiento', position: 'Jefe de Infraestructura', canReceiveExternal: false },
+      { id: '7', name: 'ASESORÍA LEGAL', manager: 'Asesor Legal Principal', position: 'Asesor Jurídico', canReceiveExternal: false },
+      { id: '8', name: 'MANTENIMIENTO Y OBRAS', manager: 'Jefe de Mantenimiento', position: 'Jefe de Infraestructura', canReceiveExternal: false },
       { id: '9', name: 'CASETA DE ENTRADA', manager: 'Jefe de Guardia', position: 'Control de Puerta', canReceiveExternal: true },
     ],
     stamps: [

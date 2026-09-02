@@ -3,7 +3,7 @@
     {
       "id": "1",
       "name": "GERENCIA GENERAL",
-      "manager": "Ing. Gerente General",
+      "manager": "Gerente General",
       "position": "Máxima Autoridad Ejecutiva (MAE)",
       "canReceiveExternal": true,
       "email": "gerencia@chls.bo",
@@ -12,7 +12,7 @@
     {
       "id": "2",
       "name": "SECRETARÍA",
-      "manager": "Lic. Secretaria de Gerencia",
+      "manager": "Secretaria de Gerencia",
       "position": "Secretaría de Gerencia General (1)",
       "canReceiveExternal": true,
       "email": "secretaria@chls.bo",
@@ -30,7 +30,7 @@
     {
       "id": "4",
       "name": "ASESORÍA LEGAL",
-      "manager": "Dr. Asesor Legal Principal",
+      "manager": "Asesor Legal Principal",
       "position": "Asesoría Legal (1)",
       "canReceiveExternal": false,
       "email": "legal@chls.bo",
@@ -39,7 +39,7 @@
     {
       "id": "5",
       "name": "COORDINADOR COMERCIAL",
-      "manager": "Lic. Coordinador Comercial",
+      "manager": "Coordinador Comercial",
       "position": "Coordinación Comercial (1)",
       "canReceiveExternal": true,
       "email": "comercial@chls.bo",
@@ -48,7 +48,7 @@
     {
       "id": "6",
       "name": "SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
-      "manager": "Lic. Subgerente Financiero y RRHH",
+      "manager": "Subgerente Financiero y RRHH",
       "position": "Subgerencia de Operaciones Financieras y RRHH (1)",
       "canReceiveExternal": true,
       "email": "finanzas@chls.bo",
@@ -93,7 +93,7 @@
     {
       "id": "11",
       "name": "RESPONSABLE DE CONTRATACIONES",
-      "manager": "Lic. Responsable de Contrataciones",
+      "manager": "Responsable de Contrataciones",
       "position": "Responsable de Contrataciones (1)",
       "canReceiveExternal": false,
       "email": "contrataciones@chls.bo",
@@ -111,7 +111,7 @@
     {
       "id": "13",
       "name": "ENCARGADO DE CONTABILIDAD",
-      "manager": "Lic. Encargado de Contabilidad",
+      "manager": "Encargado de Contabilidad",
       "position": "Encargado de Contabilidad (1)",
       "canReceiveExternal": false,
       "email": "contabilidad@chls.bo",
@@ -120,7 +120,7 @@
     {
       "id": "14",
       "name": "ANALISTA CONTABLE",
-      "manager": "Lic. Analista Contable",
+      "manager": "Analista Contable",
       "position": "Analista Contable (1)",
       "canReceiveExternal": false,
       "email": "analista.contable@chls.bo",
@@ -129,7 +129,7 @@
     {
       "id": "15",
       "name": "ANALISTA CONTABLE - RECAUDACIONES",
-      "manager": "Lic. Analista de Recaudaciones",
+      "manager": "Analista de Recaudaciones",
       "position": "Analista Contable - Recaudaciones (1)",
       "canReceiveExternal": false,
       "email": "recaudaciones@chls.bo",
@@ -156,7 +156,7 @@
     {
       "id": "18",
       "name": "SUBGERENCIA DE ATENCIÓN AL SOCIO",
-      "manager": "Lic. Subgerente de Atención al Socio",
+      "manager": "Subgerente de Atención al Socio",
       "position": "Subgerencia de Atención al Socio (1)",
       "canReceiveExternal": true,
       "email": "atencionsocio@chls.bo",
@@ -210,7 +210,7 @@
     {
       "id": "24",
       "name": "ENCARGADO DE SISTEMAS",
-      "manager": "Ing. Encargado de Sistemas",
+      "manager": "Encargado de Sistemas",
       "position": "Encargado de Sistemas (1)",
       "canReceiveExternal": true,
       "email": "sistemas@chls.bo",
@@ -219,7 +219,7 @@
     {
       "id": "25",
       "name": "COMUNICACIÓN",
-      "manager": "Lic. Encargado de Comunicación",
+      "manager": "Encargado de Comunicación",
       "position": "Comunicación & Prensa (1)",
       "canReceiveExternal": true,
       "email": "comunicacion@chls.bo",
@@ -228,7 +228,7 @@
     {
       "id": "26",
       "name": "JEFE DE MANTENIMIENTO",
-      "manager": "Ing. Jefe de Mantenimiento",
+      "manager": "Jefe de Mantenimiento",
       "position": "Jefe de Mantenimiento (1)",
       "canReceiveExternal": true,
       "email": "mantenimiento@chls.bo",
@@ -282,7 +282,7 @@
     {
       "id": "32",
       "name": "MÉDICO VETERINARIO",
-      "manager": "Dr. Médico Veterinario",
+      "manager": "Médico Veterinario",
       "position": "Médico Veterinario (1)",
       "canReceiveExternal": false,
       "email": "veterinaria@chls.bo",
@@ -382,9 +382,13 @@
   "routingMode": "VIA_SECRETARIA_GERENCIA",
   "defaultSlaDays": 5,
   "socioSubsanacionDays": 10,
+  "currentGestion": 2026,
+  "initialCorrelativeNumber": 1,
+  "prefixFormat": "HR",
   "gestiones": {
     "2026": {
-      "initialCorrelative": 1
+      "initialCorrelative": 1,
+      "label": "Gestión 2026"
     }
   },
   "smtp": {
@@ -404,10 +408,10 @@
         "type": "GERENCIA",
         "title": "GERENCIA GENERAL",
         "subtitle": "Máxima Autoridad Ejecutiva (1)",
-        "manager": "Ing. Gerente General",
+        "manager": "Gerente General",
         "areaKey": "GERENCIA GENERAL",
         "x": 1780,
-        "y": -400,
+        "y": -120,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "gerencia@chls.bo",
@@ -418,7 +422,7 @@
         "type": "SECRETARIA",
         "title": "SECRETARÍA",
         "subtitle": "Secretaría de Despacho (1)",
-        "manager": "Lic. Secretaria de Gerencia",
+        "manager": "Secretaria de Gerencia",
         "areaKey": "SECRETARÍA",
         "x": 1380,
         "y": 40,
@@ -435,7 +439,7 @@
         "manager": "Mensajero Oficial",
         "areaKey": "MENSAJERO",
         "x": 1380,
-        "y": 270,
+        "y": 180,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "mensajeria@chls.bo",
@@ -446,10 +450,10 @@
         "type": "LEGAL",
         "title": "ASESORÍA LEGAL",
         "subtitle": "Dictámenes, Contratos y Normativa (1)",
-        "manager": "Dr. Asesor Legal Principal",
+        "manager": "Asesor Legal Principal",
         "areaKey": "ASESORÍA LEGAL",
-        "x": 2220,
-        "y": 40,
+        "x": 2300,
+        "y": -60,
         "slaHours": 72,
         "canReceiveExternal": false,
         "email": "legal@chls.bo",
@@ -460,7 +464,7 @@
         "type": "COMPRAS",
         "title": "COORDINADOR COMERCIAL",
         "subtitle": "Convenios, Alianzas y Publicidad (1)",
-        "manager": "Lic. Coordinador Comercial",
+        "manager": "Coordinador Comercial",
         "areaKey": "COORDINADOR COMERCIAL",
         "x": 2220,
         "y": 180,
@@ -474,7 +478,7 @@
         "type": "FINANZAS",
         "title": "SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
         "subtitle": "Finanzas, Contabilidad, Compras, Almacén y RRHH (1)",
-        "manager": "Lic. Subgerente Financiero y RRHH",
+        "manager": "Subgerente Financiero y RRHH",
         "areaKey": "SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
         "x": 580,
         "y": 340,
@@ -490,8 +494,8 @@
         "subtitle": "Asistencia a Jefatura de Operaciones Financieras (1)",
         "manager": "Personal de Apoyo J.O.F.R.H.",
         "areaKey": "APOYO J.O.F.R.H.",
-        "x": 920,
-        "y": 340,
+        "x": -190,
+        "y": 280,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "apoyo.finanzas@chls.bo",
@@ -533,7 +537,7 @@
         "manager": "Encargado de RRHH",
         "areaKey": "RECURSOS HUMANOS",
         "x": 610,
-        "y": 520,
+        "y": 510,
         "slaHours": 48,
         "canReceiveExternal": false,
         "email": "rrhh@chls.bo",
@@ -544,7 +548,7 @@
         "type": "COMPRAS",
         "title": "RESPONSABLE DE CONTRATACIONES",
         "subtitle": "Licitaciones, Cotizaciones y Proveedores (1)",
-        "manager": "Lic. Responsable de Contrataciones",
+        "manager": "Responsable de Contrataciones",
         "areaKey": "RESPONSABLE DE CONTRATACIONES",
         "x": 890,
         "y": 520,
@@ -561,7 +565,7 @@
         "manager": "Asistente de Contrataciones",
         "areaKey": "ASISTENTE ADMINISTRATIVO CONTRATACIONES",
         "x": 890,
-        "y": 770,
+        "y": 740,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "asistente.compras@chls.bo",
@@ -572,7 +576,7 @@
         "type": "FINANZAS",
         "title": "ENCARGADO DE CONTABILIDAD",
         "subtitle": "Estados Financieros, Balance e Impuestos (1)",
-        "manager": "Lic. Encargado de Contabilidad",
+        "manager": "Encargado de Contabilidad",
         "areaKey": "ENCARGADO DE CONTABILIDAD",
         "x": 1170,
         "y": 520,
@@ -586,10 +590,10 @@
         "type": "FINANZAS",
         "title": "ANALISTA CONTABLE",
         "subtitle": "Asientos, Conciliaciones y Libros (1)",
-        "manager": "Lic. Analista Contable",
+        "manager": "Analista Contable",
         "areaKey": "ANALISTA CONTABLE",
         "x": 1170,
-        "y": 680,
+        "y": 770,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "analista.contable@chls.bo",
@@ -600,7 +604,7 @@
         "type": "FINANZAS",
         "title": "ANALISTA CONTABLE - RECAUDACIONES",
         "subtitle": "Cobranza de Cuotas, Facturación y Caja (1)",
-        "manager": "Lic. Analista de Recaudaciones",
+        "manager": "Analista de Recaudaciones",
         "areaKey": "ANALISTA CONTABLE - RECAUDACIONES",
         "x": 1450,
         "y": 520,
@@ -617,7 +621,7 @@
         "manager": "Cajero Principal",
         "areaKey": "CAJERO",
         "x": 1450,
-        "y": 680,
+        "y": 710,
         "slaHours": 12,
         "canReceiveExternal": true,
         "email": "caja@chls.bo",
@@ -631,7 +635,7 @@
         "manager": "Encargado de Cobranzas",
         "areaKey": "APOYO COBRANZAS",
         "x": 1450,
-        "y": 840,
+        "y": 900,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "cobranzas@chls.bo",
@@ -642,7 +646,7 @@
         "type": "RECEPCION",
         "title": "SUBGERENCIA DE ATENCIÓN AL SOCIO",
         "subtitle": "Experiencia del Socio, Reclamos y Solicitudes (1)",
-        "manager": "Lic. Subgerente de Atención al Socio",
+        "manager": "Subgerente de Atención al Socio",
         "areaKey": "SUBGERENCIA DE ATENCIÓN AL SOCIO",
         "x": 1780,
         "y": 340,
@@ -658,8 +662,8 @@
         "subtitle": "Asistencia a Subgerencia de Atención al Socio (1)",
         "manager": "Asistente A.T.S.",
         "areaKey": "ASISTENTE A.T.S.",
-        "x": 2070,
-        "y": 480,
+        "x": 2080,
+        "y": 490,
         "slaHours": 24,
         "canReceiveExternal": true,
         "email": "asistente.ats@chls.bo",
@@ -673,7 +677,7 @@
         "manager": "Técnico Especialista",
         "areaKey": "TÉCNICO ESPECIALISTA I",
         "x": 1780,
-        "y": 540,
+        "y": 520,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "tecnico.socio@chls.bo",
@@ -700,10 +704,10 @@
         "subtitle": "Recepción Central, Puntos de Control y Caseta (6)",
         "manager": "Equipo de Recepción",
         "areaKey": "RECEPCIONISTAS",
-        "x": 1780,
-        "y": 840,
+        "x": 1770,
+        "y": 910,
         "slaHours": 12,
-        "canReceiveExternal": false,
+        "canReceiveExternal": true,
         "email": "recepcion@chls.bo",
         "phone": "70110022"
       },
@@ -714,8 +718,8 @@
         "subtitle": "Control y Entrega de Toallas a Socios (2)",
         "manager": "Asistente de Toallas",
         "areaKey": "ASISTENTE DE TOALLAS",
-        "x": 1780,
-        "y": 1000,
+        "x": 1790,
+        "y": 1090,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "toallas@chls.bo",
@@ -726,7 +730,7 @@
         "type": "OPERACIONES",
         "title": "ENCARGADO DE SISTEMAS",
         "subtitle": "Tecnología, Servidores, Redes y Plataformas (1)",
-        "manager": "Ing. Encargado de Sistemas",
+        "manager": "Encargado de Sistemas",
         "areaKey": "ENCARGADO DE SISTEMAS",
         "x": 2360,
         "y": 340,
@@ -740,7 +744,7 @@
         "type": "COMPRAS",
         "title": "COMUNICACIÓN",
         "subtitle": "Redes Sociales, Boletines y Comunicados (1)",
-        "manager": "Lic. Encargado de Comunicación",
+        "manager": "Encargado de Comunicación",
         "areaKey": "COMUNICACIÓN",
         "x": 2360,
         "y": 520,
@@ -754,7 +758,7 @@
         "type": "OPERACIONES",
         "title": "JEFE DE MANTENIMIENTO",
         "subtitle": "Infraestructura, Áreas Verdes, Pistas y Servicios (1)",
-        "manager": "Ing. Jefe de Mantenimiento",
+        "manager": "Jefe de Mantenimiento",
         "areaKey": "JEFE DE MANTENIMIENTO",
         "x": 2680,
         "y": 340,
@@ -771,7 +775,7 @@
         "manager": "Asistente Piscinero",
         "areaKey": "ASISTENTE PISCINERO",
         "x": 2680,
-        "y": 550,
+        "y": 520,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "piscinero@chls.bo",
@@ -838,10 +842,10 @@
         "type": "DEPORTES",
         "title": "MÉDICO VETERINARIO",
         "subtitle": "Sanidad Animal, Control de Caballos y Vacunación (1)",
-        "manager": "Dr. Médico Veterinario",
+        "manager": "Médico Veterinario",
         "areaKey": "MÉDICO VETERINARIO",
         "x": 3080,
-        "y": 520,
+        "y": 540,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "veterinaria@chls.bo",
@@ -854,8 +858,8 @@
         "subtitle": "Armado de Pistas y Obstáculos de Salto (1)",
         "manager": "Pistero Principal",
         "areaKey": "PISTERO",
-        "x": 3090,
-        "y": 670,
+        "x": 3080,
+        "y": 680,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "pistero@chls.bo",
@@ -868,7 +872,7 @@
         "subtitle": "Soporte de Pista y Salto (1)",
         "manager": "Ayudante Pistero",
         "areaKey": "AYUDANTE PISTERO",
-        "x": 3500,
+        "x": 3360,
         "y": 680,
         "slaHours": 24,
         "canReceiveExternal": false,
@@ -896,8 +900,8 @@
         "subtitle": "Soporte de Herrería (1)",
         "manager": "Ayudante de Herrero",
         "areaKey": "AYUDANTE HERRERO",
-        "x": 3500,
-        "y": 830,
+        "x": 3440,
+        "y": 990,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "ayudante.herrero@chls.bo",
@@ -910,8 +914,8 @@
         "subtitle": "Guardia Nocturna y Seguridad de Caballerizas (3)",
         "manager": "Personal de Seguridad / Serenos",
         "areaKey": "SERENO",
-        "x": 3090,
-        "y": 990,
+        "x": 3080,
+        "y": 1000,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "sereno@chls.bo",
@@ -938,10 +942,10 @@
         "subtitle": "Acondicionamiento Físico, Máquinas y Entrenadores (1)",
         "manager": "Supervisor de Gimnasio",
         "areaKey": "SUPERVISOR GIMNASIO",
-        "x": 3860,
-        "y": 340,
-        "slaHours": 72,
-        "canReceiveExternal": false,
+        "x": 3760,
+        "y": 180,
+        "slaHours": 48,
+        "canReceiveExternal": true,
         "email": "gimnasio@chls.bo",
         "phone": "70110039"
       },
@@ -952,10 +956,10 @@
         "subtitle": "Piscina Techada, Cursos y Operación Acuática (1)",
         "manager": "Supervisor de Piscina",
         "areaKey": "SUPERVISOR PISCINA",
-        "x": 4120,
+        "x": 3960,
         "y": 340,
         "slaHours": 48,
-        "canReceiveExternal": false,
+        "canReceiveExternal": true,
         "email": "piscina@chls.bo",
         "phone": "70110040"
       },
@@ -966,308 +970,434 @@
         "subtitle": "Seguridad Acuática y Rescate (2)",
         "manager": "Equipo de Guardavidas",
         "areaKey": "GUARDAVIDAS",
-        "x": 3880,
-        "y": 570,
+        "x": 3960,
+        "y": 580,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "guardavidas@chls.bo",
         "phone": "70110041"
       },
       {
-        "id": "node-1788212413271",
+        "id": "node-1788377976037",
         "type": "DEPORTES",
         "title": "JEFE DE DEPORTES",
-        "subtitle": "Manejo y control del área deportiva",
-        "manager": "JEFE DE DEPORTES",
+        "subtitle": "Deportes del CHLS",
+        "manager": "Jefe de deportes",
         "areaKey": "GERENCIA GENERAL",
-        "x": 3470,
-        "y": 330,
+        "x": 3460,
+        "y": 310,
         "slaHours": 48,
         "canReceiveExternal": false,
-        "email": "deportes@chls.bo",
-        "phone": "70554412"
+        "email": "",
+        "phone": ""
       }
     ],
     "edges": [
       {
-        "id": "e-ger-sec",
-        "source": "node-gerencia-general",
-        "target": "node-secretaria",
-        "label": "Despacho & Asistencia",
-        "style": "HIERARCHICAL"
+        "id": "e-sec-men",
+        "source": "node-secretaria",
+        "target": "node-mensajero",
+        "label": "Mensajería",
+        "style": "OPERATIONAL"
       },
       {
-        "id": "e-ger-leg",
+        "id": "edge-1788374561600",
         "source": "node-gerencia-general",
         "target": "node-asesoria-legal",
-        "label": "Asesoría Legal",
+        "label": "Derivación GERENCIA ➔ ASESORÍA",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "e-ger-com",
+        "id": "edge-1788376279981",
         "source": "node-gerencia-general",
-        "target": "node-coordinador-comercial",
-        "label": "Comercial & Convenios",
+        "target": "node-secretaria",
+        "label": "Derivación GERENCIA ➔ SECRETARÍA",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "e-ger-fin",
-        "source": "node-gerencia-general",
-        "target": "node-subgerencia-financiera",
-        "label": "Línea Financiera & RRHH",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "e-fin-apo",
-        "source": "node-subgerencia-financiera",
-        "target": "node-apoyo-jofrh",
-        "label": "Apoyo Jefatura",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-arc",
-        "source": "node-subgerencia-financiera",
-        "target": "node-archivo",
-        "label": "Archivo Central",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-alm",
-        "source": "node-subgerencia-financiera",
-        "target": "node-almacen",
-        "label": "Almacén",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-rrh",
-        "source": "node-subgerencia-financiera",
-        "target": "node-rrhh",
-        "label": "RRHH",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-con",
-        "source": "node-subgerencia-financiera",
-        "target": "node-contrataciones",
-        "label": "Contrataciones",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-con-asi",
-        "source": "node-contrataciones",
-        "target": "node-asistente-contrataciones",
-        "label": "Asistente",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-cnt",
-        "source": "node-subgerencia-financiera",
-        "target": "node-contabilidad",
-        "label": "Contabilidad",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-cnt-ana",
-        "source": "node-contabilidad",
-        "target": "node-analista-contable",
-        "label": "Analista",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-fin-rec",
-        "source": "node-subgerencia-financiera",
-        "target": "node-recaudaciones",
-        "label": "Recaudaciones",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-rec-caj",
-        "source": "node-recaudaciones",
-        "target": "node-cajero",
-        "label": "Caja",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-rec-cob",
-        "source": "node-recaudaciones",
-        "target": "node-apoyo-cobranzas",
-        "label": "Cobranzas",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-ger-soc",
+        "id": "edge-1788376283088",
         "source": "node-gerencia-general",
         "target": "node-subgerencia-socio",
-        "label": "Línea Atención al Socio",
+        "label": "Derivación GERENCIA ➔ SUBGERENCIA",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "e-soc-asi",
-        "source": "node-subgerencia-socio",
-        "target": "node-asistente-ats",
-        "label": "Asistente A.T.S.",
+        "id": "edge-1788376594441",
+        "source": "node-subgerencia-financiera",
+        "target": "node-archivo",
+        "label": "Derivación SUBGERENCIA ➔ ARCHIVO",
         "style": "OPERATIONAL"
       },
       {
-        "id": "e-soc-tec",
+        "id": "edge-1788376600756",
+        "source": "node-subgerencia-financiera",
+        "target": "node-apoyo-jofrh",
+        "label": "Derivación SUBGERENCIA ➔ APOYO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788376603696",
+        "source": "node-subgerencia-financiera",
+        "target": "node-almacen",
+        "label": "Derivación SUBGERENCIA ➔ ALMACÉN",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377845279",
+        "source": "node-subgerencia-financiera",
+        "target": "node-rrhh",
+        "label": "Derivación SUBGERENCIA ➔ RECURSOS",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377848617",
+        "source": "node-subgerencia-financiera",
+        "target": "node-contrataciones",
+        "label": "Derivación SUBGERENCIA ➔ RESPONSABLE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377851800",
+        "source": "node-subgerencia-financiera",
+        "target": "node-asistente-contrataciones",
+        "label": "Derivación SUBGERENCIA ➔ ASISTENTE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377854877",
+        "source": "node-subgerencia-financiera",
+        "target": "node-contabilidad",
+        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377857988",
+        "source": "node-contrataciones",
+        "target": "node-asistente-contrataciones",
+        "label": "Derivación RESPONSABLE ➔ ASISTENTE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377860845",
+        "source": "node-contabilidad",
+        "target": "node-analista-contable",
+        "label": "Derivación ENCARGADO ➔ ANALISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377864456",
+        "source": "node-subgerencia-financiera",
+        "target": "node-analista-contable",
+        "label": "Derivación SUBGERENCIA ➔ ANALISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377873296",
+        "source": "node-subgerencia-financiera",
+        "target": "node-recaudaciones",
+        "label": "Derivación SUBGERENCIA ➔ ANALISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377876137",
+        "source": "node-subgerencia-financiera",
+        "target": "node-cajero",
+        "label": "Derivación SUBGERENCIA ➔ CAJERO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377879463",
+        "source": "node-subgerencia-financiera",
+        "target": "node-apoyo-cobranzas",
+        "label": "Derivación SUBGERENCIA ➔ APOYO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377888542",
+        "source": "node-recaudaciones",
+        "target": "node-cajero",
+        "label": "Derivación ANALISTA ➔ CAJERO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377891589",
+        "source": "node-cajero",
+        "target": "node-apoyo-cobranzas",
+        "label": "Derivación CAJERO ➔ APOYO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377897454",
         "source": "node-subgerencia-socio",
         "target": "node-tecnico-socio",
-        "label": "Técnico I",
+        "label": "Derivación SUBGERENCIA ➔ TÉCNICO",
         "style": "OPERATIONAL"
       },
       {
-        "id": "e-soc-apo",
+        "id": "edge-1788377899979",
         "source": "node-subgerencia-socio",
         "target": "node-apoyo-ats",
-        "label": "Apoyo A.T.S.",
+        "label": "Derivación SUBGERENCIA ➔ APOYO",
         "style": "OPERATIONAL"
       },
       {
-        "id": "e-ger-sis",
+        "id": "edge-1788377903397",
+        "source": "node-subgerencia-socio",
+        "target": "node-recepcionistas",
+        "label": "Derivación SUBGERENCIA ➔ RECEPCIONISTAS",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377911676",
+        "source": "node-subgerencia-socio",
+        "target": "node-asistente-ats",
+        "label": "Derivación SUBGERENCIA ➔ ASISTENTE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377920919",
+        "source": "node-gerencia-general",
+        "target": "node-coordinador-comercial",
+        "label": "Derivación GERENCIA ➔ COORDINADOR",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788377930372",
         "source": "node-gerencia-general",
         "target": "node-encargado-sistemas",
-        "label": "Línea Sistemas & TI",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "e-sis-com",
-        "source": "node-encargado-sistemas",
-        "target": "node-comunicacion",
-        "label": "Comunicación",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "e-ger-man",
-        "source": "node-gerencia-general",
-        "target": "node-jefe-mantenimiento",
-        "label": "Línea Mantenimiento",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "e-ger-hip",
-        "source": "node-gerencia-general",
-        "target": "node-encargado-hipica",
-        "label": "Línea Hípica",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "e-hip-vet",
-        "source": "node-encargado-hipica",
-        "target": "node-veterinario",
-        "label": "Veterinaria",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788211902302",
-        "source": "node-gerencia-general",
-        "target": "node-contrataciones",
-        "label": "Derivación GERENCIA ➔ RESPONSABLE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788211919678",
-        "source": "node-gerencia-general",
-        "target": "node-rrhh",
-        "label": "Derivación GERENCIA ➔ RECURSOS",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788211936526",
-        "source": "node-gerencia-general",
-        "target": "node-almacen",
-        "label": "Derivación GERENCIA ➔ ALMACÉN",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788211943086",
-        "source": "node-gerencia-general",
-        "target": "node-archivo",
-        "label": "Derivación GERENCIA ➔ ARCHIVO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788211988849",
-        "source": "node-gerencia-general",
-        "target": "node-contabilidad",
         "label": "Derivación GERENCIA ➔ ENCARGADO",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788211992862",
-        "source": "node-gerencia-general",
-        "target": "node-analista-contable",
-        "label": "Derivación GERENCIA ➔ ANALISTA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788211997922",
-        "source": "node-gerencia-general",
-        "target": "node-recaudaciones",
-        "label": "Derivación GERENCIA ➔ ANALISTA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212001555",
-        "source": "node-gerencia-general",
-        "target": "node-cajero",
-        "label": "Derivación GERENCIA ➔ CAJERO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212005104",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-cobranzas",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212011914",
-        "source": "node-gerencia-general",
-        "target": "node-tecnico-socio",
-        "label": "Derivación GERENCIA ➔ TÉCNICO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212015246",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-ats",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212020424",
-        "source": "node-gerencia-general",
-        "target": "node-asistente-ats",
-        "label": "Derivación GERENCIA ➔ ASISTENTE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212024303",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-jofrh",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788212075339",
-        "source": "node-gerencia-general",
+        "id": "edge-1788377932429",
+        "source": "node-encargado-sistemas",
         "target": "node-comunicacion",
-        "label": "Derivación GERENCIA ➔ COMUNICACIÓN",
+        "label": "Derivación ENCARGADO ➔ COMUNICACIÓN",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788377939771",
+        "source": "node-gerencia-general",
+        "target": "node-jefe-mantenimiento",
+        "label": "Derivación GERENCIA ➔ JEFE",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788212082167",
+        "id": "edge-1788377949691",
+        "source": "node-gerencia-general",
+        "target": "node-encargado-hipica",
+        "label": "Derivación GERENCIA ➔ ENCARGADO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378084201",
+        "source": "node-gerencia-general",
+        "target": "node-1788377976037",
+        "label": "Derivación GERENCIA ➔ JEFE",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378102099",
         "source": "node-gerencia-general",
         "target": "node-veterinario",
         "label": "Derivación GERENCIA ➔ MÉDICO",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788212631739",
+        "id": "edge-1788378105203",
+        "source": "node-encargado-hipica",
+        "target": "node-veterinario",
+        "label": "Derivación ENCARGADO ➔ MÉDICO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378130093",
         "source": "node-gerencia-general",
-        "target": "node-1788212413271",
-        "label": "Derivación GERENCIA ➔ JEFE",
+        "target": "node-mensajero",
+        "label": "Derivación GERENCIA ➔ MENSAJERO",
         "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378134512",
+        "source": "node-gerencia-general",
+        "target": "node-subgerencia-financiera",
+        "label": "Derivación GERENCIA ➔ SUBGERENCIA",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378142078",
+        "source": "node-gerencia-general",
+        "target": "node-recaudaciones",
+        "label": "Derivación GERENCIA ➔ ANALISTA",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378145885",
+        "source": "node-gerencia-general",
+        "target": "node-contabilidad",
+        "label": "Derivación GERENCIA ➔ ENCARGADO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378149091",
+        "source": "node-gerencia-general",
+        "target": "node-contrataciones",
+        "label": "Derivación GERENCIA ➔ RESPONSABLE",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378331286",
+        "source": "node-gerencia-general",
+        "target": "node-apoyo-jofrh",
+        "label": "Derivación GERENCIA ➔ APOYO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378335710",
+        "source": "node-gerencia-general",
+        "target": "node-archivo",
+        "label": "Derivación GERENCIA ➔ ARCHIVO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378341717",
+        "source": "node-gerencia-general",
+        "target": "node-almacen",
+        "label": "Derivación GERENCIA ➔ ALMACÉN",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378347007",
+        "source": "node-gerencia-general",
+        "target": "node-rrhh",
+        "label": "Derivación GERENCIA ➔ RECURSOS",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378384396",
+        "source": "node-gerencia-general",
+        "target": "node-asistente-contrataciones",
+        "label": "Derivación GERENCIA ➔ ASISTENTE",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378389415",
+        "source": "node-gerencia-general",
+        "target": "node-analista-contable",
+        "label": "Derivación GERENCIA ➔ ANALISTA",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378393570",
+        "source": "node-gerencia-general",
+        "target": "node-cajero",
+        "label": "Derivación GERENCIA ➔ CAJERO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378397680",
+        "source": "node-gerencia-general",
+        "target": "node-apoyo-cobranzas",
+        "label": "Derivación GERENCIA ➔ APOYO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378446592",
+        "source": "node-gerencia-general",
+        "target": "node-tecnico-socio",
+        "label": "Derivación GERENCIA ➔ TÉCNICO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378453228",
+        "source": "node-gerencia-general",
+        "target": "node-asistente-ats",
+        "label": "Derivación GERENCIA ➔ ASISTENTE",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378457902",
+        "source": "node-gerencia-general",
+        "target": "node-apoyo-ats",
+        "label": "Derivación GERENCIA ➔ APOYO",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378464030",
+        "source": "node-gerencia-general",
+        "target": "node-recepcionistas",
+        "label": "Derivación GERENCIA ➔ RECEPCIONISTAS",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1788378627445",
+        "source": "node-subgerencia-financiera",
+        "target": "node-subgerencia-socio",
+        "label": "Derivación SUBGERENCIA ➔ SUBGERENCIA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378632244",
+        "source": "node-subgerencia-socio",
+        "target": "node-subgerencia-financiera",
+        "label": "Derivación SUBGERENCIA ➔ SUBGERENCIA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378697650",
+        "source": "node-subgerencia-socio",
+        "target": "node-encargado-sistemas",
+        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378700072",
+        "source": "node-subgerencia-socio",
+        "target": "node-jefe-mantenimiento",
+        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378707610",
+        "source": "node-subgerencia-socio",
+        "target": "node-encargado-hipica",
+        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378711134",
+        "source": "node-subgerencia-socio",
+        "target": "node-1788377976037",
+        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378726603",
+        "source": "node-subgerencia-financiera",
+        "target": "node-encargado-sistemas",
+        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378733808",
+        "source": "node-subgerencia-financiera",
+        "target": "node-encargado-hipica",
+        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378747185",
+        "source": "node-subgerencia-financiera",
+        "target": "node-1788377976037",
+        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1788378757109",
+        "source": "node-subgerencia-financiera",
+        "target": "node-jefe-mantenimiento",
+        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "style": "OPERATIONAL"
       }
     ]
   }

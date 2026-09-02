@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { createRouteSheet, analyzeTextWithAi, uploadRouteSheetDocuments } from '@store/correspondenceSlice';
+import { createRouteSheet, analyzeTextWithAi, uploadRouteSheetDocuments, fetchWorkflowSettings } from '@store/correspondenceSlice';
 import {
   X,
   Sparkles,
@@ -21,13 +21,21 @@ import {
   UploadCloud,
   Trash2,
   FileCheck,
+  GitBranch,
+  ArrowRight,
+  AlertCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
+import SmartCorrespondenceInput from './SmartCorrespondenceInput';
+import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
+import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
+import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES } from '../utils/organigramWorkflowService';
 
 interface NewRouteSheetModalProps {
   isOpen: boolean;
   onClose: () => void;
+  defaultOriginArea?: string;
 }
 
 const CHLS_INTERNAL_AREAS = [
@@ -46,18 +54,18 @@ const CHLS_INTERNAL_AREAS = [
 ];
 
 const AREA_RESPONSIBLES: Record<string, { title: string; defaultPerson: string }> = {
-  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'Lic. María del Pilar Atanacio (Secretaria de Gerencia)' },
-  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Ing. Gerente General CHLS' },
-  'TESORERÍA Y FINANZAS': { title: 'Jefatura de Tesorería y Finanzas', defaultPerson: 'Lic. Jefe de Finanzas & Tesorería' },
-  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Lic. Encargado de Adquisiciones' },
+  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'María del Pilar Atanacio (Secretaria de Gerencia)' },
+  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Gerente General CHLS' },
+  'TESORERÍA Y FINANZAS': { title: 'Jefatura de Tesorería y Finanzas', defaultPerson: 'Jefe de Finanzas & Tesorería' },
+  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Encargado de Adquisiciones' },
   'COMISIÓN HÍPICA': { title: 'Capitanía Hípica & Área Ecuestre', defaultPerson: 'Capitán de Comisión Hípica' },
   'CAPITANÍA DEPORTES / TENIS': { title: 'Capitanía de Deportes & Tenis', defaultPerson: 'Capitán de Deportes' },
-  'ASESORÍA LEGAL': { title: 'Asesoría Jurídica Institucional', defaultPerson: 'Dr. Asesor Legal Principal' },
-  'MANTENIMIENTO Y OBRAS': { title: 'Jefatura de Infraestructura y Mantenimiento', defaultPerson: 'Ing. Jefe de Mantenimiento' },
+  'ASESORÍA LEGAL': { title: 'Asesoría Jurídica Institucional', defaultPerson: 'Asesor Legal Principal' },
+  'MANTENIMIENTO Y OBRAS': { title: 'Jefatura de Infraestructura y Mantenimiento', defaultPerson: 'Jefe de Mantenimiento' },
   'DIRECTORIO / PRESIDENCIA': { title: 'Directorio / Presidencia CHLS', defaultPerson: 'Directorio CHLS' },
   'ALMACÉN': { title: 'Encargado de Almacén & Suministros', defaultPerson: 'Responsable de Almacén' },
-  'SISTEMAS E INFORMÁTICA': { title: 'Jefatura de Sistemas & TI', defaultPerson: 'Ing. Administrador de Sistemas' },
-  'RECURSOS HUMANOS': { title: 'Jefatura de Talento Humano', defaultPerson: 'Lic. Responsable de RRHH' },
+  'SISTEMAS E INFORMÁTICA': { title: 'Jefatura de Sistemas & TI', defaultPerson: 'Administrador de Sistemas' },
+  'RECURSOS HUMANOS': { title: 'Jefatura de Talento Humano', defaultPerson: 'Responsable de RRHH' },
 };
 
 const QUICK_STAMPS = [
@@ -69,13 +77,20 @@ const QUICK_STAMPS = [
   'ARCHIVAR ANTECEDENTES',
 ];
 
-export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, onClose }) => {
+export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, onClose, defaultOriginArea }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const { isSaving } = useSelector((state: RootState) => state.correspondence);
+  const { isSaving, workflow } = useSelector((state: RootState) => state.correspondence);
+  const currentUser = useSelector((state: RootState) => (state as any).auth?.user);
+
+  useEffect(() => {
+    if (isOpen && (!workflow || !workflow.nodes || workflow.nodes.length === 0)) {
+      dispatch(fetchWorkflowSettings());
+    }
+  }, [isOpen, workflow, dispatch]);
 
   const [senderType, setSenderType] = useState<'AREA_INTERNA' | 'SOCIO' | 'EXTERNO'>('AREA_INTERNA');
   const [senderName, setSenderName] = useState('');
-  const [senderArea, setSenderArea] = useState('ALMACÉN');
+  const [senderArea, setSenderArea] = useState('');
   const [senderPhone, setSenderPhone] = useState('');
   const [senderEmail, setSenderEmail] = useState('');
   const [senderDoc, setSenderDoc] = useState('');
@@ -87,14 +102,86 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
 
+  const rawNodes = useMemo(() => {
+    return (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
+  }, [workflow]);
+
+  // Despacho que emite el proveído y deriva (por defecto el usuario logueado / despacho activo)
+  const [originDispatch, setOriginDispatch] = useState<string>('');
+
+  useEffect(() => {
+    if (isOpen && rawNodes && rawNodes.length > 0) {
+      if (!originDispatch || !rawNodes.some(n => (n.areaKey || n.title).toUpperCase() === originDispatch.toUpperCase())) {
+        const preferred = defaultOriginArea || (currentUser as any)?.area || (currentUser as any)?.department || 'GERENCIA GENERAL';
+        const matched = rawNodes.find(n => (n.title || '').toUpperCase() === preferred.toUpperCase() || (n.areaKey || '').toUpperCase() === preferred.toUpperCase()) || rawNodes[0];
+        setOriginDispatch(matched.title);
+      }
+    }
+  }, [isOpen, rawNodes, defaultOriginArea, currentUser, originDispatch]);
+
+  const effectiveSourceArea = originDispatch || defaultOriginArea || 'GERENCIA GENERAL';
+
+  // Compute recommended destinations from active organigram & workflow rules
+  const { sourceNode, recommendedNodes, allNodes } = useMemo(() => {
+    return getOrganigramDestinations(effectiveSourceArea, workflow);
+  }, [effectiveSourceArea, workflow]);
+
+  // Sincronizar senderArea al abrir con un nodo real existente del organigrama
+  useEffect(() => {
+    if (isOpen && allNodes && allNodes.length > 0) {
+      if (!senderArea || !allNodes.some(n => (n.areaKey || n.title).toUpperCase() === senderArea.toUpperCase())) {
+        const preferredArea = defaultOriginArea || currentUser?.area || 'GERENCIA GENERAL';
+        const matched = allNodes.find(n => (n.title || '').toUpperCase() === preferredArea.toUpperCase() || (n.areaKey || '').toUpperCase() === preferredArea.toUpperCase()) || allNodes[0];
+        setSenderArea(matched.areaKey || matched.title);
+        if (matched.manager && !senderName) {
+          setSenderName(matched.manager);
+        }
+      }
+    }
+  }, [isOpen, allNodes, defaultOriginArea, currentUser, senderArea, senderName]);
+
   // Initial instruction & C.C.
   const [hasInitialInstruction, setHasInitialInstruction] = useState(true);
-  const [initialTargetArea, setInitialTargetArea] = useState('CONTRATACIONES Y ADQUISICIONES');
+  const [initialTargetArea, setInitialTargetArea] = useState('');
   const [initialTargetPerson, setInitialTargetPerson] = useState('');
   const [initialCcAreas, setInitialCcAreas] = useState<string[]>([]);
   const [initialCcPersons, setInitialCcPersons] = useState('');
+  const [ccSearchQuery, setCcSearchQuery] = useState('');
+  const [showCcSelector, setShowCcSelector] = useState(false);
   const [initialQuickStamp, setInitialQuickStamp] = useState('FAVOR SU ATENCIÓN Y TRÁMITE');
   const [initialInstruction, setInitialInstruction] = useState('Favor su atención y trámite correspondiente.');
+
+  // Auto-set initial target EXCLUSIVAMENTE a partir de los destinos conectados en el organigrama
+  useEffect(() => {
+    if (recommendedNodes && recommendedNodes.length > 0) {
+      const validFirst = recommendedNodes.find(
+        (r) => (r.node.areaKey || r.node.title).toUpperCase() !== effectiveSourceArea.toUpperCase()
+      ) || recommendedNodes[0];
+      const targetNode = validFirst.node;
+      setInitialTargetArea(targetNode.areaKey || targetNode.title);
+      setInitialTargetPerson(targetNode.manager || '');
+      if (validFirst.edgeLabel) {
+        setInitialInstruction(`Para ${validFirst.edgeLabel.toLowerCase()}: Favor su atención y trámite correspondiente.`);
+      }
+    } else {
+      setInitialTargetArea('');
+      setInitialTargetPerson('');
+      setInitialInstruction('Favor su atención y trámite correspondiente.');
+    }
+  }, [effectiveSourceArea, recommendedNodes]);
+
+  const handleSelectRecommendedDestination = (node: any, edgeLabel?: string) => {
+    const area = node.areaKey || node.title;
+    setInitialTargetArea(area);
+    setInitialTargetPerson(node.manager || '');
+    if (edgeLabel) {
+      setInitialInstruction(`Para ${edgeLabel.toLowerCase()}: `);
+    }
+    toast.success(`Destino asignado: ${node.title} (${node.manager || 'Titular'})`, {
+      icon: '🧭',
+      duration: 3000,
+    });
+  };
 
   // AI state
   const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
@@ -150,6 +237,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
     if (!reference.trim()) {
       toast.error('Por favor ingresa el asunto o referencia');
+      return;
+    }
+
+    if (hasInitialInstruction && (!initialTargetArea.trim() || recommendedNodes.length === 0)) {
+      toast.error('No se puede radicar con derivación: el área no tiene conexiones autorizadas en el Organigrama.');
       return;
     }
 
@@ -228,7 +320,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                 </span>
               </div>
               <p className="text-xs text-emerald-800 dark:text-emerald-400 font-bold mt-0.5">
-                Club Hípico Los Sargentos — Secretaría de Gerencia General
+                Club Hípico Los Sargentos — Despacho Radicador: {sourceNode?.title || effectiveSourceArea}
               </p>
             </div>
           </div>
@@ -277,7 +369,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                   <div className="grid grid-cols-3 gap-2.5 bg-slate-100 dark:bg-black/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
                     <button
                       type="button"
-                      onClick={() => { setSenderType('AREA_INTERNA'); setSenderArea('ALMACÉN'); }}
+                      onClick={() => {
+                        setSenderType('AREA_INTERNA');
+                        if (!senderArea) {
+                          setSenderArea(defaultOriginArea || (currentUser as any)?.area || 'GERENCIA GENERAL');
+                        }
+                      }}
                       className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'AREA_INTERNA'
                           ? 'bg-white dark:bg-[#152e20] text-emerald-900 dark:text-emerald-300 shadow-md border-2 border-emerald-500/50'
@@ -325,11 +422,20 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       </label>
                       <select
                         value={senderArea}
-                        onChange={(e) => setSenderArea(e.target.value)}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSenderArea(val);
+                          const matched = allNodes.find(n => (n.areaKey || n.title).toUpperCase() === val.toUpperCase());
+                          if (matched && matched.manager && !senderName) {
+                            setSenderName(matched.manager);
+                          }
+                        }}
                         className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs cursor-pointer"
                       >
-                        {CHLS_INTERNAL_AREAS.map((a) => (
-                          <option key={a} value={a}>{a}</option>
+                        {allNodes.map((a) => (
+                          <option key={a.id} value={a.areaKey || a.title}>
+                            {a.title}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -354,7 +460,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     </label>
                     <input
                       type="text"
-                      placeholder="Ej. Ing. Carlos Mendoza o María del Pilar"
+                      placeholder="Ej. Carlos Mendoza o María del Pilar"
                       value={senderName}
                       onChange={(e) => setSenderName(e.target.value)}
                       required
@@ -477,15 +583,21 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
-                    Referencia / Asunto Principal <span className="text-red-500">*</span>
+                  <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                    <span>Referencia / Asunto Principal <span className="text-red-500">*</span></span>
+                    <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
+                      <Sparkles className="w-3 h-3" />
+                      <span>Corrector ortográfico & Predicción activa</span>
+                    </span>
                   </label>
-                  <textarea
+                  <SmartCorrespondenceTextarea
                     rows={3}
                     placeholder="EJ. SOLICITUD DE ADQUISICIÓN DE ARENA Y MANTENIMIENTO PARA PISTAS DE SALTO HÍPICO"
                     value={reference}
                     onChange={(e) => setReference(e.target.value)}
                     required
+                    enablePrediction={true}
+                    enableQuickPhrases={true}
                     className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-black uppercase text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs leading-relaxed"
                   />
                 </div>
@@ -494,8 +606,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                   <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
                     Descripción de Documentos Adjuntos / Anexos
                   </label>
-                  <input
-                    type="text"
+                  <SmartCorrespondenceInput
                     placeholder="Ej. Formulario de Requerimiento + 3 Cotizaciones de Proveedores (5 fojas)"
                     value={attachmentDescription}
                     onChange={(e) => setAttachmentDescription(e.target.value)}
@@ -600,6 +711,45 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                 {hasInitialInstruction ? (
                   <div className="space-y-4">
                     
+                    {/* Selector del Despacho que Emite el Proveído & Deriva */}
+                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-brand-gold shrink-0" />
+                        <div>
+                          <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-400 block leading-tight">
+                            Despacho que Emite el Proveído & Deriva:
+                          </span>
+                          <span className="text-xs font-black text-slate-900 dark:text-white">
+                            {sourceNode?.title || effectiveSourceArea} {sourceNode?.manager ? `— ${sourceNode.manager}` : ''}
+                          </span>
+                        </div>
+                      </div>
+                      <select
+                        value={originDispatch}
+                        onChange={(e) => setOriginDispatch(e.target.value)}
+                        className="bg-white dark:bg-[#07110c] border border-emerald-500/40 rounded-xl px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 outline-none cursor-pointer"
+                      >
+                        {allNodes.map((n) => (
+                          <option key={n.id} value={n.title} className="bg-slate-900 text-white">
+                            {n.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    {/* Alerta en caso de no tener conexiones autorizadas en el Organigrama */}
+                    {recommendedNodes.length === 0 && (
+                      <div className="p-3.5 bg-red-500/10 border border-red-500/30 rounded-2xl text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
+                        <AlertCircle className="w-4 h-4 shrink-0 text-red-500 mt-0.5" />
+                        <div>
+                          <span className="font-black block">Sin líneas de derivación autorizadas:</span>
+                          <span className="text-[11px] text-red-600 dark:text-red-400">
+                            {effectiveSourceArea} no tiene conectores salientes en el Organigrama 360°. Para autorizar destinos, traza sus líneas en <em>Organigrama & Flujos</em>.
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Destino y Funcionario */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
@@ -611,16 +761,36 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           onChange={(e) => {
                             const newArea = e.target.value;
                             setInitialTargetArea(newArea);
-                            if (AREA_RESPONSIBLES[newArea]) {
+                            const matchedNode = allNodes.find(
+                              (n) => (n.areaKey || n.title).toUpperCase() === newArea.toUpperCase()
+                            );
+                            if (matchedNode && matchedNode.manager) {
+                              setInitialTargetPerson(matchedNode.manager);
+                            } else if (AREA_RESPONSIBLES[newArea]) {
                               setInitialTargetPerson(AREA_RESPONSIBLES[newArea].defaultPerson);
                             }
                           }}
                           className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs cursor-pointer"
                         >
-                          {CHLS_INTERNAL_AREAS.map((a) => (
-                            <option key={a} value={a}>{a}</option>
-                          ))}
+                          {recommendedNodes.length > 0 ? (
+                            <optgroup label="⭐ Destinos Conectados en el Organigrama">
+                              {recommendedNodes.map(({ node, edgeLabel }) => (
+                                <option key={node.id} value={node.areaKey || node.title}>
+                                  ⭐ {node.title} {edgeLabel ? `(${edgeLabel})` : ''}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ) : (
+                            <option value="" disabled>
+                              ⛔ Sin conexiones autorizadas en el Organigrama
+                            </option>
+                          )}
                         </select>
+                        {recommendedNodes.length === 0 && (
+                          <p className="text-[11px] text-red-600 dark:text-red-400 font-bold mt-1.5 flex items-center gap-1">
+                            <span>⚠️ {effectiveSourceArea} no tiene conectores salientes en el Canvas 360°.</span>
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -634,7 +804,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         </div>
                         <input
                           type="text"
-                          placeholder="Ej. Lic. Ian Pinto / Arq. Laura Ríos"
+                          placeholder="Ej. Ian Pinto / Laura Ríos"
                           value={initialTargetPerson}
                           onChange={(e) => setInitialTargetPerson(e.target.value)}
                           className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
@@ -642,55 +812,109 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       </div>
                     </div>
 
-                    {/* CON COPIA A (C.C. MULTI-DESTINATARIOS) */}
+                    {/* CON COPIA A (C.C. INFORMATIVO INTELIGENTE) */}
                     <div className="bg-slate-100/80 dark:bg-[#060e0a] p-4 rounded-2xl border-2 border-slate-200 dark:border-emerald-500/20 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <label className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-gray-200 flex items-center gap-2">
                           <Copy className="w-4 h-4 text-brand-gold" />
                           <span>Con Copia a (C.C. Informativo):</span>
                         </label>
-                        {initialCcAreas.length > 0 && (
-                          <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
-                            {initialCcAreas.length} en copia
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {initialCcAreas.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setInitialCcAreas([])}
+                              className="text-[10px] font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                            >
+                              Limpiar copias ({initialCcAreas.length})
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setShowCcSelector(!showCcSelector)}
+                            className="text-xs font-black px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                          >
+                            <span>{showCcSelector ? '▲ Ocultar Selector' : '+ Agregar Copias Institucionales'}</span>
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Chips de selección de áreas en C.C. */}
-                      <div className="flex flex-wrap gap-2">
-                        {CHLS_INTERNAL_AREAS.filter((a) => a !== initialTargetArea).map((area) => {
-                          const isSelected = initialCcAreas.includes(area);
-                          return (
-                            <button
-                              key={area}
-                              type="button"
-                              onClick={() => {
-                                if (isSelected) {
-                                  setInitialCcAreas((prev) => prev.filter((a) => a !== area));
-                                } else {
-                                  setInitialCcAreas((prev) => [...prev, area]);
-                                }
-                              }}
-                              className={`text-xs font-black px-3.5 py-2 rounded-xl border transition-all flex items-center gap-1.5 cursor-pointer ${
-                                isSelected
-                                  ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/25 scale-[1.03]'
-                                  : 'bg-white dark:bg-white/5 text-slate-700 dark:text-gray-300 border-slate-300 dark:border-white/10 hover:border-emerald-500 hover:bg-slate-50'
-                              }`}
+                      {/* Áreas seleccionadas en C.C. (Badges dorados compactos) */}
+                      {initialCcAreas.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-emerald-950/20 rounded-xl border border-emerald-500/30">
+                          {initialCcAreas.map((areaTitle) => (
+                            <span
+                              key={areaTitle}
+                              className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-lg bg-brand-gold text-slate-950 shadow-sm animate-fadeIn"
                             >
-                              <span>{isSelected ? '✓' : '+'}</span>
-                              <span>{area}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
+                              <span>📋 {areaTitle}</span>
+                              <button
+                                type="button"
+                                onClick={() => setInitialCcAreas((prev) => prev.filter((a) => a !== areaTitle))}
+                                className="w-4 h-4 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-[10px] cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Selector desplegable con buscador de Áreas */}
+                      {showCcSelector && (
+                        <div className="p-3 bg-white dark:bg-black/60 rounded-xl border border-emerald-500/30 space-y-2 animate-fadeIn">
+                          <input
+                            type="text"
+                            placeholder="🔍 Escribe para filtrar cargos y departamentos..."
+                            value={ccSearchQuery}
+                            onChange={(e) => setCcSearchQuery(e.target.value)}
+                            className="w-full bg-slate-50 dark:bg-[#07110c] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                          />
+                          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar p-1">
+                            {allNodes
+                              .filter((n) => {
+                                const title = (n.areaKey || n.title).toUpperCase();
+                                const isDest = title === initialTargetArea.toUpperCase();
+                                if (isDest) return false;
+                                if (!ccSearchQuery.trim()) return true;
+                                return title.includes(ccSearchQuery.toUpperCase());
+                              })
+                              .map((node) => {
+                                const areaTitle = node.areaKey || node.title;
+                                const isSelected = initialCcAreas.includes(areaTitle);
+                                return (
+                                  <button
+                                    key={node.id}
+                                    type="button"
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setInitialCcAreas((prev) => prev.filter((a) => a !== areaTitle));
+                                      } else {
+                                        setInitialCcAreas((prev) => [...prev, areaTitle]);
+                                      }
+                                    }}
+                                    className={`text-[11px] font-black px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                                      isSelected
+                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black scale-[1.02]'
+                                        : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-gray-300 border-slate-200 dark:border-white/10 hover:border-emerald-500 hover:bg-slate-50'
+                                    }`}
+                                  >
+                                    <span>{isSelected ? '✓' : '+'}</span>
+                                    <span className="truncate max-w-[220px]">{node.title}</span>
+                                  </button>
+                                );
+                              })}
+                          </div>
+                        </div>
+                      )}
 
                       <div>
                         <input
                           type="text"
-                          placeholder="Personas o entidades adicionales en C.C. (ej. Asesoría Legal, Auditoría Externa)"
+                          placeholder="Personas o entidades externas en C.C. (ej. Asesoría Legal Externa, Auditoría)"
                           value={initialCcPersons}
                           onChange={(e) => setInitialCcPersons(e.target.value)}
-                          className="w-full bg-white dark:bg-[#07110c] border border-slate-300 dark:border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-slate-950 dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                          className="w-full bg-white dark:bg-[#07110c] border border-slate-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs text-slate-950 dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                         />
                       </div>
                     </div>
@@ -726,14 +950,20 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                     {/* INSTRUCCIÓN / PROVEÍDO TEXTO */}
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
-                        Instrucción Oficial / Proveído Detallado <span className="text-red-500">*</span>
+                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5 flex items-center justify-between">
+                        <span>Instrucción Oficial / Proveído Detallado <span className="text-red-500">*</span></span>
+                        <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" />
+                          <span>Predictivo & Fórmulas oficiales</span>
+                        </span>
                       </label>
-                      <textarea
+                      <SmartCorrespondenceTextarea
                         rows={3}
                         value={initialInstruction}
                         onChange={(e) => setInitialInstruction(e.target.value)}
                         required
+                        enablePrediction={true}
+                        enableQuickPhrases={true}
                         placeholder="Redacta la instrucción formal para el área de destino..."
                         className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs leading-relaxed"
                       />

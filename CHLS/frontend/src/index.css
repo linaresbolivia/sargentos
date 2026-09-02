@@ -385,3 +385,73 @@
   }
 }
 
+/* ========================================================================= */
+/* ESTILOS DE IMPRESIÓN OFICIAL CHLS (A4 / CARTA PORTRAIT & DÚPLEX)           */
+/* ========================================================================= */
+@media print {
+  @page {
+    size: letter portrait;
+    margin: 6mm 8mm;
+  }
+
+  *, *::before, *::after {
+    color-adjust: exact !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  html, body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    font-family: 'Arial', 'Helvetica', sans-serif !important;
+  }
+
+  /* Ocultar elementos de navegación y de fondo */
+  .print\:hidden,
+  .print-hidden,
+  header,
+  nav,
+  aside,
+  button:not(.allow-print) {
+    display: none !important;
+  }
+
+  .print\:block {
+    display: block !important;
+  }
+
+  .print\:flex {
+    display: flex !important;
+  }
+
+  /* Salto de página para anverso y reverso */
+  .page-break-after,
+  .print-page-break {
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Contenedor de la Hoja de Ruta Oficial */
+  .printable-sheet-page {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: none !important;
+    box-shadow: none !important;
+    page-break-inside: avoid !important;
+  }
+}
+

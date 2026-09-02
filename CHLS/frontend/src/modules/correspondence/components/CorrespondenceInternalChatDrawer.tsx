@@ -119,7 +119,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'GERENCIA_GENERAL',
         label: 'Gerencia General (MAE)',
         icon: '🏛️',
-        manager: 'Ing. Gerente General',
+        manager: 'Gerente General',
         position: 'Máxima Autoridad Ejecutiva (1)',
         desc: 'Instrucciones ejecutivas, proveídos y resoluciones',
       },
@@ -127,7 +127,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'SECRETARIA_GERENCIA',
         label: 'Secretaría de Despacho',
         icon: '📋',
-        manager: 'Lic. Secretaria de Gerencia',
+        manager: 'Secretaria de Gerencia',
         position: 'Secretaría de Despacho (1)',
         desc: 'Filtro central de correspondencia y radicación',
       },
@@ -143,7 +143,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'ASESORIA_LEGAL',
         label: 'Asesoría Legal',
         icon: '⚖️',
-        manager: 'Dr. Asesor Legal Principal',
+        manager: 'Asesor Legal Principal',
         position: 'Asesoría Legal (1)',
         desc: 'Dictámenes jurídicos, contratos y resoluciones',
       },
@@ -151,7 +151,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'COORDINACION_COMERCIAL',
         label: 'Coordinación Comercial',
         icon: '🤝',
-        manager: 'Lic. Coordinador Comercial',
+        manager: 'Coordinador Comercial',
         position: 'Coordinación Comercial (1)',
         desc: 'Convenios comerciales, publicidad y patrocinios',
       },
@@ -166,7 +166,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'SUBGERENCIA_FINANCIERA',
         label: 'Subgerencia Financiera & RRHH',
         icon: '💼',
-        manager: 'Lic. Subgerente Financiero',
+        manager: 'Subgerente Financiero',
         position: 'Subgerencia de Operaciones Financieras (1)',
         desc: 'Supervisión financiera, presupuestos y recursos humanos',
       },
@@ -174,7 +174,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'CONTABILIDAD',
         label: 'Contabilidad & Balances',
         icon: '📊',
-        manager: 'Lic. Encargado de Contabilidad',
+        manager: 'Encargado de Contabilidad',
         position: 'Encargado de Contabilidad / Analista (2)',
         desc: 'Estados financieros, conciliaciones y comprobantes contables',
       },
@@ -182,7 +182,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'RECAUDACIONES_CAJA',
         label: 'Recaudaciones, Caja & Cobranzas',
         icon: '💳',
-        manager: 'Lic. Analista de Recaudaciones',
+        manager: 'Analista de Recaudaciones',
         position: 'Recaudaciones / Cajero / Cobranzas (3)',
         desc: 'Cobro de cuotas de socios, pagos en caja y cartera morosa',
       },
@@ -190,7 +190,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'CONTRATACIONES_COMPRAS',
         label: 'Contrataciones & Adquisiciones',
         icon: '📦',
-        manager: 'Lic. Responsable de Contrataciones',
+        manager: 'Responsable de Contrataciones',
         position: 'Responsable de Contrataciones / Asistente (2)',
         desc: 'Licitaciones, cotizaciones, compras y relación con proveedores',
       },
@@ -229,7 +229,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'SUBGERENCIA_SOCIO',
         label: 'Subgerencia Atención al Socio',
         icon: '🏅',
-        manager: 'Lic. Subgerente de Atención al Socio',
+        manager: 'Subgerente de Atención al Socio',
         position: 'Subgerencia Atención al Socio (1)',
         desc: 'Relación con socios, membresías y eventos institucionales',
       },
@@ -268,7 +268,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'SISTEMAS_TI',
         label: 'Encargado de Sistemas & TI',
         icon: '🖥️',
-        manager: 'Ing. Encargado de Sistemas',
+        manager: 'Encargado de Sistemas',
         position: 'Encargado de Sistemas y Redes (1)',
         desc: 'Infraestructura de servidores, software CHLS 360 y seguridad',
       },
@@ -284,7 +284,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'COMUNICACION_PRENSA',
         label: 'Comunicación, Prensa & RRPP',
         icon: '📢',
-        manager: 'Lic. Encargado de Comunicación',
+        manager: 'Encargado de Comunicación',
         position: 'Comunicación y Relaciones Públicas (1)',
         desc: 'Boletines oficiales, redes sociales y eventos del club',
       },
@@ -299,7 +299,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'MANTENIMIENTO_OBRAS',
         label: 'Jefatura de Mantenimiento & Obras',
         icon: '🔧',
-        manager: 'Ing. Jefe de Mantenimiento',
+        manager: 'Jefe de Mantenimiento',
         position: 'Jefe de Mantenimiento & Cuadrilla (12)',
         desc: 'Obras civiles, plomería, electricidad y áreas verdes',
       },
@@ -346,7 +346,7 @@ export const ORGANIGRAM_CHAT_GROUPS = [
         id: 'VETERINARIA',
         label: 'Sanidad & Veterinaria Equina',
         icon: '🩺',
-        manager: 'Dr. Médico Veterinario',
+        manager: 'Médico Veterinario',
         position: 'Médico Veterinario (1)',
         desc: 'Control sanitario, pasaportes equinos y atención clínica',
       },
@@ -1023,9 +1023,13 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         ...replyPayload,
       });
 
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         if (richInputRef.current) {
-          richInputRef.current.clear();
+          try {
+            richInputRef.current.clear();
+          } catch {
+            // ignore
+          }
         }
         setInputText('');
         setAttachedFile(null);
@@ -1035,29 +1039,34 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         if (fileInputRef.current) fileInputRef.current.value = '';
 
         const createdMsg = response.data.data;
-        setMessages((prev) => {
-          if (prev.some((m) => m.id === createdMsg.id)) return prev;
-          return [...prev, createdMsg];
-        });
+        if (createdMsg) {
+          setMessages((prev) => {
+            if (prev.some((m) => m.id === createdMsg.id)) return prev;
+            return [...prev, createdMsg];
+          });
 
-        // Update contacts sorting with the newly sent message so it floats to top
-        if (selectedContact) {
-          setContacts((prev) =>
-            prev.map((c) => {
-              if (c.id === selectedContact.id) {
-                return {
-                  ...c,
-                  lastMessage: createdMsg.message || (createdMsg.fileName ? `📎 ${createdMsg.fileName}` : 'Archivo adjunto'),
-                  lastMessageAt: createdMsg.createdAt || new Date().toISOString(),
-                };
-              }
-              return c;
-            })
-          );
+          // Update contacts sorting with the newly sent message so it floats to top
+          if (selectedContact) {
+            setContacts((prev) =>
+              prev.map((c) => {
+                if (c.id === selectedContact.id) {
+                  return {
+                    ...c,
+                    lastMessage: createdMsg.message || (createdMsg.fileName ? `📎 ${createdMsg.fileName}` : 'Archivo adjunto'),
+                    lastMessageAt: createdMsg.createdAt || new Date().toISOString(),
+                  };
+                }
+                return c;
+              })
+            );
+          }
         }
+      } else {
+        toast.error(response.data?.message || 'Error al enviar el mensaje');
       }
-    } catch {
-      toast.error('Error al enviar mensaje o transferir archivo');
+    } catch (err: any) {
+      console.error('Error enviando mensaje de chat:', err);
+      toast.error(err.response?.data?.message || 'Error al enviar mensaje o transferir archivo');
     } finally {
       setIsSending(false);
     }
@@ -2198,10 +2207,10 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 </span>
                 <input
                   type="text"
-                  placeholder="Ej. HR-2026-00001"
+                  placeholder="Ej. 09-001"
                   value={attachedHrCode}
                   onChange={(e) => setAttachedHrCode(e.target.value)}
-                  className="px-2.5 py-1 bg-black/40 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500 w-36 shadow-xs"
+                  className="px-2.5 py-1 bg-black/40 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500 w-32 shadow-xs"
                 />
                 {attachedHrCode && (
                   <button

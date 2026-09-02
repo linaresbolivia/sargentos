@@ -398,7 +398,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                       />
                       <input
                         type="text"
-                        placeholder="Titular / Responsable (ej. Dr. Juan Pérez)"
+                        placeholder="Titular / Responsable (ej. Juan Pérez)"
                         value={newAreaManager}
                         onChange={(e) => setNewAreaManager(e.target.value)}
                         className="sm:col-span-4 bg-white dark:bg-[#070e0a] border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white outline-none"

@@ -57,14 +57,14 @@ async function main() {
     // --- DESPACHO SUPERIOR & STAFF ---
     {
       username: 'gerencia',
-      firstName: 'Ing. Gerente',
+      firstName: 'Gerente',
       lastName: 'General',
       area: 'GERENCIA_GENERAL',
       roles: ['SUPER_ADMIN', 'MODULO_DIRECTORIO', 'MODULO_CORRESPONDENCIA', 'STAFF'],
     },
     {
       username: 'secretaria',
-      firstName: 'Lic. Secretaria',
+      firstName: 'Secretaria',
       lastName: 'de Gerencia',
       area: 'SECRETARIA_GERENCIA',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA', 'ADMIN'],
@@ -78,14 +78,14 @@ async function main() {
     },
     {
       username: 'legal',
-      firstName: 'Dr. Asesor',
+      firstName: 'Asesor',
       lastName: 'Legal',
       area: 'ASESORIA_LEGAL',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA'],
     },
     {
       username: 'comercial',
-      firstName: 'Lic. Coordinador',
+      firstName: 'Coordinador',
       lastName: 'Comercial',
       area: 'COORDINACION_COMERCIAL',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA'],
@@ -94,14 +94,14 @@ async function main() {
     // --- SUBGERENCIA FINANCIERA & RRHH ---
     {
       username: 'finanzas',
-      firstName: 'Lic. Subgerente',
+      firstName: 'Subgerente',
       lastName: 'Financiero y RRHH',
       area: 'SUBGERENCIA_FINANCIERA',
       roles: ['STAFF', 'MODULO_CONTABILIDAD', 'MODULO_FACTURACION', 'MODULO_CORRESPONDENCIA'],
     },
     {
       username: 'contabilidad',
-      firstName: 'Lic. Encargado',
+      firstName: 'Encargado',
       lastName: 'de Contabilidad',
       area: 'CONTABILIDAD',
       roles: ['STAFF', 'MODULO_CONTABILIDAD', 'MODULO_FACTURACION', 'MODULO_CORRESPONDENCIA'],
@@ -122,7 +122,7 @@ async function main() {
     },
     {
       username: 'contrataciones',
-      firstName: 'Lic. Responsable',
+      firstName: 'Responsable',
       lastName: 'de Contrataciones',
       area: 'CONTRATACIONES_COMPRAS',
       roles: ['STAFF', 'MODULO_CONTRATACIONES', 'MODULO_CORRESPONDENCIA'],
@@ -159,7 +159,7 @@ async function main() {
     // --- SUBGERENCIA DE ATENCIÓN AL SOCIO ---
     {
       username: 'atencionsocio',
-      firstName: 'Lic. Subgerente',
+      firstName: 'Subgerente',
       lastName: 'de Atención al Socio',
       area: 'SUBGERENCIA_SOCIO',
       roles: ['STAFF', 'MODULO_SOCIOS', 'MODULO_CORRESPONDENCIA'],
@@ -203,21 +203,21 @@ async function main() {
     // --- TECNOLOGÍA & COMUNICACIÓN ---
     {
       username: 'tecnologia',
-      firstName: 'Ing. Encargado',
+      firstName: 'Encargado',
       lastName: 'de Sistemas & TI',
       area: 'SISTEMAS_TI',
       roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'MODULO_CORRESPONDENCIA'],
     },
     {
       username: 'sistemas',
-      firstName: 'Ing. Soporte',
+      firstName: 'Soporte',
       lastName: 'Sistemas CHLS',
       area: 'SISTEMAS_TI',
       roles: ['SUPER_ADMIN', 'ADMIN', 'STAFF', 'MODULO_CORRESPONDENCIA'],
     },
     {
       username: 'comunicacion',
-      firstName: 'Lic. Encargado',
+      firstName: 'Encargado',
       lastName: 'de Comunicación & Prensa',
       area: 'COMUNICACION_PRENSA',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA'],
@@ -226,7 +226,7 @@ async function main() {
     // --- MANTENIMIENTO & INFRAESTRUCTURA ---
     {
       username: 'mantenimiento',
-      firstName: 'Ing. Jefe',
+      firstName: 'Jefe',
       lastName: 'de Mantenimiento',
       area: 'MANTENIMIENTO_OBRAS',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA'],
@@ -277,7 +277,7 @@ async function main() {
     },
     {
       username: 'veterinaria',
-      firstName: 'Dr. Médico',
+      firstName: 'Médico',
       lastName: 'Veterinario Equino',
       area: 'VETERINARIA',
       roles: ['STAFF', 'MODULO_CORRESPONDENCIA'],
