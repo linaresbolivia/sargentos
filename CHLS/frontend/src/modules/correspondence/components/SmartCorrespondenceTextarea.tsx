@@ -141,14 +141,14 @@ export const SmartCorrespondenceTextarea = forwardRef<HTMLTextAreaElement, Smart
     return (
       <div className={`relative flex flex-col ${containerClassName}`}>
         {label && (
-          <div className="flex items-center justify-between mb-1 text-xs font-bold text-gray-300">
+          <div className="flex items-center justify-between mb-1 text-xs font-bold text-slate-800 dark:text-gray-300">
             <span>{label}</span>
             <div className="flex items-center gap-2">
               {suggestion && (
                 <button
                   type="button"
                   onClick={acceptSuggestion}
-                  className="text-[10px] text-brand-gold bg-amber-500/10 border border-brand-gold/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-amber-500/20 cursor-pointer animate-pulse select-none"
+                  className="text-[10px] text-amber-700 dark:text-brand-gold bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-amber-500/20 cursor-pointer animate-pulse select-none"
                 >
                   <Sparkles className="w-2.5 h-2.5" />
                   <span>Tab autocompletar</span>
@@ -158,10 +158,10 @@ export const SmartCorrespondenceTextarea = forwardRef<HTMLTextAreaElement, Smart
                 <button
                   type="button"
                   onClick={() => setShowPhrasesList(!showPhrasesList)}
-                  className="text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-emerald-500/20 cursor-pointer select-none"
+                  className="text-[10px] text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-emerald-500/20 cursor-pointer select-none"
                   title="Fórmulas y proveídos oficiales"
                 >
-                  <CheckCheck className="w-3 h-3 text-emerald-400" />
+                  <CheckCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                   <span>Fórmulas oficiales</span>
                 </button>
               )}
@@ -171,13 +171,13 @@ export const SmartCorrespondenceTextarea = forwardRef<HTMLTextAreaElement, Smart
 
         {/* Dropdown de Fórmulas Oficiales */}
         {showPhrasesList && (
-          <div className="mb-2 p-2 bg-[#111b21] border border-emerald-500/40 rounded-xl shadow-2xl max-h-44 overflow-y-auto custom-scrollbar animate-fadeIn z-20">
-            <div className="text-[10px] font-black uppercase text-brand-gold px-1.5 py-1 mb-1 border-b border-white/10 flex items-center justify-between">
+          <div className="mb-2 p-2 bg-white dark:bg-[#111b21] border border-slate-200 dark:border-emerald-500/40 rounded-xl shadow-2xl max-h-44 overflow-y-auto custom-scrollbar animate-fadeIn z-20">
+            <div className="text-[10px] font-black uppercase text-amber-700 dark:text-brand-gold px-1.5 py-1 mb-1 border-b border-slate-200 dark:border-white/10 flex items-center justify-between">
               <span>Proveídos y Fórmulas Institucionales CHLS</span>
               <button
                 type="button"
                 onClick={() => setShowPhrasesList(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
               >
                 ✕
               </button>
@@ -188,10 +188,10 @@ export const SmartCorrespondenceTextarea = forwardRef<HTMLTextAreaElement, Smart
                   key={idx}
                   type="button"
                   onClick={() => insertPhrase(phrase)}
-                  className="w-full text-left text-xs text-gray-200 hover:text-white hover:bg-emerald-500/20 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="w-full text-left text-xs text-slate-800 dark:text-gray-200 hover:text-emerald-800 dark:hover:text-white hover:bg-emerald-500/10 dark:hover:bg-emerald-500/20 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <span className="text-emerald-400 text-xs">▸</span>
-                  <span className="truncate">{phrase}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 text-xs">▸</span>
+                  <span className="truncate font-medium">{phrase}</span>
                 </button>
               ))}
             </div>
@@ -211,7 +211,7 @@ export const SmartCorrespondenceTextarea = forwardRef<HTMLTextAreaElement, Smart
             autoCorrect="on"
             autoCapitalize="sentences"
             placeholder={placeholder}
-            className={`w-full px-3.5 py-2.5 bg-black/40 border border-emerald-500/30 rounded-xl text-xs sm:text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all font-medium custom-scrollbar ${className}`}
+            className={`w-full px-3.5 py-2.5 bg-white dark:bg-black/40 border border-slate-300 dark:border-emerald-500/30 rounded-xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all font-medium custom-scrollbar ${className}`}
             {...props}
           />
         </div>

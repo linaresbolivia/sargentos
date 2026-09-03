@@ -23,6 +23,7 @@ import { CorrespondenceConfigModal } from '../components/CorrespondenceConfigMod
 import { CorrespondenceInternalChatDrawer } from '../components/CorrespondenceInternalChatDrawer';
 import { CorrespondenceReportExportModal } from '../components/CorrespondenceReportExportModal';
 import { ChlsWorkflowCanvasModal } from '../components/ChlsWorkflowCanvasModal';
+import { RouteSheetAttachmentsModal } from '../components/RouteSheetAttachmentsModal';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -63,6 +64,7 @@ import {
   LayoutGrid,
   ArrowUpDown,
   Hash,
+  Paperclip,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -125,6 +127,7 @@ export const CorrespondenceHub: React.FC = () => {
   const [unreadChatCount, setUnreadChatCount] = useState<number>(0);
   const [channelUnreadCounts, setChannelUnreadCounts] = useState<Record<string, number>>({});
   const [printableItem, setPrintableItem] = useState<RouteSheetItem | null>(null);
+  const [attachmentsModalItem, setAttachmentsModalItem] = useState<RouteSheetItem | null>(null);
 
   // Storage key for user-specific read/opened items
   const storageUserKey = currentUser?.id || (currentUser as any)?.username || 'user';
@@ -1093,7 +1096,7 @@ export const CorrespondenceHub: React.FC = () => {
                                 type="button"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleOpenItemDetail(item);
+                                  setAttachmentsModalItem(item);
                                 }}
                                 title="Haga clic para ver los documentos digitalizados"
                                 className="inline-flex items-center gap-1 text-brand-gold font-bold hover:underline cursor-pointer bg-brand-gold/10 px-2 py-0.5 rounded-md border border-brand-gold/30"
@@ -1140,16 +1143,38 @@ export const CorrespondenceHub: React.FC = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
-                            {item.documents && item.documents.length > 0 && (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenItemDetail(item)}
-                                title={`Ver y descargar ${item.documents.length} adjunto(s)`}
-                                className="p-2 rounded-xl bg-brand-gold/20 hover:bg-brand-gold/35 text-amber-800 dark:text-brand-gold border border-brand-gold/40 transition-all cursor-pointer shadow-2xs hover:scale-105"
-                              >
-                                <Paperclip className="w-4 h-4" />
-                              </button>
-                            )}
+
+                            {/* Botón Permanente de Archivos Adjuntos */}
+                            {(() => {
+                              const movDocs = (item.movements || []).flatMap((m) => m.documents || []);
+                              const allDocs = [...(item.documents || []), ...movDocs];
+                              const docCount = new Set(allDocs.map((d) => d.id || d.fileName)).size;
+                              const hasDocs = docCount > 0;
+
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setAttachmentsModalItem(item)}
+                                  title={
+                                    hasDocs
+                                      ? `Ver y descargar ${docCount} archivo(s) adjunto(s) del trámite`
+                                      : 'Archivos Adjuntos (0) — Clic para ver o adjuntar'
+                                  }
+                                  className={`relative p-2 rounded-xl border transition-all cursor-pointer shadow-2xs hover:scale-105 ${
+                                    hasDocs
+                                      ? 'bg-amber-500/20 hover:bg-amber-500/35 text-amber-900 dark:text-brand-gold border-amber-500/50 ring-2 ring-brand-gold/20'
+                                      : 'bg-slate-100 dark:bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 border-slate-200 dark:border-white/10'
+                                  }`}
+                                >
+                                  <Paperclip className="w-4 h-4" />
+                                  {hasDocs && (
+                                    <span className="absolute -top-1.5 -right-1.5 min-w-[17px] h-[17px] px-1 rounded-full bg-brand-gold text-slate-950 font-black text-[9.5px] flex items-center justify-center shadow-md border border-slate-950/20">
+                                      {docCount}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })()}
                             <button
                               type="button"
                               onClick={(e) => toggleItemReadStatus(item, e)}
@@ -1278,6 +1303,37 @@ export const CorrespondenceHub: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-1">
+                      {/* Botón de Adjuntos en Tarjeta */}
+                      {(() => {
+                        const movDocs = (item.movements || []).flatMap((m) => m.documents || []);
+                        const allDocs = [...(item.documents || []), ...movDocs];
+                        const docCount = new Set(allDocs.map((d) => d.id || d.fileName)).size;
+                        const hasDocs = docCount > 0;
+
+                        return (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAttachmentsModalItem(item);
+                            }}
+                            title={hasDocs ? `Ver y descargar ${docCount} archivo(s) adjunto(s)` : 'Archivos Adjuntos (0)'}
+                            className={`relative p-2 rounded-xl transition-all cursor-pointer ${
+                              hasDocs
+                                ? 'bg-amber-500/20 hover:bg-amber-500/35 text-amber-900 dark:text-brand-gold border border-amber-500/40'
+                                : 'hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-emerald-500'
+                            }`}
+                          >
+                            <Paperclip className="w-4 h-4" />
+                            {hasDocs && (
+                              <span className="absolute -top-1 -right-1 min-w-[15px] h-[15px] px-1 rounded-full bg-brand-gold text-slate-950 font-black text-[9px] flex items-center justify-center shadow-xs">
+                                {docCount}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })()}
+
                       <button
                         type="button"
                         onClick={(e) => toggleItemReadStatus(item, e)}
@@ -1329,6 +1385,15 @@ export const CorrespondenceHub: React.FC = () => {
         <PrintableRouteSheet
           item={printableItem}
           onClose={() => setPrintableItem(null)}
+        />
+      )}
+
+      {/* Modal Archivos Adjuntos & Expediente Digital */}
+      {attachmentsModalItem && (
+        <RouteSheetAttachmentsModal
+          isOpen={!!attachmentsModalItem}
+          item={attachmentsModalItem}
+          onClose={() => setAttachmentsModalItem(null)}
         />
       )}
 

@@ -984,24 +984,26 @@ model RouteSheet {
 }
 
 model HrMovement {
-  id               String      @id @default(uuid())
+  id               String         @id @default(uuid())
   routeSheetId     String
-  routeSheet       RouteSheet  @relation(fields: [routeSheetId], references: [id], onDelete: Cascade)
+  routeSheet       RouteSheet     @relation(fields: [routeSheetId], references: [id], onDelete: Cascade)
   
-  sequenceNumber   Int         @default(1)
+  sequenceNumber   Int            @default(1)
   sourceUserId     String
-  sourceUser       User        @relation("SourceMovements", fields: [sourceUserId], references: [id])
-  sourceArea       String      @default("GERENCIA_GENERAL")
+  sourceUser       User           @relation("SourceMovements", fields: [sourceUserId], references: [id])
+  sourceArea       String         @default("GERENCIA_GENERAL")
   
-  targetArea       String      // ej. CONTRATACIONES, TESORERIA, HIPICA
-  targetPersonName String?     // ej. Lic. Pinto, Lic. Meneses
+  targetArea       String         // ej. CONTRATACIONES, TESORERIA, HIPICA
+  targetPersonName String?        // ej. Lic. Pinto, Lic. Meneses
   
-  instruction      String      // Texto de la instrucción / proveído
-  quickStamp       String?     // ej. FAVOR SU ATENCIÓN, FAVOR REALIZAR EL PAGO
-  signatureUrl     String?     // Firma digital registrada o sello del emisor
+  instruction      String         // Texto de la instrucción / proveído
+  quickStamp       String?        // ej. FAVOR SU ATENCIÓN, FAVOR REALIZAR EL PAGO
+  signatureUrl     String?        // Firma digital registrada o sello del emisor
   
   receivedAt       DateTime?
-  createdAt        DateTime    @default(now())
+  createdAt        DateTime       @default(now())
+
+  documents        CorrDocument[]
 
   @@map("corr_movements")
 }
@@ -1011,6 +1013,9 @@ model CorrDocument {
   routeSheetId        String
   routeSheet          RouteSheet  @relation(fields: [routeSheetId], references: [id], onDelete: Cascade)
   
+  movementId          String?
+  movement            HrMovement? @relation(fields: [movementId], references: [id], onDelete: SetNull)
+
   fileName            String
   fileUrl             String
   mimeType            String?

@@ -1,379 +1,1401 @@
 import React, { useState } from 'react';
-import { RouteSheetItem, HrMovement } from '../types/correspondence.types';
+import { RouteSheetItem, CorrDocument } from '../types/correspondence.types';
 import {
-  MapPin,
   Clock,
-  User,
-  Building2,
   Stamp,
   ShieldCheck,
   FileText,
   Copy,
-  AlertTriangle,
-  CheckCircle2,
-  ArrowDown,
   ArrowRight,
   ExternalLink,
   Paperclip,
-  FolderArchive,
-  ChevronDown,
-  ChevronUp,
-  Sparkles,
-  Zap,
-  Bell,
+  Eye,
+  Download,
+  X,
+  MapPin,
   Calendar,
+  Sparkles,
+  Compass,
+  LayoutList,
+  Building2,
+  Search,
+  Zap,
+  Settings,
+  User,
+  Globe,
+  AlertTriangle,
+  Target,
+  CheckCircle2,
+  Leaf,
+  Bell,
+  FolderArchive,
+  UploadCloud,
+  ImageIcon,
+  FileSpreadsheet,
+  BookOpen,
+  Loader2,
 } from 'lucide-react';
-import CrestLogo from '@shared/components/CrestLogo';
+import { QRCodeSVG } from 'qrcode.react';
+import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
+import { api } from '@config/api';
+import toast from 'react-hot-toast';
 
 interface CorrespondenceTimelineViewProps {
   item: RouteSheetItem;
   onOpenSlaModal: () => void;
   onAddMovement: () => void;
+  onPreviewDoc?: (doc: { fileName: string; fileUrl: string; fileType?: string | null }) => void;
+  onDirectUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isUploadingDocs?: boolean;
+}
+
+const formatArea = (raw?: string | null): string => {
+  if (!raw) return 'Sin Área';
+  const clean = raw.replace(/_/g, ' ').trim();
+  return clean
+    .toLowerCase()
+    .split(' ')
+    .map((w) => {
+      if (['de', 'del', 'en', 'y', 'a', 'la', 'los', 'las', 'al'].includes(w)) return w;
+      if (w === 'rrhh') return 'RR.HH.';
+      if (w === 'chls') return 'CHLS';
+      return w.charAt(0).toUpperCase() + w.slice(1);
+    })
+    .join(' ');
+};
+
+const formatDate = (iso?: string | null): string => {
+  if (!iso) return '—';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+  } catch {
+    return '—';
+  }
+};
+
+const formatTime = (iso?: string | null): string => {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+};
+
+interface HolographicMilestone {
+  id: string;
+  stepNumber: number;
+  isLeft: boolean;
+  dateStr: string;
+  timeStr: string;
+  fullDate: string;
+  badgeLabel: string;
+  sourceArea: string;
+  targetArea: string;
+  personName?: string | null;
+  instruction?: string | null;
+  quickStamp?: string | null;
+  durationFormatted?: string | null;
+  signatureUrl?: string | null;
+  sourceUserName?: string | null;
+  documents: CorrDocument[];
+  isCurrent: boolean;
+  iconType: 'search' | 'zap' | 'settings' | 'user' | 'globe' | 'shield' | 'target';
 }
 
 export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProps> = ({
   item,
   onOpenSlaModal,
   onAddMovement,
+  onPreviewDoc,
+  onDirectUpload,
+  isUploadingDocs,
 }) => {
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [activeView, setActiveView] = useState<'HOLOGRAM' | 'LISTA'>('HOLOGRAM');
+  const [selectedMilestone, setSelectedMilestone] = useState<HolographicMilestone | null>(null);
   const [selectedSignaturePreview, setSelectedSignaturePreview] = useState<string | null>(null);
+  const [localPreviewDoc, setLocalPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
+  const [milestoneDocsPopup, setMilestoneDocsPopup] = useState<CorrDocument[] | null>(null);
+
+  const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
+
+  const handleGenerateDossierPdf = async () => {
+    try {
+      setIsGeneratingDossier(true);
+      toast.loading('Compilando expediente y fusionando adjuntos físicos...', { id: 'dossier-load' });
+
+      const response = await api.get(`/correspondence/route-sheets/${item.id}/dossier-pdf`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blobUrl = URL.createObjectURL(blob);
+
+      toast.success('¡Expediente Completo Unificado generado con éxito!', { id: 'dossier-load' });
+
+      if (onPreviewDoc) {
+        onPreviewDoc({
+          fileName: `Expediente_Completo_${item.hrCode}.pdf`,
+          fileUrl: blobUrl,
+          fileType: 'application/pdf',
+        });
+      } else {
+        setLocalPreviewDoc({
+          fileName: `Expediente_Completo_${item.hrCode}.pdf`,
+          fileUrl: blobUrl,
+          fileType: 'application/pdf',
+        });
+      }
+    } catch (err: any) {
+      console.error('Error al generar expediente unificado:', err);
+      toast.error(err.response?.data?.message || 'Error al compilar el expediente PDF', { id: 'dossier-load' });
+    } finally {
+      setIsGeneratingDossier(false);
+    }
+  };
+
+  const handleViewDoc = (doc: { fileName: string; fileUrl: string; mimeType?: string | null }) => {
+    if (onPreviewDoc) {
+      onPreviewDoc({ fileName: doc.fileName, fileUrl: doc.fileUrl, fileType: doc.mimeType });
+    } else {
+      setLocalPreviewDoc({ fileName: doc.fileName, fileUrl: doc.fileUrl, fileType: doc.mimeType });
+    }
+  };
 
   const movements = item.movements || [];
   const isConcluido = item.status === 'CONCLUIDO';
-  const isArchived = !!item.archiveLocation;
   const isOverdue = item.isOverdue || item.slaStatus === 'OVERDUE';
   const isWarning = item.slaStatus === 'WARNING';
 
-  // Toggle expansion of movement card
-  const toggleExpand = (idx: number) => {
-    setExpandedIndex((prev) => (prev === idx ? null : idx));
+  // Iconos científicos / HUD correspondientes a cada nivel
+  const iconSequence: ('search' | 'zap' | 'settings' | 'user' | 'globe' | 'shield' | 'target')[] = [
+    'search',
+    'zap',
+    'settings',
+    'user',
+    'globe',
+    'shield',
+    'target',
+  ];
+
+  // 1. Estructurar hitos alternando Izquierda y Derecha de la columna vertebral
+  const milestones: HolographicMilestone[] = [
+    {
+      id: 'radicacion-0',
+      stepNumber: 0,
+      isLeft: true, // Nivel 0 a la izquierda
+      dateStr: formatDate(item.createdAt),
+      timeStr: formatTime(item.createdAt),
+      fullDate: new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+      badgeLabel: '🌱 RADICACIÓN (ORIGEN)',
+      sourceArea: item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Club' : 'Mesa de Entradas'),
+      targetArea: movements[0]?.sourceArea || item.currentArea,
+      personName: item.senderName,
+      instruction: item.reference,
+      quickStamp: item.cite ? `CITE: ${item.cite}` : null,
+      documents: (item.documents || []).filter((d) => !d.movementId),
+      isCurrent: movements.length === 0,
+      iconType: 'search',
+    },
+    ...movements.map((mov, idx) => {
+      const isCurrentStep = idx === movements.length - 1 && !isConcluido;
+      const isLeft = (idx + 1) % 2 === 0; // Alterna: Der, Izq, Der, Izq...
+      const icon = iconSequence[(idx + 1) % iconSequence.length];
+
+      const movDocs = (mov.documents && mov.documents.length > 0)
+        ? mov.documents
+        : (item.documents || []).filter((d) => d.movementId === mov.id);
+
+      return {
+        id: mov.id,
+        stepNumber: mov.sequenceNumber,
+        isLeft,
+        dateStr: formatDate(mov.createdAt),
+        timeStr: formatTime(mov.createdAt),
+        fullDate: new Date(mov.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
+        badgeLabel: `PASO #${mov.sequenceNumber}`,
+        sourceArea: mov.sourceArea,
+        targetArea: mov.targetArea,
+        personName: mov.targetPersonName || null,
+        instruction: mov.instruction,
+        quickStamp: mov.quickStamp,
+        durationFormatted: mov.durationFormatted,
+        signatureUrl: mov.signatureUrl,
+        sourceUserName: mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : null,
+        documents: movDocs,
+        isCurrent: isCurrentStep,
+        iconType: icon,
+      };
+    }),
+  ];
+
+  // 2. Geometría SVG Amplia y Espaciosa para el Diagrama Holográfico Vertical
+  const N = milestones.length;
+  const ROW_H = 195; // Más espacio vertical entre niveles
+  const START_Y = 60;
+  const TOTAL_W = 1260; // Ancho ampliado para alta legibilidad ejecutiva
+  const CENTER_X = 630; // Columna central espaciosa
+  const TOTAL_H = START_Y + N * ROW_H + 130;
+  const DOCK_Y = TOTAL_H - 50;
+
+  const renderIcon = (type: string) => {
+    switch (type) {
+      case 'search':
+        return <Search className="w-4 h-4 text-cyan-400" />;
+      case 'zap':
+        return <Zap className="w-4 h-4 text-emerald-400" />;
+      case 'settings':
+        return <Settings className="w-4 h-4 text-cyan-400" />;
+      case 'user':
+        return <User className="w-4 h-4 text-emerald-400" />;
+      case 'globe':
+        return <Globe className="w-4 h-4 text-cyan-400" />;
+      case 'shield':
+        return <ShieldCheck className="w-4 h-4 text-emerald-400" />;
+      case 'target':
+        return <Target className="w-4 h-4 text-cyan-400" />;
+      default:
+        return <FileText className="w-4 h-4 text-cyan-400" />;
+    }
   };
 
+  const isFusedChild = Boolean(
+    item.isArchived ||
+    (item.status === 'CONCLUIDO' && item.aiSummary?.startsWith('FUSIONADO'))
+  );
+
+  const verificationUrl = typeof window !== 'undefined'
+    ? `${window.location.origin}/correspondencia?code=${encodeURIComponent(item.hrCode)}`
+    : `https://chls.bo/correspondencia?code=${encodeURIComponent(item.hrCode)}`;
+
   return (
-    <div className="space-y-6 animate-fadeIn">
-      
-      {/* SLA & Time Management Banner */}
-      <div className={`p-5 rounded-3xl border-2 shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 ${
-        isOverdue
-          ? 'bg-gradient-to-r from-red-500/15 via-red-500/5 to-transparent border-red-500/40 text-red-950 dark:text-red-200'
-          : isWarning
-          ? 'bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-amber-500/40 text-amber-950 dark:text-amber-200'
-          : isConcluido
-          ? 'bg-gradient-to-r from-emerald-500/15 via-emerald-500/5 to-transparent border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-          : 'bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent border-emerald-500/30 text-emerald-950 dark:text-emerald-200'
-      }`}>
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className={`text-[11px] font-black uppercase px-3 py-1 rounded-full border shadow-xs flex items-center gap-1.5 ${
-              isOverdue
-                ? 'bg-red-500 text-white border-red-600'
-                : isWarning
-                ? 'bg-amber-500 text-white border-amber-600'
-                : isConcluido
-                ? 'bg-emerald-600 text-white border-emerald-700'
-                : 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40'
-            }`}>
-              <Clock className="w-3.5 h-3.5" />
-              <span>{item.slaLabel || (isOverdue ? 'Plazo SLA Vencido' : 'En Plazo SLA')}</span>
-            </span>
+    <div className="space-y-4 text-slate-900 dark:text-white max-w-6xl mx-auto animate-fadeIn">
 
-            <span className="text-xs font-bold text-slate-700 dark:text-gray-300">
-              Prioridad: <strong className="uppercase text-slate-900 dark:text-white">{item.priority}</strong>
-            </span>
-
-            {item.slaDeadline && (
-              <span className="text-xs text-slate-500 dark:text-gray-400 font-mono">
-                • Vencimiento: {new Date(item.slaDeadline).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+      {/* ========================================================================= */}
+      {/* 0. BANNERS DE ESTADO ESPECIAL: ARCHIVO CENTRAL & FUSIÓN                   */}
+      {/* ========================================================================= */}
+      {/* Si está archivado: Banner de Ubicación en Archivo Central */}
+      {item.archiveLocation && (
+        <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/15 to-emerald-500/15 border-2 border-emerald-500/40 flex items-start gap-3.5 shadow-md animate-fadeIn">
+          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 mt-0.5">
+            <FolderArchive className="w-5 h-5 text-brand-gold" />
+          </div>
+          <div className="space-y-1 min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs font-black uppercase text-emerald-300 tracking-wider">
+                Expediente Resguardado en Archivo Central
               </span>
+              {item.archivedAt && (
+                <span className="text-[10.5px] font-mono text-slate-400">
+                  ({new Date(item.archivedAt).toLocaleDateString('es-BO')})
+                </span>
+              )}
+            </div>
+            <p className="text-xs font-bold text-white">
+              Ubicación Topográfica: <strong className="text-brand-gold">{item.archiveLocation}</strong>
+              {item.archiveBox ? ` — ${item.archiveBox}` : ''}
+            </p>
+            {item.archiveNotes && (
+              <p className="text-[11.5px] text-slate-300 italic">
+                Auto de Conclusión: "{item.archiveNotes}"
+              </p>
             )}
           </div>
+        </div>
+      )}
 
-          {/* Progress Bar */}
-          {!isConcluido && (
-            <div className="space-y-1">
-              <div className="w-full bg-slate-200 dark:bg-white/10 rounded-full h-2 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    isOverdue ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-emerald-500'
-                  }`}
-                  style={{ width: `${Math.min(100, item.slaProgressPercent || 50)}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[10.5px] font-bold text-slate-500 dark:text-gray-400 font-mono">
-                <span>Radicado: {new Date(item.createdAt).toLocaleDateString('es-BO')}</span>
-                <span>{item.slaProgressPercent || 0}% de tiempo consumido</span>
-              </div>
-            </div>
+      {/* Si fue fusionado en otra Hoja de Ruta: Banner de Alerta */}
+      {isFusedChild && (
+        <div className="flex items-center gap-3 bg-amber-500/15 border-2 border-amber-500/40 rounded-3xl p-4 text-amber-300">
+          <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
+          <div className="text-xs">
+            <strong className="block font-black uppercase text-sm">Trámite Acumulado y Fusionado</strong>
+            Este expediente y sus antecedentes fueron fusionados formalmente en la Hoja de Ruta principal <strong>{item.currentArea}</strong>.
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 1. FICHA TÉCNICA Y METADATOS OFICIALES (REFERENCIA, QR, ORIGEN, RADICADO) */}
+      {/* ========================================================================= */}
+      {/* Iniciativa Cero Papel Banner */}
+      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 px-5 text-xs text-emerald-400">
+        <div className="flex items-center gap-2 font-bold">
+          <Leaf className="w-4 h-4 text-emerald-400" />
+          <span>Iniciativa CHLS Cero Papel — Expediente Oficial con Firma Digital y Validador QR</span>
+        </div>
+        <span className="font-mono font-black text-emerald-300">
+          {item.pageCount || 1} Folio(s)
+        </span>
+      </div>
+
+      {/* Tarjeta Principal de Referencia y QR de Validación */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/90 dark:bg-[#071510] p-5 rounded-2xl border border-slate-200/90 dark:border-emerald-500/30 shadow-md">
+        <div className="space-y-1.5 md:col-span-2">
+          <span className="text-[10px] font-black text-slate-500 dark:text-emerald-400/80 uppercase tracking-wider">
+            Referencia / Asunto
+          </span>
+          <p className="text-sm sm:text-base font-black text-slate-950 dark:text-white leading-relaxed uppercase">
+            {item.reference}
+          </p>
+          {item.attachmentDescription && (
+            <p className="text-xs text-slate-700 dark:text-gray-400 mt-2">
+              <strong className="text-slate-950 dark:text-gray-200 font-bold">Adjunto:</strong> {item.attachmentDescription}
+            </p>
           )}
         </div>
 
-        {/* Action Button: Alert SLA */}
-        {!isConcluido && (
-          <button
-            type="button"
-            onClick={onOpenSlaModal}
-            className="flex items-center gap-2 bg-gradient-to-r from-red-600 via-red-500 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-black px-5 py-2.5 rounded-2xl text-xs shadow-lg shadow-red-500/20 transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
-          >
-            <Bell className="w-4 h-4 animate-bounce" />
-            <span>📢 Despachar Alerta SLA</span>
-          </button>
+        {/* QR Verification Card */}
+        <div className="flex items-center justify-end gap-3.5 border-t md:border-t-0 md:border-l border-slate-200 dark:border-emerald-500/20 pt-3 md:pt-0 md:pl-5">
+          <div className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-sm shrink-0">
+            <QRCodeSVG value={verificationUrl} size={64} level="M" />
+          </div>
+          <div className="text-left space-y-0.5">
+            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block tracking-wider">
+              Área Actual
+            </span>
+            <span className="text-xs sm:text-sm font-black text-emerald-900 dark:text-brand-gold uppercase block">
+              {formatArea(item.currentArea)}
+            </span>
+            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold block">
+              {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Remitente, Origen y Radicado Por */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
+          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Remitente</span>
+          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
+            <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+            <span className="truncate">{item.senderName}</span>
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
+          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Origen / Empresa</span>
+          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
+            <Building2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span className="truncate">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}</span>
+          </span>
+        </div>
+
+        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
+          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Radicado Por</span>
+          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
+            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+            <span className="truncate">{item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}</span>
+          </span>
+        </div>
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. EXPEDIENTE DIGITAL & DOCUMENTOS ESCANEADOS                             */}
+      {/* ========================================================================= */}
+      <div className="bg-[#040e0b] border-2 border-emerald-500/30 rounded-3xl p-5 space-y-4 shadow-[0_0_25px_rgba(16,185,129,0.1)]">
+        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-emerald-500/20">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <Paperclip className="w-4 h-4 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
+                <span>Expediente Digital & Documentos Escaneados ({item.documents?.length || 0})</span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                  Cero Papel
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">
+                Archivos oficiales digitalizados con hash criptográfico SHA-256 de inmutabilidad
+              </p>
+            </div>
+          </div>
+
+          {/* Direct Upload Button */}
+          {onDirectUpload && (
+            <label className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 cursor-pointer">
+              <input
+                type="file"
+                multiple
+                disabled={isUploadingDocs}
+                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                onChange={onDirectUpload}
+                className="hidden"
+              />
+              <UploadCloud className="w-3.5 h-3.5 text-white" />
+              <span>{isUploadingDocs ? 'Digitalizando...' : '+ Digitalizar / Adjuntar'}</span>
+            </label>
+          )}
+        </div>
+
+        {(!item.documents || item.documents.length === 0) ? (
+          <div className="text-center py-6 bg-black/30 rounded-2xl border border-dashed border-emerald-500/20">
+            <UploadCloud className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+            <p className="text-xs font-bold text-gray-300">
+              No se han digitalizado anexos físicos todavía para esta Hoja de Ruta.
+            </p>
+            <p className="text-[11px] text-slate-400 mt-0.5">
+              Puedes adjuntar el PDF de la carta recibida, facturas, fotos de celulares o cotizaciones en cualquier momento.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {item.documents.map((doc, idx) => {
+              const isPdf = doc.fileName?.toLowerCase().endsWith('.pdf') || doc.mimeType?.includes('pdf');
+              const isImg = doc.fileName?.match(/\.(jpg|jpeg|png|webp)$/i) || doc.mimeType?.includes('image');
+              const isXls = doc.fileName?.match(/\.(xls|xlsx|csv)$/i) || doc.mimeType?.includes('sheet');
+
+              return (
+                <div
+                  key={doc.id || idx}
+                  className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                      isPdf
+                        ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                        : isImg
+                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                        : isXls
+                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                    }`}>
+                      {isPdf ? (
+                        <FileText className="w-5 h-5" />
+                      ) : isImg ? (
+                        <ImageIcon className="w-5 h-5" />
+                      ) : isXls ? (
+                        <FileSpreadsheet className="w-5 h-5" />
+                      ) : (
+                        <Paperclip className="w-5 h-5" />
+                      )}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold text-xs text-white truncate block">
+                        {doc.fileName}
+                      </span>
+                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                        {doc.movementId ? (() => {
+                          const mov = movements.find((m) => m.id === doc.movementId);
+                          return (
+                            <span className="text-[9px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30">
+                              Derivación #{mov?.sequenceNumber || '?'} ({mov?.sourceArea || 'ÁREA'} ➔ {mov?.targetArea || ''})
+                            </span>
+                          );
+                        })() : (
+                          <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                            Radicación Inicial
+                          </span>
+                        )}
+                        {doc.fileSize && (
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
+                          </span>
+                        )}
+                        {doc.sha256Hash && (
+                          <span
+                            title={`SHA-256: ${doc.sha256Hash}`}
+                            className="text-[9px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 truncate max-w-[130px]"
+                          >
+                            🛡️ {doc.sha256Hash.substring(0, 10)}...
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Botones: Ver y Descargar */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => handleViewDoc(doc)}
+                      title="Visualizar documento en pantalla"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                    >
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Ver</span>
+                    </button>
+
+                    <a
+                      href={getDocumentFullUrl(doc.fileUrl)}
+                      download={doc.fileName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Descargar archivo original a tu equipo"
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      <span>Descargar</span>
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      {/* Main Interactive Timeline Pathway */}
-      <div className="relative pl-6 sm:pl-10 space-y-8 before:absolute before:left-3 sm:before:left-5 before:top-4 before:bottom-4 before:w-1 before:bg-gradient-to-b before:from-emerald-500 before:via-brand-gold before:to-teal-500 before:rounded-full">
+      {/* ========================================================================= */}
+      {/* 1. BARRA SUPERIOR MINIMALISTA DE CUSTODIA Y SLA                          */}
+      {/* ========================================================================= */}
+      <div className="p-3.5 sm:p-4 rounded-3xl bg-[#040e0b] border-2 border-cyan-500/40 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-between flex-wrap gap-3">
         
-        {/* MILESTONE 1: INGRESO & RADICACIÓN */}
-        <div className="relative group">
-          {/* Node Icon */}
-          <div className="absolute -left-6 sm:-left-10 top-0.5 w-7 h-7 rounded-full bg-emerald-600 border-4 border-white dark:border-[#0c1410] text-white flex items-center justify-center shadow-md shadow-emerald-600/30 z-10">
-            <Sparkles className="w-3.5 h-3.5" />
+        {/* Custodia y SLA */}
+        <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-xs text-white">
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-[11px] font-bold">Custodia Actual:</span>
+            <span className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 font-black border border-cyan-500/40 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
+              <MapPin className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+              <span>{formatArea(item.currentArea)}</span>
+            </span>
           </div>
 
-          <div className="bg-white dark:bg-[#0c1a13] border-2 border-emerald-500/30 rounded-3xl p-5 shadow-sm space-y-3 transition-all hover:border-emerald-500">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40">
-                  Punto de Origen • Radicación
-                </span>
-                <span className="text-xs font-black text-slate-900 dark:text-white">
-                  {item.senderName}
-                </span>
-              </div>
-              <span className="text-xs font-mono font-bold text-slate-500 dark:text-gray-400">
-                {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })} • {new Date(item.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
-              </span>
-            </div>
+          <span className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 ${
+            isOverdue
+              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+              : isWarning
+              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+          }`}>
+            <Clock className="w-3 h-3 text-cyan-400" />
+            <span>{item.slaLabel || (isOverdue ? 'SLA Vencido' : 'En Plazo')}</span>
+          </span>
 
-            <div className="text-xs space-y-1 text-slate-700 dark:text-gray-300">
-              <p className="font-bold text-slate-950 dark:text-white uppercase">
-                Asunto: {item.reference}
-              </p>
-              <div className="flex items-center gap-4 text-[11px] text-slate-500 flex-wrap pt-1">
-                <span>🏢 Origen: <strong>{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Club' : 'Externo')}</strong></span>
-                {item.cite && <span>📋 CITE: <strong className="font-mono">{item.cite}</strong></span>}
-                <span>📄 {item.pageCount || 1} Fojas</span>
-                <span>👤 Radicado por: <strong>{item.createdBy?.firstName} {item.createdBy?.lastName}</strong></span>
-              </div>
-            </div>
-          </div>
+          <span className="text-[11px] text-slate-400">
+            • Prioridad: <strong className="text-white uppercase font-black">{item.priority}</strong>
+          </span>
         </div>
 
-        {/* MILESTONES 2..N: DERIVACIONES & PROVEÍDOS */}
-        {movements.map((mov, idx) => {
-          const isExpanded = expandedIndex === idx;
-          const isLast = idx === movements.length - 1;
+        {/* Acciones y Selector de Vista */}
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {item.status !== 'CONCLUIDO' && (
+            <button
+              type="button"
+              onClick={onOpenSlaModal}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.2)]"
+              title="Notificar vencimiento urgente de SLA"
+            >
+              <Bell className="w-3.5 h-3.5 text-red-400 animate-pulse" />
+              <span>Alertar SLA</span>
+            </button>
+          )}
 
-          return (
-            <div key={mov.id || idx} className="relative group">
-              {/* Node Icon */}
-              <div className={`absolute -left-6 sm:-left-10 top-0.5 w-7 h-7 rounded-full border-4 border-white dark:border-[#0c1410] text-slate-950 font-black text-[11px] flex items-center justify-center shadow-md z-10 ${
-                isLast
-                  ? 'bg-brand-gold ring-4 ring-brand-gold/20'
-                  : 'bg-slate-200 dark:bg-emerald-800 text-slate-800 dark:text-white'
-              }`}>
-                #{mov.sequenceNumber}
-              </div>
+          {!isConcluido && (
+            <button
+              type="button"
+              onClick={onAddMovement}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-black text-xs hover:scale-105 transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer"
+            >
+              <span>+ Derivar / Proveído</span>
+            </button>
+          )}
 
-              <div className={`bg-white dark:bg-[#0f1d16] border rounded-3xl p-5 shadow-sm space-y-3 transition-all ${
-                isLast
-                  ? 'border-2 border-brand-gold/60 shadow-brand-gold/10'
-                  : 'border-slate-200 dark:border-white/5 hover:border-emerald-500/40'
-              }`}>
-                
-                {/* Milestone Header */}
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg bg-brand-gold/20 text-yellow-800 dark:text-brand-gold border border-brand-gold/40">
-                      Paso #{mov.sequenceNumber} • {mov.sourceArea || 'ÁREA'}
-                    </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-brand-gold" />
-                    <span className="text-xs font-black text-slate-900 dark:text-white uppercase">
-                      {mov.targetPersonName ? `${mov.targetPersonName} (${mov.targetArea})` : mov.targetArea}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {/* Dwell Time Badge */}
-                    {mov.durationFormatted && (
-                      <span className="text-[10px] font-bold text-purple-700 dark:text-purple-300 bg-purple-500/15 px-2.5 py-0.5 rounded-lg border border-purple-500/30 flex items-center gap-1 font-mono">
-                        <Clock className="w-3 h-3" />
-                        Permanencia: {mov.durationFormatted}
-                      </span>
-                    )}
-                    <span className="text-xs font-mono font-bold text-slate-500 dark:text-gray-400">
-                      {new Date(mov.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' })} • {new Date(mov.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Quick Stamp if any */}
-                {mov.quickStamp && (
-                  <div>
-                    <span className="text-[10px] font-black uppercase px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30 inline-flex items-center gap-1.5 shadow-xs">
-                      <Stamp className="w-3.5 h-3.5 text-brand-gold" />
-                      {mov.quickStamp}
-                    </span>
-                  </div>
-                )}
-
-                {/* Proveído Body */}
-                <div className="text-xs text-slate-800 dark:text-gray-200 font-medium leading-relaxed bg-slate-50 dark:bg-black/40 p-4 rounded-2xl border border-slate-200/80 dark:border-white/5">
-                  <p className="whitespace-pre-wrap">
-                    {mov.instruction.split('\n[C.C.:')[0]}
-                  </p>
-
-                  {/* C.C. Copies if any */}
-                  {mov.instruction.includes('[C.C.:') && (
-                    <div className="mt-2.5 pt-2 border-t border-slate-200 dark:border-white/10 flex items-center gap-2 text-[11px] text-brand-gold font-bold">
-                      <Copy className="w-3.5 h-3.5 shrink-0" />
-                      <span>Con Copia a: {mov.instruction.split('[C.C.: ')[1]?.replace(']', '')}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Digital Signature & Responsible Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-white/5 text-[11px] flex-wrap gap-2">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-blue-600" />
-                    <span className="text-slate-600 dark:text-gray-400">
-                      Emitido por: <strong className="text-slate-900 dark:text-white">{mov.sourceUser?.firstName} {mov.sourceUser?.lastName}</strong> ({mov.sourceArea})
-                    </span>
-                  </div>
-
-                  {/* Digital Signature Thumbnail / Sello Modal Preview */}
-                  {mov.signatureUrl ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedSignaturePreview(mov.signatureUrl || null)}
-                      className="flex items-center gap-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 hover:text-brand-gold transition-colors bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/30 cursor-pointer"
-                    >
-                      <Stamp className="w-3.5 h-3.5" />
-                      <span>Ver Sello / Firma Certificada</span>
-                    </button>
-                  ) : (
-                    <span className="text-[10px] font-bold text-slate-400 italic">
-                      Sello Institucional CHLS Certificado
-                    </span>
-                  )}
-                </div>
-
-              </div>
-            </div>
-          );
-        })}
-
-        {/* MILESTONE FINAL: ESTADO ACTUAL / ARCHIVO CENTRAL */}
-        <div className="relative group">
-          {/* Node Icon */}
-          <div className={`absolute -left-6 sm:-left-10 top-0.5 w-7 h-7 rounded-full border-4 border-white dark:border-[#0c1410] text-white flex items-center justify-center shadow-md z-10 ${
-            isConcluido ? 'bg-emerald-600' : 'bg-brand-gold text-black animate-pulse'
-          }`}>
-            {isArchived ? (
-              <FolderArchive className="w-3.5 h-3.5" />
-            ) : isConcluido ? (
-              <CheckCircle2 className="w-3.5 h-3.5" />
+          {/* Botón Solicitado: Generar Expediente Completo (PDF Unificado con Fusión de Adjuntos) */}
+          <button
+            type="button"
+            onClick={handleGenerateDossierPdf}
+            disabled={isGeneratingDossier}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 hover:from-amber-400 hover:to-teal-500 text-slate-950 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/50 cursor-pointer disabled:opacity-50"
+            title="Genera un único PDF con la carátula, datos de derivación de cada usuario y todos los archivos adjuntos integrados físicamente para imprimir o archivar"
+          >
+            {isGeneratingDossier ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
+                <span>Compilando Expediente...</span>
+              </>
             ) : (
-              <MapPin className="w-3.5 h-3.5 text-black" />
+              <>
+                <BookOpen className="w-3.5 h-3.5 text-slate-950" />
+                <span>📚 Expediente Completo (PDF)</span>
+              </>
             )}
-          </div>
+          </button>
 
-          <div className={`border-2 rounded-3xl p-5 shadow-md space-y-3 ${
-            isArchived
-              ? 'bg-amber-500/10 border-amber-500/40 text-amber-950 dark:text-amber-200'
-              : isConcluido
-              ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-950 dark:text-emerald-200'
-              : 'bg-white dark:bg-[#0c1a13] border-emerald-500/40'
-          }`}>
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-lg border ${
-                  isConcluido
-                    ? 'bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-500/40'
-                    : 'bg-amber-500/20 text-amber-800 dark:text-brand-gold border-amber-500/40'
-                }`}>
-                  {isArchived ? 'Custodia Definitiva' : isConcluido ? 'Trámite Concluido' : 'Punto Actual en Custodia'}
-                </span>
-                <span className="text-sm font-black uppercase text-slate-900 dark:text-white">
-                  {item.currentArea}
-                </span>
-              </div>
-
-              {!isConcluido && (
-                <button
-                  type="button"
-                  onClick={onAddMovement}
-                  className="flex items-center gap-1.5 bg-brand-gold hover:bg-yellow-500 text-black font-black px-4 py-1.5 rounded-xl text-xs shadow-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-                >
-                  <Stamp className="w-3.5 h-3.5" />
-                  <span>+ Derivar / Proveer Siguiente</span>
-                </button>
-              )}
-            </div>
-
-            {/* Archive Location Details if archived */}
-            {isArchived && (
-              <div className="text-xs space-y-1 bg-white/70 dark:bg-black/40 p-3.5 rounded-2xl border border-amber-500/30">
-                <p className="font-bold text-slate-900 dark:text-white">
-                  Ubicación Física: <strong className="text-emerald-700 dark:text-brand-gold">{item.archiveLocation}</strong>
-                  {item.archiveBox ? ` — Caja: ${item.archiveBox}` : ''}
-                </p>
-                {item.archiveNotes && (
-                  <p className="text-[11.5px] italic text-slate-600 dark:text-gray-300">
-                    "{item.archiveNotes}"
-                  </p>
-                )}
-              </div>
-            )}
+          <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10">
+            <button
+              type="button"
+              onClick={() => setActiveView('HOLOGRAM')}
+              className={`px-3 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeView === 'HOLOGRAM'
+                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Compass className="w-3.5 h-3.5" />
+              <span>Holograma HUD</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('LISTA')}
+              className={`px-3 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                activeView === 'LISTA'
+                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <LayoutList className="w-3.5 h-3.5" />
+              <span>Lista</span>
+            </button>
           </div>
         </div>
-
       </div>
 
-      {/* Signature Preview Modal */}
-      {selectedSignaturePreview && (
+      {/* ========================================================================= */}
+      {/* 2. VISTA "HOLOGRAMA HUD" (EXACTA AL TEMPLATE INFOGRÁFICO SCI-FI)          */}
+      {/* ========================================================================= */}
+      {activeView === 'HOLOGRAM' ? (
+        <div className="p-4 sm:p-6 rounded-3xl bg-[#020706] border-2 border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.1)] relative overflow-hidden text-white">
+          
+          {/* Título de Cabecera del Template */}
+          <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 relative z-10">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <h4 className="font-black text-xs uppercase tracking-widest text-cyan-300">
+                Línea de Trazabilidad 360° • Estructura Holográfica
+              </h4>
+            </div>
+            <span className="text-[11px] font-mono font-bold text-slate-400">
+              {N} Hitos en Cadena • CHLS
+            </span>
+          </div>
+
+          <div className="overflow-x-auto custom-scrollbar pt-4 pb-2">
+            <svg
+              viewBox={`0 0 ${TOTAL_W} ${TOTAL_H}`}
+              className="min-w-[880px] w-full h-auto overflow-visible select-none"
+            >
+              <defs>
+                {/* Resplandor Cian Neón */}
+                <filter id="hud-glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2" />
+                  <feMerge>
+                    <feMergeNode in="blur2" />
+                    <feMergeNode in="blur1" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+
+                {/* Gradiente del Haz de Luz Holográfico en la Base */}
+                <linearGradient id="holo-beam-grad" x1="0%" y1="100%" x2="0%" y2="0%">
+                  <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8" />
+                  <stop offset="30%" stopColor="#10b981" stopOpacity="0.35" />
+                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                </linearGradient>
+
+                {/* Gradiente de la Columna Vertebral */}
+                <linearGradient id="spine-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#06b6d4" />
+                  <stop offset="50%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#06b6d4" />
+                </linearGradient>
+              </defs>
+
+              {/* ========================================================================= */}
+              {/* 1. PEDESTAL HOLOGRÁFICO EN LA BASE (TABLETA / PROYECTOR DE LUZ)          */}
+              {/* ========================================================================= */}
+              <g transform={`translate(${CENTER_X}, ${DOCK_Y})`}>
+                {/* Haz de luz cónico ascendente */}
+                <polygon
+                  points="-170,20 170,20 0,-180"
+                  fill="url(#holo-beam-grad)"
+                  opacity="0.45"
+                />
+
+                {/* Sombra de la tableta */}
+                <ellipse cx="0" cy="22" rx="180" ry="25" fill="#000000" opacity="0.8" filter="blur(6px)" />
+
+                {/* Cuerpo de la tableta / base */}
+                <path
+                  d="M -170 15 L -120 -8 L 120 -8 L 170 15 L 160 25 L -160 25 Z"
+                  fill="#0c1714"
+                  stroke="#06b6d4"
+                  strokeWidth="1.5"
+                />
+
+                {/* Pantalla luminosa central */}
+                <ellipse cx="0" cy="8" rx="115" ry="12" fill="#06b6d4" opacity="0.3" filter="url(#hud-glow)" />
+                <ellipse cx="0" cy="8" rx="60" ry="6" fill="#10b981" opacity="0.6" />
+                <circle cx="0" cy="8" r="5" fill="#ffffff" filter="url(#hud-glow)" />
+              </g>
+
+              {/* ========================================================================= */}
+              {/* 2. COLUMNA VERTEBRAL CENTRAL (LÍNEA DE DATOS NEÓN DE ALTA VISIBILIDAD)   */}
+              {/* ========================================================================= */}
+              {/* Resplandor exterior de la línea central */}
+              <line
+                x1={CENTER_X}
+                y1={START_Y - 25}
+                x2={CENTER_X}
+                y2={DOCK_Y}
+                stroke="#06b6d4"
+                strokeWidth="8"
+                strokeLinecap="round"
+                opacity="0.35"
+              />
+
+              {/* Trazo principal cian neón de la columna central */}
+              <line
+                x1={CENTER_X}
+                y1={START_Y - 25}
+                x2={CENTER_X}
+                y2={DOCK_Y}
+                stroke="#22d3ee"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+              />
+
+              {/* Filo blanco luminoso central */}
+              <line
+                x1={CENTER_X}
+                y1={START_Y - 25}
+                x2={CENTER_X}
+                y2={DOCK_Y}
+                stroke="#ffffff"
+                strokeWidth="1.2"
+                strokeLinecap="round"
+                opacity="0.8"
+              />
+
+              {/* Remate superior de la columna con pulso de luz */}
+              <circle cx={CENTER_X} cy={START_Y - 25} r="7" fill="#06b6d4" opacity="0.5" />
+              <circle cx={CENTER_X} cy={START_Y - 25} r="4" fill="#22d3ee" />
+              <circle cx={CENTER_X} cy={START_Y - 25} r="2" fill="#ffffff" />
+
+              {/* ========================================================================= */}
+              {/* 3. NIVELES ALTERNADOS (NACEN ABAJO Y EL ÚLTIMO PROCESADO ESTÁ ARRIBA)    */}
+              {/* ========================================================================= */}
+              {milestones.map((m, idx) => {
+                // Nacen abajo (idx 0 en la base) y el último procesado arriba (idx N - 1 en START_Y)
+                const levelFromTop = N - 1 - idx;
+                const y = START_Y + levelFromTop * ROW_H;
+                const isLeft = m.isLeft;
+                const ringColor = m.isCurrent ? '#10b981' : (idx % 2 === 0 ? '#06b6d4' : '#10b981');
+
+                // Dimensiones Amplias de la Tarjeta (440px de ancho)
+                const CARD_W = 440;
+                const CARD_H = 135;
+                const cardY = y;
+
+                // Posición de los anillos orbitales HUD y Tarjetas Flotantes
+                const ringX = isLeft ? 55 : 1205;
+                const ringY = y + 67;
+                const cardX = isLeft ? 125 : 695;
+
+                return (
+                  <g key={`hologram-level-${m.id}`}>
+                    {/* =================================================================== */}
+                    {/* A. LÍNEAS DE BRACKET / CIRCUITO HUD (CONECTORES A 90°)              */}
+                    {/* =================================================================== */}
+                    {isLeft ? (
+                      // Rama hacia la IZQUIERDA
+                      <g stroke={ringColor} strokeWidth="2.5" fill="none">
+                        {/* Nodo de unión luminoso en la columna central */}
+                        <circle cx={CENTER_X} cy={ringY} r="6" fill={ringColor} stroke="none" />
+                        <circle cx={CENTER_X} cy={ringY} r="2.5" fill="#ffffff" stroke="none" />
+
+                        {/* Línea horizontal desde el centro hacia la tarjeta */}
+                        <line x1={CENTER_X} y1={ringY} x2={cardX + CARD_W} y2={ringY} />
+
+                        {/* Línea horizontal desde la tarjeta hacia el radar orbital */}
+                        <line x1={cardX} y1={ringY} x2={ringX + 38} y2={ringY} />
+
+                        {/* Bracket angular decorativo envolvente */}
+                        <path
+                          d={`M ${cardX + CARD_W} ${cardY + 8} L ${cardX + CARD_W + 8} ${cardY + 8} L ${cardX + CARD_W + 8} ${cardY + CARD_H - 8} L ${cardX + CARD_W} ${cardY + CARD_H - 8}`}
+                          opacity="0.8"
+                        />
+                      </g>
+                    ) : (
+                      // Rama hacia la DERECHA
+                      <g stroke={ringColor} strokeWidth="2.5" fill="none">
+                        {/* Nodo de unión luminoso en la columna central */}
+                        <circle cx={CENTER_X} cy={ringY} r="6" fill={ringColor} stroke="none" />
+                        <circle cx={CENTER_X} cy={ringY} r="2.5" fill="#ffffff" stroke="none" />
+
+                        {/* Línea horizontal desde el centro hacia la tarjeta */}
+                        <line x1={CENTER_X} y1={ringY} x2={cardX} y2={ringY} />
+
+                        {/* Línea horizontal desde la tarjeta hacia el radar orbital */}
+                        <line x1={cardX + CARD_W} y1={ringY} x2={ringX - 38} y2={ringY} />
+
+                        {/* Bracket angular decorativo envolvente */}
+                        <path
+                          d={`M ${cardX} ${cardY + 8} L ${cardX - 8} ${cardY + 8} L ${cardX - 8} ${cardY + CARD_H - 8} L ${cardX} ${cardY + CARD_H - 8}`}
+                          opacity="0.8"
+                        />
+                      </g>
+                    )}
+
+                    {/* =================================================================== */}
+                    {/* B. ANILLOS ORBITALES HUD (RADAR TARGET EXACTO A LA IMAGEN)          */}
+                    {/* =================================================================== */}
+                    <g
+                      transform={`translate(${ringX}, ${ringY})`}
+                      className="cursor-pointer hover:scale-115 transition-transform"
+                      onClick={() => setSelectedMilestone(m)}
+                    >
+                      {/* Anillo exterior segmentado (arco 1) */}
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="34"
+                        fill="none"
+                        stroke={ringColor}
+                        strokeWidth="1.5"
+                        strokeDasharray="36 16 24 12"
+                        opacity="0.65"
+                      />
+
+                      {/* Anillo intermedio segmentado (arco 2) */}
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="26"
+                        fill="none"
+                        stroke={ringColor}
+                        strokeWidth="1.5"
+                        strokeDasharray="22 10 32 8"
+                        opacity="0.8"
+                      />
+
+                      {/* Onda de radar en pulso continuo si es la Custodia Actual */}
+                      {m.isCurrent && (
+                        <circle
+                          cx="0"
+                          cy="0"
+                          r="42"
+                          fill="none"
+                          stroke="#10b981"
+                          strokeWidth="2.5"
+                          className="animate-ping opacity-75"
+                        />
+                      )}
+
+                      {/* Núcleo central oscuro con borde luminoso y punto de luz */}
+                      <circle
+                        cx="0"
+                        cy="0"
+                        r="18"
+                        fill="#03140e"
+                        stroke={ringColor}
+                        strokeWidth="2"
+                        filter="url(#hud-glow)"
+                      />
+                      <circle cx="0" cy="0" r="6" fill={ringColor} />
+                      <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+                    </g>
+
+                    {/* =================================================================== */}
+                    {/* C. TARJETA FLOTANTE DE EXPEDIENTE (AMPLIA Y CÓMODA)                */}
+                    {/* =================================================================== */}
+                    <foreignObject
+                      x={cardX}
+                      y={cardY}
+                      width={CARD_W}
+                      height={CARD_H}
+                    >
+                      <div
+                        xmlns="http://www.w3.org/1999/xhtml"
+                        onClick={() => setSelectedMilestone(m)}
+                        className={`w-full h-full flex flex-col justify-between p-3.5 rounded-2xl border-2 transition-all cursor-pointer shadow-md backdrop-blur-md ${
+                          m.isCurrent
+                            ? 'bg-[#031c14]/95 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/30 hover:scale-102'
+                            : 'bg-[#03130d]/90 border-cyan-500/40 hover:border-cyan-400 hover:scale-102 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                        }`}
+                      >
+                        {/* Fila 1: Fecha, Hora y Badge de Paso */}
+                        <div className="flex items-center justify-between text-xs pb-1 border-b border-white/10">
+                          <span className="font-mono text-cyan-300 font-bold flex items-center gap-1.5">
+                            <span>📅</span>
+                            <span>{m.dateStr}</span>
+                            <span className="text-slate-500">•</span>
+                            <span>{m.timeStr}</span>
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wide ${
+                            m.isCurrent
+                              ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                              : 'bg-white/10 text-cyan-300'
+                          }`}>
+                            {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
+                          </span>
+                        </div>
+
+                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) Sin Recorte */}
+                        <div className="text-[12px] sm:text-[13px] font-black text-white flex items-center gap-2 my-0.5">
+                          <span className="text-slate-200">{formatArea(m.sourceArea)}</span>
+                          <ArrowRight className="w-4 h-4 text-cyan-400 shrink-0" />
+                          <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
+                        </div>
+
+                        {/* Fila 3: Proveído resumido y sello oficial */}
+                        <div className="text-[11px] text-slate-200 line-clamp-2 leading-relaxed italic">
+                          {m.quickStamp && (
+                            <span className="font-bold mr-1.5 text-cyan-400 not-italic uppercase text-[10.5px]">
+                              ⚡ {m.quickStamp}
+                            </span>
+                          )}
+                          <span>&quot;{m.instruction || 'Sin notas'}&quot;</span>
+                        </div>
+
+                        {/* Fila 4: Adjuntos PDF y Responsable */}
+                        <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px]">
+                          {m.documents.length > 0 ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewDoc(m.documents[0]);
+                              }}
+                              className="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-500/40 font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-red-400" />
+                              <span>{m.documents.length} PDF (Ver / Descargar)</span>
+                            </button>
+                          ) : (
+                            <span className="text-slate-500 font-mono">Sin anexos</span>
+                          )}
+
+                          <span className="text-slate-400 font-mono text-[10.5px]">
+                            {m.personName || m.sourceUserName || 'Oficial'}
+                          </span>
+                        </div>
+                      </div>
+                    </foreignObject>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+
+          <p className="text-center text-xs text-cyan-500/70 font-mono mt-1">
+            💡 Diagrama holográfico HUD interactivo. Haz clic en cualquier radar o tarjeta para ver el proveído completo.
+          </p>
+        </div>
+      ) : (
+        /* ========================================================================= */
+        /* 3. VISTA "LISTA EJECUTIVA"                                               */
+        /* ========================================================================= */
+        <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-cyan-500/30">
+          {[...milestones].reverse().map((m) => (
+            <div key={m.id} className="relative">
+              <div
+                className={`absolute -left-7 sm:-left-9 top-1 w-6 h-6 rounded-full font-black text-xs flex items-center justify-center shadow-xs ${
+                  m.isCurrent
+                    ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20'
+                    : 'bg-[#041a13] border border-cyan-500/50 text-cyan-300'
+                }`}
+              >
+                {m.stepNumber === 0 ? '🌱' : m.stepNumber}
+              </div>
+
+              <div className={`p-4 rounded-2xl border transition-all ${
+                m.isCurrent
+                  ? 'bg-[#041c14] border-emerald-500'
+                  : 'bg-[#03130d] border-cyan-500/20 hover:border-cyan-500/40'
+              } space-y-2 text-xs shadow-xs text-white`}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2 flex-wrap font-black">
+                    <span className="text-white">{formatArea(m.sourceArea)}</span>
+                    <ArrowRight className="w-3 h-3 text-cyan-400 shrink-0" />
+                    <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
+                    {m.personName && <span className="text-slate-400 font-normal">({m.personName})</span>}
+                    {m.isCurrent && (
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 text-[9px] font-black">
+                        ACTUAL
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    {m.fullDate} • {m.timeStr}
+                  </span>
+                </div>
+
+                {m.quickStamp && (
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-black uppercase px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/40">
+                    <Stamp className="w-3 h-3 text-cyan-400" />
+                    <span>{m.quickStamp}</span>
+                  </span>
+                )}
+
+                <p className="text-slate-300 pl-3 border-l-2 border-cyan-500/40 italic">
+                  &quot;{m.instruction}&quot;
+                </p>
+
+                {m.documents.length > 0 && (
+                  <div className="pt-2 flex items-center gap-2 flex-wrap border-t border-white/5">
+                    {m.documents.map((doc, di) => (
+                      <div key={doc.id || di} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs">
+                        <FileText className="w-3.5 h-3.5 text-red-500" />
+                        <span className="font-bold truncate max-w-[160px]">{doc.fileName}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleViewDoc(doc)}
+                          className="text-[10.5px] font-black text-cyan-400 hover:underline cursor-pointer ml-1"
+                        >
+                          Ver
+                        </button>
+                        <a
+                          href={getDocumentFullUrl(doc.fileUrl)}
+                          download={doc.fileName}
+                          className="text-[10.5px] font-black text-slate-400 hover:text-cyan-400 cursor-pointer"
+                        >
+                          ⬇
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 4. MODAL DETALLE EXPANDIDO AL TOCAR CUALQUIER RADAR                        */}
+      {/* ========================================================================= */}
+      {selectedMilestone && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          onClick={() => setSelectedSignaturePreview(null)}
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setSelectedMilestone(null)}
         >
           <div
-            className="bg-white dark:bg-[#0c1410] border-2 border-emerald-500/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center animate-fadeIn"
+            className="bg-[#03140e] border-2 border-cyan-500/50 rounded-3xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] space-y-4 text-white"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between">
+            {/* Header del Hito */}
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs">
+                  {selectedMilestone.stepNumber === 0 ? '🌱' : `#${selectedMilestone.stepNumber}`}
+                </div>
+                <div>
+                  <h4 className="font-black text-sm text-white uppercase">
+                    {selectedMilestone.badgeLabel}
+                  </h4>
+                  <span className="text-[11px] font-mono text-cyan-300">
+                    {selectedMilestone.fullDate} • {selectedMilestone.timeStr}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setSelectedMilestone(null)}
+                className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Traspaso */}
+            <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between text-xs">
+              <div>
+                <span className="text-[10px] text-slate-400 block uppercase">Origen:</span>
+                <span className="font-bold text-white">{formatArea(selectedMilestone.sourceArea)}</span>
+              </div>
+              <ArrowRight className="w-4 h-4 text-cyan-400" />
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block uppercase">Destino:</span>
+                <span className="font-bold text-emerald-300">{formatArea(selectedMilestone.targetArea)}</span>
+              </div>
+            </div>
+
+            {/* Sello & Instrucción */}
+            <div className="space-y-1 text-xs">
+              {selectedMilestone.quickStamp && (
+                <div className="text-cyan-400 font-black uppercase text-[11px] mb-1">
+                  ⚡ {selectedMilestone.quickStamp}
+                </div>
+              )}
+              <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 text-slate-200 leading-relaxed italic whitespace-pre-wrap">
+                &quot;{selectedMilestone.instruction}&quot;
+              </div>
+            </div>
+
+            {/* Documentos Adjuntos */}
+            {selectedMilestone.documents.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
+                <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5" />
+                  <span>Archivos Adjuntos ({selectedMilestone.documents.length}):</span>
+                </span>
+                <div className="space-y-2">
+                  {selectedMilestone.documents.map((doc) => (
+                    <div key={doc.id} className="p-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                        <span className="font-bold text-xs truncate">{doc.fileName}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedMilestone(null);
+                            handleViewDoc(doc);
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 font-bold text-xs cursor-pointer"
+                        >
+                          Ver
+                        </button>
+                        <a
+                          href={getDocumentFullUrl(doc.fileUrl)}
+                          download={doc.fileName}
+                          className="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer"
+                        >
+                          Descargar
+                        </a>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Footer con el botón solicitado de Archivos Adjuntos */}
+            <div className="flex items-center justify-between pt-3 border-t border-white/10 text-[11px] text-slate-400 flex-wrap gap-2">
+              <span className="truncate max-w-[200px]">
+                Emitido por: <strong className="text-white">{selectedMilestone.sourceUserName || 'Oficial'}</strong>
+              </span>
+
+              <div className="flex items-center gap-2 shrink-0">
+                {selectedMilestone.signatureUrl && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedSignaturePreview(selectedMilestone.signatureUrl || null);
+                    }}
+                    className="px-2.5 py-1.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/30 flex items-center gap-1 cursor-pointer font-bold text-xs transition-colors"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Firma</span>
+                  </button>
+                )}
+
+                {/* BOTÓN SOLICITADO: VER ARCHIVOS ADJUNTOS QUE MANDARON */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (selectedMilestone.documents.length === 1) {
+                      handleViewDoc(selectedMilestone.documents[0]);
+                    } else if (selectedMilestone.documents.length > 1) {
+                      setMilestoneDocsPopup(selectedMilestone.documents);
+                    } else if (item.documents && item.documents.length > 0) {
+                      setMilestoneDocsPopup(item.documents);
+                    } else {
+                      setMilestoneDocsPopup([]);
+                    }
+                  }}
+                  className={`px-3 py-1.5 rounded-xl font-black text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer ${
+                    selectedMilestone.documents.length > 0
+                      ? 'bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white hover:scale-105 shadow-[0_0_15px_rgba(6,182,212,0.35)]'
+                      : (item.documents && item.documents.length > 0)
+                      ? 'bg-cyan-500/20 hover:bg-cyan-500/35 text-cyan-300 border border-cyan-500/40 hover:scale-105'
+                      : 'bg-white/10 hover:bg-white/20 text-slate-400 border border-white/10'
+                  }`}
+                  title="Ver archivos adjuntos de este paso"
+                >
+                  <Paperclip className="w-3.5 h-3.5 text-cyan-300" />
+                  <span>
+                    {selectedMilestone.documents.length > 0
+                      ? `Ver Adjuntos (${selectedMilestone.documents.length})`
+                      : (item.documents && item.documents.length > 0)
+                      ? `Ver Adjuntos (${item.documents.length})`
+                      : 'Ver Adjuntos (0)'}
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Archivos Adjuntos del Proveído / Hito */}
+      {milestoneDocsPopup && (
+        <div
+          className="fixed inset-0 z-[130] bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          onClick={() => setMilestoneDocsPopup(null)}
+        >
+          <div
+            className="bg-[#03140e] border-2 border-cyan-500/50 rounded-3xl p-6 max-w-md w-full shadow-[0_0_40px_rgba(6,182,212,0.3)] space-y-4 text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="w-5 h-5 text-brand-gold" />
-                <h4 className="font-black text-sm text-slate-900 dark:text-white uppercase">
-                  Sello & Firma Digital Certificada
+                <Paperclip className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-black text-sm uppercase">
+                  Archivos Adjuntos ({milestoneDocsPopup.length})
                 </h4>
               </div>
               <button
-                onClick={() => setSelectedSignaturePreview(null)}
-                className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
+                onClick={() => setMilestoneDocsPopup(null)}
+                className="p-1 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
-            <div className="p-4 bg-slate-50 dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-center">
+            {milestoneDocsPopup.length > 0 ? (
+              <div className="space-y-2.5 max-h-64 overflow-y-auto custom-scrollbar">
+                {milestoneDocsPopup.map((doc) => (
+                  <div key={doc.id} className="p-3 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-3 hover:border-cyan-500/40 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <FileText className="w-5 h-5 text-red-500 shrink-0" />
+                      <span className="font-bold text-xs truncate text-slate-200">{doc.fileName}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMilestoneDocsPopup(null);
+                          setSelectedMilestone(null);
+                          handleViewDoc(doc);
+                        }}
+                        className="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-300 font-bold text-xs cursor-pointer transition-colors"
+                      >
+                        Ver
+                      </button>
+                      <a
+                        href={getDocumentFullUrl(doc.fileUrl)}
+                        download={doc.fileName}
+                        className="px-3 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white font-bold text-xs cursor-pointer transition-colors"
+                      >
+                        ⬇
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-6 text-slate-400 text-xs">
+                <Paperclip className="w-8 h-8 text-slate-600 mx-auto mb-2 opacity-50" />
+                <p className="font-bold text-slate-300">No se registraron archivos adjuntos en este proveído.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Los proveídos pueden tramitarse solo con instrucción o con documentos digitalizados.</p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setMilestoneDocsPopup(null)}
+              className="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Signature Preview Modal */}
+      {selectedSignaturePreview && (
+        <div
+          className="fixed inset-0 z-[120] bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
+          onClick={() => setSelectedSignaturePreview(null)}
+        >
+          <div
+            className="bg-[#03140e] border border-cyan-500/40 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-4 text-center text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-cyan-400" />
+                <h4 className="font-black text-xs uppercase">Firma Digital Registrada</h4>
+              </div>
+              <button
+                onClick={() => setSelectedSignaturePreview(null)}
+                className="text-slate-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-4 bg-black/50 border border-white/10 rounded-2xl flex items-center justify-center">
               <img
                 src={selectedSignaturePreview}
                 alt="Firma Digital"
-                className="max-h-48 object-contain"
+                className="max-h-40 object-contain"
               />
             </div>
 
-            <p className="text-[11px] text-slate-500 dark:text-gray-400 font-mono">
-              🔒 Verificación Criptográfica CHLS — Integridad Inmutable
-            </p>
-
             <button
               onClick={() => setSelectedSignaturePreview(null)}
-              className="w-full bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white py-2.5 rounded-xl text-xs font-bold transition-colors"
+              className="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl text-xs font-bold transition-colors cursor-pointer"
             >
-              Cerrar Vista Previa
+              Cerrar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Visor de Documentos Digitalizados */}
+      {localPreviewDoc && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-[#03140e] border border-cyan-500/40 w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white">
+            <div className="p-4 bg-slate-900 flex items-center justify-between gap-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-5 h-5 text-cyan-400 shrink-0" />
+                <span className="font-black text-sm truncate">{localPreviewDoc.fileName}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={getDocumentFullUrl(localPreviewDoc.fileUrl)}
+                  download={localPreviewDoc.fileName}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:opacity-90 text-white text-xs font-black hover:scale-105 transition-all shadow-md cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar</span>
+                </a>
+                <a
+                  href={getDocumentFullUrl(localPreviewDoc.fileUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Abrir en pestaña completa"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLocalPreviewDoc(null)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                  title="Cerrar visor"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 bg-black/90 p-2 sm:p-4 overflow-auto flex items-center justify-center">
+              {localPreviewDoc.fileName.toLowerCase().endsWith('.pdf') || localPreviewDoc.fileType === 'application/pdf' ? (
+                <iframe
+                  src={getDocumentFullUrl(localPreviewDoc.fileUrl)}
+                  title={localPreviewDoc.fileName}
+                  className="w-full h-full rounded-2xl border border-white/10 bg-white"
+                />
+              ) : (
+                <div className="text-center p-8 bg-slate-900 rounded-2xl border border-white/10 max-w-md">
+                  <Paperclip className="w-12 h-12 text-cyan-400 mx-auto mb-3" />
+                  <h4 className="text-sm font-black text-white mb-1">{localPreviewDoc.fileName}</h4>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Este archivo se puede descargar directamente a su equipo.
+                  </p>
+                  <a
+                    href={getDocumentFullUrl(localPreviewDoc.fileUrl)}
+                    download={localPreviewDoc.fileName}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs shadow-lg hover:scale-105 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Descargar Archivo Ahora</span>
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -381,4 +1403,5 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
     </div>
   );
 };
+
 export default CorrespondenceTimelineView;

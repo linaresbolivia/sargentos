@@ -420,7 +420,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   {senderType === 'AREA_INTERNA' ? (
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                         Área / Departamento Remitente
                       </label>
                       <select
@@ -433,7 +433,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                             setSenderName(matched.manager);
                           }
                         }}
-                        className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs cursor-pointer"
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
                       >
                         {allNodes.map((a) => (
                           <option key={a.id} value={a.areaKey || a.title}>
@@ -444,7 +444,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                         {senderType === 'SOCIO' ? 'N° de Acción / CI' : 'Empresa / Institución Externa'}
                       </label>
                       <input
@@ -452,13 +452,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         placeholder={senderType === 'SOCIO' ? 'Ej. Acción 142 o 4892110 LP' : 'Ej. DELAPAZ, EPSAS, Banco Bisa'}
                         value={senderDoc}
                         onChange={(e) => setSenderDoc(e.target.value)}
-                        className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                       />
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                       Nombre Completo del Remitente <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -467,12 +467,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       value={senderName}
                       onChange={(e) => setSenderName(e.target.value)}
                       required
-                      className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                       Teléfono / WhatsApp de Contacto (Opcional)
                     </label>
                     <input
@@ -480,16 +480,16 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       placeholder="Ej. 77218940"
                       value={senderPhone}
                       onChange={(e) => setSenderPhone(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300">
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200">
                         Correo Electrónico (Notificación)
                       </label>
-                      <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold">
+                      <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold">
                         Acuse Digital
                       </span>
                     </div>
@@ -498,12 +498,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       placeholder="Ej. socio@gmail.com o empresa@proveedor.com"
                       value={senderEmail}
                       onChange={(e) => setSenderEmail(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                       Prioridad del Trámite
                     </label>
                     <div className="grid grid-cols-3 gap-2">
@@ -519,7 +519,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                                 : p === 'ALTA'
                                 ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
                                 : 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/30'
-                              : 'bg-slate-100 dark:bg-black/40 text-slate-600 dark:text-gray-400 border-slate-300 dark:border-white/10 hover:bg-slate-200'
+                              : 'bg-slate-100 dark:bg-black/40 text-slate-700 dark:text-gray-400 border-slate-300 dark:border-white/10 hover:bg-slate-200'
                           }`}
                         >
                           {p}
@@ -532,13 +532,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
               </div>
 
               {/* 2. SECCIÓN: ASUNTO & DOCUMENTO DE ORIGEN */}
-              <div className="bg-white/95 dark:bg-[#0c1a13] border-2 border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-emerald-950/20 space-y-4">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+              <div className="bg-white dark:bg-[#0c1a13] border-2 border-slate-200 dark:border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-slate-200/50 dark:shadow-emerald-950/20 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-emerald-500/20 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-sm">
                       2
                     </div>
-                    <h2 className="text-sm font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+                    <h2 className="text-sm font-black text-slate-900 dark:text-emerald-400 uppercase tracking-wider">
                       Asunto & Documento de Origen
                     </h2>
                   </div>
@@ -556,7 +556,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                       CITE / N° de Nota o Informe
                     </label>
                     <input
@@ -564,12 +564,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       placeholder="Ej. ALM-INF N° 42/2026"
                       value={cite}
                       onChange={(e) => setCite(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-mono font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-mono font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                       N° de Fojas / Folios
                     </label>
                     <div className="relative">
@@ -579,17 +579,20 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         min="1"
                         value={pageCount}
                         onChange={(e) => setPageCount(parseInt(e.target.value, 10) || 1)}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl text-slate-950 dark:text-white font-mono font-black text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                        className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl text-slate-950 dark:text-white font-mono font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm"
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5 flex items-center justify-between">
-                    <span>Referencia / Asunto Principal <span className="text-red-500">*</span></span>
-                    <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
-                      <Sparkles className="w-3 h-3" />
+                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <span className="text-slate-950 dark:text-white">Referencia / Asunto Principal</span>
+                      <span className="text-red-500 text-sm">*</span>
+                    </span>
+                    <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                      <Sparkles className="w-3 h-3 text-emerald-600 dark:text-brand-gold" />
                       <span>Corrector ortográfico & Predicción activa</span>
                     </span>
                   </label>
@@ -601,19 +604,19 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     required
                     enablePrediction={true}
                     enableQuickPhrases={true}
-                    className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-black uppercase text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs leading-relaxed"
+                    className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-black uppercase text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm leading-relaxed placeholder:text-slate-400 dark:placeholder:text-gray-500 placeholder:normal-case placeholder:font-medium"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
-                    Descripción de Documentos Adjuntos / Anexos
+                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
+                    <span className="text-slate-950 dark:text-white">Descripción de Documentos Adjuntos / Anexos</span>
                   </label>
                   <SmartCorrespondenceInput
                     placeholder="Ej. Formulario de Requerimiento + 3 Cotizaciones de Proveedores (5 fojas)"
                     value={attachmentDescription}
                     onChange={(e) => setAttachmentDescription(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                    className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                   />
                 </div>
 
@@ -730,7 +733,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     {/* Destino y Funcionario */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5">
+                        <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                           Área de Destino Principal <span className="text-red-500">*</span>
                         </label>
                         <select
@@ -747,7 +750,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                               setInitialTargetPerson(AREA_RESPONSIBLES[newArea].defaultPerson);
                             }
                           }}
-                          className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs cursor-pointer"
+                          className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
                         >
                           {recommendedNodes.length > 0 ? (
                             <optgroup label="⭐ Destinos Conectados en el Organigrama">
@@ -772,7 +775,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300">
+                          <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200">
                             Responsable / Jefatura de Despacho
                           </label>
                           <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-black">
@@ -784,7 +787,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           placeholder="Ej. Ian Pinto / Laura Ríos"
                           value={initialTargetPerson}
                           onChange={(e) => setInitialTargetPerson(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
+                          className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                         />
                       </div>
                     </div>
@@ -927,10 +930,10 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                     {/* INSTRUCCIÓN / PROVEÍDO TEXTO */}
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-1.5 flex items-center justify-between">
-                        <span>Instrucción Oficial / Proveído Detallado <span className="text-red-500">*</span></span>
-                        <span className="text-[10px] text-emerald-600 dark:text-brand-gold font-bold flex items-center gap-1">
-                          <Sparkles className="w-3 h-3" />
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                        <span className="text-slate-950 dark:text-white">Instrucción Oficial / Proveído Detallado <span className="text-red-500">*</span></span>
+                        <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                          <Sparkles className="w-3 h-3 text-emerald-600 dark:text-brand-gold" />
                           <span>Predictivo & Fórmulas oficiales</span>
                         </span>
                       </label>
@@ -942,7 +945,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         enablePrediction={true}
                         enableQuickPhrases={true}
                         placeholder="Redacta la instrucción formal para el área de destino..."
-                        className="w-full bg-slate-50 dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs leading-relaxed"
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm leading-relaxed placeholder:text-slate-400 dark:placeholder:text-gray-500"
                       />
                     </div>
 

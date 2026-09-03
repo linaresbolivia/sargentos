@@ -28,7 +28,91 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
   const [pageMode, setPageMode] = useState<PrintPageMode>('DUPLEX_FULL');
 
   const handlePrint = () => {
-    window.print();
+    // Motor de Impresión Aislado: Garantiza un documento 100% limpio, centrado y sin elementos de la app
+    const printContent = document.getElementById('printable-routesheet-container');
+    if (!printContent) {
+      window.print();
+      return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    // Copiar todos los estilos del documento principal
+    const styleTags = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((node) => node.outerHTML)
+      .join('\n');
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>Hoja de Ruta ${item.hrCode} - CHLS</title>
+          ${styleTags}
+          <style>
+            @page {
+              size: letter portrait;
+              margin: 6mm 8mm;
+            }
+            *, *::before, *::after {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            html, body {
+              background: #ffffff !important;
+              color: #000000 !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              font-family: Arial, Helvetica, sans-serif !important;
+            }
+            .page-break-after {
+              page-break-after: always !important;
+              break-after: page !important;
+            }
+            .printable-sheet-page {
+              width: 100% !important;
+              max-width: 215mm !important;
+              min-height: auto !important;
+              margin: 0 auto !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              color: #000000 !important;
+              box-shadow: none !important;
+              border: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          ${printContent.innerHTML}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        try {
+          document.body.removeChild(iframe);
+        } catch {}
+      }, 1500);
+    }, 450);
   };
 
   // Helper de formateo de fecha: "14 AGO 2026"
@@ -64,7 +148,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
   const verificationUrl = `${window.location.origin}/correspondencia?code=${encodeURIComponent(item.hrCode)}`;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90 backdrop-blur-md flex justify-center items-start p-2 sm:p-6 print:p-0 print:bg-white print:static print:inset-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/90 backdrop-blur-md flex flex-col items-center justify-start p-3 sm:p-6 print:p-0 print:bg-white print:static print:inset-auto">
       
       {/* ========================================================================= */}
       {/* BARRA DE HERRAMIENTAS DE IMPRESIÓN (OCULTA AL IMPRIMIR)                   */}
@@ -150,9 +234,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
       </div>
 
       {/* Espaciador para la barra fija */}
-      <div className="h-16 print:hidden w-full" />
+      <div className="h-20 print:hidden w-full shrink-0" />
 
-      <div id="printable-routesheet-container" className="w-full max-w-[215mm] mx-auto space-y-8 print:space-y-0 print:m-0 print:p-0">
+      <div id="printable-routesheet-container" className="w-full max-w-[215mm] mx-auto space-y-8 print:space-y-0 print:m-0 print:p-0 flex flex-col items-center">
 
         {/* ========================================================================= */}
         {/* PÁGINA 1: ANVERSO DE LA HOJA DE RUTA (CARÁTULA OFICIAL)                   */}
@@ -328,6 +412,22 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
                           <p className="text-[10.5px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
                             {mov.instruction}
                           </p>
+                          {(() => {
+                            const movDocs = (mov.documents && mov.documents.length > 0)
+                              ? mov.documents
+                              : (item.documents || []).filter((d) => d.movementId === mov.id);
+                            if (movDocs.length === 0) return null;
+                            return (
+                              <div className="mt-1 pt-1 border-t border-slate-300 flex items-center gap-1.5 text-[8.5px] text-slate-700 font-bold flex-wrap">
+                                <span className="text-emerald-900 font-black">📎 Adjuntos ({movDocs.length}):</span>
+                                {movDocs.map((doc, di) => (
+                                  <span key={doc.id || di} className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-300">
+                                    {doc.fileName} {doc.fileSize ? `(${(doc.fileSize / 1024 / 1024).toFixed(1)}MB)` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Sello y Firma del Remitente */}
@@ -455,6 +555,22 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
                           <p className="text-[10.5px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
                             {mov.instruction}
                           </p>
+                          {(() => {
+                            const movDocs = (mov.documents && mov.documents.length > 0)
+                              ? mov.documents
+                              : (item.documents || []).filter((d) => d.movementId === mov.id);
+                            if (movDocs.length === 0) return null;
+                            return (
+                              <div className="mt-1 pt-1 border-t border-slate-300 flex items-center gap-1.5 text-[8.5px] text-slate-700 font-bold flex-wrap">
+                                <span className="text-emerald-900 font-black">📎 Adjuntos ({movDocs.length}):</span>
+                                {movDocs.map((doc, di) => (
+                                  <span key={doc.id || di} className="font-mono bg-slate-100 px-1 py-0.5 rounded border border-slate-300">
+                                    {doc.fileName} {doc.fileSize ? `(${(doc.fileSize / 1024 / 1024).toFixed(1)}MB)` : ''}
+                                  </span>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Sello y Firma del Remitente */}

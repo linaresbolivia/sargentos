@@ -200,20 +200,30 @@ export const uploadRouteSheetDocuments = createAsyncThunk(
       routeSheetId,
       files,
       isDerivation,
-    }: { routeSheetId: string; files: File[]; isDerivation?: boolean },
+      movementId,
+    }: { routeSheetId: string; files: File[]; isDerivation?: boolean; movementId?: string },
     { dispatch, rejectWithValue }
   ) => {
     try {
       const formData = new FormData();
       files.forEach((file) => {
+        formData.append('documents', file);
         formData.append('files', file);
       });
       if (isDerivation) {
         formData.append('isDerivation', 'true');
       }
+      if (movementId) {
+        formData.append('movementId', movementId);
+      }
+
+      const queryParams = new URLSearchParams();
+      if (isDerivation) queryParams.append('isDerivation', 'true');
+      if (movementId) queryParams.append('movementId', movementId);
+      const queryString = queryParams.toString() ? `?${queryParams.toString()}` : '';
 
       const response = await api.post(
-        `/correspondence/route-sheets/${routeSheetId}/documents${isDerivation ? '?isDerivation=true' : ''}`,
+        `/correspondence/route-sheets/${routeSheetId}/documents${queryString}`,
         formData,
         {
           headers: {

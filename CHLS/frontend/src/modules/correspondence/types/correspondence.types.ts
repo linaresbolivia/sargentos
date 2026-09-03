@@ -33,11 +33,13 @@ export interface HrMovement {
     lastName: string;
     email: string;
   };
+  documents?: CorrDocument[];
 }
 
 export interface CorrDocument {
   id: string;
   routeSheetId: string;
+  movementId?: string | null;
   fileName: string;
   fileUrl: string;
   mimeType?: string | null;

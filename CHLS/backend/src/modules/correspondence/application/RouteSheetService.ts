@@ -449,6 +449,7 @@ export class RouteSheetService {
               sourceUser: {
                 select: { id: true, firstName: true, lastName: true, email: true },
               },
+              documents: true,
             },
           },
           documents: true,
@@ -509,7 +510,10 @@ export class RouteSheetService {
           createdBy: true,
           movements: {
             orderBy: { sequenceNumber: 'asc' },
-            include: { sourceUser: true },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
           },
           documents: true,
         },
@@ -569,7 +573,10 @@ export class RouteSheetService {
           createdBy: true,
           movements: {
             orderBy: { sequenceNumber: 'asc' },
-            include: { sourceUser: true },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
           },
           documents: true,
         },
@@ -609,6 +616,7 @@ export class RouteSheetService {
             sourceUser: {
               select: { id: true, firstName: true, lastName: true, email: true },
             },
+            documents: true,
           },
         },
         documents: true,
@@ -675,7 +683,10 @@ export class RouteSheetService {
           createdBy: true,
           movements: {
             orderBy: { sequenceNumber: 'asc' },
-            include: { sourceUser: true },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
           },
           documents: true,
         },
@@ -715,7 +726,10 @@ export class RouteSheetService {
         createdBy: true,
         movements: {
           orderBy: { sequenceNumber: 'asc' },
-          include: { sourceUser: true },
+          include: {
+            sourceUser: true,
+            documents: true,
+          },
         },
         documents: true,
       },
@@ -826,7 +840,10 @@ export class RouteSheetService {
           createdBy: true,
           movements: {
             orderBy: { sequenceNumber: 'asc' },
-            include: { sourceUser: true },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
           },
           documents: true,
         },

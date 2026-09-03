@@ -182,6 +182,8 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       );
 
       if (addMovement.fulfilled.match(action)) {
+        const createdMovementId = (action.payload as any)?.movement?.id;
+
         // Upload documents attached to this movement/route sheet (strictly PDF)
         if (movementFiles.length > 0) {
           toast.loading('Subiendo y digitalizando documentos adjuntos en PDF...', { id: toastId });
@@ -191,6 +193,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                 routeSheetId: item.id,
                 files: movementFiles,
                 isDerivation: true,
+                movementId: createdMovementId,
               })
             );
           } catch {

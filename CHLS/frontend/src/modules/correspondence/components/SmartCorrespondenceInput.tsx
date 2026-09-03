@@ -125,13 +125,13 @@ export const SmartCorrespondenceInput = forwardRef<HTMLInputElement, SmartInputP
     return (
       <div className={`relative flex flex-col ${containerClassName}`}>
         {label && (
-          <div className="flex items-center justify-between mb-1 text-xs font-bold text-gray-300">
+          <div className="flex items-center justify-between mb-1 text-xs font-bold text-slate-800 dark:text-gray-300">
             <span>{label}</span>
             {suggestion && (
               <button
                 type="button"
                 onClick={acceptSuggestion}
-                className="text-[10px] text-brand-gold bg-amber-500/10 border border-brand-gold/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-amber-500/20 cursor-pointer animate-pulse select-none"
+                className="text-[10px] text-amber-700 dark:text-brand-gold bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded-md flex items-center gap-1 hover:bg-amber-500/20 cursor-pointer animate-pulse select-none"
               >
                 <Sparkles className="w-2.5 h-2.5" />
                 <span>Tab para autocompletar</span>
@@ -153,7 +153,7 @@ export const SmartCorrespondenceInput = forwardRef<HTMLInputElement, SmartInputP
             autoCorrect="on"
             autoCapitalize="sentences"
             placeholder={placeholder}
-            className={`w-full px-3.5 py-2.5 bg-black/40 border border-emerald-500/30 rounded-xl text-xs sm:text-sm text-white placeholder-gray-500 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-400 transition-all font-medium ${className}`}
+            className={`w-full px-3.5 py-2.5 bg-white dark:bg-black/40 border border-slate-300 dark:border-emerald-500/30 rounded-xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-500 outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500 dark:focus:border-emerald-400 transition-all font-medium ${className}`}
             {...props}
           />
 
@@ -167,7 +167,7 @@ export const SmartCorrespondenceInput = forwardRef<HTMLInputElement, SmartInputP
               {/* Texto transparente para alinear con el cursor */}
               <span className="opacity-0">{currentVal}</span>
               {/* Texto fantasma sugerido */}
-              <span className="text-emerald-400/50 bg-emerald-950/40 px-1 rounded hover:text-emerald-300">
+              <span className="text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-1.5 py-0.5 rounded shadow-xs font-semibold">
                 {suggestion}
               </span>
             </div>

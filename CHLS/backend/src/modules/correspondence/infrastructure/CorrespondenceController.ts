@@ -4,6 +4,7 @@ import { authenticate } from '@modules/auth/infrastructure/middlewares/auth.midd
 import { RouteSheetService } from '../application/RouteSheetService';
 import { CorrespondenceChatService } from '../application/CorrespondenceChatService';
 import { CorrespondenceEmailService } from '../application/CorrespondenceEmailService';
+import { DossierPdfService } from '../application/DossierPdfService';
 import { CreateRouteSheetSchema, AddMovementSchema, UpdateStatusSchema, MergeRouteSheetsSchema } from '../domain/correspondence.dto';
 import { logger } from '@config/logger';
 import { socketService } from '@config/socket';
@@ -39,12 +40,14 @@ export class CorrespondenceController {
   private routeSheetService: RouteSheetService;
   private chatService: CorrespondenceChatService;
   private emailService: CorrespondenceEmailService;
+  private dossierPdfService: DossierPdfService;
 
   constructor(private prisma: PrismaClient = new PrismaClient()) {
     this.router = Router();
     this.routeSheetService = new RouteSheetService(prisma);
     this.chatService = new CorrespondenceChatService(prisma);
     this.emailService = new CorrespondenceEmailService(prisma);
+    this.dossierPdfService = new DossierPdfService(prisma);
     this.initializeRoutes();
   }
 
@@ -75,11 +78,17 @@ export class CorrespondenceController {
     this.router.post('/route-sheets/:id/archive', this.archiveRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/unarchive', this.unarchiveRouteSheet.bind(this));
 
-    // File attachments upload
+    // File attachments upload (accepts any field name: documents, files, etc.)
     this.router.post(
       '/route-sheets/:id/documents',
-      upload.array('documents', 5),
+      upload.any(),
       this.uploadDocuments.bind(this)
+    );
+
+    // Unified Dossier PDF (Compiled chronological expediente with physical PDF attachments)
+    this.router.get(
+      '/route-sheets/:id/dossier-pdf',
+      this.getDossierPdf.bind(this)
     );
 
     // AI Copilot endpoint (Suggests summary & destination area)
@@ -340,6 +349,7 @@ export class CorrespondenceController {
       }
 
       const createdDocs = [];
+      const movementId = (req.body?.movementId || req.query?.movementId) as string | undefined;
 
       for (const file of files) {
         // Calcular SHA-256
@@ -351,6 +361,7 @@ export class CorrespondenceController {
         const doc = await this.prisma.corrDocument.create({
           data: {
             routeSheetId: id,
+            movementId: movementId || null,
             fileName: file.originalname,
             fileUrl,
             mimeType: file.mimetype,
@@ -950,6 +961,26 @@ export class CorrespondenceController {
       return res.status(500).json({
         success: false,
         message: error.message || 'Error al enviar alerta SLA',
+      });
+    }
+  }
+
+  // 8. Get Unified Dossier PDF (Compiled chronological expediente with all attached PDFs merged)
+  public async getDossierPdf(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const pdfBuffer = await this.dossierPdfService.generateUnifiedDossierPdf(id);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="Expediente_${id}_Completo.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.end(pdfBuffer);
+    } catch (error: any) {
+      logger.error('Error generating unified dossier PDF:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al compilar el Expediente Completo Unificado en PDF',
+        error: error.message,
       });
     }
   }
