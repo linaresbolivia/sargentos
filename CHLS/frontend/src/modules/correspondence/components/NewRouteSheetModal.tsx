@@ -24,6 +24,7 @@ import {
   GitBranch,
   ArrowRight,
   AlertCircle,
+  Lock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -31,6 +32,7 @@ import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
 import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
+import { countTotalPdfPages } from '../utils/pdfPageCounter';
 
 interface NewRouteSheetModalProps {
   isOpen: boolean;
@@ -219,15 +221,34 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const newFiles = Array.from(e.target.files);
-      setSelectedFiles((prev) => [...prev, ...newFiles]);
+      const combined = [...selectedFiles, ...newFiles];
+      setSelectedFiles(combined);
+
+      try {
+        const { total } = await countTotalPdfPages(combined);
+        if (total > 0) {
+          setPageCount(total);
+          toast.success(`Se contabilizaron ${total} fojas en los documentos PDF adjuntos`, { icon: '📄' });
+        }
+      } catch (err) {
+        console.warn('Error counting pages on new route sheet upload:', err);
+      }
+      e.target.value = '';
     }
   };
 
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveFile = async (index: number) => {
+    const updated = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(updated);
+    try {
+      const { total } = await countTotalPdfPages(updated);
+      setPageCount(total > 0 ? total : 1);
+    } catch {
+      // ignore
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -569,17 +590,38 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                      N° de Fojas / Folios
+                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                      <span>N° de Fojas / Folios</span>
+                      {selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) && (
+                        <span className="text-[9px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Auto PDF</span>
+                        </span>
+                      )}
                     </label>
                     <div className="relative">
-                      <Hash className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                      {selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) ? (
+                        <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                      ) : (
+                        <Hash className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                      )}
                       <input
                         type="number"
                         min="1"
                         value={pageCount}
+                        readOnly={selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))}
+                        disabled={selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))}
                         onChange={(e) => setPageCount(parseInt(e.target.value, 10) || 1)}
-                        className="w-full pl-10 pr-4 py-3 bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl text-slate-950 dark:text-white font-mono font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm"
+                        className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-[#07110c] border-2 rounded-2xl text-slate-950 dark:text-white font-mono font-black text-sm outline-none shadow-sm ${
+                          selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+                            ? 'border-emerald-500/50 bg-emerald-500/10 cursor-not-allowed text-emerald-700 dark:text-emerald-300 select-none'
+                            : 'border-slate-300 dark:border-emerald-500/30 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                        }`}
+                        title={
+                          selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
+                            ? 'Cantidad de fojas calculada automáticamente a partir del PDF adjunto (no modificable)'
+                            : undefined
+                        }
                       />
                     </div>
                   </div>

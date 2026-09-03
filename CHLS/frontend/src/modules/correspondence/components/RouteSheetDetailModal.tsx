@@ -4,6 +4,7 @@ import { AppDispatch, RootState } from '@store/store';
 import { uploadRouteSheetDocuments, fetchRouteSheetById } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet } from './PrintableRouteSheet';
+import { PrintableTimelineReportModal } from './PrintableTimelineReportModal';
 import { AddMovementModal } from './AddMovementModal';
 import { MergeRouteSheetsModal } from './MergeRouteSheetsModal';
 import { ArchiveRouteSheetModal } from './ArchiveRouteSheetModal';
@@ -18,10 +19,13 @@ import {
   Download,
   ExternalLink,
   Paperclip,
+  BookOpen,
+  Loader2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
 import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
+import { api } from '@config/api';
 
 interface RouteSheetDetailModalProps {
   isOpen: boolean;
@@ -42,14 +46,42 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   const currentItem: RouteSheetItem | null = (rawItem as any)?.routeSheet || rawItem;
 
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showTimelinePrintModal, setShowTimelinePrintModal] = useState(false);
   const [showAddMovementModal, setShowAddMovementModal] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showSlaModal, setShowSlaModal] = useState(false);
-  const [isUploadingDocs, setIsUploadingDocs] = useState(false);
-  const [previewDoc, setPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string } | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
+  const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
 
   if (!currentItem) return null;
+
+  const handleGenerateDossierPdf = async () => {
+    try {
+      setIsGeneratingDossier(true);
+      toast.loading('Compilando expediente y fusionando adjuntos físicos...', { id: 'dossier-load' });
+
+      const response = await api.get(`/correspondence/route-sheets/${currentItem.id}/dossier-pdf`, {
+        responseType: 'blob',
+      });
+
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Expediente_Completo_${currentItem.hrCode}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(downloadUrl);
+
+      toast.success('¡Expediente Completo compilado y descargado exitosamente!', { id: 'dossier-load' });
+    } catch {
+      toast.error('Error al generar el Expediente Completo Unificado en PDF', { id: 'dossier-load' });
+    } finally {
+      setIsGeneratingDossier(false);
+    }
+  };
 
   const movements = currentItem.movements || [];
   const documents = currentItem.documents || [];
@@ -57,23 +89,6 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
     currentItem.currentArea?.startsWith('FUSIONADO EN') ||
     currentItem.aiSummary?.startsWith('FUSIONADO')
   );
-
-  const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      const files = Array.from(e.target.files);
-      setIsUploadingDocs(true);
-      const toastId = toast.loading('Digitalizando y guardando documentos...');
-      try {
-        await dispatch(uploadRouteSheetDocuments({ routeSheetId: currentItem.id, files }));
-        await dispatch(fetchRouteSheetById(currentItem.id));
-        toast.success(`¡${files.length} documento(s) digitalizado(s) exitosamente!`, { id: toastId });
-      } catch {
-        toast.error('Error al digitalizar el documento', { id: toastId });
-      } finally {
-        setIsUploadingDocs(false);
-      }
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -123,11 +138,21 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
             <div className="flex items-center gap-2.5 flex-wrap">
               <button
+                onClick={() => setShowTimelinePrintModal(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/35 hover:to-teal-600/35 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                title="Imprimir o guardar en PDF el reporte oficial de trazabilidad con tabla ejecutiva y logo CHLS"
+              >
+                <Printer className="w-4 h-4 text-emerald-600 dark:text-brand-gold" />
+                <span className="hidden sm:inline">Imprimir Timeline (PDF)</span>
+              </button>
+
+              <button
                 onClick={() => setShowPrintModal(true)}
                 className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                title="Imprimir carátula y carpeta física oficial de la Hoja de Ruta"
               >
                 <Printer className="w-4 h-4 text-brand-gold" />
-                <span className="hidden sm:inline">Imprimir 1:1</span>
+                <span className="hidden sm:inline">Imprimir Hoja de Ruta</span>
               </button>
 
               {!isFusedChild && (
@@ -166,27 +191,54 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               onOpenSlaModal={() => setShowSlaModal(true)}
               onAddMovement={() => setShowAddMovementModal(true)}
               onPreviewDoc={setPreviewDoc}
-              onDirectUpload={handleDirectUpload}
-              isUploadingDocs={isUploadingDocs}
+              onPrintTimeline={() => setShowTimelinePrintModal(true)}
             />
           </div>
 
-          {/* Footer Bar */}
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-black/20 text-xs">
+          {/* Footer Bar (Al final de la Hoja de Ruta) */}
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-black/20 text-xs flex-wrap gap-3">
             <span className="text-slate-400 font-mono text-[11px]">
               ID Sistema: {currentItem.id}
             </span>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {/* Botón Solicitado: Expediente Completo al final de la hoja */}
               <button
-                onClick={() => setShowPrintModal(true)}
-                className="font-bold text-slate-700 dark:text-gray-300 hover:text-brand-gold transition-colors flex items-center gap-1.5"
+                type="button"
+                onClick={handleGenerateDossierPdf}
+                disabled={isGeneratingDossier}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 hover:from-amber-400 hover:to-teal-500 text-slate-950 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-md shadow-amber-500/20 border border-amber-400/50 cursor-pointer disabled:opacity-50"
+                title="Genera y descarga un único PDF con todo el expediente: carátula, datos de derivación de cada usuario y todos los archivos adjuntos integrados físicamente"
+              >
+                {isGeneratingDossier ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
+                    <span>Compilando Expediente...</span>
+                  </>
+                ) : (
+                  <>
+                    <BookOpen className="w-4 h-4 text-slate-950" />
+                    <span>📚 Expediente Completo (PDF)</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                onClick={() => setShowTimelinePrintModal(true)}
+                className="font-bold text-emerald-600 dark:text-emerald-400 hover:text-brand-gold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>Vista Previa de Impresión</span>
+                <span>Imprimir Timeline 360°</span>
+              </button>
+              <button
+                onClick={() => setShowPrintModal(true)}
+                className="font-bold text-slate-700 dark:text-gray-300 hover:text-brand-gold transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Imprimir Hoja de Ruta</span>
               </button>
               <button
                 onClick={onClose}
-                className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors"
+                className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
               >
                 Cerrar
               </button>
@@ -201,6 +253,15 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
         <AddMovementModal
           isOpen={showAddMovementModal}
           onClose={() => setShowAddMovementModal(false)}
+          item={currentItem}
+        />
+      )}
+
+      {/* Submodal for Printable Timeline Report (Table/List with CHLS Logo) */}
+      {showTimelinePrintModal && (
+        <PrintableTimelineReportModal
+          isOpen={showTimelinePrintModal}
+          onClose={() => setShowTimelinePrintModal(false)}
           item={currentItem}
         />
       )}

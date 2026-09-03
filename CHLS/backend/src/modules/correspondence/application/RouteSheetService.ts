@@ -476,6 +476,17 @@ export class RouteSheetService {
 
     if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
 
+    // Validar que el userId exista para no violar la Foreign Key de HrMovement.sourceUserId
+    let validUserId = data.userId;
+    if (!validUserId || validUserId === 'SYSTEM' || validUserId === 'SYSTEM_ADMIN') {
+      validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId;
+    } else {
+      const userExists = await this.prisma.user.findUnique({ where: { id: validUserId } });
+      if (!userExists) {
+        validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId || (await this.prisma.user.findFirst())?.id;
+      }
+    }
+
     const nextSeq = routeSheet.movements.length + 1;
 
     const updated = await this.prisma.$transaction(async (tx) => {
@@ -484,7 +495,7 @@ export class RouteSheetService {
         data: {
           routeSheetId: id,
           sequenceNumber: nextSeq,
-          sourceUserId: data.userId,
+          sourceUserId: validUserId,
           sourceArea: routeSheet.currentArea,
           targetArea: 'ARCHIVO_CENTRAL',
           targetPersonName: 'Custodia & Archivo Central',
@@ -503,7 +514,7 @@ export class RouteSheetService {
           archiveBox: data.archiveBox?.trim() || null,
           archiveNotes: data.archiveNotes?.trim() || null,
           archivedAt: new Date(),
-          archivedById: data.userId,
+          archivedById: validUserId,
         },
         include: {
           person: true,
@@ -542,6 +553,17 @@ export class RouteSheetService {
 
     if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
 
+    // Validar que el userId exista para no violar la Foreign Key de HrMovement.sourceUserId
+    let validUserId = data.userId;
+    if (!validUserId || validUserId === 'SYSTEM' || validUserId === 'SYSTEM_ADMIN') {
+      validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId;
+    } else {
+      const userExists = await this.prisma.user.findUnique({ where: { id: validUserId } });
+      if (!userExists) {
+        validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId || (await this.prisma.user.findFirst())?.id;
+      }
+    }
+
     const nextSeq = routeSheet.movements.length + 1;
     const destArea = data.targetArea || 'SECRETARIA_GENERAL';
 
@@ -551,7 +573,7 @@ export class RouteSheetService {
         data: {
           routeSheetId: id,
           sequenceNumber: nextSeq,
-          sourceUserId: data.userId,
+          sourceUserId: validUserId,
           sourceArea: 'ARCHIVO_CENTRAL',
           targetArea: destArea,
           targetPersonName: 'Reapertura de Expediente',

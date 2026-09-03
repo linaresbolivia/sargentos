@@ -1375,6 +1375,7 @@ export const CorrespondenceHub: React.FC = () => {
       {/* Modal Detail Expediente */}
       {selectedItem && (
         <RouteSheetDetailModal
+          isOpen={Boolean(selectedItem)}
           item={selectedItem}
           onClose={() => dispatch(setSelectedItem(null))}
         />

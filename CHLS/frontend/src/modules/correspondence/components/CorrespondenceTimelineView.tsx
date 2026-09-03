@@ -34,19 +34,22 @@ import {
   FileSpreadsheet,
   BookOpen,
   Loader2,
+  Printer,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
+import { PrintableTimelineReportModal } from './PrintableTimelineReportModal';
 
 interface CorrespondenceTimelineViewProps {
   item: RouteSheetItem;
   onOpenSlaModal: () => void;
   onAddMovement: () => void;
   onPreviewDoc?: (doc: { fileName: string; fileUrl: string; fileType?: string | null }) => void;
-  onDirectUpload?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  isUploadingDocs?: boolean;
+  onPrintTimeline?: () => void;
 }
 
 const formatArea = (raw?: string | null): string => {
@@ -110,14 +113,15 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   onOpenSlaModal,
   onAddMovement,
   onPreviewDoc,
-  onDirectUpload,
-  isUploadingDocs,
+  onPrintTimeline,
 }) => {
   const [activeView, setActiveView] = useState<'HOLOGRAM' | 'LISTA'>('HOLOGRAM');
   const [selectedMilestone, setSelectedMilestone] = useState<HolographicMilestone | null>(null);
   const [selectedSignaturePreview, setSelectedSignaturePreview] = useState<string | null>(null);
   const [localPreviewDoc, setLocalPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
   const [milestoneDocsPopup, setMilestoneDocsPopup] = useState<CorrDocument[] | null>(null);
+  const [showLocalTimelinePrintModal, setShowLocalTimelinePrintModal] = useState(false);
+  const [isInitialDocsExpanded, setIsInitialDocsExpanded] = useState(false);
 
   const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
 
@@ -233,11 +237,11 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
 
   // 2. Geometría SVG Amplia y Espaciosa para el Diagrama Holográfico Vertical
   const N = milestones.length;
-  const ROW_H = 195; // Más espacio vertical entre niveles
+  const ROW_H = 220; // Espacio vertical amplio para textos completos de proveídos
   const START_Y = 60;
   const TOTAL_W = 1260; // Ancho ampliado para alta legibilidad ejecutiva
   const CENTER_X = 630; // Columna central espaciosa
-  const TOTAL_H = START_Y + N * ROW_H + 130;
+  const TOTAL_H = START_Y + N * ROW_H + 140;
   const DOCK_Y = TOTAL_H - 50;
 
   const renderIcon = (type: string) => {
@@ -262,7 +266,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   };
 
   const isFusedChild = Boolean(
-    item.isArchived ||
+    item.archivedAt ||
     (item.status === 'CONCLUIDO' && item.aiSummary?.startsWith('FUSIONADO'))
   );
 
@@ -394,180 +398,186 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       </div>
 
       {/* ========================================================================= */}
-      {/* 2. EXPEDIENTE DIGITAL & DOCUMENTOS ESCANEADOS                             */}
+      {/* 2. DOCUMENTO BASE DE RADICACIÓN INICIAL (ORIGEN)                          */}
       {/* ========================================================================= */}
-      <div className="bg-[#040e0b] border-2 border-emerald-500/30 rounded-3xl p-5 space-y-4 shadow-[0_0_25px_rgba(16,185,129,0.1)]">
-        <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-emerald-500/20">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              <Paperclip className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div>
-              <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2">
-                <span>Expediente Digital & Documentos Escaneados ({item.documents?.length || 0})</span>
-                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                  Cero Papel
+      {(() => {
+        const rawDocs = (item.documents || []).filter((d) => !d.movementId);
+        const seenDocKeys = new Set<string>();
+        const initialDocs = rawDocs.filter((d) => {
+          const key = `${d.fileName}_${d.sha256Hash || d.fileSize || d.fileUrl}`;
+          if (seenDocKeys.has(key)) return false;
+          seenDocKeys.add(key);
+          return true;
+        });
+
+        if (initialDocs.length === 0) return null;
+
+        return (
+          <div className="bg-[#040e0b] border-2 border-emerald-500/30 rounded-3xl p-3.5 sm:p-4 transition-all shadow-[0_0_25px_rgba(16,185,129,0.1)]">
+            {/* Botón Barra Desplegable */}
+            <button
+              type="button"
+              onClick={() => setIsInitialDocsExpanded(!isInitialDocsExpanded)}
+              className="w-full flex items-center justify-between flex-wrap gap-2 text-left cursor-pointer group focus:outline-none"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 group-hover:bg-emerald-500/25 transition-colors">
+                  <Paperclip className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 flex-wrap">
+                    <span className="group-hover:text-emerald-300 transition-colors">
+                      Documento Base de Radicación Inicial ({initialDocs.length})
+                    </span>
+                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                      Ingreso Oficial
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {isInitialDocsExpanded
+                      ? 'Documentos formales incorporados al radicar el trámite original'
+                      : `Haz clic para desplegar y ver los ${initialDocs.length} archivo(s) digitalizado(s)`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Botón Badge de Despliegue */}
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/15 px-3 py-1.5 rounded-xl border border-emerald-500/30 group-hover:bg-emerald-500/25 flex items-center gap-1.5 transition-all shadow-xs">
+                  <span>{isInitialDocsExpanded ? 'Ocultar Adjuntos' : 'Desplegar Adjuntos'}</span>
+                  {isInitialDocsExpanded ? (
+                    <ChevronUp className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
+                  )}
                 </span>
-              </h3>
-              <p className="text-[11px] text-slate-400">
-                Archivos oficiales digitalizados con hash criptográfico SHA-256 de inmutabilidad
-              </p>
-            </div>
-          </div>
+              </div>
+            </button>
 
-          {/* Direct Upload Button */}
-          {onDirectUpload && (
-            <label className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 text-white font-black text-xs shadow-md shadow-emerald-600/20 transition-all hover:scale-105 active:scale-95 cursor-pointer">
-              <input
-                type="file"
-                multiple
-                disabled={isUploadingDocs}
-                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
-                onChange={onDirectUpload}
-                className="hidden"
-              />
-              <UploadCloud className="w-3.5 h-3.5 text-white" />
-              <span>{isUploadingDocs ? 'Digitalizando...' : '+ Digitalizar / Adjuntar'}</span>
-            </label>
-          )}
-        </div>
+            {/* Contenido Desplegado */}
+            {isInitialDocsExpanded && (
+              <div className="mt-3.5 pt-3.5 border-t border-emerald-500/20 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fadeIn">
+                {initialDocs.map((doc, idx) => {
+                  const isPdf = doc.fileName?.toLowerCase().endsWith('.pdf') || doc.mimeType?.includes('pdf');
+                  const isImg = doc.fileName?.match(/\.(jpg|jpeg|png|webp)$/i) || doc.mimeType?.includes('image');
+                  const isXls = doc.fileName?.match(/\.(xls|xlsx|csv)$/i) || doc.mimeType?.includes('sheet');
 
-        {(!item.documents || item.documents.length === 0) ? (
-          <div className="text-center py-6 bg-black/30 rounded-2xl border border-dashed border-emerald-500/20">
-            <UploadCloud className="w-8 h-8 text-slate-600 mx-auto mb-2" />
-            <p className="text-xs font-bold text-gray-300">
-              No se han digitalizado anexos físicos todavía para esta Hoja de Ruta.
-            </p>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Puedes adjuntar el PDF de la carta recibida, facturas, fotos de celulares o cotizaciones en cualquier momento.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {item.documents.map((doc, idx) => {
-              const isPdf = doc.fileName?.toLowerCase().endsWith('.pdf') || doc.mimeType?.includes('pdf');
-              const isImg = doc.fileName?.match(/\.(jpg|jpeg|png|webp)$/i) || doc.mimeType?.includes('image');
-              const isXls = doc.fileName?.match(/\.(xls|xlsx|csv)$/i) || doc.mimeType?.includes('sheet');
+                  return (
+                    <div
+                      key={doc.id || idx}
+                      className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                          isPdf
+                            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                            : isImg
+                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            : isXls
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                        }`}>
+                          {isPdf ? (
+                            <FileText className="w-5 h-5" />
+                          ) : isImg ? (
+                            <ImageIcon className="w-5 h-5" />
+                          ) : isXls ? (
+                            <FileSpreadsheet className="w-5 h-5" />
+                          ) : (
+                            <Paperclip className="w-5 h-5" />
+                          )}
+                        </div>
 
-              return (
-                <div
-                  key={doc.id || idx}
-                  className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
-                >
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-                      isPdf
-                        ? 'bg-red-500/15 text-red-400 border-red-500/30'
-                        : isImg
-                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                        : isXls
-                        ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                        : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                    }`}>
-                      {isPdf ? (
-                        <FileText className="w-5 h-5" />
-                      ) : isImg ? (
-                        <ImageIcon className="w-5 h-5" />
-                      ) : isXls ? (
-                        <FileSpreadsheet className="w-5 h-5" />
-                      ) : (
-                        <Paperclip className="w-5 h-5" />
-                      )}
-                    </div>
-
-                    <div className="min-w-0 flex-1">
-                      <span className="font-bold text-xs text-white truncate block">
-                        {doc.fileName}
-                      </span>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {doc.movementId ? (() => {
-                          const mov = movements.find((m) => m.id === doc.movementId);
-                          return (
-                            <span className="text-[9px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/15 px-2 py-0.5 rounded-md border border-amber-500/30">
-                              Derivación #{mov?.sequenceNumber || '?'} ({mov?.sourceArea || 'ÁREA'} ➔ {mov?.targetArea || ''})
+                        <div className="min-w-0 flex-1">
+                          <span className="font-bold text-xs text-white truncate block">
+                            {doc.fileName}
+                          </span>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                              Radicación Inicial
                             </span>
-                          );
-                        })() : (
-                          <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                            Radicación Inicial
-                          </span>
-                        )}
-                        {doc.fileSize && (
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
-                          </span>
-                        )}
-                        {doc.sha256Hash && (
-                          <span
-                            title={`SHA-256: ${doc.sha256Hash}`}
-                            className="text-[9px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 truncate max-w-[130px]"
-                          >
-                            🛡️ {doc.sha256Hash.substring(0, 10)}...
-                          </span>
-                        )}
+                            {doc.fileSize && (
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
+                              </span>
+                            )}
+                            {doc.sha256Hash && (
+                              <span
+                                title={`SHA-256: ${doc.sha256Hash}`}
+                                className="text-[9px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 truncate max-w-[130px]"
+                              >
+                                🛡️ {doc.sha256Hash.substring(0, 10)}...
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Botones: Ver y Descargar */}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleViewDoc(doc)}
+                          title="Visualizar documento en pantalla"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          <span>Ver</span>
+                        </button>
+
+                        <a
+                          href={getDocumentFullUrl(doc.fileUrl)}
+                          download={doc.fileName}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Descargar archivo original a tu equipo"
+                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Descargar</span>
+                        </a>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Botones: Ver y Descargar */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => handleViewDoc(doc)}
-                      title="Visualizar documento en pantalla"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      <span>Ver</span>
-                    </button>
-
-                    <a
-                      href={getDocumentFullUrl(doc.fileUrl)}
-                      download={doc.fileName}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Descargar archivo original a tu equipo"
-                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
-                    >
-                      <Download className="w-3.5 h-3.5" />
-                      <span>Descargar</span>
-                    </a>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+        );
+      })()}
 
       {/* ========================================================================= */}
       {/* 1. BARRA SUPERIOR MINIMALISTA DE CUSTODIA Y SLA                          */}
       {/* ========================================================================= */}
       <div className="p-3.5 sm:p-4 rounded-3xl bg-[#040e0b] border-2 border-cyan-500/40 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-between flex-wrap gap-3">
         
-        {/* Custodia y SLA */}
-        <div className="flex items-center gap-2.5 sm:gap-4 flex-wrap text-xs text-white">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-400 text-[11px] font-bold">Custodia Actual:</span>
-            <span className="px-3 py-1 rounded-xl bg-cyan-500/20 text-cyan-300 font-black border border-cyan-500/40 flex items-center gap-1.5 shadow-[0_0_12px_rgba(6,182,212,0.3)]">
-              <MapPin className="w-3.5 h-3.5 text-emerald-400 animate-bounce" />
+        {/* Custodia y SLA (Indicadores en texto de color) */}
+        <div className="flex items-center gap-3 flex-wrap text-xs">
+          <div className="flex items-center gap-1.5">
+            <span className="text-slate-400 font-semibold">Custodia Actual:</span>
+            <span className="text-cyan-300 font-black flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
               <span>{formatArea(item.currentArea)}</span>
             </span>
           </div>
 
-          <span className={`px-2.5 py-1 rounded-xl font-bold flex items-center gap-1.5 ${
+          <span className="text-slate-600 font-bold">•</span>
+
+          <span className={`font-black flex items-center gap-1 ${
             isOverdue
-              ? 'bg-red-500/20 text-red-300 border border-red-500/40'
+              ? 'text-rose-400'
               : isWarning
-              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-              : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+              ? 'text-amber-400'
+              : 'text-emerald-400'
           }`}>
-            <Clock className="w-3 h-3 text-cyan-400" />
+            <Clock className="w-3.5 h-3.5 shrink-0" />
             <span>{item.slaLabel || (isOverdue ? 'SLA Vencido' : 'En Plazo')}</span>
           </span>
 
-          <span className="text-[11px] text-slate-400">
-            • Prioridad: <strong className="text-white uppercase font-black">{item.priority}</strong>
+          <span className="text-slate-600 font-bold">•</span>
+
+          <span className="text-slate-400 font-semibold">
+            Prioridad: <strong className="text-white uppercase font-black">{item.priority}</strong>
           </span>
         </div>
 
@@ -595,25 +605,15 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </button>
           )}
 
-          {/* Botón Solicitado: Generar Expediente Completo (PDF Unificado con Fusión de Adjuntos) */}
+          {/* Botón: Imprimir Timeline en Tabla o Lista con Logo CHLS */}
           <button
             type="button"
-            onClick={handleGenerateDossierPdf}
-            disabled={isGeneratingDossier}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 hover:from-amber-400 hover:to-teal-500 text-slate-950 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(245,158,11,0.3)] border border-amber-400/50 cursor-pointer disabled:opacity-50"
-            title="Genera un único PDF con la carátula, datos de derivación de cada usuario y todos los archivos adjuntos integrados físicamente para imprimir o archivar"
+            onClick={onPrintTimeline || (() => setShowLocalTimelinePrintModal(true))}
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/50 hover:to-teal-600/50 text-emerald-300 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-400/50 cursor-pointer"
+            title="Imprimir el timeline de trazabilidad en una elegante tabla o lista con el logotipo oficial del Club Hípico Los Sargentos"
           >
-            {isGeneratingDossier ? (
-              <>
-                <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-950" />
-                <span>Compilando Expediente...</span>
-              </>
-            ) : (
-              <>
-                <BookOpen className="w-3.5 h-3.5 text-slate-950" />
-                <span>📚 Expediente Completo (PDF)</span>
-              </>
-            )}
+            <Printer className="w-3.5 h-3.5 text-brand-gold" />
+            <span>🖨️ Imprimir Timeline (PDF)</span>
           </button>
 
           <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10">
@@ -777,15 +777,15 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 const isLeft = m.isLeft;
                 const ringColor = m.isCurrent ? '#10b981' : (idx % 2 === 0 ? '#06b6d4' : '#10b981');
 
-                // Dimensiones Amplias de la Tarjeta (440px de ancho)
-                const CARD_W = 440;
-                const CARD_H = 135;
+                // Dimensiones Amplias de la Tarjeta (460px de ancho y 165px de alto)
+                const CARD_W = 460;
+                const CARD_H = 165;
                 const cardY = y;
 
                 // Posición de los anillos orbitales HUD y Tarjetas Flotantes
-                const ringX = isLeft ? 55 : 1205;
-                const ringY = y + 67;
-                const cardX = isLeft ? 125 : 695;
+                const ringX = isLeft ? 50 : 1210;
+                const ringY = y + CARD_H / 2;
+                const cardX = isLeft ? 115 : 685;
 
                 return (
                   <g key={`hologram-level-${m.id}`}>
@@ -901,7 +901,6 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                       height={CARD_H}
                     >
                       <div
-                        xmlns="http://www.w3.org/1999/xhtml"
                         onClick={() => setSelectedMilestone(m)}
                         className={`w-full h-full flex flex-col justify-between p-3.5 rounded-2xl border-2 transition-all cursor-pointer shadow-md backdrop-blur-md ${
                           m.isCurrent
@@ -933,8 +932,8 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
                         </div>
 
-                        {/* Fila 3: Proveído resumido y sello oficial */}
-                        <div className="text-[11px] text-slate-200 line-clamp-2 leading-relaxed italic">
+                        {/* Fila 3: Proveído completo y sello oficial (sin recorte) */}
+                        <div className="text-[11px] text-slate-200 leading-relaxed italic my-1 break-words overflow-y-auto max-h-[85px] custom-scrollbar pr-1">
                           {m.quickStamp && (
                             <span className="font-bold mr-1.5 text-cyan-400 not-italic uppercase text-[10.5px]">
                               ⚡ {m.quickStamp}
@@ -1398,6 +1397,15 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Local de Impresión de Trazabilidad 360° */}
+      {showLocalTimelinePrintModal && (
+        <PrintableTimelineReportModal
+          isOpen={showLocalTimelinePrintModal}
+          onClose={() => setShowLocalTimelinePrintModal(false)}
+          item={item}
+        />
       )}
 
     </div>

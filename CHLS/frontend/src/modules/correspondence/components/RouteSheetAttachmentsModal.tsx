@@ -40,18 +40,25 @@ export const RouteSheetAttachmentsModal: React.FC<RouteSheetAttachmentsModalProp
 
   const movements = item.movements || [];
 
-  // Recopilar todos los documentos del expediente
+  // Recopilar todos los documentos del expediente (deduplicados por contenido y nombre)
   const allDocsMap = new Map<string, CorrDocument>();
+
+  const getDocKey = (doc: CorrDocument, movId?: string | null) =>
+    `${doc.fileName}_${doc.sha256Hash || doc.fileSize || doc.fileUrl}_${movId || doc.movementId || 'root'}`;
 
   // 1. Documentos generales de la Hoja de Ruta
   (item.documents || []).forEach((doc) => {
-    if (doc.id) allDocsMap.set(doc.id, doc);
+    const key = getDocKey(doc);
+    if (!allDocsMap.has(key)) allDocsMap.set(key, doc);
   });
 
   // 2. Documentos adjuntos en movimientos/derivaciones
   movements.forEach((mov) => {
     (mov.documents || []).forEach((doc) => {
-      if (doc.id) allDocsMap.set(doc.id, { ...doc, movementId: doc.movementId || mov.id });
+      const key = getDocKey(doc, mov.id);
+      if (!allDocsMap.has(key)) {
+        allDocsMap.set(key, { ...doc, movementId: doc.movementId || mov.id });
+      }
     });
   });
 

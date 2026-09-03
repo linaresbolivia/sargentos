@@ -12,6 +12,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import { PDFDocument } from 'pdf-lib';
 
 // Setup file upload storage for correspondence attachments
 const uploadsDir = path.join(process.cwd(), 'uploads', 'correspondence');
@@ -89,6 +90,12 @@ export class CorrespondenceController {
     this.router.get(
       '/route-sheets/:id/dossier-pdf',
       this.getDossierPdf.bind(this)
+    );
+
+    // Official Timeline 360° PDF (Executive chronological report with CHLS crest)
+    this.router.get(
+      '/route-sheets/:id/timeline-pdf',
+      this.getTimelinePdf.bind(this)
     );
 
     // AI Copilot endpoint (Suggests summary & destination area)
@@ -351,10 +358,59 @@ export class CorrespondenceController {
       const createdDocs = [];
       const movementId = (req.body?.movementId || req.query?.movementId) as string | undefined;
 
+      // 1. Filtrar duplicados en el lote actual (mismo nombre y tamaño)
+      const uniqueFiles: Express.Multer.File[] = [];
+      const seenBatchKeys = new Set<string>();
+
       for (const file of files) {
+        const batchKey = `${file.originalname}_${file.size}`;
+        if (seenBatchKeys.has(batchKey)) {
+          try {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          } catch {}
+          continue;
+        }
+        seenBatchKeys.add(batchKey);
+        uniqueFiles.push(file);
+      }
+
+      let totalDetectedPages = 0;
+
+      for (const file of uniqueFiles) {
         // Calcular SHA-256
         const fileBuffer = fs.readFileSync(file.path);
         const sha256Hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+
+        // Contar páginas si es archivo PDF
+        let docPages = 1;
+        if (file.mimetype === 'application/pdf' || file.originalname.toLowerCase().endsWith('.pdf')) {
+          try {
+            const pdfDoc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
+            docPages = Math.max(1, pdfDoc.getPageCount());
+          } catch (pdfErr) {
+            logger.warn('Failed to parse PDF page count in uploadDocuments:', pdfErr);
+          }
+        }
+        totalDetectedPages += docPages;
+
+        // 2. Prevenir duplicados si el documento idéntico ya está registrado
+        const existingDoc = await this.prisma.corrDocument.findFirst({
+          where: {
+            routeSheetId: id,
+            fileName: file.originalname,
+            sha256Hash: sha256Hash,
+            movementId: movementId || null,
+          },
+        });
+
+        if (existingDoc) {
+          try {
+            if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+          } catch {}
+          createdDocs.push(existingDoc);
+          continue;
+        }
+
         const fileUrl = `/uploads/correspondence/${file.filename}`;
         const qrVerificationToken = `QR_${Date.now()}_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
 
@@ -374,10 +430,27 @@ export class CorrespondenceController {
         createdDocs.push(doc);
       }
 
+      // Si se adjuntaron documentos a una derivación o movimiento, actualizar fojas acumuladas
+      const rawAttachedPages = req.body?.attachedPages || req.query?.attachedPages;
+      const pagesToAdd = rawAttachedPages ? parseInt(String(rawAttachedPages), 10) : totalDetectedPages;
+
+      if (pagesToAdd > 0 && (movementId || req.body?.isDerivation === 'true' || req.query?.isDerivation === 'true')) {
+        await this.prisma.routeSheet.update({
+          where: { id },
+          data: {
+            pageCount: {
+              increment: pagesToAdd,
+            },
+          },
+        });
+        logger.info(`Hoja de Ruta ${id} incrementada en ${pagesToAdd} fojas por derivación con adjuntos.`);
+      }
+
       return res.status(201).json({
         success: true,
-        message: `${createdDocs.length} documento(s) adjuntado(s) exitosamente`,
+        message: `${createdDocs.length} documento(s) adjuntado(s) exitosamente (${pagesToAdd} fojas registradas)`,
         data: createdDocs,
+        pagesAdded: pagesToAdd,
       });
     } catch (error: any) {
       logger.error('Error uploading documents:', error);
@@ -696,7 +769,8 @@ export class CorrespondenceController {
     try {
       const { id } = req.params;
       const { archiveLocation, archiveBox, archiveNotes } = req.body;
-      const userId = (req as any).user?.id || 'SYSTEM';
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id || req.body.userId;
 
       if (!archiveLocation || !archiveLocation.trim()) {
         return res.status(400).json({
@@ -732,7 +806,8 @@ export class CorrespondenceController {
     try {
       const { id } = req.params;
       const { unarchiveReason, targetArea } = req.body;
-      const userId = (req as any).user?.id || 'SYSTEM';
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id || req.body.userId;
 
       if (!unarchiveReason || !unarchiveReason.trim()) {
         return res.status(400).json({
@@ -980,6 +1055,26 @@ export class CorrespondenceController {
       return res.status(500).json({
         success: false,
         message: 'Error al compilar el Expediente Completo Unificado en PDF',
+        error: error.message,
+      });
+    }
+  }
+
+  // 9. Get Official Timeline 360° PDF (Executive chronological report with CHLS crest)
+  public async getTimelinePdf(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const pdfBuffer = await this.dossierPdfService.generateTimelinePdf(id);
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="Trazabilidad_${id}_360.pdf"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.end(pdfBuffer);
+    } catch (error: any) {
+      logger.error('Error generating timeline PDF:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al generar el Reporte de Trazabilidad 360° en PDF',
         error: error.message,
       });
     }

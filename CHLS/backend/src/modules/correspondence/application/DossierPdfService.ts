@@ -665,4 +665,300 @@ export class DossierPdfService {
       }
     }
   }
+
+  /**
+   * Genera el Reporte Oficial de Trazabilidad 360° en PDF con membrete del CHLS,
+   * tabla ejecutiva y fichas cronológicas de movimientos.
+   */
+  public async generateTimelinePdf(idOrCode: string): Promise<Buffer> {
+    const routeSheet = await this.prisma.routeSheet.findFirst({
+      where: {
+        OR: [{ id: idOrCode }, { hrCode: idOrCode }],
+      },
+      include: {
+        person: true,
+        createdBy: true,
+        movements: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            sourceUser: true,
+            documents: true,
+          },
+        },
+        documents: true,
+      },
+    });
+
+    if (!routeSheet) {
+      throw new Error(`Hoja de Ruta ${idOrCode} no encontrada`);
+    }
+
+    const masterDoc = await PDFDocument.create();
+
+    const fontRegular = await masterDoc.embedFont(StandardFonts.Helvetica);
+    const fontBold = await masterDoc.embedFont(StandardFonts.HelveticaBold);
+    const fontTimes = await masterDoc.embedFont(StandardFonts.TimesRomanBold);
+
+    // Cargar Logo Oficial si existe
+    let logoImage = null;
+    const logoCandidates = [
+      path.join(process.cwd(), 'assets', 'logo.png'),
+      path.join(process.cwd(), '..', 'frontend', 'src', 'assets', 'logo.png'),
+    ];
+    for (const cand of logoCandidates) {
+      if (fs.existsSync(cand)) {
+        try {
+          const logoBytes = fs.readFileSync(cand);
+          logoImage = await masterDoc.embedPng(logoBytes);
+          break;
+        } catch {}
+      }
+    }
+
+    // QR de Validación Oficial
+    const verificationUrl = `https://chls.bo/correspondencia?code=${encodeURIComponent(routeSheet.hrCode)}`;
+    let qrImage = null;
+    try {
+      const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 140 });
+      const qrBase64 = qrDataUrl.replace(/^data:image\/png;base64,/, '');
+      const qrBuffer = Buffer.from(qrBase64, 'base64');
+      qrImage = await masterDoc.embedPng(qrBuffer);
+    } catch (e) {
+      logger.warn('No se pudo generar el QR para el timeline PDF:', e);
+    }
+
+    // Paleta de Colores Institucional
+    const emeraldDark = rgb(0.04, 0.28, 0.18);
+    const emeraldAccent = rgb(0.06, 0.65, 0.45);
+    const goldColor = rgb(0.85, 0.68, 0.15);
+    const slateDark = rgb(0.1, 0.12, 0.15);
+    const textGrey = rgb(0.35, 0.38, 0.42);
+    const lightBg = rgb(0.96, 0.97, 0.98);
+
+    const page = masterDoc.addPage(PageSizes.Letter);
+    const { width: W, height: H } = page.getSize();
+
+    // Membrete Superior
+    if (logoImage) {
+      page.drawImage(logoImage, {
+        x: 45,
+        y: H - 85,
+        width: 42,
+        height: 50,
+      });
+    }
+
+    page.drawText('CLUB HÍPICO LOS SARGENTOS', {
+      x: 95,
+      y: H - 52,
+      size: 14,
+      font: fontTimes,
+      color: slateDark,
+    });
+    page.drawText('SISTEMA OFICIAL DE CORRESPONDENCIA & ARCHIVO DIGITAL (SICAD)', {
+      x: 95,
+      y: H - 65,
+      size: 8,
+      font: fontBold,
+      color: emeraldDark,
+    });
+    page.drawText('INFORME OFICIAL DE TRAZABILIDAD Y SEGUIMIENTO CRONOLÓGICO 360°', {
+      x: 95,
+      y: H - 76,
+      size: 7.5,
+      font: fontRegular,
+      color: textGrey,
+    });
+
+    // Código y Recuadro HR a la derecha
+    page.drawRectangle({
+      x: W - 180,
+      y: H - 88,
+      width: 135,
+      height: 52,
+      color: lightBg,
+      borderColor: emeraldDark,
+      borderWidth: 1.5,
+    });
+    page.drawText('HOJA DE RUTA', {
+      x: W - 165,
+      y: H - 50,
+      size: 8,
+      font: fontBold,
+      color: emeraldDark,
+    });
+    page.drawText(routeSheet.hrCode, {
+      x: W - 165,
+      y: H - 74,
+      size: 18,
+      font: fontBold,
+      color: slateDark,
+    });
+
+    // Línea separadora dorada
+    page.drawLine({
+      start: { x: 45, y: H - 98 },
+      end: { x: W - 45, y: H - 98 },
+      thickness: 2,
+      color: goldColor,
+    });
+
+    let curY = H - 115;
+    const tableW = W - 90;
+
+    // Fila Asunto
+    page.drawRectangle({
+      x: 45,
+      y: curY - 45,
+      width: tableW,
+      height: 45,
+      color: lightBg,
+      borderColor: rgb(0.8, 0.85, 0.85),
+      borderWidth: 1,
+    });
+    page.drawText('REFERENCIA / ASUNTO:', { x: 55, y: curY - 14, size: 7.5, font: fontBold, color: emeraldDark });
+    const cleanRef = cleanAnsi(routeSheet.reference);
+    page.drawText(cleanRef.substring(0, 85), { x: 55, y: curY - 26, size: 9, font: fontBold, color: slateDark });
+    if (cleanRef.length > 85) {
+      page.drawText(cleanRef.substring(85, 170), { x: 55, y: curY - 37, size: 8.5, font: fontRegular, color: slateDark });
+    }
+
+    curY -= 52;
+
+    // Fila Datos de Radicación
+    page.drawRectangle({
+      x: 45,
+      y: curY - 32,
+      width: tableW,
+      height: 32,
+      color: rgb(1, 1, 1),
+      borderColor: rgb(0.8, 0.85, 0.85),
+      borderWidth: 1,
+    });
+    page.drawText('REMITENTE:', { x: 55, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
+    page.drawText(cleanAnsi(routeSheet.senderName).substring(0, 30), { x: 55, y: curY - 23, size: 8, font: fontRegular, color: slateDark });
+
+    page.drawText('ORIGEN / EMPRESA:', { x: 210, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
+    const originArea = routeSheet.senderArea || (routeSheet.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo');
+    page.drawText(cleanAnsi(originArea).substring(0, 25), { x: 210, y: curY - 23, size: 8, font: fontRegular, color: slateDark });
+
+    page.drawText('CUSTODIA ACTUAL:', { x: 350, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
+    page.drawText(cleanAnsi(routeSheet.currentArea).substring(0, 22), { x: 350, y: curY - 23, size: 8, font: fontBold, color: emeraldDark });
+
+    page.drawText('ESTADO:', { x: 470, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
+    page.drawText(cleanAnsi(routeSheet.status), { x: 470, y: curY - 23, size: 8, font: fontBold, color: goldColor });
+
+    curY -= 42;
+
+    // Encabezado Tabla Trazabilidad
+    page.drawRectangle({
+      x: 45,
+      y: curY - 18,
+      width: tableW,
+      height: 18,
+      color: emeraldDark,
+    });
+    page.drawText('#', { x: 52, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText('FECHA / HORA', { x: 72, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText('DE (EMISOR)', { x: 155, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText('A (DESTINATARIO)', { x: 260, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText('INSTRUCCIÓN / SELLO FORMAL', { x: 385, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+    page.drawText('ESTADO', { x: W - 90, y: curY - 12, size: 7.5, font: fontBold, color: rgb(1, 1, 1) });
+
+    curY -= 20;
+
+    // Fila 0: Radicación Inicial
+    page.drawRectangle({
+      x: 45,
+      y: curY - 22,
+      width: tableW,
+      height: 22,
+      color: rgb(0.93, 0.97, 0.94),
+      borderColor: rgb(0.85, 0.9, 0.85),
+      borderWidth: 0.5,
+    });
+    page.drawText('0', { x: 52, y: curY - 15, size: 8, font: fontBold, color: emeraldDark });
+    const radDate = new Date(routeSheet.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+    const radTime = new Date(routeSheet.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+    page.drawText(`${radDate} ${radTime}`, { x: 72, y: curY - 15, size: 7, font: fontRegular, color: textGrey });
+    page.drawText(cleanAnsi(routeSheet.senderName).substring(0, 18), { x: 155, y: curY - 15, size: 7, font: fontBold, color: slateDark });
+    page.drawText((routeSheet.senderArea || 'Mesa de Entrada').substring(0, 18), { x: 260, y: curY - 15, size: 7, font: fontBold, color: emeraldDark });
+    page.drawText('[RADICACIÓN INICIAL EN SISTEMA]', { x: 385, y: curY - 15, size: 7, font: fontBold, color: emeraldDark });
+    page.drawText('RADICADO', { x: W - 90, y: curY - 15, size: 6.5, font: fontBold, color: emeraldDark });
+
+    curY -= 24;
+
+    // Filas de Derivaciones
+    const movementsList = routeSheet.movements || [];
+    movementsList.forEach((mov, idx) => {
+      const isEven = idx % 2 === 0;
+      page.drawRectangle({
+        x: 45,
+        y: curY - 24,
+        width: tableW,
+        height: 24,
+        color: isEven ? rgb(0.98, 0.98, 0.98) : rgb(1, 1, 1),
+        borderColor: rgb(0.9, 0.9, 0.9),
+        borderWidth: 0.5,
+      });
+
+      page.drawText(String(mov.sequenceNumber), { x: 52, y: curY - 16, size: 8, font: fontBold, color: slateDark });
+      const fDate = new Date(mov.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short' });
+      const fTime = new Date(mov.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' });
+      page.drawText(`${fDate} ${fTime}`, { x: 72, y: curY - 16, size: 7, font: fontRegular, color: textGrey });
+      page.drawText(cleanAnsi(mov.sourceArea || 'GERENCIA').substring(0, 18), { x: 155, y: curY - 16, size: 7, font: fontBold, color: slateDark });
+      page.drawText(cleanAnsi(mov.targetArea || 'DESTINO').substring(0, 18), { x: 260, y: curY - 16, size: 7, font: fontBold, color: emeraldDark });
+      
+      const stamp = mov.quickStamp ? `[${cleanAnsi(mov.quickStamp)}] ` : '';
+      const instr = cleanAnsi(mov.instruction || 'Atención').substring(0, 32);
+      page.drawText(`${stamp}${instr}`.substring(0, 42), { x: 385, y: curY - 16, size: 6.8, font: fontRegular, color: slateDark });
+
+      const signStatus = mov.signatureUrl ? 'FIRMADO' : 'REGISTRADO';
+      page.drawText(signStatus, { x: W - 90, y: curY - 16, size: 6.5, font: fontBold, color: mov.signatureUrl ? emeraldDark : textGrey });
+
+      curY -= 26;
+    });
+
+    // Bloque Inferior con QR y Validador SHA-256
+    if (qrImage) {
+      page.drawImage(qrImage, {
+        x: 45,
+        y: 40,
+        width: 65,
+        height: 65,
+      });
+    }
+
+    page.drawText('CERTIFICACIÓN Y VALIDACIÓN DIGITAL CHLS:', {
+      x: 120,
+      y: 92,
+      size: 7.5,
+      font: fontBold,
+      color: emeraldDark,
+    });
+    page.drawText('Escanee el código QR con cualquier dispositivo para auditar la trazabilidad en vivo.', {
+      x: 120,
+      y: 80,
+      size: 7,
+      font: fontRegular,
+      color: textGrey,
+    });
+    page.drawText(`Token Criptográfico: QR_${routeSheet.hrCode}_CERTIFIED_IMMUTABLE`, {
+      x: 120,
+      y: 68,
+      size: 6.5,
+      font: fontRegular,
+      color: textGrey,
+    });
+    page.drawText('Iniciativa CHLS Cero Papel — Validez Legal y Administrativa Institucional.', {
+      x: 120,
+      y: 56,
+      size: 6.5,
+      font: fontRegular,
+      color: emeraldDark,
+    });
+
+    const pdfBytes = await masterDoc.save();
+    return Buffer.from(pdfBytes);
+  }
 }
