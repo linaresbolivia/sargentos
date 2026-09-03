@@ -33,7 +33,7 @@ export const MergeRouteSheetsModal: React.FC<MergeRouteSheetsModalProps> = ({
     (item) =>
       item.id !== targetItem.id &&
       item.status !== 'ANULADO' &&
-      !item.currentArea.startsWith('FUSIONADO EN')
+      !item.currentArea?.startsWith('FUSIONADO EN')
   );
 
   const filteredCandidates = candidateItems.filter((item) => {

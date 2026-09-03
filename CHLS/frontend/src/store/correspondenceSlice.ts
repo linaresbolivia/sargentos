@@ -147,7 +147,7 @@ export const addMovement = createAsyncThunk(
   async ({ routeSheetId, data }: { routeSheetId: string; data: any }, { rejectWithValue }) => {
     try {
       const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/movements`, data);
-      return response.data.data; // { movement, routeSheet }
+      return response.data.data?.routeSheet || response.data.data;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Error al registrar instrucción');
     }
@@ -196,7 +196,11 @@ export const analyzeTextWithAi = createAsyncThunk(
 export const uploadRouteSheetDocuments = createAsyncThunk(
   'correspondence/uploadDocuments',
   async (
-    { routeSheetId, files }: { routeSheetId: string; files: File[] },
+    {
+      routeSheetId,
+      files,
+      isDerivation,
+    }: { routeSheetId: string; files: File[]; isDerivation?: boolean },
     { dispatch, rejectWithValue }
   ) => {
     try {
@@ -204,9 +208,12 @@ export const uploadRouteSheetDocuments = createAsyncThunk(
       files.forEach((file) => {
         formData.append('files', file);
       });
+      if (isDerivation) {
+        formData.append('isDerivation', 'true');
+      }
 
       const response = await api.post(
-        `/correspondence/route-sheets/${routeSheetId}/documents`,
+        `/correspondence/route-sheets/${routeSheetId}/documents${isDerivation ? '?isDerivation=true' : ''}`,
         formData,
         {
           headers: {
@@ -411,10 +418,11 @@ export const correspondenceSlice = createSlice({
     // addMovement
     builder
       .addCase(addMovement.fulfilled, (state, action) => {
-        state.selectedItem = action.payload;
-        const index = state.items.findIndex((i) => i.id === action.payload.id);
-        if (index !== -1) {
-          state.items[index] = action.payload;
+        const hr = (action.payload as any)?.routeSheet || action.payload;
+        state.selectedItem = hr;
+        const index = state.items.findIndex((i) => i.id === hr?.id);
+        if (index !== -1 && hr) {
+          state.items[index] = hr;
         }
       });
 

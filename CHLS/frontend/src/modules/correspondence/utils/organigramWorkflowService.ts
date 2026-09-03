@@ -766,4 +766,64 @@ export function getDocumentFullUrl(fileUrl?: string | null): string {
     : `http://${window.location.hostname}:5000`;
   const cleanPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
   return `${baseUrl}${cleanPath}`;
+}/**
+ * Detecta automáticamente el nodo del organigrama que corresponde al usuario autenticado (currentUser).
+ * Realiza coincidencia por email, coincidencia por nombre de titular (manager) o por cargo/rol (title).
+ */
+export function getOrganigramNodeForUser(
+  user?: any,
+  workflow?: CorrespondenceWorkflow | null
+): WorkflowNode | undefined {
+  if (!user) return undefined;
+  const activeNodes = (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
+
+  const email = (user.email || '').toLowerCase().trim();
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+  const normalize = (str: string) =>
+    (str || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b(ING\.|LIC\.|DR\.|DRA\.|ARQ\.|ABG\.)\s*/gi, '')
+      .trim();
+
+  const uName = normalize(fullName);
+  const uDept = normalize(user.area || user.department || '');
+
+  // 1. Coincidencia por correo electrónico oficial
+  if (email) {
+    const byEmail = activeNodes.find((n) => (n.email || '').toLowerCase().trim() === email);
+    if (byEmail) return byEmail;
+  }
+
+  // 2. Coincidencia exacta o por inclusión con el Titular / Manager del nodo
+  if (uName) {
+    const byManager = activeNodes.find((n) => {
+      const m = normalize(n.manager || '');
+      return m && (m === uName || m.includes(uName) || uName.includes(m));
+    });
+    if (byManager) return byManager;
+  }
+
+  // 3. Coincidencia por Área o Departamento del usuario
+  if (uDept) {
+    const byDept = activeNodes.find((n) => {
+      const t = normalize(n.title);
+      const k = normalize(n.areaKey || '');
+      return t === uDept || k === uDept || isSameArea(t, uDept);
+    });
+    if (byDept) return byDept;
+  }
+
+  // 4. Coincidencia por roles del usuario
+  if (Array.isArray(user.roles)) {
+    for (const r of user.roles) {
+      const roleName = normalize(typeof r === 'string' ? r : r.name || '');
+      const byRole = activeNodes.find((n) => isSameArea(n.title, roleName));
+      if (byRole) return byRole;
+    }
+  }
+
+  // Si es SUPER_ADMIN o ADMIN general, por defecto es Gerencia General
+  return activeNodes.find((n) => n.id === 'node-gerencia-general') || activeNodes[0];
 }

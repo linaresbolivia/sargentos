@@ -114,8 +114,25 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      setMovementFiles((prev) => [...prev, ...newFiles]);
+      const selectedList = Array.from(e.target.files);
+      const invalidFiles = selectedList.filter(
+        (file) => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')
+      );
+      const validPdfFiles = selectedList.filter(
+        (file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
+      );
+
+      if (invalidFiles.length > 0) {
+        toast.error(
+          `En las derivaciones solo se admiten documentos en formato PDF (.pdf). Se omitieron ${invalidFiles.length} archivo(s) no válidos.`,
+          { duration: 5000, icon: '📄' }
+        );
+      }
+
+      if (validPdfFiles.length > 0) {
+        setMovementFiles((prev) => [...prev, ...validPdfFiles]);
+      }
+      e.target.value = '';
     }
   };
 
@@ -133,6 +150,14 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
 
     if (!targetArea.trim() || organigramInfo.recommendedNodes.length === 0) {
       toast.error('No se puede derivar: este despacho no tiene conexiones autorizadas en el Organigrama.');
+      return;
+    }
+
+    const nonPdfFiles = movementFiles.filter(
+      (file) => file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')
+    );
+    if (nonPdfFiles.length > 0) {
+      toast.error('En las derivaciones todos los documentos adjuntos deben ser estrictamente en formato PDF (.pdf).');
       return;
     }
 
@@ -157,14 +182,15 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       );
 
       if (addMovement.fulfilled.match(action)) {
-        // Upload documents attached to this movement/route sheet
+        // Upload documents attached to this movement/route sheet (strictly PDF)
         if (movementFiles.length > 0) {
-          toast.loading('Subiendo y digitalizando documentos adjuntos...', { id: toastId });
+          toast.loading('Subiendo y digitalizando documentos adjuntos en PDF...', { id: toastId });
           try {
             await dispatch(
               uploadRouteSheetDocuments({
                 routeSheetId: item.id,
                 files: movementFiles,
+                isDerivation: true,
               })
             );
           } catch {
@@ -496,22 +522,25 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                       <Paperclip className="w-3.5 h-3.5 text-brand-gold" />
                       <span>Adjuntar Documento Digitalizado de Respuesta / Informe</span>
                     </label>
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold">
-                      Opcional
+                    <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/30">
+                      Solo PDF
                     </span>
                   </div>
 
-                  <label className="border-2 border-dashed border-emerald-500/40 hover:border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 p-3 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all text-center group">
+                  <label className="border-2 border-dashed border-emerald-500/40 hover:border-emerald-500 bg-emerald-500/5 hover:bg-emerald-500/10 p-3.5 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all text-center group">
                     <input
                       type="file"
                       multiple
-                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                      accept=".pdf,application/pdf"
                       onChange={handleFileChange}
                       className="hidden"
                     />
                     <UploadCloud className="w-5 h-5 text-emerald-600 dark:text-brand-gold mb-0.5 group-hover:scale-110 transition-transform" />
                     <span className="text-xs font-bold text-slate-800 dark:text-gray-200">
-                      Adjuntar Informe, Dictamen o Comprobante en PDF / Imagen
+                      Adjuntar Informe, Dictamen o Comprobante (Exclusivo formato PDF)
+                    </span>
+                    <span className="text-[10.5px] text-slate-500 dark:text-slate-400 mt-0.5">
+                      En las derivaciones únicamente se admiten archivos .pdf
                     </span>
                   </label>
 

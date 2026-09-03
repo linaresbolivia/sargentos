@@ -320,6 +320,25 @@ export class CorrespondenceController {
         });
       }
 
+      // Validación estricta: Solo en derivaciones los adjuntos deben ser PDF
+      const isDerivation = req.query.isDerivation === 'true' || req.body?.isDerivation === 'true';
+      if (isDerivation) {
+        const nonPdf = files.find(
+          (f) => f.mimetype !== 'application/pdf' && !f.originalname.toLowerCase().endsWith('.pdf')
+        );
+        if (nonPdf) {
+          for (const file of files) {
+            try {
+              if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+            } catch {}
+          }
+          return res.status(400).json({
+            success: false,
+            message: 'En las derivaciones únicamente se permiten documentos en formato PDF (.pdf).',
+          });
+        }
+      }
+
       const createdDocs = [];
 
       for (const file of files) {

@@ -30,7 +30,7 @@ import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
-import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES } from '../utils/organigramWorkflowService';
+import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
 
 interface NewRouteSheetModalProps {
   isOpen: boolean;
@@ -106,20 +106,23 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
     return (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
   }, [workflow]);
 
-  // Despacho que emite el proveído y deriva (por defecto el usuario logueado / despacho activo)
+  // Detectar automáticamente el nodo oficial del usuario autenticado en el Organigrama
+  const userNode = useMemo(() => {
+    return getOrganigramNodeForUser(currentUser, workflow);
+  }, [currentUser, workflow]);
+
+  // Despacho que emite el proveído y deriva (fijado por defecto al cargo del usuario logueado)
   const [originDispatch, setOriginDispatch] = useState<string>('');
 
   useEffect(() => {
     if (isOpen && rawNodes && rawNodes.length > 0) {
-      if (!originDispatch || !rawNodes.some(n => (n.areaKey || n.title).toUpperCase() === originDispatch.toUpperCase())) {
-        const preferred = defaultOriginArea || (currentUser as any)?.area || (currentUser as any)?.department || 'GERENCIA GENERAL';
-        const matched = rawNodes.find(n => (n.title || '').toUpperCase() === preferred.toUpperCase() || (n.areaKey || '').toUpperCase() === preferred.toUpperCase()) || rawNodes[0];
-        setOriginDispatch(matched.title);
-      }
+      const preferred = defaultOriginArea || userNode?.title || (currentUser as any)?.area || (currentUser as any)?.department || 'GERENCIA GENERAL';
+      const matched = rawNodes.find(n => (n.title || '').toUpperCase() === preferred.toUpperCase() || (n.areaKey || '').toUpperCase() === preferred.toUpperCase()) || rawNodes[0];
+      setOriginDispatch(matched.title);
     }
-  }, [isOpen, rawNodes, defaultOriginArea, currentUser, originDispatch]);
+  }, [isOpen, rawNodes, defaultOriginArea, userNode, currentUser]);
 
-  const effectiveSourceArea = originDispatch || defaultOriginArea || 'GERENCIA GENERAL';
+  const effectiveSourceArea = originDispatch || userNode?.title || defaultOriginArea || 'GERENCIA GENERAL';
 
   // Compute recommended destinations from active organigram & workflow rules
   const { sourceNode, recommendedNodes, allNodes } = useMemo(() => {
@@ -710,32 +713,6 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                 {hasInitialInstruction ? (
                   <div className="space-y-4">
-                    
-                    {/* Selector del Despacho que Emite el Proveído & Deriva */}
-                    <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <Building2 className="w-4 h-4 text-brand-gold shrink-0" />
-                        <div>
-                          <span className="text-[10px] font-black uppercase text-emerald-800 dark:text-emerald-400 block leading-tight">
-                            Despacho que Emite el Proveído & Deriva:
-                          </span>
-                          <span className="text-xs font-black text-slate-900 dark:text-white">
-                            {sourceNode?.title || effectiveSourceArea} {sourceNode?.manager ? `— ${sourceNode.manager}` : ''}
-                          </span>
-                        </div>
-                      </div>
-                      <select
-                        value={originDispatch}
-                        onChange={(e) => setOriginDispatch(e.target.value)}
-                        className="bg-white dark:bg-[#07110c] border border-emerald-500/40 rounded-xl px-3 py-1.5 text-xs font-black text-emerald-700 dark:text-emerald-300 outline-none cursor-pointer"
-                      >
-                        {allNodes.map((n) => (
-                          <option key={n.id} value={n.title} className="bg-slate-900 text-white">
-                            {n.title}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
                     
                     {/* Alerta en caso de no tener conexiones autorizadas en el Organigrama */}
                     {recommendedNodes.length === 0 && (

@@ -70,7 +70,7 @@ import BackButton from '@shared/components/BackButton';
 import { GatehouseInvoiceReceiptModal } from '../../gatehouse/components/GatehouseInvoiceReceiptModal';
 import io from 'socket.io-client';
 
-import { DEFAULT_ORGANIGRAM_NODES, isSameArea } from '../utils/organigramWorkflowService';
+import { DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
 
 // Generar lista de despachos oficiales a partir del Organigrama Institucional CHLS
 const OFFICIAL_DEPARTMENTS = DEFAULT_ORGANIGRAM_NODES.map((node) => ({
@@ -100,21 +100,18 @@ export const CorrespondenceHub: React.FC = () => {
   }, [workflow]);
 
   const defaultPerspective = useMemo(() => {
-    if (currentUser) {
-      const name = `${currentUser.firstName || ''} ${currentUser.lastName || ''} ${currentUser.email || ''}`.toUpperCase();
-      if (name.includes('GEREN')) return 'GERENCIA GENERAL';
-      if (name.includes('SECRE')) return 'SECRETARÍA';
-    }
-    return officialDepartments[0]?.id || 'GERENCIA GENERAL';
-  }, [currentUser, officialDepartments]);
+    const userNode = getOrganigramNodeForUser(currentUser, workflow);
+    return userNode?.title || officialDepartments[0]?.id || 'GERENCIA GENERAL';
+  }, [currentUser, workflow, officialDepartments]);
 
   const [currentPerspective, setCurrentPerspective] = useState<string>(() => defaultPerspective);
 
   useEffect(() => {
-    if (defaultPerspective && (!currentPerspective || currentPerspective === 'SECRETARIA_GENERAL')) {
+    if (defaultPerspective) {
       setCurrentPerspective(defaultPerspective);
     }
   }, [defaultPerspective]);
+
   const [slaFilter, setSlaFilter] = useState<'ALL' | 'OVERDUE' | 'WARNING' | 'ON_TIME'>('ALL');
   const [readFilter, setReadFilter] = useState<'ALL' | 'UNREAD' | 'READ'>('ALL');
   const [viewMode, setViewMode] = useState<'TABLE' | 'GRID'>('TABLE');
@@ -1092,7 +1089,17 @@ export const CorrespondenceHub: React.FC = () => {
                             {item.cite && <span className="bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">CITE: {item.cite}</span>}
                             <span>• {item.pageCount || 1} fojas</span>
                             {item.documents && item.documents.length > 0 && (
-                              <span className="text-brand-gold font-bold">📎 {item.documents.length} adjunto(s)</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenItemDetail(item);
+                                }}
+                                title="Haga clic para ver los documentos digitalizados"
+                                className="inline-flex items-center gap-1 text-brand-gold font-bold hover:underline cursor-pointer bg-brand-gold/10 px-2 py-0.5 rounded-md border border-brand-gold/30"
+                              >
+                                <span>📎 {item.documents.length} adjunto(s)</span>
+                              </button>
                             )}
                           </div>
                         </td>
@@ -1133,6 +1140,16 @@ export const CorrespondenceHub: React.FC = () => {
                             >
                               <Eye className="w-4 h-4" />
                             </button>
+                            {item.documents && item.documents.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenItemDetail(item)}
+                                title={`Ver y descargar ${item.documents.length} adjunto(s)`}
+                                className="p-2 rounded-xl bg-brand-gold/20 hover:bg-brand-gold/35 text-amber-800 dark:text-brand-gold border border-brand-gold/40 transition-all cursor-pointer shadow-2xs hover:scale-105"
+                              >
+                                <Paperclip className="w-4 h-4" />
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={(e) => toggleItemReadStatus(item, e)}

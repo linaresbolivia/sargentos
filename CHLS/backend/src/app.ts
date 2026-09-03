@@ -25,7 +25,11 @@ const correspondenceController = new CorrespondenceController();
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 // Security Middlewares
-app.use(helmet());
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 app.use(
   cors({
     origin: true,

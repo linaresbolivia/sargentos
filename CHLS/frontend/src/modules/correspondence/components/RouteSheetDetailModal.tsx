@@ -38,22 +38,29 @@ import {
   FileSpreadsheet,
   Layers,
   Bell,
+  Eye,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
 import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
 
 interface RouteSheetDetailModalProps {
-  item: RouteSheetItem | null;
+  isOpen: boolean;
   onClose: () => void;
+  item: RouteSheetItem | null;
 }
 
-export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ item, onClose }) => {
+export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
+  isOpen,
+  onClose,
+  item,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
   const selectedReduxItem = useSelector((state: RootState) => state.correspondence.selectedItem);
   
   // Usar la versión más reciente en Redux si coincide el ID para actualización reactiva en vivo
-  const currentItem = (selectedReduxItem && selectedReduxItem.id === item?.id) ? selectedReduxItem : item;
+  const rawItem = (selectedReduxItem && (selectedReduxItem.id === item?.id || (selectedReduxItem as any).routeSheet?.id === item?.id)) ? selectedReduxItem : item;
+  const currentItem: RouteSheetItem | null = (rawItem as any)?.routeSheet || rawItem;
 
   const [activeTab, setActiveTab] = useState<'TIMELINE' | 'MOVEMENTS'>('TIMELINE');
   const [showPrintModal, setShowPrintModal] = useState(false);
@@ -62,12 +69,16 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
   const [showArchiveModal, setShowArchiveModal] = useState(false);
   const [showSlaModal, setShowSlaModal] = useState(false);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string } | null>(null);
 
   if (!currentItem) return null;
 
   const movements = currentItem.movements || [];
   const documents = currentItem.documents || [];
-  const isFusedChild = currentItem.currentArea.startsWith('FUSIONADO EN') || currentItem.aiSummary?.startsWith('FUSIONADO');
+  const isFusedChild = Boolean(
+    currentItem.currentArea?.startsWith('FUSIONADO EN') ||
+    currentItem.aiSummary?.startsWith('FUSIONADO')
+  );
 
   const handleDirectUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -446,16 +457,40 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                           </div>
                         </div>
 
-                        {/* Download / View Button */}
-                        <a
-                          href={getDocumentFullUrl(doc.fileUrl)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Abrir / Descargar documento original"
-                          className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-emerald-500/20 text-slate-600 dark:text-gray-300 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors shrink-0"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
+                        {/* Botones Explícitos: Ver y Descargar */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewDoc({ fileName: doc.fileName, fileUrl: doc.fileUrl, fileType: doc.fileType })}
+                            title="Visualizar documento en pantalla"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Ver</span>
+                          </button>
+
+                          <a
+                            href={getDocumentFullUrl(doc.fileUrl)}
+                            download={doc.fileName}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Descargar archivo original a tu equipo"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/10 hover:bg-brand-gold/20 text-slate-700 dark:text-gray-200 hover:text-brand-gold border border-slate-200 dark:border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            <span>Descargar</span>
+                          </a>
+
+                          <a
+                            href={getDocumentFullUrl(doc.fileUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Abrir en pestaña nueva"
+                            className="p-1.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-slate-200 text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        </div>
                       </div>
                     );
                   })}
@@ -511,7 +546,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                           </div>
 
                           <div className="pl-8 space-y-2">
-                            {mov.instruction.startsWith('[EXPEDIENTE ACUMULADO') ? (
+                            {mov.instruction?.startsWith('[EXPEDIENTE ACUMULADO') ? (
                               <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200">
                                 <span className="text-[10px] font-black tracking-wider uppercase block text-amber-600 dark:text-brand-gold mb-1">
                                   {mov.instruction.split('\n')[0]}
@@ -522,11 +557,11 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
                               </div>
                             ) : (
                               <p className="text-xs text-slate-700 dark:text-gray-300 font-medium leading-relaxed whitespace-pre-wrap">
-                                {mov.instruction.split('\n[C.C.:')[0]}
+                                {mov.instruction?.split('\n[C.C.:')[0] || ''}
                               </p>
                             )}
 
-                            {mov.instruction.includes('[C.C.:') && (
+                            {mov.instruction?.includes('[C.C.:') && (
                               <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-brand-gold/10 border border-brand-gold/25 text-brand-gold text-[11px] font-bold">
                                 <Copy className="w-3.5 h-3.5 text-brand-gold shrink-0" />
                                 <span>Con Copia a: {mov.instruction.split('[C.C.: ')[1]?.replace(']', '')}</span>
@@ -626,6 +661,83 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({ it
           onClose={() => setShowSlaModal(false)}
           item={currentItem}
         />
+      )}
+
+      {/* Submodal Visor de Documentos Digitalizados */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#07110c] border border-emerald-500/40 w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+            {/* Header del Visor */}
+            <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-5 h-5 text-brand-gold shrink-0" />
+                <span className="font-black text-sm truncate">{previewDoc.fileName}</span>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={getDocumentFullUrl(previewDoc.fileUrl)}
+                  download={previewDoc.fileName}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-gold text-black text-xs font-black hover:scale-105 transition-all shadow-md cursor-pointer"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar</span>
+                </a>
+                <a
+                  href={getDocumentFullUrl(previewDoc.fileUrl)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors"
+                  title="Abrir en pestaña completa"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-red-500 text-white transition-colors cursor-pointer"
+                  title="Cerrar visor"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Contenido del Documento */}
+            <div className="flex-1 bg-slate-100 dark:bg-black/90 p-2 sm:p-4 overflow-auto flex items-center justify-center">
+              {previewDoc.fileName.toLowerCase().endsWith('.pdf') || previewDoc.fileType === 'application/pdf' ? (
+                <iframe
+                  src={getDocumentFullUrl(previewDoc.fileUrl)}
+                  title={previewDoc.fileName}
+                  className="w-full h-full rounded-2xl border border-slate-300 dark:border-white/10 bg-white"
+                />
+              ) : previewDoc.fileName.toLowerCase().match(/\.(jpg|jpeg|png|webp|gif|svg)$/i) ? (
+                <img
+                  src={getDocumentFullUrl(previewDoc.fileUrl)}
+                  alt={previewDoc.fileName}
+                  className="max-h-full max-w-full object-contain rounded-xl shadow-lg border border-slate-300 dark:border-white/10"
+                />
+              ) : (
+                <div className="text-center p-8 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-white/10 max-w-md">
+                  <Paperclip className="w-12 h-12 text-brand-gold mx-auto mb-3" />
+                  <h4 className="text-sm font-black text-slate-900 dark:text-white mb-1">{previewDoc.fileName}</h4>
+                  <p className="text-xs text-slate-500 dark:text-gray-400 mb-4">
+                    Este tipo de archivo requiere descargarse para visualizarse en su equipo.
+                  </p>
+                  <a
+                    href={getDocumentFullUrl(previewDoc.fileUrl)}
+                    download={previewDoc.fileName}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-brand-gold text-black font-black text-xs shadow-lg hover:scale-105 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Descargar Archivo Ahora</span>
+                  </a>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </>
   );
