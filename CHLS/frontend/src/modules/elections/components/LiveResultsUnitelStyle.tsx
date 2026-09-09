@@ -1,5 +1,12 @@
 import React from 'react';
-import { CandidateDto, ElectionStatsDto, formatNameInTwoLines } from '../types/election.types';
+import {
+  CandidateDto,
+  ElectionStatsDto,
+  formatNameInTwoLines,
+  CANDIDATE_PHOTO_MAP,
+  isSpecialOrganCandidate,
+  isDirectorioCandidate,
+} from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
 import { Award, BarChart3, CheckSquare, Flame, Radio, Users } from 'lucide-react';
 
@@ -11,36 +18,23 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
   const [activeCategory, setActiveCategory] = React.useState<'DIRECTORIO' | 'COMITE_Y_TRIBUNAL' | 'TODOS'>('DIRECTORIO');
 
   const filteredCandidates = React.useMemo(() => {
+    const list = stats?.candidates || [];
     if (activeCategory === 'DIRECTORIO') {
-      return stats.candidates.filter(
-        (c) => c.position === 'DIRECTORIO' || (!c.position && c.orderIndex <= 9)
-      );
+      return list.filter(isDirectorioCandidate);
     }
     if (activeCategory === 'COMITE_Y_TRIBUNAL') {
-      return stats.candidates
-        .filter(
-          (c) =>
-            c.position === 'COMITÉ ELECTORAL' ||
-            c.position === 'TRIBUNAL DE HONOR' ||
-            c.orderIndex > 9
-        )
+      return list
+        .filter(isSpecialOrganCandidate)
         .sort((a, b) => a.orderIndex - b.orderIndex);
     }
-    // Para 'TODOS': Directorio primero (ordenados por votos), y SIEMPRE al final Comité Electoral (#10) y Tribunal de Honor (#11)
-    const directorio = stats.candidates.filter(
-      (c) => c.position === 'DIRECTORIO' || (!c.position && c.orderIndex <= 9)
-    );
-    const especiales = stats.candidates
-      .filter(
-        (c) =>
-          c.position === 'COMITÉ ELECTORAL' ||
-          c.position === 'TRIBUNAL DE HONOR' ||
-          c.orderIndex > 9
-      )
+    // Para 'TODOS': Directorio primero (ordenados por votos/ranking), y al final Comité Electoral y Tribunal de Honor
+    const directorio = list.filter(isDirectorioCandidate);
+    const especiales = list
+      .filter(isSpecialOrganCandidate)
       .sort((a, b) => a.orderIndex - b.orderIndex);
 
     return [...directorio, ...especiales];
-  }, [stats.candidates, activeCategory]);
+  }, [stats?.candidates, activeCategory]);
 
   const candidates = filteredCandidates;
   const isTwoCandidates = candidates.length <= 2;
@@ -74,7 +68,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
   ];
 
   return (
-    <div className="w-full min-h-[680px] p-6 lg:p-8 rounded-3xl bg-gradient-to-b from-[#060a0f] via-[#08121a] to-[#020508] border-2 border-[#c5a059]/40 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
+    <div className="w-full min-h-[680px] p-6 lg:p-8 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-[#c5a059]/50 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
       {/* Studio lighting ceiling rig visual effect */}
       <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-white/10 to-transparent pointer-events-none flex justify-around items-center px-10">
         {[...Array(12)].map((_, i) => (
@@ -212,16 +206,22 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                 <span className="text-[10px] uppercase font-black tracking-widest opacity-90 mt-1">
                   {cand.votesCount === 1 ? 'VOTO' : 'VOTOS'}
                 </span>
-                <span className="text-[8px] uppercase font-bold tracking-wider opacity-75 mt-0.5">
-                  {cand.position || 'DIRECTORIO'}
-                </span>
+                {cand.orderIndex === 10 || (cand.position || '').toUpperCase().includes('COMIT') ? (
+                  <span className="text-[8px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-emerald-300">
+                    COMITÉ ELECTORAL
+                  </span>
+                ) : cand.orderIndex === 11 || (cand.position || '').toUpperCase().includes('TRIBUNAL') ? (
+                  <span className="text-[8px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-yellow-300">
+                    TRIBUNAL DE HONOR
+                  </span>
+                ) : null}
               </div>
 
               {/* Candidate Photo Frame */}
               <div className="w-full h-32 sm:h-40 bg-slate-900 overflow-hidden relative">
-                {cand.photoUrl ? (
+                {cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex] ? (
                   <img
-                    src={cand.photoUrl}
+                    src={cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex]}
                     alt={cand.fullName}
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                   />

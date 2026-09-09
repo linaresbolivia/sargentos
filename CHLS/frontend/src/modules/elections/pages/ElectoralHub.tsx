@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
 import toast from 'react-hot-toast';
@@ -17,7 +17,9 @@ import {
   CheckCircle2,
   RotateCcw,
   AlertTriangle,
-  RefreshCw
+  RefreshCw,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateDto, ElectionStatsDto, ResultsFormat } from '../types/election.types';
@@ -52,6 +54,10 @@ export const ElectoralHub: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [recentlyVotedCandidateIds, setRecentlyVotedCandidateIds] = useState<string[]>([]);
   const [lastSavedInfo, setLastSavedInfo] = useState<LastSavedInfo | null>(null);
+  const [isMuted, setIsMuted] = useState<boolean>(() => {
+    return localStorage.getItem('chls_elections_muted') === 'true';
+  });
+  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
   // Play subtle audio click feedback using Web Audio API
   const playClickSound = useCallback((frequency = 600, duration = 0.05, typeWave: OscillatorType = 'sine') => {
@@ -74,6 +80,7 @@ export const ElectoralHub: React.FC = () => {
 
   // Play celebratory chime upon saving ballot
   const playSuccessChime = useCallback(() => {
+    if (isMuted) return;
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const notes = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
@@ -92,7 +99,77 @@ export const ElectoralHub: React.FC = () => {
     } catch {
       // Audio context fallback
     }
-  }, []);
+  }, [isMuted]);
+
+  // Play grand broadcast institutional fanfare upon entering the elections hub
+  // Play solely the official voice audio without any background effect sounds
+  const playIntroAudio = useCallback(() => {
+    if (isMuted) return;
+
+    try {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current.currentTime = 0;
+      }
+      const voiceAudio = new Audio('/audio/intro_elections.mp3');
+      voiceAudio.volume = 0.9;
+      audioPlayerRef.current = voiceAudio;
+
+      const playPromise = voiceAudio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay was blocked; it will wait for the first click/keypress
+        });
+      }
+    } catch {
+      // Audio playback failed silently
+    }
+  }, [isMuted]);
+
+  // Trigger intro voice audio upon entering the voting module
+  useEffect(() => {
+    let hasPlayed = false;
+    const tryPlay = () => {
+      if (hasPlayed) return;
+      hasPlayed = true;
+      playIntroAudio();
+      window.removeEventListener('click', tryPlay);
+      window.removeEventListener('keydown', tryPlay);
+    };
+
+    // Attempt direct play immediately on entry
+    tryPlay();
+
+    // Fallback: If browser autoplay policy required a user gesture, play on first click/key
+    window.addEventListener('click', tryPlay);
+    window.addEventListener('keydown', tryPlay);
+
+    return () => {
+      window.removeEventListener('click', tryPlay);
+      window.removeEventListener('keydown', tryPlay);
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+    };
+  }, [playIntroAudio]);
+
+  const toggleAudio = () => {
+    setIsMuted((prev) => {
+      const next = !prev;
+      localStorage.setItem('chls_elections_muted', String(next));
+      if (!next) {
+        toast('Audio activado', { icon: '🔊' });
+        // Replay voice audio upon unmuting
+        setTimeout(() => playIntroAudio(), 50);
+      } else {
+        if (audioPlayerRef.current) {
+          audioPlayerRef.current.pause();
+        }
+        toast('Audio silenciado', { icon: '🔇' });
+      }
+      return next;
+    });
+  };
 
   // 1. Fetch initial election state
   const fetchElectionData = async (silent = false) => {
@@ -116,13 +193,14 @@ export const ElectoralHub: React.FC = () => {
     fetchElectionData();
   }, []);
 
-  // 2. High-speed Background Polling as ultra-reliable fallback
+  // 2. Fallback polling only when WebSocket is disconnected
   useEffect(() => {
+    if (isWsConnected) return;
     const interval = setInterval(() => {
       fetchElectionData(true);
-    }, 1500);
+    }, 10000);
     return () => clearInterval(interval);
-  }, []);
+  }, [isWsConnected]);
 
   // 3. Connect to Socket.io for instantaneous real-time multi-screen sync
   useEffect(() => {
@@ -205,20 +283,69 @@ export const ElectoralHub: React.FC = () => {
     });
   };
 
-  // Register ballot
+  // Register ballot with INSTANT 0ms Optimistic UI Response
   const handleRegisterBallot = async (type: 'VALID' | 'BLANK' | 'NULL') => {
     if (type === 'VALID' && selectedCandidateIds.length === 0) {
       toast.error('Selecciona al menos un postulante o marca Voto en Blanco / Nulo.');
       return;
     }
+    if (isSubmitting) return;
 
+    const chosenCandidateIds = type === 'VALID' ? [...selectedCandidateIds] : [];
+    const chosenNames = candidates
+      .filter((c) => chosenCandidateIds.includes(c.id))
+      .map((c) => c.fullName);
+
+    // 1. RESPUESTA INSTANTÁNEA (0ms): Limpiar casillas, sonido y animación visual
+    playSuccessChime();
+    setSelectedCandidateIds([]);
+    setRecentlyVotedCandidateIds(chosenCandidateIds);
+    setTimeout(() => {
+      setRecentlyVotedCandidateIds([]);
+    }, 2500);
+
+    // Actualización optimista inmediata de estadísticas en memoria
+    setStats((prev) => {
+      if (!prev) return prev;
+      const nextTotal = prev.totalBallots + 1;
+      const nextValid = type === 'VALID' ? prev.validBallots + 1 : prev.validBallots;
+      const nextBlank = type === 'BLANK' ? prev.blankBallots + 1 : prev.blankBallots;
+      const nextNull = type === 'NULL' ? prev.nullBallots + 1 : prev.nullBallots;
+      const nextVotes = prev.totalVotesAccumulated + chosenCandidateIds.length;
+
+      const updatedCandidates = prev.candidates.map((cand) => {
+        if (chosenCandidateIds.includes(cand.id)) {
+          const newVotes = (cand.votesCount || 0) + 1;
+          return {
+            ...cand,
+            votesCount: newVotes,
+            votesPercentage: nextTotal > 0 ? Number(((newVotes / nextTotal) * 100).toFixed(1)) : 0,
+          };
+        } else {
+          return {
+            ...cand,
+            votesPercentage: nextTotal > 0 ? Number(((cand.votesCount / nextTotal) * 100).toFixed(1)) : 0,
+          };
+        }
+      });
+
+      return {
+        ...prev,
+        totalBallots: nextTotal,
+        validBallots: nextValid,
+        validPercentage: nextTotal > 0 ? Number(((nextValid / nextTotal) * 100).toFixed(1)) : 0,
+        blankBallots: nextBlank,
+        blankPercentage: nextTotal > 0 ? Number(((nextBlank / nextTotal) * 100).toFixed(1)) : 0,
+        nullBallots: nextNull,
+        nullPercentage: nextTotal > 0 ? Number(((nextNull / nextTotal) * 100).toFixed(1)) : 0,
+        totalVotesAccumulated: nextVotes,
+        candidates: updatedCandidates,
+      };
+    });
+
+    // 2. Persistir en base de datos en segundo plano
     try {
       setIsSubmitting(true);
-      const chosenCandidateIds = type === 'VALID' ? [...selectedCandidateIds] : [];
-      const chosenNames = candidates
-        .filter((c) => chosenCandidateIds.includes(c.id))
-        .map((c) => c.fullName);
-
       const payload = {
         electionId,
         ballotType: type,
@@ -228,7 +355,6 @@ export const ElectoralHub: React.FC = () => {
 
       const res = await axios.post('/api/elections/ballot', payload);
       if (res.data.success) {
-        playSuccessChime();
         setLastSavedInfo({
           ballotNumber: res.data.ballot.ballotNumber,
           type,
@@ -236,31 +362,12 @@ export const ElectoralHub: React.FC = () => {
           candidateNames: chosenNames,
           timestamp: Date.now(),
         });
-
-        setRecentlyVotedCandidateIds(chosenCandidateIds);
-        setTimeout(() => {
-          setRecentlyVotedCandidateIds([]);
-        }, 3500);
-
         setStats(res.data.stats);
         setCandidates(res.data.stats.candidates || []);
-        setSelectedCandidateIds([]);
-
-        toast.success(
-          `✓ Boleta #${res.data.ballot.ballotNumber} guardada • Resultados actualizados al instante`,
-          {
-            duration: 3000,
-            style: {
-              background: '#041c0e',
-              color: '#34d399',
-              border: '2px solid #059669',
-              fontWeight: 'bold',
-            },
-          }
-        );
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al registrar boleta.');
+      toast.error(err.response?.data?.message || 'Error al guardar boleta en el servidor.');
+      fetchElectionData(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -312,15 +419,16 @@ export const ElectoralHub: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans relative overflow-x-hidden selection:bg-brand-gold selection:text-black">
+    <div className="min-h-screen bg-gradient-to-br from-[#060e18] via-[#091524] to-[#03080e] text-slate-100 flex flex-col font-sans relative overflow-x-hidden selection:bg-brand-gold selection:text-black">
       {/* Background Subtle Ambient Lights */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 -left-40 w-[650px] h-[650px] bg-brand-gold/[0.08] rounded-full blur-[140px]" />
-        <div className="absolute top-1/4 -right-40 w-[700px] h-[700px] bg-emerald-500/[0.08] rounded-full blur-[160px]" />
+        <div className="absolute -top-40 -left-40 w-[700px] h-[700px] bg-blue-600/[0.08] rounded-full blur-[160px]" />
+        <div className="absolute top-1/4 -right-40 w-[750px] h-[750px] bg-emerald-500/[0.08] rounded-full blur-[170px]" />
+        <div className="absolute bottom-10 left-1/4 w-[600px] h-[600px] bg-brand-gold/[0.07] rounded-full blur-[180px]" />
       </div>
 
       {/* TOP UNIVERSAL SINGLE BAR: UNIFIES BRANDING, ÁNFORA STATS, OPERATOR ACTIONS & VIEW CONTROLS */}
-      <header className="sticky top-0 z-50 w-full bg-[#03140a]/95 backdrop-blur-xl border-b-2 border-brand-gold/40 shadow-2xl px-3 sm:px-6 py-2.5 transition-all">
+      <header className="sticky top-0 z-50 w-full bg-[#071322]/95 backdrop-blur-xl border-b-2 border-brand-gold/40 shadow-2xl px-3 sm:px-6 py-2.5 transition-all">
         <div className="w-full max-w-[1920px] mx-auto flex items-center justify-between gap-3 flex-wrap">
           
           {/* 1. BRANDING & CLUB INTELIGENTE (Requirement: Club Inteligente al lado del logo principal) */}
@@ -511,6 +619,19 @@ export const ElectoralHub: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Audio Toggle / Replay Button */}
+            <button
+              onClick={toggleAudio}
+              title={isMuted ? 'Activar audio (Silenciado actualmente)' : 'Audio institucional activo (Clic para silenciar o reproducir)'}
+              className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 ${
+                isMuted
+                  ? 'bg-rose-950/40 text-rose-300 border-rose-500/40 hover:bg-rose-900/60'
+                  : 'bg-white/5 hover:bg-white/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+              }`}
+            >
+              {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
+            </button>
 
             {/* Fullscreen Button */}
             <button

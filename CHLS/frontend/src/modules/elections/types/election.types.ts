@@ -54,3 +54,32 @@ export function formatNameInTwoLines(name: string): { line1: string; line2: stri
   const mid = Math.ceil(parts.length / 2);
   return { line1: parts.slice(0, mid).join(' '), line2: parts.slice(mid).join(' ') };
 }
+
+export const CANDIDATE_PHOTO_MAP: Record<number, string> = {
+  1: '/elections/karel_rivero.jpg',
+  2: '/elections/miguel_chavez.jpg',
+  3: '/elections/alvaro_mendoza.jpg',
+  4: '/elections/edwin_portocarrero.jpg',
+  5: '/elections/mauricio_galindo.jpg',
+  6: '/elections/ramiro_vega.jpg',
+  7: '/elections/marco_salinas.jpg',
+  8: '/elections/carlos_poma.jpg',
+  9: '/elections/emilio_barea.jpg',
+  10: '/elections/guido_perez.jpg',
+  11: '/elections/santiago_goitia.jpg',
+};
+
+export function isSpecialOrganCandidate(c: CandidateDto): boolean {
+  const pos = (c.position || '').toUpperCase();
+  return (
+    pos.includes('COMIT') ||
+    pos.includes('TRIBUNAL') ||
+    pos.includes('HONOR') ||
+    c.orderIndex >= 10
+  );
+}
+
+export function isDirectorioCandidate(c: CandidateDto): boolean {
+  return !isSpecialOrganCandidate(c);
+}
+

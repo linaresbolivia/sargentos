@@ -87,10 +87,13 @@ export class ElectionService {
       throw new Error('No se encontró ninguna elección configurada.');
     }
 
-    // Obtener todas las boletas registradas del ánfora
+    // Obtener campos indispensables para cómputo de alta velocidad
     const ballots = await this.prisma.electionBallot.findMany({
       where: { electionId: election.id },
-      orderBy: { ballotNumber: 'asc' },
+      select: {
+        ballotType: true,
+        selectedCandidateIds: true,
+      },
     });
 
     const totalBallots = ballots.length;
