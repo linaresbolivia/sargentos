@@ -44,7 +44,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
   const maxPct = Math.max(...candidates.map((c) => c.votesPercentage || 0), 10);
 
   return (
-    <div className="w-full flex flex-col items-center justify-between min-h-[680px] p-6 lg:p-8 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-brand-gold/50 shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden select-none">
+    <div className="w-full flex flex-col items-center justify-between min-h-[540px] p-4 sm:p-5 lg:p-6 pb-3 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-brand-gold/50 shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden select-none">
       {/* Background luxury club watermark - muy sutil y perdido en el fondo como marca de agua genuina */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.035] filter grayscale-[40%]">
         <CrestLogo size="xl" className="w-[580px] h-[680px]" />
@@ -57,12 +57,12 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
       <div className="absolute bottom-28 inset-x-8 h-16 bg-gradient-to-t from-emerald-500/10 via-cyan-500/5 to-transparent rounded-full blur-2xl pointer-events-none" />
 
       {/* Action Header: Category Switcher & Live Stats Counters */}
-      <div className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between border-b border-white/10 pb-4 gap-4">
+      <div className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between border-b border-white/10 pb-3 gap-3">
         {/* Category Switcher Buttons (DIRECTORIO 2026 vs COMITÉ ELECTORAL Y TRIBUNAL DE HONOR) */}
         <div className="flex items-center p-1.5 bg-black/85 rounded-2xl border-2 border-brand-gold/50 shadow-2xl backdrop-blur-md gap-2 flex-wrap justify-center md:justify-start">
           <button
             onClick={() => setActiveCategory('DIRECTORIO')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
               activeCategory === 'DIRECTORIO'
                 ? 'bg-gradient-to-r from-emerald-600 via-[#0a5c30] to-teal-700 text-white shadow-xl shadow-emerald-600/40 ring-2 ring-emerald-400 scale-[1.02]'
                 : 'text-gray-300 hover:text-white hover:bg-white/10'
@@ -74,7 +74,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
 
           <button
             onClick={() => setActiveCategory('COMITE_Y_TRIBUNAL')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
               activeCategory === 'COMITE_Y_TRIBUNAL'
                 ? 'bg-gradient-to-r from-amber-500 via-brand-gold to-yellow-500 text-black shadow-xl shadow-brand-gold/40 ring-2 ring-brand-gold scale-[1.02]'
                 : 'text-gray-300 hover:text-white hover:bg-white/10'
@@ -86,7 +86,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
 
           <button
             onClick={() => setActiveCategory('TODOS')}
-            className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
               activeCategory === 'TODOS'
                 ? 'bg-white/20 text-white border border-white/40 ring-1 ring-white/50'
                 : 'text-gray-400 hover:text-white hover:bg-white/5'
@@ -98,7 +98,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
 
         {/* Global Stats Counter Pills */}
         <div className="flex items-center gap-3">
-          <div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-brand-gold/50 text-center shadow-lg">
+          <div className="bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-brand-gold/50 text-center shadow-lg">
             <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
               Boletas en Ánfora
             </span>
@@ -107,7 +107,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
             </span>
           </div>
 
-          <div className="bg-black/50 px-3.5 py-2 rounded-2xl border border-white/10 text-center">
+          <div className="bg-black/50 px-3 py-1.5 rounded-2xl border border-white/10 text-center">
             <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">
               Votos Emitidos
             </span>
@@ -116,7 +116,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
             </span>
           </div>
 
-          <div className="bg-black/50 px-3.5 py-2 rounded-2xl border border-white/10 text-center hidden sm:block">
+          <div className="bg-black/50 px-3 py-1.5 rounded-2xl border border-white/10 text-center hidden sm:block">
             <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
               Blanco / Nulo
             </span>
@@ -128,14 +128,14 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
       </div>
 
       {/* Main 3D Columns Stage */}
-      <div className="relative z-10 w-full flex-1 flex items-end justify-center pt-14 pb-4 px-1 sm:px-2 overflow-x-auto min-h-[460px] scrollbar-thin scrollbar-thumb-brand-gold/30">
+      <div className="relative z-10 w-full flex-1 flex items-end justify-center pt-10 pb-2 px-1 sm:px-2 overflow-x-auto min-h-[400px] scrollbar-thin scrollbar-thumb-brand-gold/30">
         <div
           className={`flex items-end mx-auto ${
             isTwoCandidates
               ? 'gap-12 sm:gap-20 lg:gap-28'
               : isTodos
-              ? 'gap-1 sm:gap-1.5 md:gap-2 lg:gap-2.5 xl:gap-3'
-              : 'gap-3 sm:gap-4 lg:gap-5'
+              ? 'gap-1 sm:gap-1.5 md:gap-2'
+              : 'gap-2 sm:gap-2.5 md:gap-3 lg:gap-3.5'
           }`}
         >
         {candidates.map((cand, idx) => {
@@ -231,23 +231,23 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                   isTwoCandidates
                     ? 'w-48 sm:w-60 lg:w-72'
                     : isTodos
-                    ? 'w-[98px] sm:w-[110px] md:w-[118px] lg:w-[124px] xl:w-[130px]'
-                    : 'w-24 sm:w-28 lg:w-32 xl:w-36'
+                    ? 'w-[98px] sm:w-[110px] md:w-[118px] lg:w-[126px] xl:w-[132px]'
+                    : 'w-26 sm:w-28 md:w-30 lg:w-32 xl:w-34'
                 }`}
               >
               {/* 3D Column with top floating votes badge */}
               <div
                 className="w-full flex flex-col items-center justify-end relative transition-all duration-700 ease-out"
-                style={{ height: isTwoCandidates ? '340px' : isTodos ? '275px' : '300px' }}
+                style={{ height: isTwoCandidates ? '310px' : isTodos ? '230px' : '260px' }}
               >
                 {/* 3D Pillar Body */}
                 <div
                   className={`relative transition-all duration-700 ease-out flex flex-col justify-between ${
                     isTwoCandidates
-                      ? 'w-28 sm:w-36 lg:w-44'
+                      ? 'w-32 sm:w-40 lg:w-48'
                       : isTodos
-                      ? 'w-14 sm:w-16 md:w-18 lg:w-20 xl:w-22'
-                      : 'w-18 sm:w-22 lg:w-26 xl:w-28'
+                      ? 'w-14 sm:w-16 md:w-18 lg:w-20'
+                      : 'w-20 sm:w-22 md:w-24 lg:w-26'
                   }`}
                   style={{
                     height: `${heightPercent}%`,
@@ -255,22 +255,32 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     transformStyle: 'preserve-3d',
                   }}
                 >
-                  {/* ARRIBA: Cantidad de votos sobre la columna */}
-                  <div className={`absolute left-1/2 -translate-x-1/2 z-20 transition-transform duration-300 group-hover:scale-110 ${
-                    isTodos ? '-top-14' : '-top-16'
-                  }`}>
+                  {/* Flotando ENCIMA de la barra (bottom-full la ubica 100% arriba de la columna) */}
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 sm:mb-2 z-30 pointer-events-none transition-transform duration-300 group-hover:-translate-y-1">
                     <div
-                      className={`rounded-2xl ${pillarColor.badgeBg} backdrop-blur-md border-2 shadow-[0_10px_25px_rgba(0,0,0,0.95)] text-center shrink-0 whitespace-nowrap flex flex-col items-center justify-center ${
-                        isTodos ? 'px-2 py-1 min-w-[54px]' : 'px-3 py-1.5 min-w-[70px]'
+                      className={`rounded-xl ${pillarColor.badgeBg} backdrop-blur-md border shadow-[0_10px_25px_rgba(0,0,0,0.85)] text-center shrink-0 whitespace-nowrap flex flex-col items-center justify-center pointer-events-auto ${
+                        isTwoCandidates
+                          ? 'px-4 sm:px-5 py-1.5 sm:py-2 min-w-[90px] sm:min-w-[110px]'
+                          : isTodos
+                          ? 'px-2 py-0.5 sm:px-2.5 sm:py-1 min-w-[54px] sm:min-w-[60px]'
+                          : 'px-2.5 sm:px-3.5 py-0.5 sm:py-1 min-w-[68px] sm:min-w-[78px]'
                       } ${pillarColor.badgeBorder}`}
                     >
-                      <span className={`font-black ${pillarColor.badgeVotesColor} font-mono drop-shadow-md leading-none ${
-                        isTodos ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'
+                      <span className={`font-black ${pillarColor.badgeVotesColor} font-mono drop-shadow-md leading-none tracking-tight ${
+                        isTwoCandidates
+                          ? 'text-4xl sm:text-[44px]'
+                          : isTodos
+                          ? 'text-xl sm:text-[23px] md:text-[25px]'
+                          : 'text-[27px] sm:text-[29px] md:text-[31px]'
                       }`}>
                         {cand.votesCount || 0}
                       </span>
                       <span className={`uppercase font-black tracking-widest ${pillarColor.badgeVotesLabel} mt-0.5 leading-none ${
-                        isTodos ? 'text-[7px] sm:text-[8px]' : 'text-[8px] sm:text-[9px]'
+                        isTwoCandidates
+                          ? 'text-[10px] sm:text-xs'
+                          : isTodos
+                          ? 'text-[7px] sm:text-[8px]'
+                          : 'text-[8px] sm:text-[9px]'
                       }`}>
                         {cand.votesCount === 1 ? 'VOTO' : 'VOTOS'}
                       </span>
@@ -279,7 +289,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
 
                   {/* Top Cap of 3D Pillar (Isometric angle with realistic metallic gradient) */}
                   <div
-                    className={`w-full h-3.5 sm:h-4 ${pillarColor.top} rounded-t-sm shadow-md transition-all duration-500 border-b border-black/30`}
+                    className={`w-full h-3 sm:h-3.5 ${pillarColor.top} rounded-t-sm shadow-md transition-all duration-500 border-b border-black/30`}
                     style={{
                       transform: 'translateY(-50%) rotateX(60deg)',
                     }}
@@ -302,20 +312,20 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                   />
 
                   {/* Base Shadow & Pedestal */}
-                  <div className="w-full h-2.5 bg-black/80 rounded-b-md shadow-2xl border-t border-white/10" />
+                  <div className="w-full h-2 bg-black/80 rounded-b-md shadow-2xl border-t border-white/10" />
                 </div>
               </div>
 
               {/* Base Unit: Candidate Photo Card and Name Badge */}
-              <div className="w-full mt-2.5 flex flex-col items-center text-center">
-                {/* Photo Frame */}
+              <div className="w-full mt-2 flex flex-col items-center text-center">
+                {/* Photo Frame (Ajustado en altura para que toda la información entre en pantalla) */}
                 <div
                   className={`rounded-xl border-2 overflow-hidden shadow-xl bg-slate-900 relative transition-transform duration-300 group-hover:scale-105 ${
                     isTwoCandidates
-                      ? 'w-28 h-36 sm:w-36 sm:h-44'
+                      ? 'w-36 h-44 sm:w-44 sm:h-54 lg:w-48 lg:h-60'
                       : isTodos
-                      ? 'w-16 h-20 sm:w-18 sm:h-22 md:w-20 md:h-24 lg:w-[82px] lg:h-[100px]'
-                      : 'w-18 h-22 sm:w-22 sm:h-26'
+                      ? 'w-18 h-22 sm:w-20 sm:h-24 md:w-22 md:h-26 lg:w-24 lg:h-28'
+                      : 'w-24 h-28 sm:w-26 sm:h-30 md:w-28 md:h-32 xl:w-30 xl:h-34'
                   } ${pillarColor.cardBorder}`}
                 >
                   {cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex] ? (
@@ -326,10 +336,10 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     />
                   ) : (
                     <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-b from-[#0a1e12] to-black text-center relative">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-brand-gold/15 border border-brand-gold/40 flex items-center justify-center mb-1 text-brand-gold shadow-inner">
-                        <Users className="w-4 h-4 sm:w-5 sm:h-5 opacity-80" />
+                      <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-brand-gold/15 border border-brand-gold/40 flex items-center justify-center mb-1 text-brand-gold shadow-inner">
+                        <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 opacity-80" />
                       </div>
-                      <span className="text-[9px] font-bold text-white/50 uppercase tracking-wider">
+                      <span className="text-[8px] font-bold text-white/50 uppercase tracking-wider">
                         Postulante
                       </span>
                     </div>
@@ -341,7 +351,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                   {(isComite || isTribunal) && (
                     <span
                       className={`font-black uppercase tracking-wider px-2 py-0.5 rounded-full inline-block mb-1 border ${
-                        isTwoCandidates ? 'text-xs' : 'text-[8px]'
+                        isTwoCandidates ? 'text-xs' : 'text-[7.5px]'
                       } ${
                         isComite
                           ? 'bg-emerald-950/80 text-emerald-300 border-emerald-500/50'
@@ -352,33 +362,37 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     </span>
                   )}
 
-                  {/* Candidate Name in EXACTLY TWO LINES */}
+                  {/* Candidate Name in EXACTLY TWO LINES (Legible y proporcionado) */}
                   {(() => {
                     const { line1, line2 } = formatNameInTwoLines(cand.fullName);
                     return (
                       <div
-                        className={`w-full flex flex-col items-center justify-center text-center leading-tight drop-shadow-sm group-hover:text-amber-300 transition-colors ${
-                          isTwoCandidates ? 'h-10 sm:h-12' : 'h-8 sm:h-9'
+                        className={`w-full flex flex-col items-center justify-center text-center leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] group-hover:text-amber-300 transition-colors ${
+                          isTwoCandidates
+                            ? 'min-h-[44px] sm:min-h-[50px]'
+                            : isTodos
+                            ? 'min-h-[30px] sm:min-h-[34px]'
+                            : 'min-h-[36px] sm:min-h-[40px]'
                         }`}
                       >
                         <span
-                          className={`font-black text-white uppercase tracking-tight truncate w-full block ${
+                          className={`font-black text-white uppercase tracking-tight text-center w-full block ${
                             isTwoCandidates
-                              ? 'text-xs sm:text-sm'
+                              ? 'text-base sm:text-lg md:text-xl'
                               : isTodos
-                              ? 'text-[9px] sm:text-[9.5px] md:text-[10px]'
-                              : 'text-[10px] sm:text-[11px]'
+                              ? 'text-[9.5px] sm:text-[10px] md:text-[10.5px]'
+                              : 'text-[11.5px] sm:text-xs md:text-[12.5px]'
                           }`}
                         >
                           {line1}
                         </span>
                         <span
-                          className={`font-black text-white uppercase tracking-tight truncate w-full block ${
+                          className={`font-black text-white uppercase tracking-tight text-center w-full block ${
                             isTwoCandidates
-                              ? 'text-xs sm:text-sm'
+                              ? 'text-base sm:text-lg md:text-xl'
                               : isTodos
-                              ? 'text-[9px] sm:text-[9.5px] md:text-[10px]'
-                              : 'text-[10px] sm:text-[11px]'
+                              ? 'text-[9.5px] sm:text-[10px] md:text-[10.5px]'
+                              : 'text-[11.5px] sm:text-xs md:text-[12.5px]'
                           }`}
                         >
                           {line2 || '\u00A0'}
@@ -388,14 +402,14 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                   })()}
 
                   {/* ABAJO: Porcentaje de votos con respecto a la cantidad de boletas registradas */}
-                  <div className="mt-1.5 w-full flex flex-col items-center justify-center">
+                  <div className="mt-1 w-full flex flex-col items-center justify-center">
                     <div
-                      className={`rounded-xl bg-gradient-to-r from-[#021f10] to-[#042e18] border-2 border-emerald-400/80 shadow-lg shadow-emerald-950/60 flex items-center justify-center ${
+                      className={`rounded-xl bg-gradient-to-r from-[#021f10] to-[#042e18] border-2 border-emerald-400/90 shadow-md shadow-emerald-950/60 flex items-center justify-center ${
                         isTwoCandidates
-                          ? 'min-w-[100px] px-3 py-1'
+                          ? 'min-w-[110px] px-3.5 py-1'
                           : isTodos
                           ? 'min-w-[56px] px-1.5 py-0.5'
-                          : 'min-w-[72px] px-3 py-1'
+                          : 'min-w-[76px] px-2.5 py-0.5'
                       }`}
                     >
                       <span
@@ -403,8 +417,8 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                           isTwoCandidates
                             ? 'text-base sm:text-lg'
                             : isTodos
-                            ? 'text-xs sm:text-[13px]'
-                            : 'text-xs sm:text-sm'
+                            ? 'text-[11px] sm:text-xs'
+                            : 'text-xs sm:text-[13px]'
                         }`}
                       >
                         {pct.toFixed(1).replace('.', ',')}%
@@ -412,7 +426,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     </div>
                     <span
                       className={`font-bold text-gray-400 tracking-tight mt-0.5 leading-tight ${
-                        isTwoCandidates ? 'text-[10px]' : 'text-[8px]'
+                        isTwoCandidates ? 'text-xs' : 'text-[8px] sm:text-[9px]'
                       }`}
                     >
                       de boletas ({stats.totalBallots})
@@ -428,13 +442,13 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
       </div>
 
       {/* Footer Status & Quórum Progress Bar */}
-      <div className="relative z-10 w-full pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-3">
+      <div className="relative z-10 w-full pt-2.5 mt-1 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between text-xs text-gray-400 gap-2">
         <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block" />
-          <span>Sistema de Cómputo Notarial • CLUB INTELIGENTE CHLS 360°</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+          <span className="text-[11px]">Sistema de Cómputo Notarial • CLUB INTELIGENTE CHLS 360°</span>
         </div>
 
-        <div className="flex items-center gap-4 text-gray-300 text-xs">
+        <div className="flex items-center gap-3 text-gray-300 text-[11px]">
           <span>
             Válidas:{' '}
             <strong className="text-white">

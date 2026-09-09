@@ -200,18 +200,18 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                     <span>#1</span>
                   </div>
                 )}
-                <span className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono tracking-tight leading-none drop-shadow-md">
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight leading-none drop-shadow-md">
                   {cand.votesCount || 0}
                 </span>
-                <span className="text-[10px] uppercase font-black tracking-widest opacity-90 mt-1">
+                <span className="text-xs uppercase font-black tracking-widest opacity-90 mt-1">
                   {cand.votesCount === 1 ? 'VOTO' : 'VOTOS'}
                 </span>
                 {cand.orderIndex === 10 || (cand.position || '').toUpperCase().includes('COMIT') ? (
-                  <span className="text-[8px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-emerald-300">
+                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-emerald-300">
                     COMITÉ ELECTORAL
                   </span>
                 ) : cand.orderIndex === 11 || (cand.position || '').toUpperCase().includes('TRIBUNAL') ? (
-                  <span className="text-[8px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-yellow-300">
+                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-yellow-300">
                     TRIBUNAL DE HONOR
                   </span>
                 ) : null}
@@ -247,12 +247,12 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                 const { line1, line2 } = formatNameInTwoLines(cand.fullName);
                 return (
                   <div
-                    className={`w-full py-2 px-1.5 ${theme.nameBg} text-center flex flex-col items-center justify-center min-h-[46px] max-h-[46px] overflow-hidden leading-tight`}
+                    className={`w-full py-2 px-1.5 ${theme.nameBg} text-center flex flex-col items-center justify-center min-h-[50px] max-h-[50px] overflow-hidden leading-tight`}
                   >
-                    <span className="text-[11px] sm:text-xs font-black text-white uppercase tracking-tight truncate w-full block">
+                    <span className="text-xs sm:text-[13px] md:text-sm font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
                       {line1}
                     </span>
-                    <span className="text-[11px] sm:text-xs font-black text-white uppercase tracking-tight truncate w-full block">
+                    <span className="text-xs sm:text-[13px] md:text-sm font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
                       {line2 || '\u00A0'}
                     </span>
                   </div>
