@@ -65,13 +65,14 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
           ${styleTags}
           <style>
             @page {
-              size: letter portrait;
-              margin: 6mm 8mm;
+              size: letter portrait; /* Formato Oficial CHLS: Papel Bond Tamaño Carta (8.5" x 11" / 215.9mm x 279.4mm) */
+              margin: 5mm 7mm;
             }
             *, *::before, *::after {
               -webkit-print-color-adjust: exact !important;
               print-color-adjust: exact !important;
               color-adjust: exact !important;
+              box-sizing: border-box !important;
             }
             html, body {
               background: #ffffff !important;
@@ -79,6 +80,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
               margin: 0 !important;
               padding: 0 !important;
               font-family: Arial, Helvetica, sans-serif !important;
+              -webkit-font-smoothing: antialiased;
             }
             .page-break-after {
               page-break-after: always !important;
@@ -86,14 +88,19 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             }
             .printable-sheet-page {
               width: 100% !important;
-              max-width: 215mm !important;
-              min-height: auto !important;
+              max-width: 201mm !important;
+              height: 268mm !important;
+              max-height: 268mm !important;
               margin: 0 auto !important;
               padding: 0 !important;
               background: #ffffff !important;
               color: #000000 !important;
               box-shadow: none !important;
               border: none !important;
+              overflow: hidden !important;
+              box-sizing: border-box !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
             }
           </style>
         </head>
@@ -155,12 +162,17 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
       {/* ========================================================================= */}
       <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 print:hidden bg-slate-900/95 border-2 border-emerald-500/40 p-2 rounded-2xl shadow-2xl backdrop-blur-xl max-w-[95vw] flex-wrap justify-center">
         
+        {/* Badge Informativo de Formato Bond Carta */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-brand-gold/40 text-brand-gold text-xs font-black tracking-wide">
+          <span>📄 Formato: Papel Bond Tamaño Carta (21.59 × 27.94 cm)</span>
+        </div>
+
         {/* Selector de Modos de Impresión */}
         <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-black gap-1">
           <button
             type="button"
             onClick={() => setPageMode('FRONT_ONLY')}
-            title="Imprimir únicamente el Anverso (Carátula)"
+            title="Imprimir únicamente el Anverso (Carátula Carta)"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               pageMode === 'FRONT_ONLY'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -168,13 +180,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             }`}
           >
             <FileText className="w-3.5 h-3.5" />
-            <span>1. Anverso (Carátula)</span>
+            <span>1. Anverso (Carta)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setPageMode('BACK_ONLY')}
-            title="Imprimir únicamente el Reverso (Continuación de Proveídos)"
+            title="Imprimir únicamente el Reverso (Proveídos Carta)"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               pageMode === 'BACK_ONLY'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -182,13 +194,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             }`}
           >
             <RotateCw className="w-3.5 h-3.5" />
-            <span>2. Reverso (Proveídos)</span>
+            <span>2. Reverso (Carta)</span>
           </button>
 
           <button
             type="button"
             onClick={() => setPageMode('DUPLEX_FULL')}
-            title="Imprimir Hoja Completa (Anverso + Reverso Dúplex)"
+            title="Imprimir Hoja Completa (Anverso + Reverso Dúplex Carta)"
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
               pageMode === 'DUPLEX_FULL'
                 ? 'bg-emerald-600 text-white shadow-xs'
@@ -196,7 +208,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             }`}
           >
             <Layers className="w-3.5 h-3.5 text-brand-gold" />
-            <span>3. Completo (Anverso + Reverso)</span>
+            <span>3. Dúplex Completo (Carta)</span>
           </button>
 
           <button
@@ -220,7 +232,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
           className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-500 hover:from-yellow-400 hover:to-yellow-500 text-slate-950 font-black px-5 py-2 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer text-xs uppercase tracking-wider"
         >
           <Printer className="w-4 h-4 text-slate-950" />
-          <span>🖨️ Imprimir / Guardar PDF</span>
+          <span>🖨️ Imprimir Hoja de Ruta (Carta)</span>
         </button>
 
         {/* Botón Cerrar */}
@@ -236,13 +248,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
       {/* Espaciador para la barra fija */}
       <div className="h-20 print:hidden w-full shrink-0" />
 
-      <div id="printable-routesheet-container" className="w-full max-w-[215mm] mx-auto space-y-8 print:space-y-0 print:m-0 print:p-0 flex flex-col items-center">
+      <div id="printable-routesheet-container" className="w-full max-w-[216mm] mx-auto space-y-8 print:space-y-0 print:m-0 print:p-0 flex flex-col items-center">
 
         {/* ========================================================================= */}
         {/* PÁGINA 1: ANVERSO DE LA HOJA DE RUTA (CARÁTULA OFICIAL)                   */}
         {/* ========================================================================= */}
         {(pageMode === 'FRONT_ONLY' || pageMode === 'DUPLEX_FULL') && (
-          <div className={`printable-sheet-page bg-white text-black w-full min-h-[279mm] p-6 sm:p-8 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none ${
+          <div className={`printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none ${
             pageMode === 'DUPLEX_FULL' ? 'page-break-after' : ''
           }`}>
             
@@ -473,7 +485,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             {/* Pie de Página del Anverso */}
             <div className="mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — ANVERSO</span>
+                <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — PAPEL BOND TAMAÑO CARTA — ANVERSO</span>
                 <span>• Cero Papel</span>
                 <span>• Validez Legal Institucional</span>
               </div>
@@ -488,7 +500,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
         {/* PÁGINA 2: REVERSO DE LA HOJA DE RUTA (CONTINUACIÓN DE PROVEÍDOS & ARCHIVO) */}
         {/* ========================================================================= */}
         {(pageMode === 'BACK_ONLY' || pageMode === 'DUPLEX_FULL') && (
-          <div className="printable-sheet-page bg-white text-black w-full min-h-[279mm] p-6 sm:p-8 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none">
+          <div className="printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none">
             
             {/* Header del Reverso */}
             <div className="flex items-center justify-between pb-2 mb-1.5 border-b-2 border-black">
@@ -667,7 +679,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             {/* Pie de Página del Reverso */}
             <div className="mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — REVERSO</span>
+                <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — PAPEL BOND TAMAÑO CARTA — REVERSO</span>
                 <span>• Archivo Central</span>
                 <span>• Custodia Definitiva</span>
               </div>

@@ -1050,5 +1050,125 @@ model CorrChatMessage {
   @@map("corr_chat_messages")
 }
 
+// ------------------------------------------------------
+// ELECCIONES DE DIRECTORIO (ELECTORAL SUITE)
+// ------------------------------------------------------
 
+model Election {
+  id                    String    @id @default(uuid())
+  title                 String    // ej. "Elecciones Ordinarias de Directorio 2026 - 2028"
+  description           String?   // Convocatoria oficial emitida por el Comité Electoral
+  period                String    // ej. "2026-2028"
+  status                String    @default("EN_CURSO") // CONVOCADA, EN_CURSO, FINALIZADA, PROCLAMADA
+  startDate             DateTime  @default(now())
+  endDate               DateTime
+  quorumMinimum         Int       @default(25) // Porcentaje mínimo estatutario de participación (ej. 25%)
+  maxSelectionsPerBallot Int      @default(5)  // Límite parametrizable de candidatos por boleta (ej. hasta 5, o 0 para libre)
+  rulesHtml             String?   // Reglamento electoral en texto enriquecido
+  closingActUrl         String?   // URL o ruta al Acta Notarial de Cierre generada
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
+  candidates            ElectionCandidate[]
+  slates                ElectionSlate[]
+  voters                ElectionVoter[]
+  ballots               ElectionBallot[]
+  auditLogs             ElectionAuditLog[]
+
+  @@map("elections")
+}
+
+model ElectionSlate {
+  id             String              @id @default(uuid())
+  electionId     String
+  election       Election            @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  
+  name           String              // ej. "Renovación y Tradición Hípica"
+  code           String              // ej. "F1", "F2", "LISTA-A"
+  slogan         String?             // ej. "Modernidad, Excelencia y Pasión por el Deporte"
+  colorHex       String              @default("#10b981") // Color representativo del frente
+  logoUrl        String?             // Emblema o isotipo del frente
+  planDocUrl     String?             // Documento en PDF del plan de gestión
+  orderIndex     Int                 @default(1)
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+
+  candidates     ElectionCandidate[]
+
+  @@map("election_slates")
+}
+
+model ElectionCandidate {
+  id               String         @id @default(uuid())
+  electionId       String
+  election         Election       @relation(fields: [electionId], references: [id], onDelete: Cascade)
+  slateId          String?
+  slate            ElectionSlate? @relation(fields: [slateId], references: [id], onDelete: SetNull)
+
+  fullName         String
+  position         String?        @default("Postulante al Directorio")
+  membershipNumber String?        // Matrícula de socio (ej. "TIT-1042")
+  photoUrl         String?
+  bio              String?
+  colorHex         String         @default("#0b532c")
+  orderIndex       Int            @default(1)
+  isActive         Boolean        @default(true)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@map("election_candidates")
+}
+
+model ElectionVoter {
+  id                  String    @id @default(uuid())
+  electionId          String
+  election            Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  personId            String
+  membershipNumber    String    // ej. "TIT-1042"
+  documentId          String    // CI o DNI del socio
+  fullName            String
+  isEligible          Boolean   @default(true) // Habilitado para votar
+  ineligibilityReason String?   // ej. "Mora pendiente", "Beneficiario sin derecho estatutario a voto"
+  hasVoted            Boolean   @default(false)
+  votedAt             DateTime?
+  votingMethod        String?   @default("FISICA_ANFORA") // FISICA_ANFORA, ONLINE, PRESENCIAL_TABLET
+  certificateHash     String?   @unique // Token único del certificado de sufragio
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@unique([electionId, personId])
+  @@map("election_voters")
+}
+
+model ElectionBallot {
+  id                   String    @id @default(uuid())
+  electionId           String
+  election             Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  ballotNumber         Int       @default(1)
+  ballotType           String    @default("VALID") // VALID, BLANK, NULL
+  selectedCandidateIds String[]  @default([]) // IDs de los candidatos marcados en esta boleta
+  notes                String?
+  registeredBy         String?   @default("MESA_1")
+  voteHash             String?   // SHA-256 inmutable de auditoría
+  castAt               DateTime  @default(now())
+
+  @@map("election_ballots")
+}
+
+model ElectionAuditLog {
+  id             String    @id @default(uuid())
+  electionId     String
+  election       Election  @relation(fields: [electionId], references: [id], onDelete: Cascade)
+
+  action         String    // APERTURA_URNAS, CIERRE_URNAS, EMISION_VOTO, GENERACION_ACTA, MODIFICACION_PADRON
+  details        String?
+  performedBy    String?   // Nombre o email del usuario o "SISTEMA"
+  ipAddress      String?
+  createdAt      DateTime  @default(now())
+
+  @@map("election_audit_logs")
+}

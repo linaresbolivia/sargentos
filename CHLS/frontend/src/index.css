@@ -386,7 +386,7 @@
 }
 
 /* ========================================================================= */
-/* ESTILOS DE IMPRESIÓN OFICIAL CHLS (A4 / CARTA PORTRAIT & DÚPLEX)           */
+/* ESTILOS DE IMPRESIÓN OFICIAL CHLS (PAPEL BOND TAMAÑO CARTA & DÚPLEX)      */
 /* ========================================================================= */
 @media print {
   @page {

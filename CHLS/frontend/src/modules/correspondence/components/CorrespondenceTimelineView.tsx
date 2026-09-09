@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useSelector } from 'react-redux';
+import { RootState } from '@store/store';
 import { RouteSheetItem, CorrDocument } from '../types/correspondence.types';
 import {
   Clock,
@@ -103,6 +105,8 @@ interface HolographicMilestone {
   durationFormatted?: string | null;
   signatureUrl?: string | null;
   sourceUserName?: string | null;
+  sourceUserId?: string | null;
+  isAccumulated?: boolean;
   documents: CorrDocument[];
   isCurrent: boolean;
   iconType: 'search' | 'zap' | 'settings' | 'user' | 'globe' | 'shield' | 'target';
@@ -115,7 +119,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   onPreviewDoc,
   onPrintTimeline,
 }) => {
+  const { user } = useSelector((state: RootState) => state.auth);
   const [activeView, setActiveView] = useState<'HOLOGRAM' | 'LISTA'>('HOLOGRAM');
+  const [timelineFilter, setTimelineFilter] = useState<'ALL' | 'DIRECT' | 'MINE'>('ALL');
   const [selectedMilestone, setSelectedMilestone] = useState<HolographicMilestone | null>(null);
   const [selectedSignaturePreview, setSelectedSignaturePreview] = useState<string | null>(null);
   const [localPreviewDoc, setLocalPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
@@ -185,7 +191,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   ];
 
   // 1. Estructurar hitos alternando Izquierda y Derecha de la columna vertebral
-  const milestones: HolographicMilestone[] = [
+  const allMilestones: HolographicMilestone[] = [
     {
       id: 'radicacion-0',
       stepNumber: 0,
@@ -202,6 +208,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       documents: (item.documents || []).filter((d) => !d.movementId),
       isCurrent: movements.length === 0,
       iconType: 'search',
+      sourceUserName: item.senderName || 'Mesa de Entradas',
+      sourceUserId: item.createdById || null,
+      isAccumulated: false,
     },
     ...movements.map((mov, idx) => {
       const isCurrentStep = idx === movements.length - 1 && !isConcluido;
@@ -212,6 +221,13 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         ? mov.documents
         : (item.documents || []).filter((d) => d.movementId === mov.id);
 
+      const isAccumulated = Boolean(
+        mov.instruction?.includes('[EXPEDIENTE ACUMULADO') ||
+        mov.instruction?.includes('AUTO DE ACUMULACIÓN') ||
+        mov.quickStamp?.includes('ACUMULADO') ||
+        mov.quickStamp?.includes('FUSIONADO')
+      );
+
       return {
         id: mov.id,
         stepNumber: mov.sequenceNumber,
@@ -219,7 +235,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         dateStr: formatDate(mov.createdAt),
         timeStr: formatTime(mov.createdAt),
         fullDate: new Date(mov.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' }),
-        badgeLabel: `PASO #${mov.sequenceNumber}`,
+        badgeLabel: isAccumulated ? '📚 ACUMULADO' : `PASO #${mov.sequenceNumber}`,
         sourceArea: mov.sourceArea,
         targetArea: mov.targetArea,
         personName: mov.targetPersonName || null,
@@ -228,12 +244,35 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         durationFormatted: mov.durationFormatted,
         signatureUrl: mov.signatureUrl,
         sourceUserName: mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : null,
+        sourceUserId: mov.sourceUserId || null,
         documents: movDocs,
         isCurrent: isCurrentStep,
         iconType: icon,
+        isAccumulated,
       };
     }),
   ];
+
+  // Filtrado de hitos según selección
+  const rawFiltered = allMilestones.filter((m) => {
+    if (timelineFilter === 'DIRECT') {
+      return !m.isAccumulated;
+    }
+    if (timelineFilter === 'MINE') {
+      if (!user) return true;
+      const matchesUserId = m.sourceUserId && m.sourceUserId === user.id;
+      const userFullName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+      const matchesName = Boolean(userFullName && m.sourceUserName && m.sourceUserName.toLowerCase().includes(userFullName));
+      return Boolean(matchesUserId || matchesName || (m.stepNumber === 0 && item.senderName?.toLowerCase().includes(userFullName)));
+    }
+    return true;
+  });
+
+  // Re-calcular alternancia isLeft para la vista actual
+  const milestones: HolographicMilestone[] = rawFiltered.map((m, idx) => ({
+    ...m,
+    isLeft: idx % 2 === 0,
+  }));
 
   // 2. Geometría SVG Amplia y Espaciosa para el Diagrama Holográfico Vertical
   const N = milestones.length;
@@ -324,82 +363,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       {/* ========================================================================= */}
       {/* 1. FICHA TÉCNICA Y METADATOS OFICIALES (REFERENCIA, QR, ORIGEN, RADICADO) */}
       {/* ========================================================================= */}
-      {/* Iniciativa Cero Papel Banner */}
-      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3 px-5 text-xs text-emerald-400">
-        <div className="flex items-center gap-2 font-bold">
-          <Leaf className="w-4 h-4 text-emerald-400" />
-          <span>Iniciativa CHLS Cero Papel — Expediente Oficial con Firma Digital y Validador QR</span>
-        </div>
-        <span className="font-mono font-black text-emerald-300">
-          {item.pageCount || 1} Folio(s)
-        </span>
-      </div>
-
-      {/* Tarjeta Principal de Referencia y QR de Validación */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-50/90 dark:bg-[#071510] p-5 rounded-2xl border border-slate-200/90 dark:border-emerald-500/30 shadow-md">
-        <div className="space-y-1.5 md:col-span-2">
-          <span className="text-[10px] font-black text-slate-500 dark:text-emerald-400/80 uppercase tracking-wider">
-            Referencia / Asunto
-          </span>
-          <p className="text-sm sm:text-base font-black text-slate-950 dark:text-white leading-relaxed uppercase">
-            {item.reference}
-          </p>
-          {item.attachmentDescription && (
-            <p className="text-xs text-slate-700 dark:text-gray-400 mt-2">
-              <strong className="text-slate-950 dark:text-gray-200 font-bold">Adjunto:</strong> {item.attachmentDescription}
-            </p>
-          )}
-        </div>
-
-        {/* QR Verification Card */}
-        <div className="flex items-center justify-end gap-3.5 border-t md:border-t-0 md:border-l border-slate-200 dark:border-emerald-500/20 pt-3 md:pt-0 md:pl-5">
-          <div className="p-1.5 bg-white rounded-xl border border-slate-300 shadow-sm shrink-0">
-            <QRCodeSVG value={verificationUrl} size={64} level="M" />
-          </div>
-          <div className="text-left space-y-0.5">
-            <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase block tracking-wider">
-              Área Actual
-            </span>
-            <span className="text-xs sm:text-sm font-black text-emerald-900 dark:text-brand-gold uppercase block">
-              {formatArea(item.currentArea)}
-            </span>
-            <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold block">
-              {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Remitente, Origen y Radicado Por */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
-          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Remitente</span>
-          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
-            <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
-            <span className="truncate">{item.senderName}</span>
-          </span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
-          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Origen / Empresa</span>
-          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
-            <Building2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span className="truncate">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}</span>
-          </span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-slate-50/90 dark:bg-[#071510] border border-slate-200/90 dark:border-emerald-500/20">
-          <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] font-black block mb-0.5">Radicado Por</span>
-          <span className="font-black text-slate-950 dark:text-white flex items-center gap-1.5 truncate">
-            <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="truncate">{item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}</span>
-          </span>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* 2. DOCUMENTO BASE DE RADICACIÓN INICIAL (ORIGEN)                          */}
-      {/* ========================================================================= */}
+      {/* Ficha Técnica Unificada y Compacta con Botón de Adjuntos Integrado */}
       {(() => {
         const rawDocs = (item.documents || []).filter((d) => !d.movementId);
         const seenDocKeys = new Set<string>();
@@ -410,53 +374,122 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
           return true;
         });
 
-        if (initialDocs.length === 0) return null;
-
         return (
-          <div className="bg-[#040e0b] border-2 border-emerald-500/30 rounded-3xl p-3.5 sm:p-4 transition-all shadow-[0_0_25px_rgba(16,185,129,0.1)]">
-            {/* Botón Barra Desplegable */}
-            <button
-              type="button"
-              onClick={() => setIsInitialDocsExpanded(!isInitialDocsExpanded)}
-              className="w-full flex items-center justify-between flex-wrap gap-2 text-left cursor-pointer group focus:outline-none"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 group-hover:bg-emerald-500/25 transition-colors">
-                  <Paperclip className="w-4 h-4 text-emerald-400" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-white flex items-center gap-2 flex-wrap">
-                    <span className="group-hover:text-emerald-300 transition-colors">
-                      Documento Base de Radicación Inicial ({initialDocs.length})
-                    </span>
-                    <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
-                      Ingreso Oficial
-                    </span>
-                  </h3>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {isInitialDocsExpanded
-                      ? 'Documentos formales incorporados al radicar el trámite original'
-                      : `Haz clic para desplegar y ver los ${initialDocs.length} archivo(s) digitalizado(s)`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Botón Badge de Despliegue */}
-              <div className="flex items-center gap-2 shrink-0">
-                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/15 px-3 py-1.5 rounded-xl border border-emerald-500/30 group-hover:bg-emerald-500/25 flex items-center gap-1.5 transition-all shadow-xs">
-                  <span>{isInitialDocsExpanded ? 'Ocultar Adjuntos' : 'Desplegar Adjuntos'}</span>
-                  {isInitialDocsExpanded ? (
-                    <ChevronUp className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <ChevronDown className="w-3.5 h-3.5 text-emerald-400" />
-                  )}
+          <div className="bg-slate-50/95 dark:bg-[#06140e] border border-slate-200/90 dark:border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 shadow-sm space-y-2.5">
+            {/* Fila Superior: Referencia Principal + Iniciativa Cero Papel + QR de Auditoría */}
+            <div className="flex items-start justify-between gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+              <div className="flex-1 min-w-[240px] space-y-1">
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
+                  Referencia / Asunto
                 </span>
+                <p className="text-sm sm:text-base font-black text-slate-950 dark:text-white leading-snug uppercase tracking-tight">
+                  {item.reference}
+                </p>
+                {/* Iniciativa Cero Papel y Folios alineado a la izquierda debajo de la Referencia */}
+                <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+                  <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                    <Leaf className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                    <span>Iniciativa CHLS Cero Papel — Expediente Oficial con Firma Digital y Validador QR</span>
+                  </div>
+                  <span className="font-mono text-[10px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    {item.pageCount || 1} Folio(s)
+                  </span>
+                </div>
+                {item.attachmentDescription && (
+                  <p className="text-[11px] text-slate-600 dark:text-gray-400 leading-tight pt-0.5">
+                    <strong className="text-slate-800 dark:text-gray-300">Adjunto:</strong> {item.attachmentDescription}
+                  </p>
+                )}
               </div>
-            </button>
 
-            {/* Contenido Desplegado */}
-            {isInitialDocsExpanded && (
-              <div className="mt-3.5 pt-3.5 border-t border-emerald-500/20 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-fadeIn">
+              {/* Bloque QR de Verificación & Área Actual Compacto */}
+              <div className="flex items-center gap-2.5 shrink-0 bg-white dark:bg-black/40 border border-slate-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-xl shadow-2xs">
+                <div className="p-1 bg-white rounded-lg border border-slate-100 shadow-2xs shrink-0">
+                  <QRCodeSVG value={verificationUrl} size={48} level="M" />
+                </div>
+                <div className="text-left leading-tight">
+                  <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 block tracking-wider">
+                    Área Actual
+                  </span>
+                  <span className="text-xs sm:text-sm font-black text-emerald-800 dark:text-brand-gold uppercase block truncate max-w-[140px]">
+                    {formatArea(item.currentArea)}
+                  </span>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold block mt-0.5">
+                    {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Fila Inferior: Metadatos (Remitente, Origen/Empresa, Radicado Por + Botón Mediano de Adjuntos) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2.5 border-t border-slate-200/80 dark:border-emerald-500/20 text-xs">
+              {/* 1. Remitente */}
+              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
+                <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Remitente</span>
+                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderName}</span>
+                </div>
+              </div>
+
+              {/* 2. Origen / Empresa */}
+              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
+                <Building2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Origen / Empresa</span>
+                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}</span>
+                </div>
+              </div>
+
+              {/* 3. Radicado Por */}
+              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
+                <div className="min-w-0 flex-1 truncate">
+                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Radicado Por</span>
+                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}</span>
+                </div>
+              </div>
+
+              {/* 4. Botón Mediano Solicitado: Adjuntos de Radicación Inicial */}
+              {initialDocs.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setIsInitialDocsExpanded(!isInitialDocsExpanded)}
+                  className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs group shadow-xs ${
+                    isInitialDocsExpanded
+                      ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50'
+                  }`}
+                  title="Ver archivos originales digitalizados en la radicación inicial"
+                >
+                  <div className="flex items-center gap-2 min-w-0 truncate">
+                    <Paperclip className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                    <div className="text-left min-w-0 truncate">
+                      <span className="text-[9px] font-bold text-emerald-400/80 block uppercase leading-none mb-0.5 truncate">
+                        Adjuntos Origen ({initialDocs.length})
+                      </span>
+                      <span className="font-black text-[11.5px] block truncate">
+                        {isInitialDocsExpanded ? 'Ocultar Adjuntos' : 'Ver Adjuntos'}
+                      </span>
+                    </div>
+                  </div>
+                  {isInitialDocsExpanded ? (
+                    <ChevronUp className="w-4 h-4 text-brand-gold shrink-0" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-emerald-400 shrink-0" />
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 bg-slate-100/50 dark:bg-black/20 px-3 py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-white/10 text-xs text-slate-400">
+                  <Paperclip className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                  <span className="text-[11px] font-medium truncate">Sin adjuntos origen</span>
+                </div>
+              )}
+            </div>
+
+            {/* Contenido Desplegado de los Documentos de Radicación Inicial */}
+            {isInitialDocsExpanded && initialDocs.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-emerald-500/20 grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn">
                 {initialDocs.map((doc, idx) => {
                   const isPdf = doc.fileName?.toLowerCase().endsWith('.pdf') || doc.mimeType?.includes('pdf');
                   const isImg = doc.fileName?.match(/\.(jpg|jpeg|png|webp)$/i) || doc.mimeType?.includes('image');
@@ -465,10 +498,10 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                   return (
                     <div
                       key={doc.id || idx}
-                      className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
+                      className="p-3 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                           isPdf
                             ? 'bg-red-500/15 text-red-400 border-red-500/30'
                             : isImg
@@ -478,13 +511,13 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                             : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                         }`}>
                           {isPdf ? (
-                            <FileText className="w-5 h-5" />
+                            <FileText className="w-4 h-4" />
                           ) : isImg ? (
-                            <ImageIcon className="w-5 h-5" />
+                            <ImageIcon className="w-4 h-4" />
                           ) : isXls ? (
-                            <FileSpreadsheet className="w-5 h-5" />
+                            <FileSpreadsheet className="w-4 h-4" />
                           ) : (
-                            <Paperclip className="w-5 h-5" />
+                            <Paperclip className="w-4 h-4" />
                           )}
                         </div>
 
@@ -519,7 +552,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           type="button"
                           onClick={() => handleViewDoc(doc)}
                           title="Visualizar documento en pantalla"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Ver</span>
@@ -531,7 +564,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Descargar archivo original a tu equipo"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
                         >
                           <Download className="w-3.5 h-3.5" />
                           <span>Descargar</span>
@@ -547,121 +580,99 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       })()}
 
       {/* ========================================================================= */}
-      {/* 1. BARRA SUPERIOR MINIMALISTA DE CUSTODIA Y SLA                          */}
-      {/* ========================================================================= */}
-      <div className="p-3.5 sm:p-4 rounded-3xl bg-[#040e0b] border-2 border-cyan-500/40 shadow-[0_0_25px_rgba(6,182,212,0.15)] flex items-center justify-between flex-wrap gap-3">
-        
-        {/* Custodia y SLA (Indicadores en texto de color) */}
-        <div className="flex items-center gap-3 flex-wrap text-xs">
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400 font-semibold">Custodia Actual:</span>
-            <span className="text-cyan-300 font-black flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-              <span>{formatArea(item.currentArea)}</span>
-            </span>
-          </div>
-
-          <span className="text-slate-600 font-bold">•</span>
-
-          <span className={`font-black flex items-center gap-1 ${
-            isOverdue
-              ? 'text-rose-400'
-              : isWarning
-              ? 'text-amber-400'
-              : 'text-emerald-400'
-          }`}>
-            <Clock className="w-3.5 h-3.5 shrink-0" />
-            <span>{item.slaLabel || (isOverdue ? 'SLA Vencido' : 'En Plazo')}</span>
-          </span>
-
-          <span className="text-slate-600 font-bold">•</span>
-
-          <span className="text-slate-400 font-semibold">
-            Prioridad: <strong className="text-white uppercase font-black">{item.priority}</strong>
-          </span>
-        </div>
-
-        {/* Acciones y Selector de Vista */}
-        <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {item.status !== 'CONCLUIDO' && (
-            <button
-              type="button"
-              onClick={onOpenSlaModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(239,68,68,0.2)]"
-              title="Notificar vencimiento urgente de SLA"
-            >
-              <Bell className="w-3.5 h-3.5 text-red-400 animate-pulse" />
-              <span>Alertar SLA</span>
-            </button>
-          )}
-
-          {!isConcluido && (
-            <button
-              type="button"
-              onClick={onAddMovement}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-emerald-600 hover:from-cyan-500 hover:to-emerald-500 text-white font-black text-xs hover:scale-105 transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] cursor-pointer"
-            >
-              <span>+ Derivar / Proveído</span>
-            </button>
-          )}
-
-          {/* Botón: Imprimir Timeline en Tabla o Lista con Logo CHLS */}
-          <button
-            type="button"
-            onClick={onPrintTimeline || (() => setShowLocalTimelinePrintModal(true))}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600/30 to-teal-600/30 hover:from-emerald-600/50 hover:to-teal-600/50 text-emerald-300 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] border border-emerald-400/50 cursor-pointer"
-            title="Imprimir el timeline de trazabilidad en una elegante tabla o lista con el logotipo oficial del Club Hípico Los Sargentos"
-          >
-            <Printer className="w-3.5 h-3.5 text-brand-gold" />
-            <span>🖨️ Imprimir Timeline (PDF)</span>
-          </button>
-
-          <div className="flex items-center bg-black/50 p-1 rounded-xl border border-white/10">
-            <button
-              type="button"
-              onClick={() => setActiveView('HOLOGRAM')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeView === 'HOLOGRAM'
-                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <Compass className="w-3.5 h-3.5" />
-              <span>Holograma HUD</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveView('LISTA')}
-              className={`px-3 py-1 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeView === 'LISTA'
-                  ? 'bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]'
-                  : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              <LayoutList className="w-3.5 h-3.5" />
-              <span>Lista</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
       {/* 2. VISTA "HOLOGRAMA HUD" (EXACTA AL TEMPLATE INFOGRÁFICO SCI-FI)          */}
       {/* ========================================================================= */}
       {activeView === 'HOLOGRAM' ? (
         <div className="p-4 sm:p-6 rounded-3xl bg-[#020706] border-2 border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.1)] relative overflow-hidden text-white">
           
-          {/* Título de Cabecera del Template */}
-          <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 relative z-10">
+          {/* Título de Cabecera del Template con Controles Integrados */}
+          <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 relative z-10 flex-wrap gap-2.5">
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
               <h4 className="font-black text-xs uppercase tracking-widest text-cyan-300">
                 Línea de Trazabilidad 360° • Estructura Holográfica
               </h4>
             </div>
-            <span className="text-[11px] font-mono font-bold text-slate-400">
-              {N} Hitos en Cadena • CHLS
-            </span>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {item.status !== 'CONCLUIDO' && (isOverdue || isWarning) && (
+                <button
+                  type="button"
+                  onClick={onOpenSlaModal}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[10.5px] font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  title="Notificar vencimiento urgente de SLA"
+                >
+                  <Bell className="w-3 h-3 text-red-400 animate-pulse" />
+                  <span>Alerta SLA</span>
+                </button>
+              )}
+
+              {/* Selector de Filtro de Proveídos (Todos / Directos / Mis Proveídos) */}
+              <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-cyan-500/30 gap-1 text-[10.5px]">
+                <button
+                  type="button"
+                  onClick={() => setTimelineFilter('ALL')}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                    timelineFilter === 'ALL'
+                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver toda la trazabilidad incluyendo antecedentes acumulados"
+                >
+                  Todos ({allMilestones.length})
+                </button>
+                {allMilestones.some(m => m.isAccumulated) && (
+                  <button
+                    type="button"
+                    onClick={() => setTimelineFilter('DIRECT')}
+                    className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                      timelineFilter === 'DIRECT'
+                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Ver únicamente los proveídos directos de esta Hoja de Ruta"
+                  >
+                    Directos ({allMilestones.filter(m => !m.isAccumulated).length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setTimelineFilter('MINE')}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                    timelineFilter === 'MINE'
+                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver únicamente los proveídos emitidos por mi usuario"
+                >
+                  Mis Proveídos
+                </button>
+              </div>
+
+              {/* Selector de Vista: HUD / Lista */}
+              <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-[10.5px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveView('HOLOGRAM')}
+                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                >
+                  <Compass className="w-3 h-3" />
+                  <span>HUD</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('LISTA')}
+                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer text-slate-400 hover:text-white"
+                >
+                  <LayoutList className="w-3 h-3" />
+                  <span>Lista</span>
+                </button>
+              </div>
+
+              <span className="text-[11px] font-mono font-bold text-slate-400">
+                {N} Hitos • CHLS
+              </span>
+            </div>
           </div>
 
           <div className="overflow-x-auto custom-scrollbar pt-4 pb-2">
@@ -919,6 +930,8 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           <span className={`px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wide ${
                             m.isCurrent
                               ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                              : m.isAccumulated
+                              ? 'bg-amber-500/20 text-brand-gold border border-brand-gold/40'
                               : 'bg-white/10 text-cyan-300'
                           }`}>
                             {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
@@ -942,7 +955,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           <span>&quot;{m.instruction || 'Sin notas'}&quot;</span>
                         </div>
 
-                        {/* Fila 4: Adjuntos PDF y Responsable */}
+                        {/* Fila 4: Adjuntos PDF y Responsable / Emisor */}
                         <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px]">
                           {m.documents.length > 0 ? (
                             <button
@@ -951,18 +964,26 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                                 e.stopPropagation();
                                 handleViewDoc(m.documents[0]);
                               }}
-                              className="px-3 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-500/40 font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-500/40 font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
                             >
                               <FileText className="w-3.5 h-3.5 text-red-400" />
-                              <span>{m.documents.length} PDF (Ver / Descargar)</span>
+                              <span>{m.documents.length} PDF</span>
                             </button>
                           ) : (
                             <span className="text-slate-500 font-mono">Sin anexos</span>
                           )}
 
-                          <span className="text-slate-400 font-mono text-[10.5px]">
-                            {m.personName || m.sourceUserName || 'Oficial'}
-                          </span>
+                          <div className="flex items-center gap-1 text-[10.5px] max-w-[260px] truncate" title={`Emitido por: ${m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}`}>
+                            <span className="text-slate-400 font-semibold shrink-0">Por:</span>
+                            <span className="text-emerald-300 font-bold font-mono truncate">
+                              {m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}
+                            </span>
+                            {m.personName && (
+                              <span className="text-slate-400 text-[9.5px] truncate font-mono shrink-0" title={`Dirigido a: ${m.personName}`}>
+                                ➔ {m.personName}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </foreignObject>
@@ -980,7 +1001,98 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         /* ========================================================================= */
         /* 3. VISTA "LISTA EJECUTIVA"                                               */
         /* ========================================================================= */
-        <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-cyan-500/30">
+        <div className="p-4 sm:p-6 rounded-3xl bg-[#020706] border-2 border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.1)] text-white space-y-4">
+          {/* Cabecera con controles en Vista Lista */}
+          <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 relative z-10 flex-wrap gap-2.5">
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+              <h4 className="font-black text-xs uppercase tracking-widest text-cyan-300">
+                Línea de Trazabilidad 360° • Vista Lista
+              </h4>
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {item.status !== 'CONCLUIDO' && (isOverdue || isWarning) && (
+                <button
+                  type="button"
+                  onClick={onOpenSlaModal}
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[10.5px] font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  title="Notificar vencimiento urgente de SLA"
+                >
+                  <Bell className="w-3 h-3 text-red-400 animate-pulse" />
+                  <span>Alerta SLA</span>
+                </button>
+              )}
+
+              {/* Selector de Filtro de Proveídos (Todos / Directos / Mis Proveídos) */}
+              <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-cyan-500/30 gap-1 text-[10.5px]">
+                <button
+                  type="button"
+                  onClick={() => setTimelineFilter('ALL')}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                    timelineFilter === 'ALL'
+                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver toda la trazabilidad incluyendo antecedentes acumulados"
+                >
+                  Todos ({allMilestones.length})
+                </button>
+                {allMilestones.some(m => m.isAccumulated) && (
+                  <button
+                    type="button"
+                    onClick={() => setTimelineFilter('DIRECT')}
+                    className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                      timelineFilter === 'DIRECT'
+                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                    title="Ver únicamente los proveídos directos de esta Hoja de Ruta"
+                  >
+                    Directos ({allMilestones.filter(m => !m.isAccumulated).length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setTimelineFilter('MINE')}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                    timelineFilter === 'MINE'
+                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                  title="Ver únicamente los proveídos emitidos por mi usuario"
+                >
+                  Mis Proveídos
+                </button>
+              </div>
+
+              {/* Selector de Vista: HUD / Lista */}
+              <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-[10.5px]">
+                <button
+                  type="button"
+                  onClick={() => setActiveView('HOLOGRAM')}
+                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer text-slate-400 hover:text-white"
+                >
+                  <Compass className="w-3 h-3" />
+                  <span>HUD</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveView('LISTA')}
+                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                >
+                  <LayoutList className="w-3 h-3" />
+                  <span>Lista</span>
+                </button>
+              </div>
+
+              <span className="text-[11px] font-mono font-bold text-slate-400">
+                {milestones.length} Hitos • CHLS
+              </span>
+            </div>
+          </div>
+
+          <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-cyan-500/30">
           {[...milestones].reverse().map((m) => (
             <div key={m.id} className="relative">
               <div
@@ -1003,7 +1115,14 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                     <span className="text-white">{formatArea(m.sourceArea)}</span>
                     <ArrowRight className="w-3 h-3 text-cyan-400 shrink-0" />
                     <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
-                    {m.personName && <span className="text-slate-400 font-normal">({m.personName})</span>}
+                    <span className="text-emerald-400 font-normal text-[11px]">
+                      (Emitido por: <strong className="text-white font-mono">{m.sourceUserName || formatArea(m.sourceArea)}</strong>{m.personName ? ` ➔ Para: ${m.personName}` : ''})
+                    </span>
+                    {m.isAccumulated && (
+                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-brand-gold border border-brand-gold/40 text-[9.5px] font-black">
+                        📚 EXPEDIENTE ACUMULADO
+                      </span>
+                    )}
                     {m.isCurrent && (
                       <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 text-[9px] font-black">
                         ACTUAL
@@ -1054,7 +1173,8 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </div>
           ))}
         </div>
-      )}
+      </div>
+    )}
 
       {/* ========================================================================= */}
       {/* 4. MODAL DETALLE EXPANDIDO AL TOCAR CUALQUIER RADAR                        */}

@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { createRouteSheet, analyzeTextWithAi, uploadRouteSheetDocuments, fetchWorkflowSettings } from '@store/correspondenceSlice';
+import { createRouteSheet, uploadRouteSheetDocuments, fetchWorkflowSettings } from '@store/correspondenceSlice';
 import {
   X,
   Sparkles,
@@ -25,6 +25,9 @@ import {
   ArrowRight,
   AlertCircle,
   Lock,
+  Scan,
+  Loader2,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -98,6 +101,9 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const [senderDoc, setSenderDoc] = useState('');
   const [cite, setCite] = useState('');
   const [pageCount, setPageCount] = useState<number>(1);
+  const [filePageCounts, setFilePageCounts] = useState<Record<string, number>>({});
+  const [isCountingPages, setIsCountingPages] = useState<boolean>(false);
+  const [isDraggingOver, setIsDraggingOver] = useState<boolean>(false);
   const [reference, setReference] = useState('');
   const [attachmentDescription, setAttachmentDescription] = useState('');
   const [priority, setPriority] = useState<'NORMAL' | 'ALTA' | 'URGENTE'>('NORMAL');
@@ -188,54 +194,49 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
     });
   };
 
-  // AI state
-  const [isAnalyzingAi, setIsAnalyzingAi] = useState(false);
-  const [aiSuggestion, setAiSuggestion] = useState<{ summary?: string; suggestedArea?: string; suggestedPriority?: string } | null>(null);
-
   if (!isOpen) return null;
 
-  const handleAiSuggest = async () => {
-    if (!reference || reference.trim().length < 5) {
-      toast.error('Ingresa al menos 5 caracteres en el asunto para que la IA analice.');
+  const processFiles = async (newFiles: File[]) => {
+    if (!newFiles || newFiles.length === 0) return;
+
+    // Evitar archivos duplicados por nombre y tamaño exacto
+    const existingSignatures = new Set(selectedFiles.map((f) => `${f.name}_${f.size}`));
+    const filteredNew = newFiles.filter((f) => !existingSignatures.has(`${f.name}_${f.size}`));
+
+    if (filteredNew.length === 0) {
+      toast('Estos archivos ya fueron añadidos a la digitalización', { icon: 'ℹ️' });
       return;
     }
 
-    setIsAnalyzingAi(true);
+    const combined = [...selectedFiles, ...filteredNew];
+    setSelectedFiles(combined);
+    setIsCountingPages(true);
+
+    const toastId = toast.loading('Digitalizando y contabilizando fojas de los documentos...');
     try {
-      const resultAction = await dispatch(analyzeTextWithAi(reference));
-      if (analyzeTextWithAi.fulfilled.match(resultAction)) {
-        const data = resultAction.payload;
-        setAiSuggestion(data);
-        if (data.suggestedArea) {
-          setInitialTargetArea(data.suggestedArea);
-        }
-        if (data.suggestedPriority) {
-          setPriority(data.suggestedPriority as any);
-        }
-        toast.success('✨ Sugerencia inteligente aplicada');
+      const { total, byFile } = await countTotalPdfPages(combined);
+      setFilePageCounts(byFile);
+
+      if (total > 0) {
+        setPageCount(total);
+        toast.success(
+          `Digitalización completada: se contabilizaron ${total} ${total === 1 ? 'foja' : 'fojas'} automáticamente`,
+          { id: toastId, icon: '📑' }
+        );
+      } else {
+        toast.dismiss(toastId);
       }
-    } catch {
-      toast.error('No se pudo completar el análisis asistivo');
+    } catch (err) {
+      console.warn('Error counting pages on new route sheet upload:', err);
+      toast.dismiss(toastId);
     } finally {
-      setIsAnalyzingAi(false);
+      setIsCountingPages(false);
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      const newFiles = Array.from(e.target.files);
-      const combined = [...selectedFiles, ...newFiles];
-      setSelectedFiles(combined);
-
-      try {
-        const { total } = await countTotalPdfPages(combined);
-        if (total > 0) {
-          setPageCount(total);
-          toast.success(`Se contabilizaron ${total} fojas en los documentos PDF adjuntos`, { icon: '📄' });
-        }
-      } catch (err) {
-        console.warn('Error counting pages on new route sheet upload:', err);
-      }
+      await processFiles(Array.from(e.target.files));
       e.target.value = '';
     }
   };
@@ -243,11 +244,38 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const handleRemoveFile = async (index: number) => {
     const updated = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(updated);
+
+    if (updated.length === 0) {
+      setFilePageCounts({});
+      setPageCount(1);
+      return;
+    }
+
+    setIsCountingPages(true);
     try {
-      const { total } = await countTotalPdfPages(updated);
+      const { total, byFile } = await countTotalPdfPages(updated);
+      setFilePageCounts(byFile);
       setPageCount(total > 0 ? total : 1);
     } catch {
       // ignore
+    } finally {
+      setIsCountingPages(false);
+    }
+  };
+
+  const handleRecalculatePages = async () => {
+    if (selectedFiles.length === 0) return;
+    setIsCountingPages(true);
+    const toastId = toast.loading('Recalculando fojas de los documentos adjuntos...');
+    try {
+      const { total, byFile } = await countTotalPdfPages(selectedFiles);
+      setFilePageCounts(byFile);
+      setPageCount(total > 0 ? total : 1);
+      toast.success(`Fojas recalculadas: ${total} ${total === 1 ? 'foja' : 'fojas'}`, { id: toastId, icon: '📄' });
+    } catch {
+      toast.error('No se pudo recalcular el número de fojas', { id: toastId });
+    } finally {
+      setIsCountingPages(false);
     }
   };
 
@@ -287,8 +315,8 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       initialQuickStamp: hasInitialInstruction ? initialQuickStamp : null,
       initialCcAreas: hasInitialInstruction ? initialCcAreas : [],
       initialCcPersons: hasInitialInstruction ? initialCcPersons.trim() || null : null,
-      aiSummary: aiSuggestion?.summary || null,
-      suggestedArea: aiSuggestion?.suggestedArea || null,
+      aiSummary: null,
+      suggestedArea: null,
     };
 
     const action = await dispatch(createRouteSheet(payload));
@@ -563,16 +591,6 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       Asunto & Documento de Origen
                     </h2>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={handleAiSuggest}
-                    disabled={isAnalyzingAi}
-                    className="flex items-center gap-2 text-xs font-black text-purple-700 dark:text-purple-300 hover:text-purple-900 bg-purple-500/15 dark:bg-purple-950/60 px-4 py-1.5 rounded-full border border-purple-500/40 shadow-sm transition-transform active:scale-95 disabled:opacity-50 cursor-pointer"
-                  >
-                    <Sparkles className={`w-4 h-4 text-purple-600 dark:text-purple-400 ${isAnalyzingAi ? 'animate-spin' : ''}`} />
-                    <span>{isAnalyzingAi ? 'Analizando...' : '✨ Sugerir con IA'}</span>
-                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -591,37 +609,40 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                   <div>
                     <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
-                      <span>N° de Fojas / Folios</span>
-                      {selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) && (
-                        <span className="text-[9px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-1.5 py-0.5 rounded border border-emerald-500/40 flex items-center gap-1">
+                      <span className="flex items-center gap-1.5">
+                        <span>N° de Fojas / Folios</span>
+                        <span className="text-red-500 text-sm">*</span>
+                      </span>
+                      {isCountingPages ? (
+                        <span className="text-[9px] font-black uppercase text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded-full border border-brand-gold/40 flex items-center gap-1 animate-pulse">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin text-brand-gold" />
+                          <span>Contabilizando...</span>
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1">
                           <Lock className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>Auto PDF</span>
+                          <span>{selectedFiles.length > 0 ? `Auto: ${pageCount} ${pageCount === 1 ? 'foja' : 'fojas'} (Inalterable)` : 'Automático'}</span>
                         </span>
                       )}
                     </label>
-                    <div className="relative">
-                      {selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')) ? (
-                        <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                    <div className="relative group">
+                      {isCountingPages ? (
+                        <Loader2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-gold animate-spin" />
                       ) : (
-                        <Hash className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                        <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
                       )}
                       <input
                         type="number"
                         min="1"
                         value={pageCount}
-                        readOnly={selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))}
-                        disabled={selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))}
-                        onChange={(e) => setPageCount(parseInt(e.target.value, 10) || 1)}
-                        className={`w-full pl-10 pr-4 py-3 bg-white dark:bg-[#07110c] border-2 rounded-2xl text-slate-950 dark:text-white font-mono font-black text-sm outline-none shadow-sm ${
-                          selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
-                            ? 'border-emerald-500/50 bg-emerald-500/10 cursor-not-allowed text-emerald-700 dark:text-emerald-300 select-none'
-                            : 'border-slate-300 dark:border-emerald-500/30 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                        readOnly={true}
+                        tabIndex={-1}
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-100/90 dark:bg-[#06100b] border-2 rounded-2xl text-slate-950 dark:text-emerald-300 font-mono font-black text-sm outline-none shadow-sm cursor-not-allowed select-none transition-all ${
+                          isCountingPages
+                            ? 'border-brand-gold/60 ring-2 ring-brand-gold/20'
+                            : 'border-emerald-500/40 bg-emerald-500/5'
                         }`}
-                        title={
-                          selectedFiles.some(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'))
-                            ? 'Cantidad de fojas calculada automáticamente a partir del PDF adjunto (no modificable)'
-                            : undefined
-                        }
+                        title="Cantidad inalterable: El número de fojas se calcula y bloquea de manera 100% automática a partir de los documentos digitalizados."
                       />
                     </div>
                   </div>
@@ -669,55 +690,140 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       <Paperclip className="w-3.5 h-3.5 text-brand-gold" />
                       <span>Digitalizar & Adjuntar Archivos (PDF, Fotos, Comprobantes)</span>
                     </label>
-                    <span className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
-                      Eco-Híbrido Cero Papel
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                        Eco-Híbrido Cero Papel
+                      </span>
+                      {selectedFiles.length > 0 && (
+                        <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/40">
+                          {pageCount} {pageCount === 1 ? 'foja digital' : 'fojas digitales'}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Dropzone Container */}
-                  <label className="border-2 border-dashed border-emerald-500/40 hover:border-emerald-500 dark:border-emerald-500/30 dark:hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all text-center group">
+                  {/* Dropzone Container con Drag-and-Drop nativo */}
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(true);
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(false);
+                    }}
+                    onDrop={async (e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDraggingOver(false);
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        await processFiles(Array.from(e.dataTransfer.files));
+                      }
+                    }}
+                    className={`relative border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center transition-all text-center group cursor-pointer ${
+                      isDraggingOver
+                        ? 'border-brand-gold bg-brand-gold/15 scale-[1.01] shadow-[0_0_20px_rgba(204,161,75,0.25)]'
+                        : 'border-emerald-500/40 hover:border-emerald-500 dark:border-emerald-500/30 dark:hover:border-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10'
+                    }`}
+                  >
                     <input
                       type="file"
                       multiple
                       accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
                       onChange={handleFileChange}
-                      className="hidden"
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                      title="Haz clic o arrastra documentos aquí"
                     />
-                    <UploadCloud className="w-7 h-7 text-emerald-600 dark:text-brand-gold mb-1 group-hover:scale-110 transition-transform" />
-                    <span className="text-xs font-black text-slate-900 dark:text-white">
-                      Arrastra archivos aquí o <span className="text-emerald-700 dark:text-brand-gold underline">haz clic para examinar</span>
-                    </span>
-                    <span className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">
-                      Soporta PDF escaneados, imágenes de celulares, Word y Excel (hasta 25 MB por archivo)
-                    </span>
-                  </label>
+
+                    {isCountingPages ? (
+                      <div className="flex flex-col items-center py-2 animate-pulse">
+                        <Loader2 className="w-8 h-8 text-brand-gold animate-spin mb-2" />
+                        <span className="text-xs font-black text-slate-900 dark:text-white">
+                          Digitalizando y contabilizando fojas automáticamente...
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5">
+                          Analizando estructura de páginas de los documentos
+                        </span>
+                      </div>
+                    ) : isDraggingOver ? (
+                      <div className="flex flex-col items-center py-2">
+                        <UploadCloud className="w-9 h-9 text-brand-gold animate-bounce mb-1" />
+                        <span className="text-xs font-black text-amber-900 dark:text-amber-200">
+                          ¡Suelta los archivos aquí para digitalizarlos y contar sus fojas!
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/30 group-hover:scale-110 transition-transform">
+                            <UploadCloud className="w-5 h-5 text-emerald-600 dark:text-brand-gold" />
+                          </div>
+                          <div className="p-2 rounded-xl bg-brand-gold/15 border border-brand-gold/30 group-hover:scale-110 transition-transform">
+                            <Scan className="w-5 h-5 text-brand-gold" />
+                          </div>
+                        </div>
+                        <span className="text-xs font-black text-slate-900 dark:text-white">
+                          Arrastra archivos aquí o <span className="text-emerald-700 dark:text-brand-gold underline decoration-emerald-500/50">haz clic para examinar</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-gray-400 mt-1 max-w-md">
+                          Soporta PDF escaneados, imágenes de comprobantes, Word y Excel. <strong className="text-emerald-700 dark:text-emerald-400">Conteo automático de fojas integrado.</strong>
+                        </span>
+                      </>
+                    )}
+                  </div>
 
                   {/* Preview Selected Files Chips */}
                   {selectedFiles.length > 0 && (
                     <div className="space-y-1.5 pt-1">
-                      <span className="text-[10.5px] font-black uppercase text-slate-500 dark:text-gray-400 block">
-                        Archivos listos para digitalizar ({selectedFiles.length}):
-                      </span>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10.5px] font-black uppercase text-slate-500 dark:text-gray-400">
+                          Archivos digitalizados ({selectedFiles.length}) — Total: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{pageCount} {pageCount === 1 ? 'foja' : 'fojas'}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleRecalculatePages}
+                          disabled={isCountingPages}
+                          className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          <RotateCcw className={`w-3 h-3 ${isCountingPages ? 'animate-spin' : ''}`} />
+                          <span>Recontar fojas</span>
+                        </button>
+                      </div>
+
                       <div className="flex flex-wrap gap-2">
-                        {selectedFiles.map((file, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-black/60 border border-emerald-500/40 text-xs font-bold text-slate-900 dark:text-gray-200 shadow-xs"
-                          >
-                            <FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                            <span className="truncate max-w-[200px]">{file.name}</span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFile(idx)}
-                              className="text-slate-400 hover:text-red-500 transition-colors ml-1 p-0.5"
+                        {selectedFiles.map((file, idx) => {
+                          const pages = filePageCounts[file.name] || 1;
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-black/60 border border-emerald-500/40 text-xs font-bold text-slate-900 dark:text-gray-200 shadow-xs hover:border-emerald-500 transition-colors"
                             >
-                              <Trash2 className="w-3 h-3" />
-                            </button>
-                          </div>
-                        ))}
+                              <FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              <span className="truncate max-w-[180px]" title={file.name}>{file.name}</span>
+                              <span className="text-[10px] font-black font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                {pages} {pages === 1 ? 'foja' : 'fojas'}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-mono">
+                                ({(file.size / 1024 / 1024).toFixed(1)} MB)
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveFile(idx)}
+                                className="text-slate-400 hover:text-red-500 transition-colors ml-1 p-0.5 cursor-pointer"
+                                title="Quitar archivo digitalizado"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

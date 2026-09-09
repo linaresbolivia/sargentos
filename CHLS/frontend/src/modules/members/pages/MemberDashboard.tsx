@@ -36,13 +36,15 @@ import {
   ArrowRight,
   Download,
   Info,
-  PhoneCall
+  PhoneCall,
+  Leaf
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { logout } from '@store/authSlice';
 import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@shared/components/LanguageToggle';
+import { MemberEcoImpactModal } from '../components/MemberEcoImpactModal';
 
 export const MemberDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -59,6 +61,7 @@ export const MemberDashboard: React.FC = () => {
   const [showVehiclesModal, setShowVehiclesModal] = useState(false);
   const [showAccountStatementModal, setShowAccountStatementModal] = useState(false);
   const [showQrPayModal, setShowQrPayModal] = useState(false);
+  const [showEcoModal, setShowEcoModal] = useState(false);
 
   useEffect(() => {
     dispatch(fetchCurrentProfile());
@@ -340,6 +343,65 @@ export const MemberDashboard: React.FC = () => {
                 Ver Semáforo Completo
               </span>
               <ChevronRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 transition-transform" />
+            </div>
+          </div>
+        </section>
+
+        {/* ========================================================================= */}
+        {/* INICIATIVA CERO PAPEL • CLUB INTELIGENTE - MI CORRESPONDENCIA VERDE       */}
+        {/* ========================================================================= */}
+        <section 
+          onClick={() => setShowEcoModal(true)}
+          className="relative overflow-hidden rounded-3xl p-5 sm:p-6 border-2 border-emerald-500/40 hover:border-brand-gold bg-gradient-to-br from-[#061a12] via-[#0b281c] to-[#040f0a] cursor-pointer group shadow-2xl hover:shadow-emerald-500/20 transition-all"
+        >
+          {/* Subtle eco ambient glowing orbs */}
+          <div className="absolute -top-16 -right-16 w-56 h-56 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700"></div>
+          <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-brand-gold/10 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 relative z-10">
+            <div className="flex items-start sm:items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/25 to-emerald-700/30 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all shrink-0">
+                <Leaf className="w-7 h-7" />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
+                    INICIATIVA CERO PAPEL
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40 flex items-center gap-1">
+                    <Sparkles className="w-2.5 h-2.5" /> CLUB INTELIGENTE
+                  </span>
+                </div>
+                <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-brand-gold transition-colors serif-brand">
+                  Mi Correspondencia Verde con el Club
+                </h3>
+                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
+                  Gracias a la implementación de <strong className="text-emerald-400">Club Inteligente</strong>, tu correspondencia y trámites institucionales son 100% digitales. Conoce cuánto papel, agua y emisiones de CO₂ estás ahorrando activamente.
+                </p>
+              </div>
+            </div>
+
+            {/* Quick stats preview badge & action button */}
+            <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-white/10">
+              <div className="hidden sm:flex items-center gap-3 bg-black/40 px-4 py-2 rounded-2xl border border-emerald-500/20 text-center">
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Tus Hojas</p>
+                  <p className="text-sm font-black text-emerald-400 font-mono">100% Digital</p>
+                </div>
+                <div className="w-[1px] h-6 bg-white/10"></div>
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Tu Certificado</p>
+                  <p className="text-sm font-black text-brand-gold">Ver Diploma</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 group-hover:from-emerald-400 group-hover:to-brand-gold text-black text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all shrink-0"
+              >
+                <span>Ver Mi Impacto</span>
+                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </button>
             </div>
           </div>
         </section>
@@ -834,6 +896,15 @@ export const MemberDashboard: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: INICIATIVA CERO PAPEL • CLUB INTELIGENTE (SOCIO ECO-IMPACT)        */}
+      {/* ========================================================================= */}
+      <MemberEcoImpactModal
+        isOpen={showEcoModal}
+        onClose={() => setShowEcoModal(false)}
+        socio={socio}
+      />
 
     </div>
   );

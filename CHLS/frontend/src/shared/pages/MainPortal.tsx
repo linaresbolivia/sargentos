@@ -25,6 +25,7 @@ import {
   Crown,
   Key,
   Shield,
+  Vote,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -573,6 +574,31 @@ export const MainPortal: React.FC = () => {
                 </p>
               </div>
               <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+            </Link>
+
+            {/* 13. ELECCIONES DE DIRECTORIO */}
+            <Link 
+              to="/elecciones"
+              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-[#142615] via-[#091a10] to-[#040f09] dark:bg-[#06140c] border-2 border-brand-gold/60 hover:border-brand-gold rounded-2xl transition-all duration-300 shadow-md shadow-brand-gold/10 hover:shadow-[0_0_35px_rgba(212,175,55,0.35)] hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="w-13 h-13 rounded-2xl bg-brand-gold/20 border-2 border-brand-gold/60 flex items-center justify-center text-brand-gold shrink-0 group-hover:scale-110 group-hover:bg-brand-gold group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+                <Vote className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-black text-white group-hover:text-brand-gold transition-colors truncate">
+                    13. Elecciones de Directorio
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-brand-gold/20 text-amber-300 border border-brand-gold/50 flex items-center gap-1 shrink-0">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    ESCRUTINIO EN VIVO
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 line-clamp-1">
+                  Cargado de boletas de ánfora y proyección 3D / TV HD.
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
             </Link>
 
           </div>

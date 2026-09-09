@@ -21,6 +21,7 @@ import {
   Paperclip,
   BookOpen,
   Loader2,
+  Send,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -115,72 +116,101 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
         <div className="bg-white dark:bg-[#0c1410] border-2 border-slate-200 dark:border-emerald-500/30 w-full max-w-6xl xl:max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
           
           {/* Top Header */}
-          <div className="px-6 sm:px-8 py-5 border-b border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/80 dark:bg-black/30 flex-wrap gap-3">
-            <div className="flex items-center gap-3.5">
-              <CrestLogo size="sm" className="w-11 h-11 shrink-0" />
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <span className="font-mono text-sm font-black text-emerald-950 dark:text-emerald-300 bg-emerald-500/20 dark:bg-emerald-950/80 px-3 py-0.5 rounded-xl border border-emerald-500/40 tracking-wider">
-                    {currentItem.hrCode}
-                  </span>
-                  <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-xs ${getStatusBadge(currentItem.status)}`}>
-                    {currentItem.status}
-                  </span>
-                  <span className="text-xs font-bold text-slate-500 dark:text-gray-400 font-mono">
-                    CITE: {currentItem.cite || 'S/N'}
-                  </span>
+          <div className="px-6 sm:px-8 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#0c1410] flex flex-col gap-3.5">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center gap-3.5">
+                <CrestLogo size="sm" className="w-11 h-11 shrink-0" />
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="font-mono text-sm font-black text-emerald-950 dark:text-emerald-300 bg-emerald-500/20 dark:bg-emerald-950/80 px-3 py-0.5 rounded-xl border border-emerald-500/40 tracking-wider">
+                      {currentItem.hrCode}
+                    </span>
+                    <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-xs ${getStatusBadge(currentItem.status)}`}>
+                      {currentItem.status}
+                    </span>
+                    <span className="text-xs font-bold text-slate-500 dark:text-gray-400 font-mono">
+                      CITE: {currentItem.cite || 'S/N'}
+                    </span>
+                  </div>
+                  <h2 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                    Expediente & Trazabilidad 360°
+                  </h2>
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                  Expediente & Trazabilidad 360°
-                </h2>
               </div>
+
+              {/* Cerrar (X) */}
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900 text-slate-300 hover:text-white border border-emerald-500/30 hover:border-red-400/60 shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:shadow-[0_0_18px_rgba(239,68,68,0.35)] transition-all hover:scale-105 active:scale-95 cursor-pointer touch-manipulation"
+                title="Cerrar ventana"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Modern Centered Touch Screen Command Bar with Subtle Glow */}
+            <div className="flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap pt-0.5">
+              {/* 1. Imprimir Timeline (PDF) */}
               <button
+                type="button"
                 onClick={() => setShowTimelinePrintModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600/20 to-teal-600/20 hover:from-emerald-600/35 hover:to-teal-600/35 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
                 title="Imprimir o guardar en PDF el reporte oficial de trazabilidad con tabla ejecutiva y logo CHLS"
               >
-                <Printer className="w-4 h-4 text-emerald-600 dark:text-brand-gold" />
-                <span className="hidden sm:inline">Imprimir Timeline (PDF)</span>
+                <Printer className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                <span>Imprimir Timeline (PDF)</span>
               </button>
 
+              {/* 2. Imprimir Hoja de Ruta */}
               <button
+                type="button"
                 onClick={() => setShowPrintModal(true)}
-                className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 hover:bg-slate-200 dark:hover:bg-white/20 text-slate-800 dark:text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer"
+                className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
                 title="Imprimir carátula y carpeta física oficial de la Hoja de Ruta"
               >
-                <Printer className="w-4 h-4 text-brand-gold" />
-                <span className="hidden sm:inline">Imprimir Hoja de Ruta</span>
+                <Printer className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                <span>Imprimir Hoja de Ruta</span>
               </button>
 
+              {/* 3. + Fusionar */}
               {!isFusedChild && (
                 <button
+                  type="button"
                   onClick={() => setShowMergeModal(true)}
-                  className="flex items-center gap-2 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                  className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
+                  title="Fusionar con otra Hoja de Ruta"
                 >
-                  <Link2 className="w-4 h-4 text-brand-gold" />
-                  <span className="hidden sm:inline">+ Fusionar</span>
+                  <Link2 className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                  <span>+ Fusionar</span>
                 </button>
               )}
 
+              {/* 4. Archivar */}
               {currentItem.status !== 'CONCLUIDO' && (
                 <button
+                  type="button"
                   onClick={() => setShowArchiveModal(true)}
-                  className="flex items-center gap-2 bg-slate-100 dark:bg-white/10 hover:bg-emerald-500/20 text-slate-800 dark:text-white hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-300 dark:border-white/10 hover:border-emerald-500/50 px-3.5 py-2.5 rounded-xl text-xs font-black transition-all hover:scale-105 active:scale-95 shadow-sm cursor-pointer"
+                  className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
+                  title="Archivar expediente en archivo central"
                 >
-                  <FolderArchive className="w-4 h-4 text-brand-gold" />
+                  <FolderArchive className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
                   <span>Archivar</span>
                 </button>
               )}
 
-              <button
-                onClick={onClose}
-                className="p-2.5 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors ml-1 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              {/* 5. + Derivar / Proveído */}
+              {currentItem.status !== 'CONCLUIDO' && (
+                <button
+                  type="button"
+                  onClick={() => setShowAddMovementModal(true)}
+                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-500 hover:to-emerald-600 text-white border border-emerald-300/60 hover:border-emerald-200 px-5 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-[13px] font-black tracking-wide shadow-[0_0_22px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(16,185,129,0.75)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation"
+                  title="Derivar expediente o registrar un nuevo proveído formal"
+                >
+                  <Send className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.6)]" />
+                  <span>+ Derivar / Proveído</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -196,49 +226,44 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
           </div>
 
           {/* Footer Bar (Al final de la Hoja de Ruta) */}
-          <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-center bg-slate-50/50 dark:bg-black/20 text-xs flex-wrap gap-3">
-            <span className="text-slate-400 font-mono text-[11px]">
+          <div className="px-6 py-4 border-t border-slate-100 dark:border-white/5 grid grid-cols-1 sm:grid-cols-3 items-center bg-slate-50/50 dark:bg-black/20 text-xs gap-3">
+            {/* Left: ID Sistema */}
+            <div className="text-left text-slate-400 font-mono text-[11px] truncate">
               ID Sistema: {currentItem.id}
-            </span>
-            <div className="flex items-center gap-3 flex-wrap">
-              {/* Botón Solicitado: Expediente Completo al final de la hoja */}
+            </div>
+
+            {/* Center: Botón Expediente Completo en Dorado Metálico */}
+            <div className="flex justify-center items-center">
               <button
                 type="button"
                 onClick={handleGenerateDossierPdf}
                 disabled={isGeneratingDossier}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-emerald-600 to-teal-600 hover:from-amber-400 hover:to-teal-500 text-slate-950 font-black text-xs hover:scale-105 active:scale-95 transition-all shadow-md shadow-amber-500/20 border border-amber-400/50 cursor-pointer disabled:opacity-50"
+                className="relative group overflow-hidden inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-[linear-gradient(135deg,#825d1e_0%,#c59a3f_22%,#fef0bc_45%,#e5bb64_55%,#b3852d_78%,#6d4b14_100%)] text-[#1f1402] font-black text-xs tracking-wide hover:scale-105 active:scale-95 transition-all duration-300 shadow-[inset_0_1px_1px_rgba(255,255,255,0.65),inset_0_-1px_1px_rgba(0,0,0,0.35),0_4px_16px_rgba(184,138,50,0.35)] hover:shadow-[inset_0_1px_2px_rgba(255,255,255,0.9),0_6px_24px_rgba(220,175,80,0.55)] border border-[#fae29f]/90 cursor-pointer disabled:opacity-50 select-none touch-manipulation"
                 title="Genera y descarga un único PDF con todo el expediente: carátula, datos de derivación de cada usuario y todos los archivos adjuntos integrados físicamente"
               >
+                {/* Reflejo metálico dinámico al interactuar */}
+                <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 pointer-events-none" />
+
                 {isGeneratingDossier ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-slate-950" />
-                    <span>Compilando Expediente...</span>
+                    <Loader2 className="w-4 h-4 animate-spin text-[#1f1402]" />
+                    <span className="drop-shadow-[0_1px_0px_rgba(255,255,255,0.4)]">Compilando Expediente...</span>
                   </>
                 ) : (
                   <>
-                    <BookOpen className="w-4 h-4 text-slate-950" />
-                    <span>📚 Expediente Completo (PDF)</span>
+                    <BookOpen className="w-4 h-4 text-[#1f1402] shrink-0 drop-shadow-[0_1px_0px_rgba(255,255,255,0.4)]" />
+                    <span className="drop-shadow-[0_1px_0px_rgba(255,255,255,0.4)]">Expediente Completo (PDF)</span>
                   </>
                 )}
               </button>
+            </div>
 
+            {/* Right: Botón Cerrar */}
+            <div className="flex justify-end items-center">
               <button
-                onClick={() => setShowTimelinePrintModal(true)}
-                className="font-bold text-emerald-600 dark:text-emerald-400 hover:text-brand-gold transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir Timeline 360°</span>
-              </button>
-              <button
-                onClick={() => setShowPrintModal(true)}
-                className="font-bold text-slate-700 dark:text-gray-300 hover:text-brand-gold transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir Hoja de Ruta</span>
-              </button>
-              <button
+                type="button"
                 onClick={onClose}
-                className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white px-4 py-2 rounded-xl font-bold transition-colors cursor-pointer"
+                className="bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white px-5 py-2.5 rounded-xl font-bold transition-colors cursor-pointer"
               >
                 Cerrar
               </button>

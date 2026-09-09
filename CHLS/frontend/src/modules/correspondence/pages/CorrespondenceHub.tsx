@@ -24,6 +24,8 @@ import { CorrespondenceInternalChatDrawer } from '../components/CorrespondenceIn
 import { CorrespondenceReportExportModal } from '../components/CorrespondenceReportExportModal';
 import { ChlsWorkflowCanvasModal } from '../components/ChlsWorkflowCanvasModal';
 import { RouteSheetAttachmentsModal } from '../components/RouteSheetAttachmentsModal';
+import { RouteSheetLocatorModal } from '../components/RouteSheetLocatorModal';
+import { EcoMetricsNormativeModal, EcoMetricType } from '../components/EcoMetricsNormativeModal';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -65,6 +67,10 @@ import {
   ArrowUpDown,
   Hash,
   Paperclip,
+  Info,
+  ExternalLink,
+  ShieldCheck,
+  HelpCircle,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -128,6 +134,9 @@ export const CorrespondenceHub: React.FC = () => {
   const [channelUnreadCounts, setChannelUnreadCounts] = useState<Record<string, number>>({});
   const [printableItem, setPrintableItem] = useState<RouteSheetItem | null>(null);
   const [attachmentsModalItem, setAttachmentsModalItem] = useState<RouteSheetItem | null>(null);
+  const [activeEcoMetric, setActiveEcoMetric] = useState<EcoMetricType | null>(null);
+  const [isLocatorModalOpen, setIsLocatorModalOpen] = useState(false);
+  const [locatorInitialArea, setLocatorInitialArea] = useState<string | undefined>(undefined);
 
   // Storage key for user-specific read/opened items
   const storageUserKey = currentUser?.id || (currentUser as any)?.username || 'user';
@@ -589,6 +598,18 @@ export const CorrespondenceHub: React.FC = () => {
             </button>
 
             <button
+              onClick={() => {
+                setLocatorInitialArea(undefined);
+                setIsLocatorModalOpen(true);
+              }}
+              title="Localizador y Radar de Hojas de Ruta en Tiempo Real (¿Dónde están los expedientes?)"
+              className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-brand-gold/20 to-emerald-500/20 hover:from-emerald-500/30 hover:to-brand-gold/30 text-emerald-900 dark:text-brand-gold border-2 border-brand-gold/50 shadow-[0_0_15px_rgba(204,161,75,0.25)] text-xs font-black transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            >
+              <Compass className="w-4 h-4 text-brand-gold animate-spin-slow" />
+              <span>Ubicar Hojas de Ruta</span>
+            </button>
+
+            <button
               onClick={() => setIsInvoiceModalOpen(true)}
               title="Recepción rápida de facturas (Luz, Agua, Gas, etc.)"
               className="flex items-center gap-2 px-3 sm:px-3.5 py-2 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 text-xs font-bold shadow-xs transition-all hover:scale-105 active:scale-95"
@@ -643,11 +664,38 @@ export const CorrespondenceHub: React.FC = () => {
       {/* Main Container */}
       <main className="relative z-10 flex-1 w-full max-w-[1720px] mx-auto p-4 sm:p-6 lg:p-8 space-y-7">
         
-        {/* Eco-Metrics Bar (Iniciativa Cero Papel) */}
+        {/* Eco-Metrics Header */}
+        <div className="flex items-center gap-2 px-1">
+          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
+          <span className="text-xs font-black tracking-wider uppercase text-emerald-600 dark:text-emerald-400">
+            INICIATIVA CERO PAPEL • CLUB INTELIGENTE
+          </span>
+          <span className="hidden md:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            Certificación Metodológica EPN / ISO 14040
+          </span>
+        </div>
+
+        {/* Eco-Metrics Bar (Iniciativa Cero Papel - Clic para ver cálculo específico) */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
           
           {/* 1. Hojas Ahorradas */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d2a1c] dark:via-[#081c12] dark:to-[#030e08] border border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-500 dark:hover:border-emerald-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.12)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5),0_0_90px_rgba(16,185,129,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+          <div
+            onClick={() => setActiveEcoMetric('sheets')}
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#0d2a1c] dark:via-[#081c12] dark:to-[#030e08] border border-emerald-500/30 dark:border-emerald-500/40 hover:border-emerald-500 dark:hover:border-emerald-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(16,185,129,0.12)] hover:shadow-[0_0_50px_rgba(16,185,129,0.5),0_0_90px_rgba(16,185,129,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer"
+            title="Haga clic para ver el cálculo y normativa de Hojas Ahorradas"
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveEcoMetric('sheets');
+              }}
+              title="Ver detalle de cálculo y respaldo"
+              className="absolute top-3.5 right-3.5 p-1 rounded-full text-slate-400 dark:text-gray-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors cursor-pointer"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+
             <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(16,185,129,0.5)]">
               <Leaf className="w-7 h-7 text-emerald-500" />
             </div>
@@ -662,7 +710,23 @@ export const CorrespondenceHub: React.FC = () => {
           </div>
 
           {/* 2. Árboles Protegidos */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#2a240d] dark:via-[#1c1808] dark:to-[#0e0c03] border border-brand-gold/30 dark:border-brand-gold/40 hover:border-brand-gold dark:hover:border-yellow-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(234,179,8,0.12)] hover:shadow-[0_0_50px_rgba(234,179,8,0.5),0_0_90px_rgba(234,179,8,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+          <div
+            onClick={() => setActiveEcoMetric('trees')}
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#2a240d] dark:via-[#1c1808] dark:to-[#0e0c03] border border-brand-gold/30 dark:border-brand-gold/40 hover:border-brand-gold dark:hover:border-yellow-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(234,179,8,0.12)] hover:shadow-[0_0_50px_rgba(234,179,8,0.5),0_0_90px_rgba(234,179,8,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer"
+            title="Haga clic para ver el cálculo y normativa de Árboles Protegidos"
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveEcoMetric('trees');
+              }}
+              title="Ver detalle de cálculo y respaldo"
+              className="absolute top-3.5 right-3.5 p-1 rounded-full text-slate-400 dark:text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors cursor-pointer"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+
             <div className="w-14 h-14 rounded-2xl bg-brand-gold/15 text-brand-gold border border-brand-gold/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(234,179,8,0.5)]">
               <Sparkles className="w-7 h-7 text-brand-gold" />
             </div>
@@ -677,7 +741,23 @@ export const CorrespondenceHub: React.FC = () => {
           </div>
 
           {/* 3. Agua Preservada */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#0d222a] dark:via-[#08161c] dark:to-[#030a0e] border border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-500 dark:hover:border-cyan-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(6,182,212,0.12)] hover:shadow-[0_0_50px_rgba(6,182,212,0.5),0_0_90px_rgba(6,182,212,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+          <div
+            onClick={() => setActiveEcoMetric('water')}
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#0d222a] dark:via-[#08161c] dark:to-[#030a0e] border border-cyan-500/30 dark:border-cyan-500/40 hover:border-cyan-500 dark:hover:border-cyan-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(6,182,212,0.12)] hover:shadow-[0_0_50px_rgba(6,182,212,0.5),0_0_90px_rgba(6,182,212,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer"
+            title="Haga clic para ver el cálculo y normativa de Agua Preservada"
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveEcoMetric('water');
+              }}
+              title="Ver detalle de cálculo y respaldo"
+              className="absolute top-3.5 right-3.5 p-1 rounded-full text-slate-400 dark:text-gray-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors cursor-pointer"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+
             <div className="w-14 h-14 rounded-2xl bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(6,182,212,0.5)]">
               <Droplet className="w-7 h-7" />
             </div>
@@ -692,7 +772,23 @@ export const CorrespondenceHub: React.FC = () => {
           </div>
 
           {/* 4. CO₂ Evitado */}
-          <div className="group bg-white/90 dark:bg-gradient-to-br dark:from-[#250d2a] dark:via-[#18081c] dark:to-[#0c030e] border border-purple-500/30 dark:border-purple-500/40 hover:border-purple-500 dark:hover:border-purple-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.12)] hover:shadow-[0_0_50px_rgba(168,85,247,0.5),0_0_90px_rgba(168,85,247,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer">
+          <div
+            onClick={() => setActiveEcoMetric('co2')}
+            className="group relative bg-white/90 dark:bg-gradient-to-br dark:from-[#250d2a] dark:via-[#18081c] dark:to-[#0c030e] border border-purple-500/30 dark:border-purple-500/40 hover:border-purple-500 dark:hover:border-purple-400 p-5 rounded-3xl backdrop-blur-xl shadow-[0_0_20px_rgba(168,85,247,0.12)] hover:shadow-[0_0_50px_rgba(168,85,247,0.5),0_0_90px_rgba(168,85,247,0.25)] flex items-center gap-4 transition-all duration-300 hover:scale-[1.03] cursor-pointer"
+            title="Haga clic para ver el cálculo y normativa de CO₂ Evitado"
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setActiveEcoMetric('co2');
+              }}
+              title="Ver detalle de cálculo y respaldo"
+              className="absolute top-3.5 right-3.5 p-1 rounded-full text-slate-400 dark:text-gray-400 hover:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
+            >
+              <Info className="w-4 h-4" />
+            </button>
+
             <div className="w-14 h-14 rounded-2xl bg-purple-500/15 text-purple-600 dark:text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(168,85,247,0.5)]">
               <Wind className="w-7 h-7" />
             </div>
@@ -713,20 +809,34 @@ export const CorrespondenceHub: React.FC = () => {
           
           {/* Top Row: Search & Tray Summary */}
           <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
-            {/* Search Input */}
-            <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-brand-gold" />
-              <input
-                type="text"
-                placeholder="Buscar por N° de Hoja de Ruta (ej. 08-193), remitente, CITE, asunto o ubicación de archivo..."
-                value={searchQuery}
-                onChange={(e) => dispatch(setSearchQuery(e.target.value))}
-                spellCheck={true}
-                lang="es-BO"
-                autoCorrect="on"
-                autoCapitalize="sentences"
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-black/50 border-2 border-slate-200 dark:border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold shadow-xs"
-              />
+            {/* Search Input & Radar Locator Button */}
+            <div className="relative flex-1 flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-brand-gold" />
+                <input
+                  type="text"
+                  placeholder="Buscar por N° de Hoja de Ruta (ej. 08-193), remitente, CITE, asunto o ubicación de archivo..."
+                  value={searchQuery}
+                  onChange={(e) => dispatch(setSearchQuery(e.target.value))}
+                  spellCheck={true}
+                  lang="es-BO"
+                  autoCorrect="on"
+                  autoCapitalize="sentences"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-50 dark:bg-black/50 border-2 border-slate-200 dark:border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 outline-none transition-all font-bold shadow-xs"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setLocatorInitialArea(undefined);
+                  setIsLocatorModalOpen(true);
+                }}
+                title="Abrir Ubicador y Radar 360° para saber dónde están todas las hojas de ruta"
+                className="flex items-center gap-1.5 px-4 py-3.5 rounded-2xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-800 dark:text-brand-gold border border-emerald-500/40 text-xs font-black shadow-xs transition-all hover:scale-105 active:scale-95 shrink-0 cursor-pointer"
+              >
+                <Compass className="w-4 h-4 text-brand-gold" />
+                <span className="hidden sm:inline">Radar de Ubicación</span>
+              </button>
             </div>
 
             <div className="text-right hidden md:block">
@@ -1109,10 +1219,19 @@ export const CorrespondenceHub: React.FC = () => {
 
                         {/* 7. Custodia Actual */}
                         <td className="py-4 px-4">
-                          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-black/50 border border-slate-200 dark:border-emerald-500/30 text-xs font-black text-emerald-900 dark:text-brand-gold uppercase truncate max-w-[180px] shadow-2xs">
-                            <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setLocatorInitialArea(item.currentArea);
+                              setIsLocatorModalOpen(true);
+                            }}
+                            title={`Ubicar todas las hojas de ruta en ${item.currentArea}`}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-emerald-500/15 dark:bg-black/50 dark:hover:bg-emerald-500/20 border border-slate-200 hover:border-emerald-500 dark:border-emerald-500/30 dark:hover:border-emerald-400 text-xs font-black text-emerald-900 dark:text-brand-gold uppercase truncate max-w-[180px] shadow-2xs transition-all cursor-pointer group"
+                          >
+                            <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
                             <span className="truncate">{item.currentArea}</span>
-                          </div>
+                          </button>
                           {item.archiveLocation && (
                             <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold block mt-1 truncate">
                               📁 {item.archiveLocation}
@@ -1295,12 +1414,22 @@ export const CorrespondenceHub: React.FC = () => {
 
                   {/* Bottom Bar: Custody Location, Read Status & Quick Print */}
                   <div className="mt-5 pt-3.5 border-t border-emerald-500/25 dark:border-emerald-500/30 flex items-center justify-between text-xs sm:text-sm">
-                    <div className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-gray-300">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setLocatorInitialArea(item.currentArea);
+                        setIsLocatorModalOpen(true);
+                      }}
+                      title={`Ubicar hojas de ruta en ${item.currentArea}`}
+                      className="flex items-center gap-1.5 font-bold text-slate-700 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-brand-gold cursor-pointer transition-colors group text-left"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
                       <span className="text-slate-500 dark:text-gray-400 font-normal">Custodia:</span>
-                      <span className="text-emerald-800 dark:text-brand-gold uppercase truncate max-w-[140px] font-black">
+                      <span className="text-emerald-800 dark:text-brand-gold uppercase truncate max-w-[130px] font-black underline decoration-dotted">
                         {item.currentArea}
                       </span>
-                    </div>
+                    </button>
 
                     <div className="flex items-center gap-1">
                       {/* Botón de Adjuntos en Tarjeta */}
@@ -1418,6 +1547,24 @@ export const CorrespondenceHub: React.FC = () => {
         />
       )}
 
+      {/* Modal Ubicador de Hojas de Ruta & Radar de Custodia 360° */}
+      {isLocatorModalOpen && (
+        <RouteSheetLocatorModal
+          isOpen={isLocatorModalOpen}
+          onClose={() => {
+            setIsLocatorModalOpen(false);
+            setLocatorInitialArea(undefined);
+          }}
+          items={items}
+          workflow={workflow}
+          initialArea={locatorInitialArea}
+          onSelectItem={(item) => {
+            setIsLocatorModalOpen(false);
+            handleOpenItemDetail(item);
+          }}
+        />
+      )}
+
       {/* Floating WhatsApp Style Chat Widget Button */}
       <div className="fixed bottom-6 right-6 z-40 flex items-center gap-3">
         <button
@@ -1475,6 +1622,16 @@ export const CorrespondenceHub: React.FC = () => {
         <ChlsWorkflowCanvasModal
           isOpen={isWorkflowModalOpen}
           onClose={() => setIsWorkflowModalOpen(false)}
+        />
+      )}
+
+      {/* Eco Metrics Normative Methodology Modal */}
+      {activeEcoMetric && (
+        <EcoMetricsNormativeModal
+          isOpen={Boolean(activeEcoMetric)}
+          selectedMetric={activeEcoMetric}
+          onClose={() => setActiveEcoMetric(null)}
+          metrics={stats?.ecoMetrics}
         />
       )}
     </div>

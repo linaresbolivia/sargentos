@@ -228,11 +228,11 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
     setIsExporting(true);
     const toastId = toast.loading('Generando documento PDF oficial...');
     try {
-      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
 
-      // Header Banner (Emerald & Gold Institutional Style)
+      // Header Banner (Emerald & Gold Institutional Style - Letter Landscape 279.4mm x 215.9mm)
       doc.setFillColor(7, 24, 16);
-      doc.rect(0, 0, 297, 26, 'F');
+      doc.rect(0, 0, 279.4, 26, 'F');
 
       doc.setFontSize(15);
       doc.setTextColor(204, 161, 75); // Brand Gold
@@ -247,14 +247,14 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
       doc.setFontSize(8);
       doc.setTextColor(167, 243, 208); // Emerald Light
       doc.text(
-        `Período: ${startDate} al ${endDate} | Filtro Área: ${areaFilter} | Total Registros: ${filteredData.length} (${totalFojas} fojas)`,
+        `Período: ${startDate} al ${endDate} | Filtro Área: ${areaFilter} | Total Registros: ${filteredData.length} (${totalFojas} fojas) | Papel Bond Carta`,
         14,
         22
       );
 
       doc.setFontSize(8);
       doc.setTextColor(204, 161, 75);
-      doc.text(`Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 245, 22);
+      doc.text(`Emisión: ${format(new Date(), 'dd/MM/yyyy HH:mm')}`, 225, 22);
 
       // Table rows
       const tableData = filteredData.map((item, idx) => [
@@ -325,12 +325,12 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
           cellPadding: 1.5,
         },
         didDrawPage: (data) => {
-          // Footer
+          // Footer oficial para Papel Bond Tamaño Carta
           doc.setFontSize(7);
           doc.setTextColor(120, 120, 120);
           const pageStr = `Página ${data.pageNumber} de ${(doc as any).internal.getNumberOfPages()}`;
-          doc.text(pageStr, 14, 204);
-          doc.text('Secretaría de Gerencia General — Club Hípico Los Sargentos — Documento Oficial de Auditoría', 100, 204);
+          doc.text(pageStr, 14, 206);
+          doc.text('Secretaría de Gerencia General — Club Hípico Los Sargentos — Auditoría Oficial (Papel Bond Tamaño Carta)', 75, 206);
         },
       });
 
@@ -638,7 +638,7 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
         {/* Footer Actions */}
         <div className="px-6 py-4 border-t border-emerald-500/30 flex items-center justify-between bg-slate-50/90 dark:bg-[#091810] shrink-0 flex-wrap gap-3">
           <div className="text-xs text-slate-500 dark:text-gray-400 font-medium">
-            Formato oficial con validez fiduciaria y de auditoría interna
+            Formato oficial: <strong>Papel Bond Tamaño Carta (Horizontal)</strong> con validez fiduciaria y de auditoría interna
           </div>
 
           <div className="flex items-center gap-3">
@@ -669,7 +669,7 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
               className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-gradient-to-r from-brand-gold to-yellow-600 hover:from-yellow-500 hover:to-yellow-600 text-black font-black shadow-lg shadow-brand-gold/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 text-xs sm:text-sm cursor-pointer"
             >
               <FileText className="w-4 h-4 text-black" />
-              <span>Generar PDF Oficial (.pdf)</span>
+              <span>Generar PDF Carta (.pdf)</span>
             </button>
           </div>
         </div>

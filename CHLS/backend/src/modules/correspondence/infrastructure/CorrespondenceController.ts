@@ -67,6 +67,7 @@ export class CorrespondenceController {
     // List & Stats
     this.router.get('/route-sheets', this.listRouteSheets.bind(this));
     this.router.get('/stats', this.getStats.bind(this));
+    this.router.get('/member-impact', this.getMemberEcoImpact.bind(this));
     this.router.get('/sla-summary', this.getSlaSummary.bind(this));
     this.router.get('/route-sheets/:idOrCode', this.getRouteSheetByIdOrCode.bind(this));
 
@@ -318,6 +319,29 @@ export class CorrespondenceController {
       return res.status(500).json({
         success: false,
         message: 'Error al obtener estadísticas',
+        error: error.message,
+      });
+    }
+  }
+
+  // 6.b. Get Member Eco Impact (Iniciativa Cero Papel - CLUB INTELIGENTE)
+  public async getMemberEcoImpact(req: Request, res: Response) {
+    try {
+      const user = (req as any).user;
+      const { personId, senderName, documentId } = req.query;
+
+      const result = await this.routeSheetService.getMemberEcoImpact({
+        personId: (personId as string) || user?.person?.id,
+        senderName: (senderName as string) || (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined),
+        documentId: (documentId as string) || user?.documentId,
+      });
+
+      return res.status(200).json(result);
+    } catch (error: any) {
+      logger.error('Error getting member eco impact:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener impacto ecológico del socio',
         error: error.message,
       });
     }

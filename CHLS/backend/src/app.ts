@@ -13,6 +13,7 @@ import reservationsRoutes from './modules/reservations/infrastructure/routes/res
 import { AccessController } from '@modules/accessControl/infrastructure/controllers/AccessController';
 import { CommercialController } from '@modules/commercial/infrastructure/controllers/CommercialController';
 import { CorrespondenceController } from '@modules/correspondence/infrastructure/CorrespondenceController';
+import { ElectionController } from '@modules/elections/infrastructure/ElectionController';
 
 import path from 'path';
 
@@ -20,6 +21,7 @@ const app = express();
 const accessController = new AccessController();
 const commercialController = new CommercialController();
 const correspondenceController = new CorrespondenceController();
+const electionController = new ElectionController();
 
 // Static uploads serving
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
@@ -75,6 +77,7 @@ app.use('/api/reservations', reservationsRoutes);
 app.use('/api/access', accessController.router);
 app.use('/api/commercial', commercialController.router);
 app.use('/api/correspondence', correspondenceController.router);
+app.use('/api/elections', electionController.router);
 
 // Global Error Handler
 app.use(errorHandler);
