@@ -68,7 +68,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
   ];
 
   return (
-    <div className="w-full min-h-[680px] p-6 lg:p-8 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-[#c5a059]/50 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
+    <div className="w-full min-h-[680px] p-3 sm:p-5 lg:p-6 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-[#c5a059]/50 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
       {/* Studio lighting ceiling rig visual effect */}
       <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-white/10 to-transparent pointer-events-none flex justify-around items-center px-10">
         {[...Array(12)].map((_, i) => (
@@ -163,10 +163,14 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
         </div>
       </div>
 
-      {/* Main Broadcaster Card Row (Ordered by Rank) */}
+      {/* Main Broadcaster Card Row (Ordered by Rank) - All candidates fit on screen */}
       <div
-        className={`relative z-10 w-full flex-1 flex items-center justify-center py-6 overflow-x-auto ${
-          isTwoCandidates ? 'gap-12 sm:gap-20' : 'gap-3 sm:gap-4 lg:gap-5'
+        className={`relative z-10 w-full flex-1 flex items-stretch justify-center py-4 sm:py-6 overflow-hidden ${
+          isTwoCandidates
+            ? 'gap-8 sm:gap-16'
+            : candidates.length > 9
+            ? 'gap-1 sm:gap-1.5 md:gap-2'
+            : 'gap-1.5 sm:gap-2.5 md:gap-3'
         }`}
       >
         {candidates.map((cand, idx) => {
@@ -182,64 +186,64 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
           return (
             <div
               key={cand.id}
-              className={`shrink-0 flex flex-col rounded-2xl border-2 overflow-hidden shadow-2xl transition-all duration-300 group hover:-translate-y-2 relative ${
-                isTwoCandidates ? 'w-48 sm:w-60 lg:w-72' : 'w-28 sm:w-36 lg:w-40'
+              className={`flex flex-col rounded-xl sm:rounded-2xl border-2 overflow-hidden shadow-xl transition-all duration-300 group hover:-translate-y-1 relative ${
+                isTwoCandidates
+                  ? 'w-48 sm:w-60 lg:w-72 shrink-0'
+                  : 'flex-1 min-w-0 max-w-[155px]'
               } ${
                 isWinner
-                  ? 'border-brand-gold ring-4 ring-brand-gold/50 shadow-[0_0_35px_rgba(212,175,55,0.4)] scale-105'
+                  ? 'border-brand-gold ring-2 sm:ring-4 ring-brand-gold/50 shadow-[0_0_25px_rgba(212,175,55,0.4)]'
                   : theme.border
               }`}
             >
               {/* Top Big Votes Count Box (Television News Style) */}
               <div
-                className={`w-full py-2.5 sm:py-3.5 ${theme.bgTop} ${theme.textTop} flex flex-col items-center justify-center text-center shadow-md relative`}
+                className={`w-full py-2 sm:py-2.5 md:py-3.5 ${theme.bgTop} ${theme.textTop} flex flex-col items-center justify-center text-center shadow-md relative`}
               >
                 {isWinner && (
-                  <div className="absolute top-1 left-2 flex items-center gap-1 text-[9px] font-black text-amber-200 uppercase bg-black/40 px-1.5 py-0.5 rounded">
-                    <Award className="w-3 h-3 text-brand-gold" />
+                  <div className="absolute top-1 left-1.5 flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black text-amber-200 uppercase bg-black/60 px-1 py-0.5 rounded">
+                    <Award className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-brand-gold" />
                     <span>#1</span>
                   </div>
                 )}
-                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight leading-none drop-shadow-md">
+                <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black font-mono tracking-tight leading-none drop-shadow-md">
                   {cand.votesCount || 0}
                 </span>
-                <span className="text-xs uppercase font-black tracking-widest opacity-90 mt-1">
+                <span className="text-[10px] sm:text-xs uppercase font-black tracking-widest opacity-90 mt-0.5 sm:mt-1">
                   {cand.votesCount === 1 ? 'VOTO' : 'VOTOS'}
                 </span>
                 {cand.orderIndex === 10 || (cand.position || '').toUpperCase().includes('COMIT') ? (
-                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-emerald-300">
+                  <span className="text-[7.5px] sm:text-[8.5px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-emerald-300 px-0.5 truncate w-full block text-center">
                     COMITÉ ELECTORAL
                   </span>
                 ) : cand.orderIndex === 11 || (cand.position || '').toUpperCase().includes('TRIBUNAL') ? (
-                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-yellow-300">
+                  <span className="text-[7.5px] sm:text-[8.5px] uppercase font-bold tracking-wider opacity-90 mt-0.5 text-yellow-300 px-0.5 truncate w-full block text-center">
                     TRIBUNAL DE HONOR
                   </span>
                 ) : null}
               </div>
 
               {/* Candidate Photo Frame */}
-              <div className="w-full h-32 sm:h-40 bg-slate-900 overflow-hidden relative">
+              <div className="w-full aspect-[4/5] bg-slate-900 overflow-hidden relative">
                 {cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex] ? (
                   <img
                     src={cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex]}
                     alt={cand.fullName}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-gradient-to-b from-slate-900 to-black text-center relative">
-                    <div className="w-10 h-10 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mb-1 text-white/70">
-                      <Users className="w-5 h-5 opacity-80" />
+                  <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-b from-slate-900 to-black text-center relative">
+                    <div className="w-8 h-8 rounded-full bg-white/10 border border-white/20 flex items-center justify-center mb-1 text-white/70">
+                      <Users className="w-4 h-4 opacity-80" />
                     </div>
-                    <span className="text-[10px] font-black text-white/60 uppercase tracking-wider">
-                      Postulante #{cand.orderIndex}
+                    <span className="text-[9px] font-black text-white/60 uppercase tracking-wider">
+                      #{cand.orderIndex}
                     </span>
                   </div>
                 )}
 
-                {/* Rank Badge overlay */}
-                <div className="absolute bottom-1 right-1 bg-black/80 px-2 py-0.5 rounded text-[10px] font-mono font-bold text-white">
-                  Pos. #{cand.rank || idx + 1}
-                </div>
               </div>
 
               {/* Candidate Name Ribbon in EXACTLY TWO LINES */}
@@ -247,12 +251,12 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                 const { line1, line2 } = formatNameInTwoLines(cand.fullName);
                 return (
                   <div
-                    className={`w-full py-2 px-1.5 ${theme.nameBg} text-center flex flex-col items-center justify-center min-h-[50px] max-h-[50px] overflow-hidden leading-tight`}
+                    className={`w-full py-1.5 sm:py-2 px-1 ${theme.nameBg} text-center flex flex-col items-center justify-center min-h-[42px] sm:min-h-[46px] max-h-[46px] overflow-hidden leading-tight`}
                   >
-                    <span className="text-xs sm:text-[13px] md:text-sm font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
+                    <span className="text-[10px] sm:text-[11px] md:text-xs font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
                       {line1}
                     </span>
-                    <span className="text-xs sm:text-[13px] md:text-sm font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
+                    <span className="text-[10px] sm:text-[11px] md:text-xs font-black text-white uppercase tracking-tight truncate w-full block drop-shadow">
                       {line2 || '\u00A0'}
                     </span>
                   </div>
@@ -260,17 +264,17 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
               })()}
 
               {/* Bottom Percentage Bar (with respect to registered ballots) */}
-              <div className="w-full bg-slate-950 py-2 px-2 border-t border-white/10 flex flex-col items-center justify-center text-center">
-                <span className="text-sm font-black text-emerald-400 font-mono leading-none">
+              <div className="w-full bg-slate-950 py-1.5 sm:py-2 px-1 border-t border-white/10 flex flex-col items-center justify-center text-center">
+                <span className="text-xs sm:text-sm font-black text-emerald-400 font-mono leading-none">
                   {pct.toFixed(1).replace('.', ',')}%
                 </span>
-                <span className="text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">
+                <span className="text-[7px] sm:text-[8px] text-gray-400 font-bold uppercase tracking-wider mt-0.5 truncate w-full block">
                   de boletas en ánfora
                 </span>
               </div>
 
               {/* Reflected floor simulation at card base */}
-              <div className="w-full h-1.5 bg-white/20" />
+              <div className="w-full h-1 bg-white/20" />
             </div>
           );
         })}

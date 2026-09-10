@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { CandidateDto, ElectionStatsDto } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
+import { compressImage } from '@shared/utils/imageCompressor';
 
 interface CandidateParametrizationModalProps {
   isOpen: boolean;
@@ -58,35 +59,35 @@ export const CandidateParametrizationModal: React.FC<CandidateParametrizationMod
 
   if (!isOpen) return null;
 
-  // Handle local image file selection for new candidate
-  const handleNewFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local image file selection for new candidate with instant high-quality compression
+  const handleNewFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error('La imagen no debe superar los 8MB.');
-        return;
+      try {
+        const toastId = toast.loading('Optimizando fotografía...');
+        const { dataUrl, compressedSizeKb } = await compressImage(file, 480, 480, 0.85);
+        setNewPhotoUrl(dataUrl);
+        toast.dismiss(toastId);
+        toast.success(`Foto lista (${compressedSizeKb} KB).`);
+      } catch (err) {
+        toast.error('No se pudo procesar la fotografía.');
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setNewPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 
-  // Handle local image file selection for editing candidate
-  const handleEditFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle local image file selection for editing candidate with instant high-quality compression
+  const handleEditFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      if (file.size > 8 * 1024 * 1024) {
-        toast.error('La imagen no debe superar los 8MB.');
-        return;
+      try {
+        const toastId = toast.loading('Optimizando fotografía...');
+        const { dataUrl, compressedSizeKb } = await compressImage(file, 480, 480, 0.85);
+        setEditPhotoUrl(dataUrl);
+        toast.dismiss(toastId);
+        toast.success(`Foto lista (${compressedSizeKb} KB).`);
+      } catch (err) {
+        toast.error('No se pudo procesar la fotografía.');
       }
-      const reader = new FileReader();
-      reader.onload = () => {
-        setEditPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
     }
   };
 

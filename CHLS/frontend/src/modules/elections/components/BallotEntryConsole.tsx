@@ -41,6 +41,10 @@ export interface BallotEntryConsoleProps {
   toggleCandidate?: (id: string) => void;
   recentlyVotedCandidateIds?: string[];
   lastSavedInfo?: LastSavedInfo | null;
+  onRegisterBallot?: (type: 'VALID' | 'BLANK' | 'NULL') => void;
+  onUndo?: () => void;
+  onClearSelection?: () => void;
+  isSubmitting?: boolean;
   onBallotRegistered?: (newStats: ElectionStatsDto) => void;
   onOpenSettings?: () => void;
   onViewResults?: () => void;
@@ -50,11 +54,15 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
   electionId,
   candidates,
   stats,
-  maxSelections = 5,
+  maxSelections = 11,
   selectedCandidateIds: externalSelectedIds,
   toggleCandidate: externalToggleCandidate,
   recentlyVotedCandidateIds: externalRecentlyVoted,
   lastSavedInfo: externalLastSavedInfo,
+  onRegisterBallot,
+  onUndo,
+  onClearSelection,
+  isSubmitting = false,
   onOpenSettings,
   onViewResults,
 }) => {
@@ -124,96 +132,94 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
     );
   }, [ballotCardsCandidates]);
 
-  // Helper to render a candidate card matching the physical paper ballot: [Casilla] - [Nombre] - [Foto]
-  const renderBallotCard = (cand: CandidateDto, badgeLabel?: string, borderClass?: string) => {
+  // Helper to render a candidate card matching the physical paper ballot: [Foto arriba] - [Nombre al centro] - [Casilla blanca abajo]
+  const renderVerticalBallotCard = (
+    cand: CandidateDto,
+    theme: 'DIRECTORIO' | 'COMITE' | 'TRIBUNAL' = 'DIRECTORIO'
+  ) => {
     const isSelected = selectedCandidateIds.includes(cand.id);
     const wasJustVoted = recentlyVotedCandidateIds.includes(cand.id);
     const photoSrc = cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex];
+
+    const isWhiteTheme = theme === 'COMITE' || theme === 'TRIBUNAL';
 
     return (
       <div
         key={cand.id}
         onClick={() => toggleCandidate(cand.id)}
-        className={`group cursor-pointer select-none transition-all duration-150 rounded-xl relative overflow-hidden flex items-center justify-between p-1.5 sm:p-2 ${
+        className={`group cursor-pointer select-none transition-all duration-150 rounded-2xl relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 shadow-md ${
           wasJustVoted
-            ? 'ring-2 ring-emerald-400 shadow-[0_0_20px_rgba(52,211,153,0.7)] scale-[1.01] bg-[#0c2e1b]'
+            ? 'ring-4 ring-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.8)] scale-[1.02]'
             : isSelected
-            ? 'ring-2 ring-emerald-400/90 shadow-[0_0_16px_rgba(52,211,153,0.4)] bg-[#0a2c1a]'
-            : 'hover:scale-[1.008] shadow-sm hover:shadow-lg bg-[#081b11]/95 hover:bg-[#0c2618]'
+            ? isWhiteTheme
+              ? theme === 'COMITE'
+                ? 'ring-4 ring-emerald-500 bg-white shadow-[0_0_25px_rgba(16,185,129,0.7)] scale-[1.02]'
+                : 'ring-4 ring-yellow-500 bg-white shadow-[0_0_25px_rgba(234,179,8,0.7)] scale-[1.02]'
+              : 'ring-2 ring-emerald-400 bg-[#0e3b1f] shadow-[0_0_20px_rgba(52,211,153,0.5)] scale-[1.02]'
+            : isWhiteTheme
+            ? 'bg-white hover:bg-slate-50 border-2 border-slate-300 hover:border-slate-400 hover:scale-[1.01]'
+            : 'bg-[#0a2717] hover:bg-[#0e351f] border-2 border-[#165b33] hover:border-brand-gold/60 hover:scale-[1.01]'
         }`}
-        style={{
-          border: wasJustVoted
-            ? '2px solid #34d399'
-            : isSelected
-            ? '2px solid #10b981'
-            : borderClass || '1.5px solid rgba(212, 175, 55, 0.45)',
-        }}
       >
         {wasJustVoted && (
-          <div className="absolute top-1 right-2 z-20 bg-emerald-400 text-black text-[8px] font-black px-1.5 py-0.2 rounded shadow-lg animate-bounce">
+          <div className="absolute top-1.5 right-1.5 z-20 bg-emerald-400 text-black text-[9px] font-black px-2 py-0.5 rounded shadow-lg animate-bounce">
             +1 VOTO
           </div>
         )}
 
-        {/* 1. IZQUIERDA: CASILLA BLANCA DE VOTACIÓN (VERDE ESMERALDA NEÓN SUTIL AL MARCAR) */}
-        <div
-          className={`w-11 h-11 sm:w-12 sm:h-12 rounded-lg border-2 transition-all duration-150 flex items-center justify-center shrink-0 shadow-inner ${
-            isSelected
-              ? 'bg-emerald-500/25 border-emerald-400 shadow-[0_0_14px_rgba(52,211,153,0.6)] ring-1 ring-emerald-400/60'
-              : 'bg-white border-slate-300 hover:border-slate-400'
-          }`}
-        >
-          {isSelected ? (
-            <span className="text-2xl sm:text-3xl font-black text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.95)] leading-none select-none font-sans animate-in zoom-in-75 duration-100">
-              ✕
-            </span>
-          ) : (
-            <span className="text-[8px] text-gray-400 font-black uppercase tracking-wider group-hover:text-gray-600">
-              VOTO
-            </span>
-          )}
-        </div>
-
-        {/* 2. CENTRO: NOMBRE DEL POSTULANTE + NÚMERO */}
-        <div className="flex-1 px-2.5 flex flex-col justify-center min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5">
-            <span className="bg-black/80 text-brand-gold font-mono font-black text-[10px] px-1.5 py-0.2 rounded border border-brand-gold/30 shrink-0">
-              #{cand.orderIndex}
-            </span>
-            {badgeLabel ? (
-              <span
-                className={`text-[8px] font-black uppercase px-1.5 py-0.2 rounded shrink-0 ${
-                  badgeLabel.includes('COMITÉ')
-                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-amber-950 text-yellow-300 border border-amber-500/40'
-                }`}
-              >
-                {badgeLabel}
-              </span>
-            ) : (
-              <span className="text-[9px] font-mono text-gray-300 font-medium truncate">
-                {cand.votesCount || 0} v <span className="text-emerald-400 font-bold">({cand.votesPercentage || 0}%)</span>
-              </span>
-            )}
-          </div>
-          <span className="text-xs sm:text-[13px] font-black text-white uppercase tracking-tight leading-tight line-clamp-2 group-hover:text-amber-300 transition-colors drop-shadow-sm">
-            {cand.fullName}
-          </span>
-        </div>
-
-        {/* 3. DERECHA: FOTO OFICIAL DEL POSTULANTE */}
-        <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-lg overflow-hidden border border-white/25 shrink-0 bg-black/70 shadow flex items-center justify-center">
-          {photoSrc ? (
+        {/* 1. PARTE SUPERIOR: FOTO DEL POSTULANTE CON NÚMERO */}
+        <div className="relative w-full flex justify-center mb-1">
+          <div className="relative">
             <img
               src={photoSrc}
               alt={cand.fullName}
-              className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-150"
+              loading="lazy"
+              decoding="async"
+              className="w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-xl object-cover object-top border-2 border-white/95 shadow-md group-hover:scale-105 transition-transform duration-150"
             />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-b from-[#091b2c] to-black flex items-center justify-center text-white/50">
-              <CrestLogo size="sm" className="w-4 h-4 opacity-60" />
-            </div>
-          )}
+            <span className="absolute -top-1 -left-1 bg-black/85 text-brand-gold font-mono font-black text-[10px] px-1.5 py-0.2 rounded border border-brand-gold/40 shadow">
+              #{cand.orderIndex}
+            </span>
+          </div>
+        </div>
+
+        {/* 2. CENTRO: NOMBRE DEL POSTULANTE */}
+        <div className="w-full text-center px-1 my-1">
+          <span
+            className={`text-xs sm:text-[13px] font-bold uppercase tracking-tight leading-snug line-clamp-2 min-h-[34px] flex items-center justify-center ${
+              isWhiteTheme ? 'text-slate-900' : 'text-white group-hover:text-amber-300'
+            }`}
+          >
+            {cand.fullName}
+          </span>
+          <span
+            className={`text-[9px] font-mono block mt-0.5 ${
+              isWhiteTheme ? 'text-slate-600' : 'text-emerald-400/80'
+            }`}
+          >
+            {cand.votesCount || 0} v ({cand.votesPercentage || 0}%)
+          </span>
+        </div>
+
+        {/* 3. PARTE INFERIOR: CASILLA BLANCA DE VOTACIÓN (COMO EN LA BOLETA FÍSICA) */}
+        <div className="w-full flex justify-center pt-1">
+          <div
+            className={`w-11 h-11 sm:w-12 sm:h-12 md:w-13 md:h-13 rounded-xl border-2 transition-all duration-150 flex items-center justify-center shadow-inner ${
+              isSelected
+                ? 'bg-white border-emerald-500 ring-2 ring-emerald-400/60 shadow-[0_0_12px_rgba(16,185,129,0.5)]'
+                : 'bg-white border-slate-300 group-hover:border-slate-400'
+            }`}
+          >
+            {isSelected ? (
+              <span className="text-3xl sm:text-4xl font-black text-slate-950 leading-none select-none font-sans animate-in zoom-in-75 duration-100">
+                ✕
+              </span>
+            ) : (
+              <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider group-hover:text-slate-500">
+                VOTO
+              </span>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -294,86 +300,191 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
             </button>
           </div>
 
-          {/* 3 COLUMNAS EXACTAS COMO EN LA PAPELETA FÍSICA */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-3.5 relative z-10 items-stretch">
-            {/* COLUMNA 1: DIRECTORIO (1 AL 5) - 5 postulantes */}
-            <div className="lg:col-span-4 flex flex-col space-y-2 justify-between">
-              <div className="border-b border-brand-gold/40 pb-1 px-1 flex items-center justify-between">
-                <span className="text-xs font-black uppercase text-brand-gold tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_6px_#d4af37]" />
+          {/* DISTRIBUCIÓN EXACTA DE LA BOLETA FÍSICA */}
+          <div className="space-y-4 relative z-10">
+            {/* FILA 1: DIRECTORIO (1 AL 5) - 5 Postulantes en horizontal */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="text-xs font-black uppercase text-brand-gold tracking-wider flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-gold shadow-[0_0_8px_#d4af37]" />
                   <span>DIRECTORIO (1 AL 5)</span>
                 </span>
-                <span className="text-[10px] text-gray-400 font-mono">5 Postulantes</span>
+                <span className="text-[10px] text-emerald-400/80 font-mono font-bold">5 Postulantes</span>
               </div>
-              <div className="flex flex-col gap-2 justify-between flex-1">
-                {directorioCol1.map((cand) => renderBallotCard(cand))}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 sm:gap-3.5">
+                {directorioCol1.map((cand) => renderVerticalBallotCard(cand, 'DIRECTORIO'))}
               </div>
             </div>
 
-            {/* COLUMNA 2: DIRECTORIO (6 AL 9) - 4 postulantes */}
-            <div className="lg:col-span-4 flex flex-col space-y-2 justify-between">
-              <div className="border-b border-brand-gold/40 pb-1 px-1 flex items-center justify-between">
-                <span className="text-xs font-black uppercase text-brand-gold tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_6px_#d4af37]" />
+            {/* FILA 2: DIRECTORIO (6 AL 9) - 4 Postulantes centrados */}
+            <div>
+              <div className="flex items-center justify-between px-1 mb-1.5">
+                <span className="text-xs font-black uppercase text-brand-gold tracking-wider flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-brand-gold shadow-[0_0_8px_#d4af37]" />
                   <span>DIRECTORIO (6 AL 9)</span>
                 </span>
-                <span className="text-[10px] text-gray-400 font-mono">4 Postulantes</span>
+                <span className="text-[10px] text-emerald-400/80 font-mono font-bold">4 Postulantes</span>
               </div>
-              <div className="flex flex-col gap-2 justify-between flex-1">
-                {directorioCol2.map((cand) => renderBallotCard(cand))}
+              <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3.5">
+                {directorioCol2.map((cand) => (
+                  <div
+                    key={cand.id}
+                    className="w-[calc(50%-0.625rem)] sm:w-[calc(33.333%-0.75rem)] md:w-[calc((100%-4*0.875rem)/5)]"
+                  >
+                    {renderVerticalBallotCard(cand, 'DIRECTORIO')}
+                  </div>
+                ))}
               </div>
             </div>
 
-            {/* COLUMNA 3: ÓRGANOS ESPECIALES (COMITÉ ELECTORAL & TRIBUNAL DE HONOR) */}
-            <div className="lg:col-span-4 flex flex-col space-y-2 justify-between">
-              <div className="border-b border-emerald-400/40 pb-1 px-1 flex items-center justify-between">
-                <span className="text-xs font-black uppercase text-emerald-300 tracking-wider flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
-                  <span>ÓRGANOS ESPECIALES</span>
-                </span>
-                <span className="text-[10px] text-gray-400 font-mono">2 Postulantes</span>
-              </div>
-
-              <div className="flex flex-col gap-3 justify-between flex-1">
-                {/* 1. COMITÉ ELECTORAL */}
-                {comiteElectoralCandidate && (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-950/80 px-2.5 py-0.5 rounded-full border border-emerald-500/50 shadow-sm">
-                        COMITÉ ELECTORAL
-                      </span>
-                      <span className="text-[9px] text-emerald-400/80 font-mono">Postulante #10</span>
-                    </div>
-                    {renderBallotCard(comiteElectoralCandidate, 'COMITÉ', '2px solid rgba(16, 185, 129, 0.65)')}
+            {/* FILA 3: ÓRGANOS ESPECIALES (COMITÉ ELECTORAL & TRIBUNAL DE HONOR) */}
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-2.5 sm:gap-3.5 items-stretch">
+                {/* Bloque 1: COMITÉ ELECTORAL (Alineado bajo columnas 1 y 2) */}
+                <div className="md:col-span-2 bg-[#0c381c]/90 border-2 border-emerald-500/60 rounded-2xl p-3 shadow-lg flex flex-col justify-between">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-400/30 px-1">
+                    <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-emerald-300">
+                      COMITÉ ELECTORAL
+                    </span>
+                    <span className="text-[10px] text-emerald-400 font-mono font-bold">Postulante #10</span>
                   </div>
-                )}
-
-                {/* 2. TRIBUNAL DE HONOR */}
-                {tribunalHonorCandidate && (
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center justify-between px-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider text-yellow-300 bg-yellow-950/80 px-2.5 py-0.5 rounded-full border border-yellow-500/50 shadow-sm">
-                        TRIBUNAL DE HONOR
-                      </span>
-                      <span className="text-[9px] text-yellow-400/80 font-mono">Postulante #11</span>
-                    </div>
-                    {renderBallotCard(tribunalHonorCandidate, 'TRIBUNAL', '2px solid rgba(234, 179, 8, 0.65)')}
+                  <div className="flex justify-center flex-1 items-center py-1">
+                    {comiteElectoralCandidate && (
+                      <div className="w-full max-w-[260px]">
+                        {renderVerticalBallotCard(comiteElectoralCandidate, 'COMITE')}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
-                {/* Quick Helper Box inside Columna 3 to perfectly balance vertical height */}
-                <div className="bg-black/40 rounded-xl p-2.5 border border-white/10 text-center text-xs text-gray-300 flex items-center justify-around font-mono">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold">Marcas</span>
-                    <span className="text-emerald-400 font-black text-sm">{selectedCandidateIds.length}/9</span>
+                {/* Bloque 2: TRIBUNAL DE HONOR (Alineado bajo columnas 3 y 4) */}
+                <div className="md:col-span-2 bg-[#78350f]/60 border-2 border-yellow-500/70 rounded-2xl p-3 shadow-lg flex flex-col justify-between">
+                  <div className="flex items-center justify-between pb-2 mb-2 border-b border-yellow-500/40 px-1">
+                    <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-yellow-300">
+                      TRIBUNAL DE HONOR
+                    </span>
+                    <span className="text-[10px] text-yellow-400 font-mono font-bold">Postulante #11</span>
                   </div>
-                  <div className="h-6 w-[1px] bg-white/15" />
-                  <div className="flex flex-col">
-                    <span className="text-[9px] text-gray-400 uppercase font-bold">Confirmar</span>
-                    <span className="text-brand-gold font-black text-sm">Enter ↵</span>
+                  <div className="flex justify-center flex-1 items-center py-1">
+                    {tribunalHonorCandidate && (
+                      <div className="w-full max-w-[260px]">
+                        {renderVerticalBallotCard(tribunalHonorCandidate, 'TRIBUNAL')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Bloque 3: Helper / Instrucciones (Alineado bajo columna 5) */}
+                <div className="md:col-span-1 bg-black/40 border border-white/10 rounded-2xl p-3 flex flex-col items-center justify-center text-center gap-2 shadow-inner">
+                  <span className="text-[10px] text-brand-gold uppercase font-bold tracking-wider">
+                    Escrutinio Físico
+                  </span>
+                  <div className="text-xs text-gray-300 space-y-1.5 font-mono">
+                    <p className="text-[11px]">
+                      <strong className="text-white font-bold">✕ Marcar:</strong> Clic en tarjeta
+                    </p>
+                    <p className="text-[11px]">
+                      <strong className="text-brand-gold font-bold">↵ Enter:</strong> Guardar boleta
+                    </p>
+                  </div>
+                  <div className="mt-1 pt-1.5 border-t border-white/10 w-full text-center">
+                    <span className="text-[10px] text-emerald-400 font-bold uppercase">
+                      11 Postulantes en Boleta
+                    </span>
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* PIE DEL FORMULARIO DE REGISTRO DE VOTOS (ACTION FOOTER) */}
+          <div className="relative z-10 pt-2 border-t-2 border-brand-gold/30 flex flex-wrap items-center justify-between gap-3 bg-[#020d06]/95 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/10 shadow-2xl">
+            {/* LADO IZQUIERDO: RESUMEN Y CONTADOR DE MARCAS */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-black/70 rounded-xl border border-white/10 text-xs font-mono">
+                <span className="text-brand-gold font-bold">
+                  Boleta <strong className="text-white">#{(stats?.totalBallots || 0) + 1}</strong>
+                </span>
+                <span className="text-white/20">|</span>
+                <span className="text-gray-300">
+                  Ánfora: <strong className="text-white">{stats?.totalBallots || 0}</strong>
+                </span>
+                <span className="text-white/20">|</span>
+                <span className="text-emerald-400 font-bold">
+                  Marcas: <strong>{selectedCandidateIds.length}</strong>
+                </span>
+              </div>
+
+              {selectedCandidateIds.length > 0 && onClearSelection && (
+                <button
+                  type="button"
+                  onClick={onClearSelection}
+                  className="text-xs text-rose-400 hover:text-rose-300 underline font-semibold transition-colors cursor-pointer"
+                  title="Desmarcar todas las selecciones"
+                >
+                  Limpiar Selección
+                </button>
+              )}
+            </div>
+
+            {/* LADO DERECHO: LOS 3 BOTONES DE ACCIÓN + DESHACER */}
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {/* 1. BOTÓN REGISTRAR VÁLIDO */}
+              <button
+                type="button"
+                onClick={() => onRegisterBallot?.('VALID')}
+                disabled={isSubmitting || selectedCandidateIds.length === 0}
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow-lg ${
+                  selectedCandidateIds.length > 0
+                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-300/80 ring-2 ring-emerald-400/50 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-pulse'
+                    : 'bg-emerald-950/40 text-emerald-600 border border-emerald-900/40 cursor-not-allowed opacity-50'
+                }`}
+                title="Registrar boleta válida (tecla Enter)"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Registrar ({selectedCandidateIds.length})</span>
+                <kbd className="hidden sm:inline text-[10px] bg-black/40 px-1.5 py-0.5 rounded border border-white/20 text-brand-gold font-mono font-bold">
+                  ↵ Enter
+                </kbd>
+              </button>
+
+              {/* 2. BOTÓN VOTO BLANCO */}
+              <button
+                type="button"
+                onClick={() => onRegisterBallot?.('BLANK')}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600/50 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 active:scale-95"
+                title="Registrar boleta sin marcas (Voto en Blanco)"
+              >
+                <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
+                <span>Blanco</span>
+              </button>
+
+              {/* 3. BOTÓN VOTO NULO */}
+              <button
+                type="button"
+                onClick={() => onRegisterBallot?.('NULL')}
+                disabled={isSubmitting}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-500/50 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 active:scale-95"
+                title="Registrar boleta anulada (Voto Nulo)"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
+                <span>Nulo</span>
+              </button>
+
+              {/* 4. BOTÓN DESHACER */}
+              {onUndo && (
+                <button
+                  type="button"
+                  onClick={onUndo}
+                  disabled={isSubmitting || (stats?.totalBallots || 0) === 0}
+                  className="flex items-center gap-1.5 px-3 py-2.5 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-amber-200 border border-amber-500/40 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow hover:scale-105 active:scale-95"
+                  title="Deshacer última boleta registrada"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="hidden sm:inline">Deshacer</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

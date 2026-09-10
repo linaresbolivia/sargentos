@@ -1,5 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import sharp from 'sharp';
 import { socketService } from '@config/socket';
 import { logger } from '@config/logger';
 import {
@@ -43,7 +46,7 @@ export class ElectionService {
           status: 'EN_CURSO',
           endDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
           quorumMinimum: 25,
-          maxSelectionsPerBallot: 5,
+          maxSelectionsPerBallot: 11,
         },
         include: {
           candidates: true,
@@ -339,6 +342,29 @@ export class ElectionService {
       membershipNumber?: string;
     }
   ) {
+    let finalPhotoUrl = candidate.photoUrl || null;
+    if (finalPhotoUrl && finalPhotoUrl.startsWith('data:image')) {
+      try {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'elections');
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        const base64Data = finalPhotoUrl.split(',')[1];
+        const origBuf = Buffer.from(base64Data, 'base64');
+        const fileName = `cand_${candidate.orderIndex || 0}_${Date.now()}.webp`;
+        const filePath = path.join(uploadsDir, fileName);
+
+        await sharp(origBuf)
+          .resize(480, 480, { fit: 'cover', position: 'top' })
+          .webp({ quality: 85, effort: 4 })
+          .toFile(filePath);
+
+        finalPhotoUrl = `/uploads/elections/${fileName}`;
+      } catch (err) {
+        logger.error('Error al optimizar foto de candidato:', err);
+      }
+    }
+
     let saved;
     if (candidate.id) {
       saved = await this.prisma.electionCandidate.update({
@@ -346,7 +372,7 @@ export class ElectionService {
         data: {
           fullName: candidate.fullName,
           position: candidate.position || 'Postulante al Directorio',
-          photoUrl: candidate.photoUrl || null,
+          photoUrl: finalPhotoUrl,
           colorHex: candidate.colorHex || '#0b532c',
           orderIndex: candidate.orderIndex || 1,
           membershipNumber: candidate.membershipNumber || null,
@@ -364,7 +390,7 @@ export class ElectionService {
           electionId,
           fullName: candidate.fullName,
           position: candidate.position || 'Postulante al Directorio',
-          photoUrl: candidate.photoUrl || null,
+          photoUrl: finalPhotoUrl,
           colorHex: candidate.colorHex || '#0b532c',
           orderIndex: candidate.orderIndex || currentCount + 1,
           membershipNumber: candidate.membershipNumber || null,

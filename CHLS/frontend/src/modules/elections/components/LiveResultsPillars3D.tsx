@@ -8,7 +8,7 @@ import {
   isDirectorioCandidate,
 } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
-import { Award, CheckCircle2, TrendingUp, Users } from 'lucide-react';
+import { Award, CheckCircle2, TrendingUp, Users, Vote } from 'lucide-react';
 
 interface LiveResultsPillars3DProps {
   stats: ElectionStatsDto;
@@ -44,7 +44,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
   const maxPct = Math.max(...candidates.map((c) => c.votesPercentage || 0), 10);
 
   return (
-    <div className="w-full flex flex-col items-center justify-between min-h-[540px] p-4 sm:p-5 lg:p-6 pb-3 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-brand-gold/50 shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden select-none">
+    <div className="w-full flex flex-col items-center justify-between min-h-[540px] p-3 sm:p-4 lg:p-5 pb-2 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-brand-gold/50 shadow-[0_25px_70px_rgba(0,0,0,0.85)] relative overflow-hidden select-none">
       {/* Background luxury club watermark - muy sutil y perdido en el fondo como marca de agua genuina */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center opacity-[0.035] filter grayscale-[40%]">
         <CrestLogo size="xl" className="w-[580px] h-[680px]" />
@@ -96,39 +96,112 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
           </button>
         </div>
 
-        {/* Global Stats Counter Pills */}
-        <div className="flex items-center gap-3">
-          <div className="bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-brand-gold/50 text-center shadow-lg">
-            <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
-              Boletas en Ánfora
-            </span>
-            <span className="text-xl sm:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-brand-gold to-yellow-400">
-              {stats.totalBallots}
-            </span>
+        {/* Panel Superior de Estadísticas: 2 Cuadros Perfectamente Uniformes con Números Grandes de Alta Visibilidad */}
+        <div className="flex items-stretch gap-3 sm:gap-4 flex-wrap justify-center md:justify-end">
+          {/* Cuadro 1: Boletas Contabilizadas con Desglose */}
+          <div className="bg-gradient-to-b from-black/95 via-[#081320]/95 to-black/95 backdrop-blur-md rounded-2xl border-2 border-brand-gold/70 shadow-[0_15px_45px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col justify-between min-w-[300px] sm:min-w-[340px] flex-1 md:flex-initial">
+            {/* Encabezado Superior */}
+            <div className="px-4 py-2 bg-gradient-to-r from-amber-500/25 via-brand-gold/20 to-transparent border-b border-brand-gold/40 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Vote className="w-4 h-4 text-brand-gold shrink-0" />
+                <span className="text-xs sm:text-sm font-black uppercase text-amber-200 tracking-wider">
+                  Boletas Contabilizadas
+                </span>
+              </div>
+              <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-[10px] font-black uppercase tracking-wider text-amber-300">
+                Ánfora Oficial
+              </span>
+            </div>
+
+            {/* Fila Principal: Número Gigante + Desglose en 3 */}
+            <div className="p-3 sm:p-3.5 flex items-center justify-between gap-3 sm:gap-4 bg-gradient-to-b from-white/[0.03] to-transparent">
+              {/* Total Boletas Hero Number */}
+              <div className="flex flex-col items-start pl-1">
+                <span className="text-[10px] font-black uppercase text-amber-300/80 tracking-widest leading-none mb-1">
+                  Total Ánfora
+                </span>
+                <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-brand-gold to-yellow-300 leading-none drop-shadow-[0_2px_14px_rgba(234,179,8,0.4)]">
+                  {stats.totalBallots}
+                </span>
+              </div>
+
+              {/* Desglose 3 Columnas con Números Grandes */}
+              <div className="grid grid-cols-3 divide-x divide-white/15 bg-black/70 py-2 px-1 rounded-xl border border-white/10 text-center flex-1">
+                {/* 1. Válidos */}
+                <div className="px-1.5 flex flex-col items-center justify-center">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-black text-emerald-400 tracking-wider">
+                    Válidos
+                  </span>
+                  <span className="text-base sm:text-xl font-black font-mono text-emerald-300 leading-tight">
+                    {stats.validBallots}
+                  </span>
+                  <span className="text-[9px] font-bold text-emerald-400/90 leading-none mt-0.5">
+                    ({stats.validPercentage}%)
+                  </span>
+                </div>
+
+                {/* 2. Blancos */}
+                <div className="px-1.5 flex flex-col items-center justify-center">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-black text-gray-400 tracking-wider">
+                    Blancos
+                  </span>
+                  <span className="text-base sm:text-xl font-black font-mono text-gray-100 leading-tight">
+                    {stats.blankBallots}
+                  </span>
+                  <span className="text-[9px] font-bold text-gray-400 leading-none mt-0.5">
+                    ({stats.blankPercentage}%)
+                  </span>
+                </div>
+
+                {/* 3. Nulos */}
+                <div className="px-1.5 flex flex-col items-center justify-center">
+                  <span className="text-[9px] sm:text-[10px] uppercase font-black text-rose-400 tracking-wider">
+                    Nulos
+                  </span>
+                  <span className="text-base sm:text-xl font-black font-mono text-rose-300 leading-tight">
+                    {stats.nullBallots}
+                  </span>
+                  <span className="text-[9px] font-bold text-rose-400/90 leading-none mt-0.5">
+                    ({stats.nullPercentage}%)
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="bg-black/50 px-3 py-1.5 rounded-2xl border border-white/10 text-center">
-            <span className="text-[10px] uppercase font-bold text-emerald-400 block tracking-wider">
-              Votos Emitidos
-            </span>
-            <span className="text-lg sm:text-xl font-black text-white">
-              {stats.totalVotesAccumulated}
-            </span>
-          </div>
+          {/* Cuadro 2: Total Cantidad de Votos Limpio y Directo */}
+          <div className="bg-gradient-to-b from-black/95 via-[#061810]/95 to-black/95 backdrop-blur-md rounded-2xl border-2 border-brand-gold/70 shadow-[0_15px_45px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col justify-between min-w-[170px] sm:min-w-[200px]">
+            {/* Encabezado Superior a Juego */}
+            <div className="px-4 py-2 bg-gradient-to-r from-emerald-500/25 via-brand-gold/20 to-transparent border-b border-brand-gold/40 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-black uppercase text-amber-200 tracking-wider">
+                  Total Votos
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-400/40">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                  En Vivo
+                </span>
+              </div>
+            </div>
 
-          <div className="bg-black/50 px-3 py-1.5 rounded-2xl border border-white/10 text-center hidden sm:block">
-            <span className="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">
-              Blanco / Nulo
-            </span>
-            <span className="text-sm font-bold text-gray-300">
-              {stats.blankBallots} / {stats.nullBallots}
-            </span>
+            {/* Fila Principal: Número Gigante Limpio y Centrado */}
+            <div className="p-3 sm:p-3.5 flex flex-col items-center justify-center bg-gradient-to-b from-white/[0.03] to-transparent text-center my-auto">
+              <span className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-400 leading-none drop-shadow-[0_2px_14px_rgba(52,211,153,0.4)]">
+                {stats.totalVotesAccumulated}
+              </span>
+              <span className="text-[10px] font-black uppercase text-emerald-300/80 tracking-widest leading-none mt-1.5">
+                Votos Emitidos
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Main 3D Columns Stage */}
-      <div className="relative z-10 w-full flex-1 flex items-end justify-center pt-10 pb-2 px-1 sm:px-2 overflow-x-auto min-h-[400px] scrollbar-thin scrollbar-thumb-brand-gold/30">
+      <div className="relative z-10 w-full flex-1 flex items-end justify-center pt-8 sm:pt-10 pb-2 px-1 sm:px-2 overflow-x-auto min-h-[360px] scrollbar-thin scrollbar-thumb-brand-gold/30">
         <div
           className={`flex items-end mx-auto ${
             isTwoCandidates
@@ -140,8 +213,9 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
         >
         {candidates.map((cand, idx) => {
           const pct = cand.votesPercentage || 0;
-          // Calculate column height percentage (minimum 16% for visual aesthetics, up to 88%)
-          const heightPercent = stats.totalBallots > 0 ? Math.max(16, (pct / maxPct) * 85) : 16;
+          // Calculate column height percentage: leave headroom for floating votes badge
+          const maxColumnScale = isTwoCandidates ? 54 : isTodos ? 72 : 75;
+          const heightPercent = stats.totalBallots > 0 ? Math.max(16, (pct / maxPct) * maxColumnScale) : 16;
 
           const votes = cand.votesCount || 0;
           const hasVotes = votes > 0;
@@ -238,7 +312,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
               {/* 3D Column with top floating votes badge */}
               <div
                 className="w-full flex flex-col items-center justify-end relative transition-all duration-700 ease-out"
-                style={{ height: isTwoCandidates ? '310px' : isTodos ? '230px' : '260px' }}
+                style={{ height: isTwoCandidates ? '170px' : isTodos ? '205px' : '230px' }}
               >
                 {/* 3D Pillar Body */}
                 <div
@@ -256,11 +330,11 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                   }}
                 >
                   {/* Flotando ENCIMA de la barra (bottom-full la ubica 100% arriba de la columna) */}
-                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1.5 sm:mb-2 z-30 pointer-events-none transition-transform duration-300 group-hover:-translate-y-1">
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 sm:mb-1.5 z-30 pointer-events-none transition-transform duration-300 group-hover:-translate-y-1">
                     <div
                       className={`rounded-xl ${pillarColor.badgeBg} backdrop-blur-md border shadow-[0_10px_25px_rgba(0,0,0,0.85)] text-center shrink-0 whitespace-nowrap flex flex-col items-center justify-center pointer-events-auto ${
                         isTwoCandidates
-                          ? 'px-4 sm:px-5 py-1.5 sm:py-2 min-w-[90px] sm:min-w-[110px]'
+                          ? 'px-3.5 sm:px-4 py-1 sm:py-1.5 min-w-[80px] sm:min-w-[96px]'
                           : isTodos
                           ? 'px-2 py-0.5 sm:px-2.5 sm:py-1 min-w-[54px] sm:min-w-[60px]'
                           : 'px-2.5 sm:px-3.5 py-0.5 sm:py-1 min-w-[68px] sm:min-w-[78px]'
@@ -268,7 +342,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     >
                       <span className={`font-black ${pillarColor.badgeVotesColor} font-mono drop-shadow-md leading-none tracking-tight ${
                         isTwoCandidates
-                          ? 'text-4xl sm:text-[44px]'
+                          ? 'text-3xl sm:text-4xl'
                           : isTodos
                           ? 'text-xl sm:text-[23px] md:text-[25px]'
                           : 'text-[27px] sm:text-[29px] md:text-[31px]'
@@ -322,7 +396,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                 <div
                   className={`rounded-xl border-2 overflow-hidden shadow-xl bg-slate-900 relative transition-transform duration-300 group-hover:scale-105 ${
                     isTwoCandidates
-                      ? 'w-36 h-44 sm:w-44 sm:h-54 lg:w-48 lg:h-60'
+                      ? 'w-28 h-34 sm:w-32 sm:h-40 lg:w-36 lg:h-44'
                       : isTodos
                       ? 'w-18 h-22 sm:w-20 sm:h-24 md:w-22 md:h-26 lg:w-24 lg:h-28'
                       : 'w-24 h-28 sm:w-26 sm:h-30 md:w-28 md:h-32 xl:w-30 xl:h-34'
@@ -332,6 +406,8 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     <img
                       src={cand.photoUrl || CANDIDATE_PHOTO_MAP[cand.orderIndex]}
                       alt={cand.fullName}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover object-top"
                     />
                   ) : (
@@ -369,7 +445,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                       <div
                         className={`w-full flex flex-col items-center justify-center text-center leading-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] group-hover:text-amber-300 transition-colors ${
                           isTwoCandidates
-                            ? 'min-h-[44px] sm:min-h-[50px]'
+                            ? 'min-h-[36px] sm:min-h-[42px]'
                             : isTodos
                             ? 'min-h-[30px] sm:min-h-[34px]'
                             : 'min-h-[36px] sm:min-h-[40px]'
@@ -378,7 +454,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                         <span
                           className={`font-black text-white uppercase tracking-tight text-center w-full block ${
                             isTwoCandidates
-                              ? 'text-base sm:text-lg md:text-xl'
+                              ? 'text-sm sm:text-base md:text-lg'
                               : isTodos
                               ? 'text-[9.5px] sm:text-[10px] md:text-[10.5px]'
                               : 'text-[11.5px] sm:text-xs md:text-[12.5px]'
@@ -389,7 +465,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                         <span
                           className={`font-black text-white uppercase tracking-tight text-center w-full block ${
                             isTwoCandidates
-                              ? 'text-base sm:text-lg md:text-xl'
+                              ? 'text-sm sm:text-base md:text-lg'
                               : isTodos
                               ? 'text-[9.5px] sm:text-[10px] md:text-[10.5px]'
                               : 'text-[11.5px] sm:text-xs md:text-[12.5px]'
@@ -406,7 +482,7 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                     <div
                       className={`rounded-xl bg-gradient-to-r from-[#021f10] to-[#042e18] border-2 border-emerald-400/90 shadow-md shadow-emerald-950/60 flex items-center justify-center ${
                         isTwoCandidates
-                          ? 'min-w-[110px] px-3.5 py-1'
+                          ? 'min-w-[90px] px-3 py-0.5'
                           : isTodos
                           ? 'min-w-[56px] px-1.5 py-0.5'
                           : 'min-w-[76px] px-2.5 py-0.5'

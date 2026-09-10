@@ -263,21 +263,15 @@ export const ElectoralHub: React.FC = () => {
     };
   }, []);
 
-  const maxSelections = stats?.maxSelectionsPerBallot || 5;
+  const maxSelections = stats?.maxSelectionsPerBallot || candidates.length || 11;
 
-  // Toggle candidate selection
+  // Toggle candidate selection - sin límite artificial de 5 marcas
   const toggleCandidate = (id: string) => {
     playClickSound(520, 0.04);
     setSelectedCandidateIds((prev) => {
       if (prev.includes(id)) {
         return prev.filter((cId) => cId !== id);
       } else {
-        if (maxSelections > 0 && prev.length >= maxSelections) {
-          toast.error(`Máximo ${maxSelections} postulantes permitidos por boleta.`, {
-            id: 'max-selection-warning',
-          });
-          return prev;
-        }
         return [...prev, id];
       }
     });
@@ -472,8 +466,9 @@ export const ElectoralHub: React.FC = () => {
           </div>
 
           {/* 2. OPERATOR ACTION COMMANDS & ÁNFORA METRICS (Only in Ballot Entry or Dual View) */}
+          {/* 2. OPERATIONAL INFO (MESA ESCRUTINIO) */}
           {(activeTab === 'BALLOT_ENTRY' || activeTab === 'DUAL_VIEW') && (
-            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+            <div className="flex items-center gap-2 sm:gap-2.5">
               {/* Badges Capsule */}
               <div className="flex items-center gap-2 bg-black/70 px-3 py-1.5 rounded-xl border border-brand-gold/40 text-xs font-mono shadow-inner">
                 <span className="text-brand-gold font-bold">
@@ -485,66 +480,9 @@ export const ElectoralHub: React.FC = () => {
                 </span>
                 <span className="text-gray-600">|</span>
                 <span className="text-emerald-300 font-bold">
-                  Marcas: <strong>{selectedCandidateIds.length}</strong>/{maxSelections}
+                  Marcas: <strong>{selectedCandidateIds.length}</strong>
                 </span>
               </div>
-
-              {/* Botón Registrar Válido */}
-              <button
-                onClick={() => handleRegisterBallot('VALID')}
-                disabled={isSubmitting || selectedCandidateIds.length === 0}
-                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all cursor-pointer shadow-lg ${
-                  selectedCandidateIds.length > 0
-                    ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-300/60 ring-2 ring-emerald-400/40 hover:scale-105 active:scale-95 animate-pulse'
-                    : 'bg-emerald-950/40 text-emerald-600 border border-emerald-900/40 cursor-not-allowed opacity-50'
-                }`}
-                title="Registrar boleta válida (tecla Enter)"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Registrar ({selectedCandidateIds.length})</span>
-                <kbd className="hidden sm:inline text-[9px] bg-black/40 px-1 py-0.5 rounded border border-white/20">↵</kbd>
-              </button>
-
-              {/* Botón Voto Blanco */}
-              <button
-                onClick={() => handleRegisterBallot('BLANK')}
-                disabled={isSubmitting}
-                className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600/50 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow"
-                title="Registrar boleta sin marcas (Voto en Blanco)"
-              >
-                Blanco
-              </button>
-
-              {/* Botón Voto Nulo */}
-              <button
-                onClick={() => handleRegisterBallot('NULL')}
-                disabled={isSubmitting}
-                className="px-2.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 hover:text-rose-200 border border-rose-500/40 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer shadow"
-                title="Registrar boleta anulada (Voto Nulo)"
-              >
-                Nulo
-              </button>
-
-              {/* Botón Deshacer */}
-              <button
-                onClick={handleUndo}
-                disabled={isSubmitting || (stats?.totalBallots || 0) === 0}
-                className="p-1.5 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 border border-amber-500/40 rounded-xl transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow"
-                title="Deshacer última boleta registrada"
-              >
-                <RotateCcw className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Botón Limpiar Selección */}
-              {selectedCandidateIds.length > 0 && (
-                <button
-                  onClick={() => setSelectedCandidateIds([])}
-                  className="text-[11px] text-rose-400 hover:text-rose-300 underline font-medium cursor-pointer"
-                  title="Desmarcar todos los postulantes seleccionados"
-                >
-                  Limpiar
-                </button>
-              )}
             </div>
           )}
 
@@ -676,6 +614,10 @@ export const ElectoralHub: React.FC = () => {
                 toggleCandidate={toggleCandidate}
                 recentlyVotedCandidateIds={recentlyVotedCandidateIds}
                 lastSavedInfo={lastSavedInfo}
+                onRegisterBallot={handleRegisterBallot}
+                onUndo={handleUndo}
+                onClearSelection={() => setSelectedCandidateIds([])}
+                isSubmitting={isSubmitting}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 onViewResults={() => setActiveTab('LIVE_RESULTS')}
               />
@@ -705,6 +647,10 @@ export const ElectoralHub: React.FC = () => {
                     toggleCandidate={toggleCandidate}
                     recentlyVotedCandidateIds={recentlyVotedCandidateIds}
                     lastSavedInfo={lastSavedInfo}
+                    onRegisterBallot={handleRegisterBallot}
+                    onUndo={handleUndo}
+                    onClearSelection={() => setSelectedCandidateIds([])}
+                    isSubmitting={isSubmitting}
                     onOpenSettings={() => setIsSettingsOpen(true)}
                     onViewResults={() => setActiveTab('LIVE_RESULTS')}
                   />
