@@ -18,6 +18,8 @@ export class ElectionController {
     this.router.get('/active', this.getActiveElection.bind(this));
     this.router.get('/results', this.getLiveResults.bind(this));
     this.router.get('/report', this.getDetailedReport.bind(this));
+    this.router.get('/history', this.getElectionHistory.bind(this));
+    this.router.get('/:id', this.getElectionById.bind(this));
 
     // 2. Registro de boletas físicas sacadas del ánfora
     this.router.post('/ballot', this.registerBallot.bind(this));
@@ -30,6 +32,11 @@ export class ElectionController {
 
     // 4. Configuración general (límites de marcas, estados)
     this.router.post('/settings', this.updateSettings.bind(this));
+
+    // 5. Cierre, Guardado e Historial de Sesiones Electorales
+    this.router.post('/close', this.closeElection.bind(this));
+    this.router.post('/reopen', this.reopenElection.bind(this));
+    this.router.post('/new', this.createNewElection.bind(this));
   }
 
   /**
@@ -198,6 +205,125 @@ export class ElectionController {
       res.status(200).json({ success: true, data: result });
     } catch (error: any) {
       logger.error('Error al actualizar configuración:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * GET /api/elections/history
+   * Retorna todas las votaciones registradas para el historial
+   */
+  private async getElectionHistory(_req: Request, res: Response): Promise<void> {
+    try {
+      const history = await this.electionService.getElectionHistory();
+      res.status(200).json({ success: true, data: history });
+    } catch (error: any) {
+      logger.error('Error al obtener historial de elecciones:', error);
+      res.status(500).json({ success: false, message: error.message || 'Error interno' });
+    }
+  }
+
+  /**
+   * GET /api/elections/:id
+   * Obtiene los datos de una votación específica
+   */
+  private async getElectionById(req: Request, res: Response): Promise<void> {
+    try {
+      const id = req.params.id;
+      const data = await this.electionService.getElectionById(id);
+      res.status(200).json({ success: true, data });
+    } catch (error: any) {
+      logger.error('Error al obtener votación por ID:', error);
+      res.status(404).json({ success: false, message: error.message || 'Votación no encontrada' });
+    }
+  }
+
+  /**
+   * POST /api/elections/close
+   * Cierra y guarda oficialmente la votación con su fecha y notas
+   */
+  private async closeElection(req: Request, res: Response): Promise<void> {
+    try {
+      const { electionId, votingDate, notes, signers, performedBy } = req.body;
+      if (!electionId) {
+        res.status(400).json({ success: false, message: 'Debe especificar electionId.' });
+        return;
+      }
+
+      const result = await this.electionService.closeElection(electionId, {
+        votingDate,
+        notes,
+        signers,
+        performedBy,
+      });
+      res.status(200).json(result);
+    } catch (error: any) {
+      logger.error('Error al cerrar la votación:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * POST /api/elections/reopen
+   * Reabre una votación cerrada
+   */
+  private async reopenElection(req: Request, res: Response): Promise<void> {
+    try {
+      const { electionId, performedBy } = req.body;
+      if (!electionId) {
+        res.status(400).json({ success: false, message: 'Debe especificar electionId.' });
+        return;
+      }
+
+      const result = await this.electionService.reopenElection(electionId, performedBy);
+      res.status(200).json(result);
+    } catch (error: any) {
+      logger.error('Error al reabrir la votación:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  /**
+   * POST /api/elections/new
+   * Inicia una nueva votación y la guarda en el historial
+   */
+  private async createNewElection(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        title,
+        period,
+        votingDate,
+        description,
+        maxSelectionsPerBallot,
+        quorumMinimum,
+        copyCandidatesFromElectionId,
+        closePrevious,
+        performedBy,
+      } = req.body;
+
+      if (!title) {
+        res.status(400).json({
+          success: false,
+          message: 'Debe especificar el título de la nueva votación.',
+        });
+        return;
+      }
+
+      const result = await this.electionService.createNewElection({
+        title,
+        period,
+        votingDate,
+        description,
+        maxSelectionsPerBallot,
+        quorumMinimum,
+        copyCandidatesFromElectionId,
+        closePrevious,
+        performedBy,
+      });
+
+      res.status(201).json(result);
+    } catch (error: any) {
+      logger.error('Error al crear nueva votación:', error);
       res.status(400).json({ success: false, message: error.message });
     }
   }

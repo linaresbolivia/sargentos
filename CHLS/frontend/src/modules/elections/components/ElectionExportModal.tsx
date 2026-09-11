@@ -16,14 +16,20 @@ import {
   Info,
   ExternalLink,
   Download,
-  Printer
+  Printer,
+  UserCheck,
+  CreditCard,
+  Briefcase,
+  FileCheck,
+  Users
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { format } from 'date-fns';
 import { CrestLogo } from '@shared/components/CrestLogo';
-import { ElectionStatsDto } from '../types/election.types';
+import { ElectionStatsDto, ElectionSignatory } from '../types/election.types';
+import { CLUB_LOGO_SHIELD_BASE64 } from '../../../assets/clubLogoBase64';
 
 const safeFormat = (dateVal: any, pattern: string, fallback = '-'): string => {
   if (!dateVal) return fallback;
@@ -75,6 +81,9 @@ export interface DetailedReportData {
     status: string;
     createdAt: string;
     quorumMinimum: number;
+    closedAt?: string | null;
+    closingActUrl?: string | null;
+    signers?: ElectionSignatory[];
   };
   stats: ElectionStatsDto;
   ballots: Array<{
@@ -114,6 +123,13 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
   const [isExporting, setIsExporting] = useState(false);
   const [includeBallotLedger, setIncludeBallotLedger] = useState(true);
 
+  // 3 Autoridades para el Acta Oficial (Nombre, CI, Cargo)
+  const [signers, setSigners] = useState<ElectionSignatory[]>([
+    { name: '', ci: '', role: 'Presidente Comité Electoral' },
+    { name: '', ci: '', role: 'Secretario Comité Electoral' },
+    { name: '', ci: '', role: 'Vocal Comité Electoral' },
+  ]);
+
   useEffect(() => {
     if (isOpen && electionId) {
       loadDetailedReport();
@@ -126,12 +142,35 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
       const res = await axios.get(`/api/elections/report?electionId=${electionId}`);
       if (res.data.success && res.data.data) {
         setReportData(res.data.data);
+        if (
+          res.data.data.election?.signers &&
+          Array.isArray(res.data.data.election.signers) &&
+          res.data.data.election.signers.length > 0
+        ) {
+          const loaded = [...res.data.data.election.signers];
+          while (loaded.length < 3) {
+            loaded.push({
+              name: '',
+              ci: '',
+              role: loaded.length === 1 ? 'Secretario Comité Electoral' : 'Vocal Comité Electoral',
+            });
+          }
+          setSigners(loaded.slice(0, 3));
+        }
       }
     } catch (err: any) {
       toast.error('Error al obtener datos detallados para exportación');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const updateSigner = (index: number, field: keyof ElectionSignatory, value: string) => {
+    setSigners((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   if (!isOpen) return null;
@@ -218,6 +257,19 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
         ]);
       });
 
+      // Firmas oficiales de conformidad del Comité Electoral
+      summaryRows.push(['']);
+      summaryRows.push(['--- FIRMAS DE CONFORMIDAD DEL COMITÉ ELECTORAL ---']);
+      summaryRows.push(['CARGO OFICIAL', 'NOMBRE Y APELLIDOS', 'C.I. / DOCUMENTO', 'FIRMA Y CONSTANCIA']);
+      signers.forEach((s) => {
+        summaryRows.push([
+          s.role || 'Autoridad Electoral',
+          s.name ? s.name.toUpperCase() : '(Por firmar)',
+          s.ci ? `C.I. ${s.ci}` : '-',
+          '__________________________________',
+        ]);
+      });
+
       const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
       wsSummary['!cols'] = [
         { wch: 8 },  // Pos
@@ -287,21 +339,28 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
     doc.setFillColor(204, 161, 75); // Brand Gold
     doc.rect(0, 28, 215.9, 1.5, 'F');
 
+    // Escudo Oficial del Club Hípico Los Sargentos
+    try {
+      doc.addImage(CLUB_LOGO_SHIELD_BASE64, 'PNG', 14, 3.5, 16.7, 21);
+    } catch (e) {
+      console.warn('No se pudo incrustar el logotipo en el PDF:', e);
+    }
+
     doc.setFontSize(14);
     doc.setTextColor(204, 161, 75);
     doc.setFont('helvetica', 'bold');
-    doc.text('CLUB HÍPICO LOS SARGENTOS', 14, 11);
+    doc.text('CLUB HÍPICO LOS SARGENTOS', 34, 11);
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'normal');
-    doc.text('COMITÉ ELECTORAL • ACTA OFICIAL DE ESCRUTINIO Y CÓMPUTO DE VOTACIONES', 14, 17);
+    doc.text('COMITÉ ELECTORAL • ACTA OFICIAL DE ESCRUTINIO Y CÓMPUTO DE VOTACIONES', 34, 17);
 
-    doc.setFontSize(8);
+    doc.setFontSize(7.5);
     doc.setTextColor(167, 243, 208); // Verde claro
     doc.text(
       `Proceso: ${reportData.election.title} | Gestión: ${reportData.election.period} | Emisión: ${dateStr}`,
-      14,
+      34,
       23
     );
 
@@ -409,33 +468,83 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
       },
     });
 
-    // --- FIRMAS DE CONFORMIDAD DEL COMITÉ ELECTORAL ---
-    const finalY = (doc as any).lastAutoTable.finalY + 18;
+    // --- FIRMAS DE CONFORMIDAD DEL COMITÉ ELECTORAL (3 AUTORIDADES CON NOMBRE, CI Y CARGO) ---
+    const tableBottomY = (doc as any).lastAutoTable.finalY || 165;
 
-    if (finalY < 235) {
-      doc.setFontSize(8);
-      doc.setTextColor(71, 85, 105);
-      doc.setFont('helvetica', 'normal');
+    // Espacio vertical amplio y cómodo para firmas y sellos físicos (30 mm de altura libre)
+    let sectionTitleY = tableBottomY + 12;
+    let sigLineY = sectionTitleY + 30; // 30 mm libre entre el encabezado y la línea de firma
 
-      // 3 líneas de firma
-      const lineY = finalY + 12;
-      doc.setDrawColor(148, 163, 184);
+    // Si la tabla ocupó casi toda la hoja, pasar a una página limpia dedicada
+    if (sigLineY + 22 > 260) {
+      doc.addPage('letter', 'portrait');
+      doc.setFillColor(7, 24, 16);
+      doc.rect(0, 0, 215.9, 20, 'F');
+      doc.setFillColor(204, 161, 75);
+      doc.rect(0, 20, 215.9, 1.2, 'F');
 
-      // Firma 1: Presidente
-      doc.line(20, lineY, 68, lineY);
-      doc.text('Presidente Comité Electoral', 25, lineY + 4);
-      doc.text('Club Hípico Los Sargentos', 26, lineY + 8);
+      try {
+        doc.addImage(CLUB_LOGO_SHIELD_BASE64, 'PNG', 14, 2.5, 11.9, 15);
+      } catch (e) {
+        // fallback
+      }
 
-      // Firma 2: Secretario
-      doc.line(84, lineY, 132, lineY);
-      doc.text('Secretario Comité Electoral', 89, lineY + 4);
-      doc.text('Club Hípico Los Sargentos', 90, lineY + 8);
-
-      // Firma 3: Vocal / Veedor
-      doc.line(148, lineY, 196, lineY);
-      doc.text('Vocal / Veedor Oficial', 157, lineY + 4);
-      doc.text('Club Hípico Los Sargentos', 154, lineY + 8);
+      doc.setFontSize(10.5);
+      doc.setTextColor(204, 161, 75);
+      doc.setFont('helvetica', 'bold');
+      doc.text('ACTA OFICIAL DE CONFORMIDAD Y FIRMAS ELECTORALES', 29, 13);
+      sectionTitleY = 40;
+      sigLineY = 74; // 34 mm libre en hoja nueva
     }
+
+    // Título de la sección de firmas
+    doc.setFontSize(8.5);
+    doc.setTextColor(11, 83, 44);
+    doc.setFont('helvetica', 'bold');
+    doc.text('CONFORMIDAD Y HOMOLOGACIÓN DEL COMITÉ ELECTORAL:', 14, sectionTitleY);
+
+    // 3 Columnas amplias y simétricas (56 mm de ancho por línea de firma)
+    const positions = [
+      { startX: 14, endX: 70, centerX: 42 },
+      { startX: 80, endX: 136, centerX: 108 },
+      { startX: 146, endX: 202, centerX: 174 },
+    ];
+
+    signers.forEach((s, idx) => {
+      const pos = positions[idx] || positions[0];
+      doc.setDrawColor(100, 116, 139);
+      doc.setLineWidth(0.4);
+      doc.line(pos.startX, sigLineY, pos.endX, sigLineY);
+
+      // Nombre en negrita
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(15, 23, 42); // slate-900
+      const displayName = s.name ? s.name.toUpperCase() : '(Por firmar)';
+      doc.text(displayName, pos.centerX, sigLineY + 5, { align: 'center' });
+
+      // C.I.
+      let nextY = sigLineY + 9.5;
+      if (s.ci) {
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(71, 85, 105); // slate-600
+        doc.text(`C.I. ${s.ci}`, pos.centerX, nextY, { align: 'center' });
+        nextY += 4.5;
+      }
+
+      // Cargo
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(11, 83, 44); // brand green
+      doc.text(s.role || 'Autoridad Electoral', pos.centerX, nextY, { align: 'center' });
+
+      // Institución
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(148, 163, 184); // slate-400
+      doc.text('Club Hípico Los Sargentos', pos.centerX, nextY + 4, { align: 'center' });
+    });
 
     // --- HOJA 2+: LIBRO DETALLADO DE BOLETAS ESCRUTADAS (SI ESTÁ HABILITADO) ---
     if (includeBallotLedger && reportData.ballots.length > 0) {
@@ -447,17 +556,23 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
       doc.setFillColor(204, 161, 75);
       doc.rect(0, 20, 215.9, 1, 'F');
 
-      doc.setFontSize(11);
+      try {
+        doc.addImage(CLUB_LOGO_SHIELD_BASE64, 'PNG', 14, 2.5, 11.9, 15);
+      } catch (e) {
+        // fallback
+      }
+
+      doc.setFontSize(10.5);
       doc.setTextColor(204, 161, 75);
       doc.setFont('helvetica', 'bold');
-      doc.text('ANEXO: LIBRO OFICIAL DE BOLETAS ESCRUTADAS EN ÁNFORA', 14, 9);
+      doc.text('ANEXO: LIBRO OFICIAL DE BOLETAS ESCRUTADAS EN ÁNFORA', 29, 9);
 
       doc.setFontSize(7.5);
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'normal');
       doc.text(
         `Total de Boletas: ${reportData.ballots.length} registros | Cómputo correlativo oficial con trazabilidad criptográfica`,
-        14,
+        29,
         15
       );
 
@@ -469,7 +584,9 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
           ? b.selectedCandidateNames.join(', ')
           : '(Sin marcas)',
         safeFormat(b.castAt || b.createdAt, 'dd/MM/yy HH:mm:ss'),
-        b.voteHash.substring(0, 16) + '...',
+        b.voteHash && b.voteHash.length >= 64
+          ? `${b.voteHash.substring(0, 32)}\n${b.voteHash.substring(32)}`
+          : b.voteHash || '-',
       ]);
 
       autoTable(doc, {
@@ -481,7 +598,7 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
             'Marcas',
             'Postulantes Seleccionados',
             'Fecha y Hora',
-            'Hash Integridad',
+            'Hash de Integridad (SHA-256 Oficial)',
           ],
         ],
         body: ballotTableData,
@@ -498,12 +615,12 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
           textColor: [30, 41, 59],
         },
         columnStyles: {
-          0: { halign: 'center', cellWidth: 14 },
-          1: { halign: 'center', cellWidth: 18, fontStyle: 'bold' },
-          2: { halign: 'center', cellWidth: 14 },
-          3: { cellWidth: 85 },
-          4: { halign: 'center', cellWidth: 28 },
-          5: { halign: 'center', cellWidth: 28, fontStyle: 'italic' },
+          0: { halign: 'center', cellWidth: 12 },
+          1: { halign: 'center', cellWidth: 16, fontStyle: 'bold' },
+          2: { halign: 'center', cellWidth: 12 },
+          3: { cellWidth: 62 },
+          4: { halign: 'center', cellWidth: 25 },
+          5: { halign: 'center', cellWidth: 60.9, font: 'courier', fontStyle: 'bold', fontSize: 5.5 },
         },
       });
     }
@@ -515,7 +632,7 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
       doc.setFontSize(7.5);
       doc.setTextColor(148, 163, 184);
       doc.text(
-        `Acta Oficial CHLS 360° • Página ${i} de ${pageCount} • Sistema de Escrutinio Club Hípico Los Sargentos`,
+        `Acta Oficial CLUB INTELIGENTE • Página ${i} de ${pageCount} • Sistema de Escrutinio Club Hípico Los Sargentos`,
         14,
         273
       );
@@ -636,6 +753,65 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
           </div>
         </div>
 
+        {/* Autoridades y Firmantes del Acta (3 Nombres con C.I. y Cargo) */}
+        <div className="bg-black/50 rounded-2xl p-3.5 border border-brand-gold/40 shadow-inner space-y-2.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-brand-gold" />
+              <span className="text-xs font-black uppercase tracking-wider text-brand-gold">
+                Firmas Oficiales del Acta (3 Autoridades)
+              </span>
+            </div>
+            <span className="text-[10px] text-gray-400 bg-white/5 px-2 py-0.5 rounded-md border border-white/10">
+              Nombre, C.I. y Cargo para PDF y Excel
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+            {signers.map((signer, idx) => (
+              <div
+                key={idx}
+                className="bg-black/70 rounded-xl p-2.5 border border-white/10 hover:border-brand-gold/40 focus-within:border-brand-gold/60 transition-all space-y-1.5"
+              >
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[10px] font-black text-amber-300 uppercase tracking-wide">
+                    {idx === 0 ? '1. Presidente' : idx === 1 ? '2. Secretario' : '3. Vocal / Veedor'}
+                  </span>
+                  <input
+                    type="text"
+                    value={signer.role}
+                    onChange={(e) => updateSigner(idx, 'role', e.target.value)}
+                    placeholder="Cargo oficial"
+                    className="text-[9px] font-semibold text-right bg-transparent text-gray-300 border-none focus:outline-none focus:text-white w-28 truncate"
+                    title="Cargo que aparecerá en el acta"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={signer.name}
+                      onChange={(e) => updateSigner(idx, 'name', e.target.value)}
+                      placeholder="Nombre y Apellidos..."
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold/60"
+                    />
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={signer.ci}
+                      onChange={(e) => updateSigner(idx, 'ci', e.target.value)}
+                      placeholder="N° C.I. (ej: 4892019 LP)"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-[11px] text-amber-200/90 font-mono placeholder-gray-500 focus:outline-none focus:border-brand-gold/60"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         {/* Opciones de Exportación */}
         <div className="bg-black/40 rounded-2xl p-3.5 border border-white/10 space-y-3">
           <div className="flex items-center justify-between">
@@ -734,7 +910,7 @@ export const ElectionExportModal: React.FC<ElectionExportModalProps> = ({
         {/* Footer info */}
         <div className="text-center pt-1">
           <span className="text-[10px] text-gray-500 font-mono">
-            CHLS 360° Suite • Escrutinio Auditado y Avalado por el Comité Electoral
+            CLUB INTELIGENTE • Escrutinio Auditado y Avalado por el Comité Electoral
           </span>
         </div>
       </div>

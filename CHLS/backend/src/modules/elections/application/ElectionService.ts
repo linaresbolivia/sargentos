@@ -62,6 +62,327 @@ export class ElectionService {
   }
 
   /**
+   * Obtiene los datos completos y estadísticas de una elección específica
+   */
+  public async getElectionById(id: string) {
+    const election = await this.prisma.election.findUnique({
+      where: { id },
+      include: {
+        candidates: {
+          where: { isActive: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+
+    if (!election) {
+      throw new Error('Votación no encontrada.');
+    }
+
+    const stats = await this.getLiveStats(election.id);
+    return {
+      election,
+      stats,
+    };
+  }
+
+  /**
+   * Obtiene el historial completo de todas las votaciones registradas en el sistema,
+   * ordenadas cronológicamente por fecha de votación (startDate / createdAt)
+   */
+  public async getElectionHistory() {
+    const elections = await this.prisma.election.findMany({
+      orderBy: [{ startDate: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        candidates: {
+          where: { isActive: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+
+    const activeElection = await this.prisma.election.findFirst({
+      where: { status: 'EN_CURSO' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
+    const historyItems = await Promise.all(
+      elections.map(async (elec) => {
+        const stats = await this.getLiveStats(elec.id);
+        const winningCandidate =
+          stats.candidates && stats.candidates.length > 0 ? stats.candidates[0] : null;
+
+        return {
+          id: elec.id,
+          title: elec.title,
+          description: elec.description,
+          period: elec.period,
+          status: elec.status as ElectionStatus,
+          startDate: elec.startDate,
+          endDate: elec.endDate,
+          votingDate: elec.startDate,
+          quorumMinimum: elec.quorumMinimum,
+          maxSelectionsPerBallot: elec.maxSelectionsPerBallot,
+          totalBallots: stats.totalBallots,
+          validBallots: stats.validBallots,
+          blankBallots: stats.blankBallots,
+          nullBallots: stats.nullBallots,
+          validPercentage: stats.validPercentage,
+          blankPercentage: stats.blankPercentage,
+          nullPercentage: stats.nullPercentage,
+          totalVotesAccumulated: stats.totalVotesAccumulated,
+          candidatesCount: elec.candidates.length,
+          winningCandidate: winningCandidate
+            ? {
+                id: winningCandidate.id,
+                fullName: winningCandidate.fullName,
+                photoUrl: winningCandidate.photoUrl,
+                votesCount: winningCandidate.votesCount,
+                votesPercentage: winningCandidate.votesPercentage,
+              }
+            : null,
+          topCandidates: stats.candidates.slice(0, 3).map((c) => ({
+            id: c.id,
+            fullName: c.fullName,
+            votesCount: c.votesCount,
+            votesPercentage: c.votesPercentage,
+            photoUrl: c.photoUrl,
+          })),
+          createdAt: elec.createdAt,
+          updatedAt: elec.updatedAt,
+          isCurrent: activeElection ? activeElection.id === elec.id : false,
+        };
+      })
+    );
+
+    return historyItems;
+  }
+
+  /**
+   * Cierra y guarda oficialmente la votación por fecha de votación
+   */
+  public async closeElection(
+    electionId: string,
+    options: {
+      votingDate?: string | Date;
+      notes?: string;
+      signers?: Array<{ name: string; ci: string; role: string }>;
+      performedBy?: string;
+    }
+  ) {
+    const targetDate = options.votingDate ? new Date(options.votingDate) : new Date();
+
+    const updated = await this.prisma.election.update({
+      where: { id: electionId },
+      data: {
+        status: 'FINALIZADA',
+        startDate: options.votingDate ? targetDate : undefined,
+        endDate: targetDate,
+        description: options.notes ? options.notes : undefined,
+        closingActUrl: options.signers ? JSON.stringify(options.signers) : undefined,
+      },
+      include: {
+        candidates: {
+          where: { isActive: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+
+    await this.prisma.electionAuditLog.create({
+      data: {
+        electionId,
+        action: 'CIERRE_VOTACION',
+        details: `Votación cerrada y guardada oficialmente con fecha de votación: ${targetDate.toISOString().split('T')[0]}. ${options.notes || ''}`.trim(),
+        performedBy: options.performedBy || 'Comité Electoral',
+      },
+    });
+
+    const stats = await this.getLiveStats(electionId);
+
+    try {
+      const io = socketService.getIo();
+      if (io) {
+        io.emit('elections:settings_updated', {
+          settings: updated,
+          stats,
+        });
+        io.emit('elections:closed', {
+          electionId,
+          votingDate: targetDate,
+          stats,
+        });
+      }
+    } catch (e) {
+      logger.warn('Socket error on election close:', e);
+    }
+
+    return { success: true, election: updated, stats };
+  }
+
+  /**
+   * Reabre una votación cerrada para permitir continuar el escrutinio
+   */
+  public async reopenElection(electionId: string, performedBy?: string) {
+    const updated = await this.prisma.election.update({
+      where: { id: electionId },
+      data: {
+        status: 'EN_CURSO',
+      },
+      include: {
+        candidates: {
+          where: { isActive: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+
+    await this.prisma.electionAuditLog.create({
+      data: {
+        electionId,
+        action: 'REAPERTURA_VOTACION',
+        details: 'La votación fue reabierta para el registro de boletas.',
+        performedBy: performedBy || 'Comité Electoral',
+      },
+    });
+
+    const stats = await this.getLiveStats(electionId);
+
+    try {
+      const io = socketService.getIo();
+      if (io) {
+        io.emit('elections:settings_updated', {
+          settings: updated,
+          stats,
+        });
+        io.emit('elections:reopened', {
+          electionId,
+          stats,
+        });
+      }
+    } catch (e) {
+      logger.warn('Socket error on election reopen:', e);
+    }
+
+    return { success: true, election: updated, stats };
+  }
+
+  /**
+   * Crea una nueva votación en el historial, permitiendo reiniciar con el ánfora limpia
+   * y opcionalmente copiar la nómina de candidatos previa
+   */
+  public async createNewElection(data: {
+    title: string;
+    period?: string;
+    votingDate?: string | Date;
+    description?: string;
+    maxSelectionsPerBallot?: number;
+    quorumMinimum?: number;
+    copyCandidatesFromElectionId?: string;
+    closePrevious?: boolean;
+    performedBy?: string;
+  }) {
+    // Si se indicó cerrar la anterior, cerramos las que estén EN_CURSO
+    if (data.closePrevious) {
+      const currentActive = await this.prisma.election.findMany({
+        where: { status: 'EN_CURSO' },
+      });
+      for (const cur of currentActive) {
+        await this.prisma.election.update({
+          where: { id: cur.id },
+          data: { status: 'FINALIZADA', endDate: new Date() },
+        });
+      }
+    }
+
+    const vDate = data.votingDate ? new Date(data.votingDate) : new Date();
+
+    const newElection = await this.prisma.election.create({
+      data: {
+        title: data.title,
+        description: data.description || 'Nueva jornada electoral del Club Hípico Los Sargentos.',
+        period: data.period || `${vDate.getFullYear()}-${vDate.getFullYear() + 2}`,
+        status: 'EN_CURSO',
+        startDate: vDate,
+        endDate: new Date(vDate.getTime() + 7 * 24 * 60 * 60 * 1000),
+        maxSelectionsPerBallot: data.maxSelectionsPerBallot || 11,
+        quorumMinimum: data.quorumMinimum || 25,
+      },
+    });
+
+    // Copiar candidatos si se especificó
+    if (data.copyCandidatesFromElectionId) {
+      const sourceCandidates = await this.prisma.electionCandidate.findMany({
+        where: {
+          electionId: data.copyCandidatesFromElectionId,
+          isActive: true,
+        },
+        orderBy: { orderIndex: 'asc' },
+      });
+
+      for (const cand of sourceCandidates) {
+        await this.prisma.electionCandidate.create({
+          data: {
+            electionId: newElection.id,
+            fullName: cand.fullName,
+            position: cand.position,
+            membershipNumber: cand.membershipNumber,
+            photoUrl: cand.photoUrl,
+            bio: cand.bio,
+            colorHex: cand.colorHex,
+            orderIndex: cand.orderIndex,
+            isActive: true,
+          },
+        });
+      }
+    }
+
+    await this.prisma.electionAuditLog.create({
+      data: {
+        electionId: newElection.id,
+        action: 'APERTURA_NUEVA_VOTACION',
+        details: `Se aperturó una nueva sesión de votación: "${data.title}" con fecha ${vDate.toISOString().split('T')[0]}.`,
+        performedBy: data.performedBy || 'Comité Electoral',
+      },
+    });
+
+    const fullElection = await this.prisma.election.findUnique({
+      where: { id: newElection.id },
+      include: {
+        candidates: {
+          where: { isActive: true },
+          orderBy: { orderIndex: 'asc' },
+        },
+      },
+    });
+
+    const stats = await this.getLiveStats(newElection.id);
+
+    try {
+      const io = socketService.getIo();
+      if (io) {
+        io.emit('elections:settings_updated', {
+          settings: fullElection,
+          stats,
+        });
+        io.emit('elections:new_session', {
+          election: fullElection,
+          stats,
+        });
+      }
+    } catch (e) {
+      logger.warn('Socket error on new election creation:', e);
+    }
+
+    return {
+      success: true,
+      election: fullElection,
+      stats,
+    };
+  }
+
+  /**
    * Calcula el escrutinio en vivo en base al total de boletas físicas registradas del ánfora
    */
   public async getLiveStats(electionId?: string): Promise<ElectionStatsDto> {
@@ -548,6 +869,18 @@ export class ElectionService {
       };
     });
 
+    let signers: Array<{ name: string; ci: string; role: string }> = [];
+    if (election.closingActUrl) {
+      try {
+        const parsed = JSON.parse(election.closingActUrl);
+        if (Array.isArray(parsed)) {
+          signers = parsed;
+        }
+      } catch {
+        // not json
+      }
+    }
+
     return {
       election: {
         id: election.id,
@@ -556,6 +889,7 @@ export class ElectionService {
         status: election.status,
         createdAt: election.createdAt,
         quorumMinimum: election.quorumMinimum,
+        signers,
       },
       stats,
       ballots,

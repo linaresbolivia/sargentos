@@ -36,6 +36,51 @@ export interface ElectionStatsDto {
   lastUpdated: string;
 }
 
+export interface ElectionHistoryItem {
+  id: string;
+  title: string;
+  description?: string;
+  period: string;
+  status: 'CONVOCADA' | 'EN_CURSO' | 'FINALIZADA' | 'PROCLAMADA';
+  startDate: string;
+  endDate: string;
+  votingDate: string;
+  quorumMinimum: number;
+  maxSelectionsPerBallot: number;
+  totalBallots: number;
+  validBallots: number;
+  blankBallots: number;
+  nullBallots: number;
+  validPercentage: number;
+  blankPercentage: number;
+  nullPercentage: number;
+  totalVotesAccumulated: number;
+  candidatesCount: number;
+  winningCandidate?: {
+    id: string;
+    fullName: string;
+    photoUrl?: string;
+    votesCount: number;
+    votesPercentage: number;
+  } | null;
+  topCandidates: Array<{
+    id: string;
+    fullName: string;
+    votesCount: number;
+    votesPercentage: number;
+    photoUrl?: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  isCurrent?: boolean;
+}
+
+export interface ElectionSignatory {
+  name: string;
+  ci: string;
+  role: string;
+}
+
 export type ResultsFormat = 'PILLARS_3D' | 'UNITEL_TV';
 
 export function formatNameInTwoLines(name: string): { line1: string; line2: string } {

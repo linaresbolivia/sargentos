@@ -20,7 +20,8 @@ import {
   Layers,
   Radio,
   CheckCircle2,
-  FileDown
+  FileDown,
+  Lock
 } from 'lucide-react';
 import { CandidateDto, ElectionStatsDto, formatNameInTwoLines } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
@@ -136,6 +137,8 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
   }, [ballotCardsCandidates]);
 
   // Helper to render a candidate card matching the physical paper ballot: [Foto arriba] - [Nombre al centro] - [Casilla blanca abajo]
+  const isClosed = stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA';
+
   const renderVerticalBallotCard = (
     cand: CandidateDto,
     theme: 'DIRECTORIO' | 'COMITE' | 'TRIBUNAL' = 'DIRECTORIO'
@@ -149,8 +152,16 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
     return (
       <div
         key={cand.id}
-        onClick={() => toggleCandidate(cand.id)}
-        className={`group cursor-pointer select-none transition-all duration-150 rounded-2xl relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 shadow-md ${
+        onClick={() => {
+          if (isClosed) {
+            toast.error('Esta votación está cerrada en el historial (modo sólo lectura).');
+            return;
+          }
+          toggleCandidate(cand.id);
+        }}
+        className={`group select-none transition-all duration-150 rounded-2xl relative overflow-hidden flex flex-col items-center justify-between p-2 sm:p-2.5 shadow-md ${
+          isClosed ? 'cursor-not-allowed opacity-85' : 'cursor-pointer'
+        } ${
           wasJustVoted
             ? 'ring-4 ring-emerald-400 shadow-[0_0_25px_rgba(52,211,153,0.8)] scale-[1.02]'
             : isSelected
@@ -299,6 +310,21 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
             )}
           </div>
 
+          {/* BANNER SI ESTÁ CERRADA */}
+          {stats && (stats.status === 'FINALIZADA' || stats.status === 'PROCLAMADA') && (
+            <div className="bg-gradient-to-r from-amber-950/90 via-[#261907] to-amber-950/90 border-2 border-brand-gold/60 rounded-2xl p-3 sm:p-4 flex items-center gap-3 text-amber-200 shadow-xl mb-3">
+              <Lock className="w-6 h-6 text-brand-gold shrink-0" />
+              <div>
+                <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-brand-gold block">
+                  Votación Cerrada y Guardada en el Historial (Sólo Lectura)
+                </span>
+                <span className="text-xs text-gray-300">
+                  El ingreso de nuevas boletas está bloqueado para preservar la integridad del escrutinio oficial. Puedes consultar el historial o aperturar una nueva votación.
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* DISTRIBUCIÓN EXACTA DE LA BOLETA FÍSICA */}
           <div className="space-y-4 relative z-10">
             {/* FILA 1: DIRECTORIO (1 AL 5) - 5 Postulantes en horizontal */}
@@ -432,13 +458,13 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               <button
                 type="button"
                 onClick={() => onRegisterBallot?.('VALID')}
-                disabled={isSubmitting || selectedCandidateIds.length === 0}
+                disabled={isSubmitting || isClosed || selectedCandidateIds.length === 0}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-black text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow-lg ${
-                  selectedCandidateIds.length > 0
+                  !isClosed && selectedCandidateIds.length > 0
                     ? 'bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white border border-emerald-300/80 ring-2 ring-emerald-400/50 hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(16,185,129,0.4)] animate-pulse'
                     : 'bg-emerald-950/40 text-emerald-600 border border-emerald-900/40 cursor-not-allowed opacity-50'
                 }`}
-                title="Registrar boleta válida (tecla Enter)"
+                title={isClosed ? 'Votación cerrada' : 'Registrar boleta válida (tecla Enter)'}
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Registrar ({selectedCandidateIds.length})</span>
@@ -451,9 +477,13 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               <button
                 type="button"
                 onClick={() => onRegisterBallot?.('BLANK')}
-                disabled={isSubmitting}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600/50 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 active:scale-95"
-                title="Registrar boleta sin marcas (Voto en Blanco)"
+                disabled={isSubmitting || isClosed}
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all shadow ${
+                  isClosed
+                    ? 'bg-slate-900/40 text-slate-600 border border-slate-800 cursor-not-allowed opacity-50'
+                    : 'bg-slate-800/90 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-600/50 cursor-pointer hover:scale-105 active:scale-95'
+                }`}
+                title={isClosed ? 'Votación cerrada' : 'Registrar boleta sin marcas (Voto en Blanco)'}
               >
                 <span className="w-2 h-2 rounded-full bg-slate-400 inline-block"></span>
                 <span>Blanco</span>
@@ -463,9 +493,13 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               <button
                 type="button"
                 onClick={() => onRegisterBallot?.('NULL')}
-                disabled={isSubmitting}
-                className="flex items-center gap-1.5 px-3.5 py-2.5 bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-500/50 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 active:scale-95"
-                title="Registrar boleta anulada (Voto Nulo)"
+                disabled={isSubmitting || isClosed}
+                className={`flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl font-bold text-xs sm:text-sm uppercase tracking-wider transition-all shadow ${
+                  isClosed
+                    ? 'bg-rose-950/30 text-rose-800 border border-rose-950 cursor-not-allowed opacity-50'
+                    : 'bg-rose-950/70 hover:bg-rose-900 text-rose-300 hover:text-rose-100 border border-rose-500/50 cursor-pointer hover:scale-105 active:scale-95'
+                }`}
+                title={isClosed ? 'Votación cerrada' : 'Registrar boleta anulada (Voto Nulo)'}
               >
                 <span className="w-2 h-2 rounded-full bg-rose-500 inline-block"></span>
                 <span>Nulo</span>
@@ -476,7 +510,7 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
                 <button
                   type="button"
                   onClick={onUndo}
-                  disabled={isSubmitting || (stats?.totalBallots || 0) === 0}
+                  disabled={isSubmitting || isClosed || (stats?.totalBallots || 0) === 0}
                   className="flex items-center gap-1.5 px-3 py-2.5 bg-amber-950/40 hover:bg-amber-900/60 text-amber-300 hover:text-amber-200 border border-amber-500/40 rounded-xl font-bold text-xs uppercase tracking-wider transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed shadow hover:scale-105 active:scale-95"
                   title="Deshacer última boleta registrada"
                 >

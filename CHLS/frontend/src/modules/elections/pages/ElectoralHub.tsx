@@ -20,7 +20,11 @@ import {
   RefreshCw,
   Volume2,
   VolumeX,
-  FileDown
+  FileDown,
+  Archive,
+  Lock,
+  Unlock,
+  PlusCircle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateDto, ElectionStatsDto, ResultsFormat } from '../types/election.types';
@@ -30,6 +34,9 @@ import { LiveResultsUnitelStyle } from '../components/LiveResultsUnitelStyle';
 import { CandidateParametrizationModal } from '../components/CandidateParametrizationModal';
 import { ElectionExportModal } from '../components/ElectionExportModal';
 import { ResetElectionModal } from '../components/ResetElectionModal';
+import { CloseElectionModal } from '../components/CloseElectionModal';
+import { ElectionHistoryModal } from '../components/ElectionHistoryModal';
+import { NewElectionModal } from '../components/NewElectionModal';
 import { CrestLogo } from '@shared/components/CrestLogo';
 
 export const ElectoralHub: React.FC = () => {
@@ -51,6 +58,10 @@ export const ElectoralHub: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
+  const [exportTargetElectionId, setExportTargetElectionId] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
 
@@ -194,6 +205,28 @@ export const ElectoralHub: React.FC = () => {
     }
   };
 
+  // Fetch specific election from history
+  const loadElectionById = async (targetId: string) => {
+    try {
+      setIsLoading(true);
+      const res = await axios.get(`/api/elections/${targetId}`);
+      if (res.data.success && res.data.data) {
+        const { election, stats: targetStats } = res.data.data;
+        setElectionId(election.id);
+        setStats(targetStats);
+        setCandidates(targetStats.candidates || []);
+        setSelectedCandidateIds([]);
+        setRecentlyVotedCandidateIds([]);
+        setLastSavedInfo(null);
+        toast.success(`Cargada votación: "${election.title}"`);
+      }
+    } catch (err: any) {
+      toast.error('Error al cargar la votación seleccionada.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchElectionData();
   }, []);
@@ -259,6 +292,34 @@ export const ElectoralHub: React.FC = () => {
           setCandidates(data.stats.candidates || []);
         }
       });
+
+      socket.on('elections:closed', (data: { stats: ElectionStatsDto }) => {
+        if (data?.stats) {
+          setStats(data.stats);
+          setCandidates(data.stats.candidates || []);
+          toast('La votación ha sido guardada y cerrada en el historial.', { icon: '🔒' });
+        }
+      });
+
+      socket.on('elections:reopened', (data: { stats: ElectionStatsDto }) => {
+        if (data?.stats) {
+          setStats(data.stats);
+          setCandidates(data.stats.candidates || []);
+          toast('La votación ha sido reabierta.', { icon: '🔓' });
+        }
+      });
+
+      socket.on('elections:new_session', (data: { election: any; stats: ElectionStatsDto }) => {
+        if (data?.election && data?.stats) {
+          setElectionId(data.election.id);
+          setStats(data.stats);
+          setCandidates(data.stats.candidates || []);
+          setSelectedCandidateIds([]);
+          setRecentlyVotedCandidateIds([]);
+          setLastSavedInfo(null);
+          toast.success(`Aperturada nueva votación: "${data.election.title}"`);
+        }
+      });
     } catch {
       // Polling handles fallback
     }
@@ -284,6 +345,10 @@ export const ElectoralHub: React.FC = () => {
 
   // Register ballot with INSTANT 0ms Optimistic UI Response
   const handleRegisterBallot = async (type: 'VALID' | 'BLANK' | 'NULL') => {
+    if (stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA') {
+      toast.error('Esta votación está CERRADA y archivada en el historial. Reabre la votación o apertura una nueva para ingresar votos.');
+      return;
+    }
     if (type === 'VALID' && selectedCandidateIds.length === 0) {
       toast.error('Selecciona al menos un postulante o marca Voto en Blanco / Nulo.');
       return;
@@ -585,10 +650,47 @@ export const ElectoralHub: React.FC = () => {
               {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             </button>
 
+            {/* Historial de Votaciones Button */}
+            <button
+              type="button"
+              onClick={() => setIsHistoryModalOpen(true)}
+              title="Historial de Votaciones por Fecha de Votación"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-950/70 via-amber-900/60 to-yellow-950/70 hover:from-amber-900 hover:to-yellow-900 text-amber-200 hover:text-white text-xs font-black uppercase tracking-wider border border-amber-500/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <Archive className="w-3.5 h-3.5 text-brand-gold" />
+              <span className="hidden sm:inline">Historial</span>
+            </button>
+
+            {/* Cerrar Votación / Estado Cerrada */}
+            {stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA' ? (
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(true)}
+                title="Votación Oficial Cerrada y Guardada en el Historial (Clic para ver historial)"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/60 text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 transition-all cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <span className="hidden md:inline">Cerrada</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsCloseModalOpen(true)}
+                title="Cerrar y Guardar Votación por Fecha Oficial"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-950/80 to-indigo-950/80 hover:from-blue-900 hover:to-indigo-900 text-blue-200 hover:text-white text-xs font-black uppercase tracking-wider border border-blue-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Lock className="w-3.5 h-3.5 text-blue-300" />
+                <span className="hidden md:inline">Cerrar Votación</span>
+              </button>
+            )}
+
             {/* Exportar Resultados Button */}
             <button
               type="button"
-              onClick={() => setIsExportModalOpen(true)}
+              onClick={() => {
+                setExportTargetElectionId(electionId);
+                setIsExportModalOpen(true);
+              }}
               title="Exportar Resultados Oficiales en PDF y Excel"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
@@ -600,7 +702,7 @@ export const ElectoralHub: React.FC = () => {
             <button
               type="button"
               onClick={() => setIsResetModalOpen(true)}
-              title="Reiniciar votación a cero (Limpiar todas las boletas registradas)"
+              title="Reiniciar votación o archivar en el historial"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-950/80 via-red-950 to-rose-900/60 hover:from-red-900 hover:to-rose-800 text-rose-200 hover:text-white text-xs font-black uppercase tracking-wider border border-rose-500/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
@@ -618,6 +720,52 @@ export const ElectoralHub: React.FC = () => {
           </div>
         </div>
       </header>
+
+      {/* BANNER INSTITUCIONAL SI LA VOTACIÓN ESTÁ CERRADA */}
+      {stats && (stats.status === 'FINALIZADA' || stats.status === 'PROCLAMADA') && (
+        <div className="relative z-20 w-full max-w-[1920px] mx-auto px-3 sm:px-6 pt-3">
+          <div className="bg-gradient-to-r from-amber-950/90 via-[#1c1305] to-amber-950/90 border-2 border-brand-gold/60 rounded-2xl p-3 sm:p-4 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xl backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-brand-gold/20 border border-brand-gold/40 flex items-center justify-center text-brand-gold shrink-0">
+                <Lock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs sm:text-sm font-black uppercase tracking-wider text-brand-gold font-sans">
+                    Votación Oficial Cerrada y Guardada en el Historial
+                  </span>
+                  <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 rounded-full font-bold">
+                    Sólo Lectura
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 mt-0.5">
+                  El escrutinio de <strong>{stats.totalBallots} boletas</strong> está resguardado de forma inmutable. Puedes exportar el acta, proyectar los resultados en 3D / TV o aperturar una nueva votación para reiniciar.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setIsNewModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 text-white text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 transition-all cursor-pointer"
+              >
+                <PlusCircle className="w-3.5 h-3.5" />
+                <span>Nueva Votación</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-brand-gold hover:text-white text-xs font-bold uppercase tracking-wider border border-brand-gold/40 transition-all cursor-pointer"
+              >
+                <Archive className="w-3.5 h-3.5" />
+                <span>Ver Historial</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MAIN CONTAINER */}
       <main className="relative z-10 flex-1 w-full max-w-[1920px] mx-auto px-3 sm:px-6 py-4">
@@ -645,15 +793,18 @@ export const ElectoralHub: React.FC = () => {
                 onUndo={handleUndo}
                 onClearSelection={() => setSelectedCandidateIds([])}
                 isSubmitting={isSubmitting}
-                onExportResults={() => setIsExportModalOpen(true)}
+                onExportResults={() => {
+                  setExportTargetElectionId(electionId);
+                  setIsExportModalOpen(true);
+                }}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 onViewResults={() => setActiveTab('LIVE_RESULTS')}
               />
             )}
 
-            {/* VIEW 2: ONLY FULLSCREEN / PROJECTOR RESULTS */}
+            {/* VIEW 2: ONLY LIVE RESULTS (3D OR TV) */}
             {activeTab === 'LIVE_RESULTS' && (
-              <div className="space-y-4">
+              <div className="w-full">
                 {resultsFormat === 'PILLARS_3D' ? (
                   stats && <LiveResultsPillars3D stats={stats} />
                 ) : (
@@ -662,10 +813,10 @@ export const ElectoralHub: React.FC = () => {
               </div>
             )}
 
-            {/* VIEW 3: DUAL MODE (MESA DE CARGADO + RESULTADOS EN VIVO SIMULTÁNEOS) */}
+            {/* VIEW 3: DUAL VIEW (SPLIT: 50% BALLOT ENTRY + 50% LIVE RESULTS) */}
             {activeTab === 'DUAL_VIEW' && (
               <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-                <div className="xl:col-span-6 space-y-4">
+                <div className="xl:col-span-6">
                   <BallotEntryConsole
                     electionId={electionId}
                     candidates={candidates}
@@ -679,7 +830,10 @@ export const ElectoralHub: React.FC = () => {
                     onUndo={handleUndo}
                     onClearSelection={() => setSelectedCandidateIds([])}
                     isSubmitting={isSubmitting}
-                    onExportResults={() => setIsExportModalOpen(true)}
+                    onExportResults={() => {
+                      setExportTargetElectionId(electionId);
+                      setIsExportModalOpen(true);
+                    }}
                     onOpenSettings={() => setIsSettingsOpen(true)}
                     onViewResults={() => setActiveTab('LIVE_RESULTS')}
                   />
@@ -716,8 +870,11 @@ export const ElectoralHub: React.FC = () => {
       {/* Official Export Results Modal (PDF & Excel) */}
       <ElectionExportModal
         isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        electionId={electionId}
+        onClose={() => {
+          setIsExportModalOpen(false);
+          setExportTargetElectionId('');
+        }}
+        electionId={exportTargetElectionId || electionId}
         stats={stats}
       />
 
@@ -727,10 +884,58 @@ export const ElectoralHub: React.FC = () => {
         onClose={() => setIsResetModalOpen(false)}
         electionId={electionId}
         stats={stats}
+        onOpenSaveAndNew={() => setIsNewModalOpen(true)}
         onResetSuccess={(newStats) => {
           setStats(newStats);
           setCandidates(newStats.candidates || []);
           setSelectedCandidateIds([]);
+          setLastSavedInfo(null);
+        }}
+      />
+
+      {/* Close & Save Election Modal */}
+      <CloseElectionModal
+        isOpen={isCloseModalOpen}
+        onClose={() => setIsCloseModalOpen(false)}
+        electionId={electionId}
+        stats={stats}
+        onCloseSuccess={(newStats) => {
+          setStats(newStats);
+          setCandidates(newStats.candidates || []);
+          setSelectedCandidateIds([]);
+        }}
+      />
+
+      {/* Election History Modal */}
+      <ElectionHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        currentElectionId={electionId}
+        onSelectElection={(selectedId) => loadElectionById(selectedId)}
+        onOpenNewElection={() => setIsNewModalOpen(true)}
+        onExportElection={(targetId) => {
+          setExportTargetElectionId(targetId);
+          setIsExportModalOpen(true);
+        }}
+        onCloseElection={(targetId) => {
+          setElectionId(targetId);
+          setIsCloseModalOpen(true);
+        }}
+        onElectionUpdated={() => fetchElectionData(true)}
+      />
+
+      {/* New Election Session Modal */}
+      <NewElectionModal
+        isOpen={isNewModalOpen}
+        onClose={() => setIsNewModalOpen(false)}
+        currentElectionId={electionId}
+        currentCandidatesCount={candidates.length}
+        onCreatedSuccess={(newStats, newElection) => {
+          setElectionId(newElection.id);
+          setStats(newStats);
+          setCandidates(newStats.candidates || []);
+          setSelectedCandidateIds([]);
+          setRecentlyVotedCandidateIds([]);
           setLastSavedInfo(null);
         }}
       />

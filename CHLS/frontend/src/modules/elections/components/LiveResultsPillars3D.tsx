@@ -8,7 +8,7 @@ import {
   isDirectorioCandidate,
 } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
-import { Award, CheckCircle2, TrendingUp, Users, Vote } from 'lucide-react';
+import { Award, CheckCircle2, Layers, TrendingUp, Users, Vote } from 'lucide-react';
 
 interface LiveResultsPillars3DProps {
   stats: ElectionStatsDto;
@@ -58,41 +58,84 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
 
       {/* Action Header: Category Switcher & Live Stats Counters */}
       <div className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between border-b border-white/10 pb-3 gap-3">
-        {/* Category Switcher Buttons (DIRECTORIO 2026 vs COMITÉ ELECTORAL Y TRIBUNAL DE HONOR) */}
-        <div className="flex items-center p-1.5 bg-black/85 rounded-2xl border-2 border-brand-gold/50 shadow-2xl backdrop-blur-md gap-2 flex-wrap justify-center md:justify-start">
+        {/* Selector de Categorías en Cuadrantes / Botones Cuadrados de Alta Visibilidad */}
+        <div className="grid grid-cols-3 gap-2 p-2 bg-black/90 rounded-2xl border-2 border-brand-gold/60 shadow-2xl backdrop-blur-md max-w-full">
+          {/* Botón Cuadrado 1: Directorio */}
           <button
             onClick={() => setActiveCategory('DIRECTORIO')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex flex-col items-center justify-center p-2 sm:px-3 sm:py-2.5 rounded-xl transition-all cursor-pointer border text-center select-none ${
               activeCategory === 'DIRECTORIO'
-                ? 'bg-gradient-to-r from-emerald-600 via-[#0a5c30] to-teal-700 text-white shadow-xl shadow-emerald-600/40 ring-2 ring-emerald-400 scale-[1.02]'
-                : 'text-gray-300 hover:text-white hover:bg-white/10'
+                ? 'bg-gradient-to-b from-emerald-600 to-teal-800 text-white border-emerald-400 shadow-xl shadow-emerald-700/50 ring-2 ring-emerald-300 scale-[1.03]'
+                : 'bg-white/[0.04] text-gray-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
-            <Users className="w-4 h-4 text-brand-gold" />
-            <span>DIRECTORIO 2026 (9 Postulantes)</span>
+            <div className="flex items-center gap-1.5">
+              <Users className={`w-3.5 h-3.5 ${activeCategory === 'DIRECTORIO' ? 'text-brand-gold' : 'text-emerald-400'}`} />
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider leading-none">
+                Directorio
+              </span>
+            </div>
+            <span
+              className={`text-[10px] sm:text-[11px] font-bold mt-1 px-2 py-0.5 rounded-full leading-none ${
+                activeCategory === 'DIRECTORIO'
+                  ? 'bg-emerald-950/80 text-emerald-200 border border-emerald-400/40'
+                  : 'bg-black/60 text-gray-400 border border-white/10'
+              }`}
+            >
+              9 Postulantes
+            </span>
           </button>
 
+          {/* Botón Cuadrado 2: Comité y Tribunal */}
           <button
             onClick={() => setActiveCategory('COMITE_Y_TRIBUNAL')}
-            className={`flex items-center gap-2 px-4 sm:px-5 py-1.5 rounded-xl text-xs sm:text-sm font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex flex-col items-center justify-center p-2 sm:px-3 sm:py-2.5 rounded-xl transition-all cursor-pointer border text-center select-none ${
               activeCategory === 'COMITE_Y_TRIBUNAL'
-                ? 'bg-gradient-to-r from-amber-500 via-brand-gold to-yellow-500 text-black shadow-xl shadow-brand-gold/40 ring-2 ring-brand-gold scale-[1.02]'
-                : 'text-gray-300 hover:text-white hover:bg-white/10'
+                ? 'bg-gradient-to-b from-amber-400 via-brand-gold to-yellow-500 text-black border-yellow-200 shadow-xl shadow-brand-gold/50 ring-2 ring-yellow-300 scale-[1.03]'
+                : 'bg-white/[0.04] text-gray-300 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
-            <Award className="w-4 h-4 text-emerald-950" />
-            <span>COMITÉ ELECTORAL Y TRIBUNAL DE HONOR</span>
+            <div className="flex items-center gap-1.5">
+              <Award className={`w-3.5 h-3.5 ${activeCategory === 'COMITE_Y_TRIBUNAL' ? 'text-black' : 'text-amber-400'}`} />
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider leading-none">
+                Comité y Tribunal
+              </span>
+            </div>
+            <span
+              className={`text-[10px] sm:text-[11px] font-bold mt-1 px-2 py-0.5 rounded-full leading-none ${
+                activeCategory === 'COMITE_Y_TRIBUNAL'
+                  ? 'bg-amber-950/90 text-amber-200 border border-black/20'
+                  : 'bg-black/60 text-gray-400 border border-white/10'
+              }`}
+            >
+              2 Postulantes
+            </span>
           </button>
 
+          {/* Botón Cuadrado 3: Ver Todos */}
           <button
             onClick={() => setActiveCategory('TODOS')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
+            className={`flex flex-col items-center justify-center p-2 sm:px-3 sm:py-2.5 rounded-xl transition-all cursor-pointer border text-center select-none ${
               activeCategory === 'TODOS'
-                ? 'bg-white/20 text-white border border-white/40 ring-1 ring-white/50'
-                : 'text-gray-400 hover:text-white hover:bg-white/5'
+                ? 'bg-gradient-to-b from-slate-700 to-slate-900 text-cyan-100 border-cyan-400 shadow-xl shadow-cyan-900/50 ring-2 ring-cyan-300 scale-[1.03]'
+                : 'bg-white/[0.04] text-gray-400 border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
             }`}
           >
-            <span>Ver Todos (11)</span>
+            <div className="flex items-center gap-1.5">
+              <Layers className={`w-3.5 h-3.5 ${activeCategory === 'TODOS' ? 'text-cyan-300' : 'text-gray-400'}`} />
+              <span className="text-xs sm:text-sm font-black uppercase tracking-wider leading-none">
+                Ver Todos
+              </span>
+            </div>
+            <span
+              className={`text-[10px] sm:text-[11px] font-bold mt-1 px-2 py-0.5 rounded-full leading-none ${
+                activeCategory === 'TODOS'
+                  ? 'bg-cyan-950/80 text-cyan-200 border border-cyan-400/40'
+                  : 'bg-black/60 text-gray-400 border border-white/10'
+              }`}
+            >
+              11 en Ánfora
+            </span>
           </button>
         </div>
 

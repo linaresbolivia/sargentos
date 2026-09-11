@@ -1441,7 +1441,7 @@ export const PqrsDashboard: React.FC = () => {
                           {!isLast && (
                              <div className="absolute left-[-15px] top-6 bottom-[-30px] w-[2px] bg-gray-200 dark:bg-white/10"></div>
                           )}
-                          <div className="absolute left-[-20px] top-1.5 w-3 h-3 rounded-full bg-brand-gold shadow-[0_0_8px_theme(colors.brand.gold)]"></div>
+                          <div className="absolute left-[-20px] top-1.5 w-3 h-3 rounded-full bg-brand-gold shadow-[0_0_8px_#d4af37]"></div>
                           
                           <div className="bg-white/50 dark:bg-black/20 rounded-lg p-3 border border-gray-100 dark:border-white/5 shadow-sm transition-all hover:bg-white/80 dark:hover:bg-black/40">
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-1 gap-2">
