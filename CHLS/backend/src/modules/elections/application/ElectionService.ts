@@ -479,4 +479,97 @@ export class ElectionService {
 
     return { election: updated, stats };
   }
+
+  /**
+   * Obtiene todos los datos detallados para la exportación oficial (PDF y Excel):
+   * Elección, estadísticas agregadas, candidatos y todas las boletas sufragadas con nombres de postulantes.
+   */
+  public async getDetailedReport(electionId?: string) {
+    const election = electionId
+      ? await this.prisma.election.findUnique({
+          where: { id: electionId },
+          include: {
+            candidates: {
+              where: { isActive: true },
+              orderBy: { orderIndex: 'asc' },
+            },
+          },
+        })
+      : await this.prisma.election.findFirst({
+          where: { status: { in: ['EN_CURSO', 'CONVOCADA', 'FINALIZADA', 'PROCLAMADA'] } },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            candidates: {
+              where: { isActive: true },
+              orderBy: { orderIndex: 'asc' },
+            },
+          },
+        });
+
+    if (!election) {
+      throw new Error('No se encontró ninguna elección activa.');
+    }
+
+    const stats = await this.getLiveStats(election.id);
+
+    // Mapeo de IDs de candidatos a nombres para enriquecer cada boleta
+    const candidateMap = new Map<string, { fullName: string; orderIndex: number; position: string }>();
+    election.candidates.forEach((c) => {
+      candidateMap.set(c.id, {
+        fullName: c.fullName,
+        orderIndex: c.orderIndex,
+        position: c.position,
+      });
+    });
+
+    // Obtener todas las boletas físicas ordenadas correlativamente
+    const rawBallots = await this.prisma.electionBallot.findMany({
+      where: { electionId: election.id },
+      orderBy: { ballotNumber: 'asc' },
+    });
+
+    const ballots = rawBallots.map((b) => {
+      const selectedNames = b.selectedCandidateIds
+        .map((id) => candidateMap.get(id)?.fullName || id)
+        .filter(Boolean);
+
+      return {
+        id: b.id,
+        ballotNumber: b.ballotNumber,
+        ballotType: b.ballotType,
+        selectedCandidateIds: b.selectedCandidateIds,
+        selectedCandidateNames: selectedNames,
+        marksCount: b.selectedCandidateIds.length,
+        notes: b.notes,
+        registeredBy: b.registeredBy,
+        voteHash: b.voteHash,
+        castAt: b.castAt,
+        createdAt: b.castAt,
+      };
+    });
+
+    return {
+      election: {
+        id: election.id,
+        title: election.title,
+        period: election.period,
+        status: election.status,
+        createdAt: election.createdAt,
+        quorumMinimum: election.quorumMinimum,
+      },
+      stats,
+      ballots,
+      candidates: election.candidates.map((c) => ({
+        id: c.id,
+        fullName: c.fullName,
+        orderIndex: c.orderIndex,
+        position: c.position,
+        votesCount: stats.candidates.find((sc) => sc.id === c.id)?.votesCount || 0,
+        votesPercentage: stats.candidates.find((sc) => sc.id === c.id)?.votesPercentage || 0,
+        votesPercentageValid: stats.candidates.find((sc) => sc.id === c.id)?.votesPercentageValid || 0,
+        rank: stats.candidates.find((sc) => sc.id === c.id)?.rank || 0,
+      })),
+      generatedAt: new Date().toISOString(),
+    };
+  }
 }

@@ -17,6 +17,7 @@ export class ElectionController {
     // 1. Elección activa y estadísticas
     this.router.get('/active', this.getActiveElection.bind(this));
     this.router.get('/results', this.getLiveResults.bind(this));
+    this.router.get('/report', this.getDetailedReport.bind(this));
 
     // 2. Registro de boletas físicas sacadas del ánfora
     this.router.post('/ballot', this.registerBallot.bind(this));
@@ -29,6 +30,21 @@ export class ElectionController {
 
     // 4. Configuración general (límites de marcas, estados)
     this.router.post('/settings', this.updateSettings.bind(this));
+  }
+
+  /**
+   * GET /api/elections/report?electionId=...
+   * Retorna toda la información detallada para exportación oficial (PDF y Excel)
+   */
+  private async getDetailedReport(req: Request, res: Response): Promise<void> {
+    try {
+      const electionId = req.query.electionId ? String(req.query.electionId) : undefined;
+      const report = await this.electionService.getDetailedReport(electionId);
+      res.status(200).json({ success: true, data: report });
+    } catch (error: any) {
+      logger.error('Error al generar reporte de elecciones:', error);
+      res.status(500).json({ success: false, message: error.message || 'Error interno' });
+    }
   }
 
   /**
@@ -112,13 +128,17 @@ export class ElectionController {
    */
   private async resetAllBallots(req: Request, res: Response): Promise<void> {
     try {
-      const { electionId, performedBy } = req.body;
-      if (!electionId) {
-        res.status(400).json({ success: false, message: 'Debe especificar electionId.' });
+      let targetId = req.body.electionId;
+      if (!targetId) {
+        const activeElection = await this.electionService.getActiveElection();
+        targetId = activeElection?.id;
+      }
+      if (!targetId) {
+        res.status(400).json({ success: false, message: 'No hay ninguna elección activa para reiniciar.' });
         return;
       }
 
-      const result = await this.electionService.resetAllBallots(electionId, performedBy);
+      const result = await this.electionService.resetAllBallots(targetId, req.body.performedBy);
       res.status(200).json(result);
     } catch (error: any) {
       logger.error('Error al reiniciar boletas:', error);

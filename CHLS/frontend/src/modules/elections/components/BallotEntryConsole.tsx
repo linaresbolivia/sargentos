@@ -19,7 +19,8 @@ import {
   BarChart2,
   Layers,
   Radio,
-  CheckCircle2
+  CheckCircle2,
+  FileDown
 } from 'lucide-react';
 import { CandidateDto, ElectionStatsDto, formatNameInTwoLines } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
@@ -45,6 +46,7 @@ export interface BallotEntryConsoleProps {
   onUndo?: () => void;
   onClearSelection?: () => void;
   isSubmitting?: boolean;
+  onExportResults?: () => void;
   onBallotRegistered?: (newStats: ElectionStatsDto) => void;
   onOpenSettings?: () => void;
   onViewResults?: () => void;
@@ -63,6 +65,7 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
   onUndo,
   onClearSelection,
   isSubmitting = false,
+  onExportResults,
   onOpenSettings,
   onViewResults,
 }) => {
@@ -281,23 +284,19 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               </div>
             </div>
 
-            <button
-              onClick={() => setIsFullScreenBallot(!isFullScreenBallot)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/90 border border-brand-gold/40 text-brand-gold text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 shrink-0"
-              title={isFullScreenBallot ? 'Salir Pantalla Completa' : 'Ocupar Toda la Pantalla'}
-            >
-              {isFullScreenBallot ? (
-                <>
+            {isFullScreenBallot && (
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsFullScreenBallot(false)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 hover:bg-black/90 border border-brand-gold/40 text-brand-gold text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow hover:scale-105 shrink-0"
+                  title="Salir Pantalla Completa"
+                >
                   <Minimize2 className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Salir (Esc)</span>
-                </>
-              ) : (
-                <>
-                  <Maximize2 className="w-3.5 h-3.5 text-brand-gold" />
-                  <span className="hidden sm:inline">Pantalla Completa</span>
-                </>
-              )}
-            </button>
+                </button>
+              </div>
+            )}
           </div>
 
           {/* DISTRIBUCIÓN EXACTA DE LA BOLETA FÍSICA */}

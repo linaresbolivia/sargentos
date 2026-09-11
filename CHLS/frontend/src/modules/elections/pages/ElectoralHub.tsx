@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   RefreshCw,
   Volume2,
-  VolumeX
+  VolumeX,
+  FileDown
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CandidateDto, ElectionStatsDto, ResultsFormat } from '../types/election.types';
@@ -27,6 +28,8 @@ import { BallotEntryConsole, LastSavedInfo } from '../components/BallotEntryCons
 import { LiveResultsPillars3D } from '../components/LiveResultsPillars3D';
 import { LiveResultsUnitelStyle } from '../components/LiveResultsUnitelStyle';
 import { CandidateParametrizationModal } from '../components/CandidateParametrizationModal';
+import { ElectionExportModal } from '../components/ElectionExportModal';
+import { ResetElectionModal } from '../components/ResetElectionModal';
 import { CrestLogo } from '@shared/components/CrestLogo';
 
 export const ElectoralHub: React.FC = () => {
@@ -46,6 +49,8 @@ export const ElectoralHub: React.FC = () => {
   const [stats, setStats] = useState<ElectionStatsDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isWsConnected, setIsWsConnected] = useState(false);
 
@@ -580,6 +585,28 @@ export const ElectoralHub: React.FC = () => {
               {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             </button>
 
+            {/* Exportar Resultados Button */}
+            <button
+              type="button"
+              onClick={() => setIsExportModalOpen(true)}
+              title="Exportar Resultados Oficiales en PDF y Excel"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <FileDown className="w-4 h-4 text-emerald-300" />
+              <span className="hidden sm:inline">Exportar</span>
+            </button>
+
+            {/* Reiniciar Votación a Cero Button */}
+            <button
+              type="button"
+              onClick={() => setIsResetModalOpen(true)}
+              title="Reiniciar votación a cero (Limpiar todas las boletas registradas)"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-950/80 via-red-950 to-rose-900/60 hover:from-red-900 hover:to-rose-800 text-rose-200 hover:text-white text-xs font-black uppercase tracking-wider border border-rose-500/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Reiniciar</span>
+            </button>
+
             {/* Settings Modal Button */}
             <button
               onClick={() => setIsSettingsOpen(true)}
@@ -618,6 +645,7 @@ export const ElectoralHub: React.FC = () => {
                 onUndo={handleUndo}
                 onClearSelection={() => setSelectedCandidateIds([])}
                 isSubmitting={isSubmitting}
+                onExportResults={() => setIsExportModalOpen(true)}
                 onOpenSettings={() => setIsSettingsOpen(true)}
                 onViewResults={() => setActiveTab('LIVE_RESULTS')}
               />
@@ -651,6 +679,7 @@ export const ElectoralHub: React.FC = () => {
                     onUndo={handleUndo}
                     onClearSelection={() => setSelectedCandidateIds([])}
                     isSubmitting={isSubmitting}
+                    onExportResults={() => setIsExportModalOpen(true)}
                     onOpenSettings={() => setIsSettingsOpen(true)}
                     onViewResults={() => setActiveTab('LIVE_RESULTS')}
                   />
@@ -683,6 +712,28 @@ export const ElectoralHub: React.FC = () => {
           }}
         />
       )}
+
+      {/* Official Export Results Modal (PDF & Excel) */}
+      <ElectionExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        electionId={electionId}
+        stats={stats}
+      />
+
+      {/* Reset Election to Zero Modal */}
+      <ResetElectionModal
+        isOpen={isResetModalOpen}
+        onClose={() => setIsResetModalOpen(false)}
+        electionId={electionId}
+        stats={stats}
+        onResetSuccess={(newStats) => {
+          setStats(newStats);
+          setCandidates(newStats.candidates || []);
+          setSelectedCandidateIds([]);
+          setLastSavedInfo(null);
+        }}
+      />
     </div>
   );
 };
