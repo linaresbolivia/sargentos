@@ -65,12 +65,14 @@ export const CandidateParametrizationModal: React.FC<CandidateParametrizationMod
     if (file) {
       try {
         const toastId = toast.loading('Optimizando fotografía...');
-        const { dataUrl, compressedSizeKb } = await compressImage(file, 480, 480, 0.85);
+        const { dataUrl, compressedSizeKb, originalSizeKb } = await compressImage(file, 640, 640, 0.85);
         setNewPhotoUrl(dataUrl);
         toast.dismiss(toastId);
-        toast.success(`Foto lista (${compressedSizeKb} KB).`);
+        toast.success(`Foto optimizada (${originalSizeKb} KB → ${compressedSizeKb} KB).`);
       } catch (err) {
         toast.error('No se pudo procesar la fotografía.');
+      } finally {
+        e.target.value = '';
       }
     }
   };
@@ -81,12 +83,14 @@ export const CandidateParametrizationModal: React.FC<CandidateParametrizationMod
     if (file) {
       try {
         const toastId = toast.loading('Optimizando fotografía...');
-        const { dataUrl, compressedSizeKb } = await compressImage(file, 480, 480, 0.85);
+        const { dataUrl, compressedSizeKb, originalSizeKb } = await compressImage(file, 640, 640, 0.85);
         setEditPhotoUrl(dataUrl);
         toast.dismiss(toastId);
-        toast.success(`Foto lista (${compressedSizeKb} KB).`);
+        toast.success(`Foto optimizada (${originalSizeKb} KB → ${compressedSizeKb} KB).`);
       } catch (err) {
         toast.error('No se pudo procesar la fotografía.');
+      } finally {
+        e.target.value = '';
       }
     }
   };
@@ -507,6 +511,11 @@ export const CandidateParametrizationModal: React.FC<CandidateParametrizationMod
                           <img
                             src={cand.photoUrl}
                             alt={cand.fullName}
+                            loading="lazy"
+                            decoding="async"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
                             className="w-full h-full object-cover object-top"
                           />
                         ) : (

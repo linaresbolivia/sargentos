@@ -1,63 +1,84 @@
 /**
- * Client-side image compressor using HTML5 Canvas.
- * Resizes large images (e.g. 5-10MB camera captures) and compresses to JPEG
- * down to ~100-300KB for instant uploads and WhatsApp compatibility.
+ * Client-side image compressor using HTML5 Canvas and createImageBitmap.
+ * Resizes large images (e.g. 5-15MB camera captures) and compresses to WebP/JPEG
+ * down to ~30-60KB without visible quality loss, optimizing performance,
+ * memory footprint, and network transfer.
  */
-export const compressImage = (
+export const compressImage = async (
   file: File,
-  maxWidth = 1280,
-  maxHeight = 1280,
-  quality = 0.75
+  maxWidth = 640,
+  maxHeight = 640,
+  quality = 0.85
 ): Promise<{ dataUrl: string; originalSizeKb: number; compressedSizeKb: number }> => {
-  return new Promise((resolve, reject) => {
-    const originalSizeKb = Math.round(file.size / 1024);
-    const reader = new FileReader();
+  const originalSizeKb = Math.round(file.size / 1024);
 
+  // Helper to load image dimensions and bitmap/element
+  let imgSource: ImageBitmap | HTMLImageElement;
+  let sourceWidth = 0;
+  let sourceHeight = 0;
+
+  if (typeof window.createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file);
+      imgSource = bitmap;
+      sourceWidth = bitmap.width;
+      sourceHeight = bitmap.height;
+    } catch {
+      imgSource = await loadImageElement(file);
+      sourceWidth = (imgSource as HTMLImageElement).naturalWidth || (imgSource as HTMLImageElement).width;
+      sourceHeight = (imgSource as HTMLImageElement).naturalHeight || (imgSource as HTMLImageElement).height;
+    }
+  } else {
+    imgSource = await loadImageElement(file);
+    sourceWidth = (imgSource as HTMLImageElement).naturalWidth || (imgSource as HTMLImageElement).width;
+    sourceHeight = (imgSource as HTMLImageElement).naturalHeight || (imgSource as HTMLImageElement).height;
+  }
+
+  // Calculate proportional dimensions maintaining aspect ratio
+  const scale = Math.min(1, maxWidth / sourceWidth, maxHeight / sourceHeight);
+  const targetWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const targetHeight = Math.max(1, Math.round(sourceHeight * scale));
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('No se pudo obtener el contexto 2D del canvas');
+  }
+
+  // Draw image with high-quality bicubic interpolation
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(imgSource, 0, 0, targetWidth, targetHeight);
+
+  if ('close' in imgSource && typeof (imgSource as ImageBitmap).close === 'function') {
+    (imgSource as ImageBitmap).close();
+  }
+
+  // Try WebP first; if browser doesn't support WebP export, fallback to JPEG
+  let dataUrl = canvas.toDataURL('image/webp', quality);
+  if (!dataUrl.startsWith('data:image/webp')) {
+    dataUrl = canvas.toDataURL('image/jpeg', quality);
+  }
+
+  const compressedSizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
+
+  return { dataUrl, originalSizeKb, compressedSizeKb };
+};
+
+const loadImageElement = (file: File): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
-      img.onload = () => {
-        let width = img.width;
-        let height = img.height;
-
-        // Calculate proportional scale
-        if (width > maxWidth || height > maxHeight) {
-          if (width > height) {
-            height = Math.round((height * maxWidth) / width);
-            width = maxWidth;
-          } else {
-            width = Math.round((width * maxHeight) / height);
-            height = maxHeight;
-          }
-        }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          const rawDataUrl = e.target?.result as string;
-          const rawKb = Math.round((rawDataUrl.length * 3) / 4 / 1024);
-          return resolve({ dataUrl: rawDataUrl, originalSizeKb, compressedSizeKb: rawKb });
-        }
-
-        // Draw image on canvas with high-quality smoothing
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(img, 0, 0, width, height);
-
-        // Convert to compressed JPEG data URL
-        const dataUrl = canvas.toDataURL('image/jpeg', quality);
-        const compressedSizeKb = Math.round((dataUrl.length * 3) / 4 / 1024);
-
-        resolve({ dataUrl, originalSizeKb, compressedSizeKb });
-      };
-
-      img.onerror = (err) => reject(new Error('No se pudo decodificar la imagen seleccionada'));
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error('No se pudo decodificar la imagen seleccionada'));
       img.src = e.target?.result as string;
     };
-
-    reader.onerror = (err) => reject(new Error('Error al leer el archivo'));
+    reader.onerror = () => reject(new Error('Error al leer el archivo'));
     reader.readAsDataURL(file);
   });
 };
+

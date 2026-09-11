@@ -189,6 +189,12 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               alt={cand.fullName}
               loading="lazy"
               decoding="async"
+              onError={(e) => {
+                const fallback = CANDIDATE_PHOTO_MAP[cand.orderIndex];
+                if (fallback && e.currentTarget.src !== fallback) {
+                  e.currentTarget.src = fallback;
+                }
+              }}
               className="w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-xl object-cover object-top border-2 border-white/95 shadow-md group-hover:scale-105 transition-transform duration-150"
             />
             <span className="absolute -top-1 -left-1 bg-black/85 text-brand-gold font-mono font-black text-[10px] px-1.5 py-0.2 rounded border border-brand-gold/40 shadow">

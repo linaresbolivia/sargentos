@@ -37,6 +37,7 @@ export class ElectionController {
     this.router.post('/close', this.closeElection.bind(this));
     this.router.post('/reopen', this.reopenElection.bind(this));
     this.router.post('/new', this.createNewElection.bind(this));
+    this.router.delete('/:id', this.deleteElection.bind(this));
   }
 
   /**
@@ -327,4 +328,20 @@ export class ElectionController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  /**
+   * DELETE /api/elections/:id
+   * Elimina permanentemente una votación
+   */
+  private async deleteElection(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const result = await this.electionService.deleteElection(id);
+      res.status(200).json(result);
+    } catch (error: any) {
+      logger.error('Error al eliminar votación:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
+

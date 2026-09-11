@@ -499,10 +499,10 @@ export const ElectoralHub: React.FC = () => {
           <div className="flex items-center gap-3">
             <button
               onClick={() => navigate('/')}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white border border-white/10 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              className="p-2 rounded-xl bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-200 hover:text-white border border-emerald-500/30 hover:border-emerald-500/50 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold"
               title="Volver al menú principal"
             >
-              <ArrowLeft className="w-4 h-4" />
+              <ArrowLeft className="w-4 h-4 text-emerald-300" />
               <span className="hidden xl:inline">Volver</span>
             </button>
 
@@ -559,13 +559,13 @@ export const ElectoralHub: React.FC = () => {
           {/* 3. NAVIGATION VIEW SWITCHERS & EXTRAS */}
           <div className="flex items-center gap-2 flex-wrap">
             {/* Vistas: Mesa / Modo Dual / Resultados */}
-            <div className="flex items-center p-0.5 bg-black/60 rounded-xl border border-white/15">
+            <div className="flex items-center p-0.5 bg-black/70 rounded-xl border border-emerald-500/30">
               <button
                 onClick={() => setActiveTab('BALLOT_ENTRY')}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                   activeTab === 'BALLOT_ENTRY'
-                    ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                    : 'text-emerald-200/70 hover:text-white hover:bg-emerald-500/10'
                 }`}
                 title="Mesa de Cargado de Boletas"
               >
@@ -577,8 +577,8 @@ export const ElectoralHub: React.FC = () => {
                 onClick={() => setActiveTab('DUAL_VIEW')}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                   activeTab === 'DUAL_VIEW'
-                    ? 'bg-gradient-to-r from-amber-500 via-brand-gold to-yellow-400 text-black shadow'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                    : 'text-emerald-200/70 hover:text-white hover:bg-emerald-500/10'
                 }`}
                 title="Modo Dual: Mesa + Resultados simultáneos"
               >
@@ -590,8 +590,8 @@ export const ElectoralHub: React.FC = () => {
                 onClick={() => setActiveTab('LIVE_RESULTS')}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer ${
                   activeTab === 'LIVE_RESULTS'
-                    ? 'bg-gradient-to-r from-brand-gold to-amber-500 text-black shadow'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                    : 'text-emerald-200/70 hover:text-white hover:bg-emerald-500/10'
                 }`}
                 title="Resultados para Proyector / Sala de Prensa"
               >
@@ -602,13 +602,13 @@ export const ElectoralHub: React.FC = () => {
 
             {/* Formato 3D / TV (si está en Resultados o Dual) */}
             {(activeTab === 'LIVE_RESULTS' || activeTab === 'DUAL_VIEW') && (
-              <div className="flex items-center p-0.5 bg-black/60 rounded-xl border border-brand-gold/30">
+              <div className="flex items-center p-0.5 bg-black/70 rounded-xl border border-emerald-500/30">
                 <button
                   onClick={() => setResultsFormat('PILLARS_3D')}
                   className={`px-2 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                     resultsFormat === 'PILLARS_3D'
-                      ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-500/50'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-emerald-200/70 hover:text-white hover:bg-emerald-500/10'
                   }`}
                   title="Columnas 3D CHLS"
                 >
@@ -618,8 +618,8 @@ export const ElectoralHub: React.FC = () => {
                   onClick={() => setResultsFormat('UNITEL_TV')}
                   className={`px-2 py-1 rounded-lg text-xs font-bold uppercase transition-all cursor-pointer ${
                     resultsFormat === 'UNITEL_TV'
-                      ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
-                      : 'text-gray-400 hover:text-white'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'text-emerald-200/70 hover:text-white hover:bg-emerald-500/10'
                   }`}
                   title="Conteo TV HD"
                 >
@@ -634,8 +634,8 @@ export const ElectoralHub: React.FC = () => {
               title={isMuted ? 'Activar audio (Silenciado actualmente)' : 'Audio institucional activo (Clic para silenciar o reproducir)'}
               className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1 ${
                 isMuted
-                  ? 'bg-rose-950/40 text-rose-300 border-rose-500/40 hover:bg-rose-900/60'
-                  : 'bg-white/5 hover:bg-white/10 text-emerald-300 border-emerald-500/40 shadow-[0_0_12px_rgba(16,185,129,0.25)]'
+                  ? 'bg-emerald-950/40 text-emerald-400/50 border-emerald-500/30 hover:bg-emerald-900/40 hover:text-emerald-300'
+                  : 'bg-emerald-950/70 hover:bg-emerald-900/70 text-emerald-300 border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
               }`}
             >
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4 animate-pulse" />}
@@ -645,7 +645,7 @@ export const ElectoralHub: React.FC = () => {
             <button
               onClick={toggleFullscreen}
               title={isFullscreen ? 'Salir de pantalla completa' : 'Ocupar toda la pantalla (Pantalla Completa)'}
-              className="p-2 bg-white/5 hover:bg-white/10 text-brand-gold hover:text-amber-300 rounded-xl border border-brand-gold/30 transition-all cursor-pointer"
+              className="p-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 hover:text-white rounded-xl border border-emerald-500/40 hover:border-emerald-400/60 transition-all cursor-pointer shadow-sm"
             >
               {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
             </button>
@@ -655,9 +655,9 @@ export const ElectoralHub: React.FC = () => {
               type="button"
               onClick={() => setIsHistoryModalOpen(true)}
               title="Historial de Votaciones por Fecha de Votación"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-950/70 via-amber-900/60 to-yellow-950/70 hover:from-amber-900 hover:to-yellow-900 text-amber-200 hover:text-white text-xs font-black uppercase tracking-wider border border-amber-500/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-900/90 via-emerald-800/80 to-teal-900/90 hover:from-emerald-800 hover:to-teal-800 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
-              <Archive className="w-3.5 h-3.5 text-brand-gold" />
+              <Archive className="w-3.5 h-3.5 text-emerald-300" />
               <span className="hidden sm:inline">Historial</span>
             </button>
 
@@ -667,9 +667,9 @@ export const ElectoralHub: React.FC = () => {
                 type="button"
                 onClick={() => setIsHistoryModalOpen(true)}
                 title="Votación Oficial Cerrada y Guardada en el Historial (Clic para ver historial)"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/60 text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-900/90 via-emerald-800/80 to-teal-900/90 hover:from-emerald-800 hover:to-teal-800 text-white border border-emerald-400/60 text-xs font-black uppercase tracking-wider shadow-md hover:scale-105 transition-all cursor-pointer"
               >
-                <Lock className="w-3.5 h-3.5 text-amber-400" />
+                <Lock className="w-3.5 h-3.5 text-emerald-300" />
                 <span className="hidden md:inline">Cerrada</span>
               </button>
             ) : (
@@ -677,9 +677,9 @@ export const ElectoralHub: React.FC = () => {
                 type="button"
                 onClick={() => setIsCloseModalOpen(true)}
                 title="Cerrar y Guardar Votación por Fecha Oficial"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-950/80 to-indigo-950/80 hover:from-blue-900 hover:to-indigo-900 text-blue-200 hover:text-white text-xs font-black uppercase tracking-wider border border-blue-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-900/90 via-emerald-800/80 to-teal-900/90 hover:from-emerald-800 hover:to-teal-800 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/60 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
               >
-                <Lock className="w-3.5 h-3.5 text-blue-300" />
+                <Lock className="w-3.5 h-3.5 text-emerald-300" />
                 <span className="hidden md:inline">Cerrar Votación</span>
               </button>
             )}
@@ -692,20 +692,34 @@ export const ElectoralHub: React.FC = () => {
                 setIsExportModalOpen(true);
               }}
               title="Exportar Resultados Oficiales en PDF y Excel"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-800 to-teal-800 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-700 hover:from-emerald-600 hover:to-teal-600 text-white text-xs font-black uppercase tracking-wider border border-emerald-400/60 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
-              <FileDown className="w-4 h-4 text-emerald-300" />
+              <FileDown className="w-4 h-4 text-white" />
               <span className="hidden sm:inline">Exportar</span>
             </button>
 
             {/* Reiniciar Votación a Cero Button */}
             <button
               type="button"
-              onClick={() => setIsResetModalOpen(true)}
-              title="Reiniciar votación o archivar en el historial"
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-950/80 via-red-950 to-rose-900/60 hover:from-red-900 hover:to-rose-800 text-rose-200 hover:text-white text-xs font-black uppercase tracking-wider border border-rose-500/50 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              onClick={() => {
+                if (stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA') {
+                  toast.error('Por seguridad, una votación cerrada no puede reiniciarse.');
+                  return;
+                }
+                setIsResetModalOpen(true);
+              }}
+              title={
+                stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA'
+                  ? 'Votación cerrada (Reinicio bloqueado por seguridad)'
+                  : 'Reiniciar votación o archivar en el historial'
+              }
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider border shadow-md transition-all ${
+                stats?.status === 'FINALIZADA' || stats?.status === 'PROCLAMADA'
+                  ? 'bg-emerald-950/40 text-emerald-400/40 border-emerald-500/20 cursor-not-allowed opacity-60'
+                  : 'bg-gradient-to-r from-emerald-900/90 via-emerald-800/80 to-teal-900/90 hover:from-emerald-800 hover:to-teal-800 text-white border-emerald-400/50 hover:scale-105 active:scale-95 cursor-pointer'
+              }`}
             >
-              <RotateCcw className="w-3.5 h-3.5 text-rose-400" />
+              <RotateCcw className="w-3.5 h-3.5 text-emerald-300" />
               <span className="hidden sm:inline">Reiniciar</span>
             </button>
 
@@ -713,7 +727,7 @@ export const ElectoralHub: React.FC = () => {
             <button
               onClick={() => setIsSettingsOpen(true)}
               title="Parametrizar Postulantes y Reglas de Elección"
-              className="p-2 bg-white/5 hover:bg-white/10 text-gray-300 hover:text-white rounded-xl border border-white/10 transition-all cursor-pointer"
+              className="p-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 hover:text-white rounded-xl border border-emerald-500/40 hover:border-emerald-400/60 transition-all cursor-pointer shadow-sm"
             >
               <Sliders className="w-4 h-4" />
             </button>

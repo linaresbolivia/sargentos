@@ -676,7 +676,8 @@ export class ElectionService {
         const filePath = path.join(uploadsDir, fileName);
 
         await sharp(origBuf)
-          .resize(480, 480, { fit: 'cover', position: 'top' })
+          .rotate()
+          .resize(640, 640, { fit: 'inside', withoutEnlargement: true })
           .webp({ quality: 85, effort: 4 })
           .toFile(filePath);
 
@@ -688,6 +689,21 @@ export class ElectionService {
 
     let saved;
     if (candidate.id) {
+      if (finalPhotoUrl) {
+        try {
+          const prev = await this.prisma.electionCandidate.findUnique({
+            where: { id: candidate.id },
+            select: { photoUrl: true }
+          });
+          if (prev?.photoUrl && prev.photoUrl !== finalPhotoUrl && prev.photoUrl.startsWith('/uploads/elections/')) {
+            const oldPath = path.join(process.cwd(), prev.photoUrl.replace(/^\//, ''));
+            if (fs.existsSync(oldPath)) {
+              fs.unlinkSync(oldPath);
+            }
+          }
+        } catch (_) {}
+      }
+
       saved = await this.prisma.electionCandidate.update({
         where: { id: candidate.id },
         data: {
@@ -906,4 +922,34 @@ export class ElectionService {
       generatedAt: new Date().toISOString(),
     };
   }
+
+  /**
+   * Elimina permanentemente una votación y sus registros asociados
+   */
+  public async deleteElection(electionId: string) {
+    const election = await this.prisma.election.findUnique({
+      where: { id: electionId },
+      include: { candidates: true },
+    });
+    if (!election) {
+      throw new Error('Votación no encontrada.');
+    }
+
+    // Limpiar archivos locales si los hubiera
+    for (const cand of election.candidates) {
+      if (cand.photoUrl && cand.photoUrl.startsWith('/uploads/elections/')) {
+        const filePath = path.join(process.cwd(), cand.photoUrl.replace(/^\//, ''));
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch (_) {}
+        }
+      }
+    }
+
+    await this.prisma.election.delete({
+      where: { id: electionId },
+    });
+
+    return { success: true, message: 'Votación eliminada exitosamente' };
+  }
 }
+

@@ -20,7 +20,8 @@ import {
   Clock,
   ShieldCheck,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { ElectionHistoryItem, ElectionStatsDto } from '../types/election.types';
 import { CrestLogo } from '@shared/components/CrestLogo';
@@ -90,6 +91,30 @@ export const ElectionHistoryModal: React.FC<ElectionHistoryModalProps> = ({
       }
     } catch (err: any) {
       toast.error('Error al reabrir la votación: ' + (err.response?.data?.message || err.message));
+    }
+  };
+
+  const handleDelete = async (eId: string, title: string) => {
+    if (
+      !window.confirm(
+        `¿Estás seguro de eliminar definitivamente la votación "${title}"?\n\nEsta acción eliminará todas sus boletas, registros y postulantes asociados.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const res = await axios.delete(`/api/elections/${eId}`);
+      if (res.data.success) {
+        toast.success(`Votación "${title}" eliminada con éxito.`);
+        fetchHistory();
+        if (onElectionUpdated) onElectionUpdated();
+        if (currentElectionId === eId) {
+          window.location.reload();
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || 'Error al eliminar la votación.');
     }
   };
 
@@ -372,6 +397,17 @@ export const ElectionHistoryModal: React.FC<ElectionHistoryModalProps> = ({
                           <span>Cerrar</span>
                         </button>
                       )}
+
+                      {/* Eliminar Votación */}
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(item.id, item.title)}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 text-xs font-bold transition-all cursor-pointer border border-rose-500/30 hover:border-rose-500/60"
+                        title="Eliminar permanentemente esta votación del sistema"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Eliminar</span>
+                      </button>
                     </div>
                   </div>
                 </div>

@@ -451,6 +451,12 @@ export const LiveResultsPillars3D: React.FC<LiveResultsPillars3DProps> = ({ stat
                       alt={cand.fullName}
                       loading="lazy"
                       decoding="async"
+                      onError={(e) => {
+                        const fallback = CANDIDATE_PHOTO_MAP[cand.orderIndex];
+                        if (fallback && e.currentTarget.src !== fallback) {
+                          e.currentTarget.src = fallback;
+                        }
+                      }}
                       className="w-full h-full object-cover object-top"
                     />
                   ) : (

@@ -68,9 +68,9 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
   ];
 
   return (
-    <div className="w-full min-h-[680px] p-3 sm:p-5 lg:p-6 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-[#c5a059]/50 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
+    <div className="w-full min-h-[540px] sm:min-h-[580px] p-3 sm:p-4 lg:p-5 rounded-3xl bg-gradient-to-b from-[#0a1526] via-[#0e2039] to-[#060d18] border-2 border-[#c5a059]/50 shadow-2xl relative overflow-hidden select-none flex flex-col justify-between">
       {/* Studio lighting ceiling rig visual effect */}
-      <div className="absolute top-0 inset-x-0 h-12 bg-gradient-to-b from-white/10 to-transparent pointer-events-none flex justify-around items-center px-10">
+      <div className="absolute top-0 inset-x-0 h-10 bg-gradient-to-b from-white/10 to-transparent pointer-events-none flex justify-around items-center px-10">
         {[...Array(12)].map((_, i) => (
           <div
             key={i}
@@ -86,7 +86,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
       </div>
 
       {/* Television Broadcast Header Ribbon */}
-      <div className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between border-b border-white/15 pb-5 pt-3 gap-4">
+      <div className="relative z-10 w-full flex flex-col md:flex-row items-center justify-between border-b border-white/15 pb-3 sm:pb-4 pt-2 gap-3">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-1.5 px-3 py-1 bg-red-600 text-white font-black text-xs uppercase tracking-wider rounded-md shadow-lg shadow-red-600/40 animate-pulse">
@@ -208,9 +208,9 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
 
       {/* Main Broadcaster Card Row (Ordered by Rank) - All candidates fit on screen */}
       <div
-        className={`relative z-10 w-full flex-1 flex items-stretch justify-center py-4 sm:py-6 overflow-hidden ${
+        className={`relative z-10 w-full flex-1 flex items-stretch justify-center py-2 sm:py-3 overflow-hidden ${
           isTwoCandidates
-            ? 'gap-8 sm:gap-16'
+            ? 'gap-6 sm:gap-10 md:gap-14'
             : candidates.length > 9
             ? 'gap-1 sm:gap-1.5 md:gap-2'
             : 'gap-1.5 sm:gap-2.5 md:gap-3'
@@ -231,7 +231,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
               key={cand.id}
               className={`flex flex-col rounded-xl sm:rounded-2xl border-2 overflow-hidden shadow-xl transition-all duration-300 group hover:-translate-y-1 relative ${
                 isTwoCandidates
-                  ? 'w-48 sm:w-60 lg:w-72 shrink-0'
+                  ? 'w-36 sm:w-40 md:w-44 max-w-[176px] shrink-0'
                   : 'flex-1 min-w-0 max-w-[155px]'
               } ${
                 isWinner
@@ -241,7 +241,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
             >
               {/* Top Big Votes Count Box (Television News Style) */}
               <div
-                className={`w-full py-2 sm:py-2.5 md:py-3.5 ${theme.bgTop} ${theme.textTop} flex flex-col items-center justify-center text-center shadow-md relative`}
+                className={`w-full py-1.5 sm:py-2 ${theme.bgTop} ${theme.textTop} flex flex-col items-center justify-center text-center shadow-md relative`}
               >
                 {isWinner && (
                   <div className="absolute top-1 left-1.5 flex items-center gap-0.5 text-[8px] sm:text-[9px] font-black text-amber-200 uppercase bg-black/60 px-1 py-0.5 rounded">
@@ -249,7 +249,7 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                     <span>#1</span>
                   </div>
                 )}
-                <span className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black font-mono tracking-tight leading-none drop-shadow-md">
+                <span className="text-2xl sm:text-3xl md:text-4xl font-black font-mono tracking-tight leading-none drop-shadow-md">
                   {cand.votesCount || 0}
                 </span>
                 <span className="text-[10px] sm:text-xs uppercase font-black tracking-widest opacity-90 mt-0.5 sm:mt-1">
@@ -274,6 +274,12 @@ export const LiveResultsUnitelStyle: React.FC<LiveResultsUnitelStyleProps> = ({ 
                     alt={cand.fullName}
                     loading="lazy"
                     decoding="async"
+                    onError={(e) => {
+                      const fallback = CANDIDATE_PHOTO_MAP[cand.orderIndex];
+                      if (fallback && e.currentTarget.src !== fallback) {
+                        e.currentTarget.src = fallback;
+                      }
+                    }}
                     className="w-full h-full object-cover object-top group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (

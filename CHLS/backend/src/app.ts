@@ -23,8 +23,14 @@ const commercialController = new CommercialController();
 const correspondenceController = new CorrespondenceController();
 const electionController = new ElectionController();
 
-// Static uploads serving
-app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+// Static uploads serving with HTTP 7-day browser caching
+app.use(
+  '/uploads',
+  express.static(path.join(process.cwd(), 'uploads'), {
+    maxAge: '7d',
+    etag: true,
+  })
+);
 
 // Security Middlewares
 app.use(
