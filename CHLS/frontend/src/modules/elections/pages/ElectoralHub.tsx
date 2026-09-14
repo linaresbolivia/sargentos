@@ -855,9 +855,9 @@ export const ElectoralHub: React.FC = () => {
 
                 <div className="xl:col-span-6 sticky top-20">
                   {resultsFormat === 'PILLARS_3D' ? (
-                    stats && <LiveResultsPillars3D stats={stats} />
+                    stats && <LiveResultsPillars3D stats={stats} isDualView={true} />
                   ) : (
-                    stats && <LiveResultsUnitelStyle stats={stats} />
+                    stats && <LiveResultsUnitelStyle stats={stats} isDualView={true} />
                   )}
                 </div>
               </div>

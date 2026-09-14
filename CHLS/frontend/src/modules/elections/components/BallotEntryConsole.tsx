@@ -190,9 +190,12 @@ export const BallotEntryConsole: React.FC<BallotEntryConsoleProps> = ({
               loading="lazy"
               decoding="async"
               onError={(e) => {
+                const target = e.currentTarget;
                 const fallback = CANDIDATE_PHOTO_MAP[cand.orderIndex];
-                if (fallback && e.currentTarget.src !== fallback) {
-                  e.currentTarget.src = fallback;
+                if (fallback && !target.src.endsWith(fallback)) {
+                  target.src = fallback;
+                } else {
+                  target.onerror = null;
                 }
               }}
               className="w-16 h-16 sm:w-20 sm:h-20 md:w-22 md:h-22 rounded-xl object-cover object-top border-2 border-white/95 shadow-md group-hover:scale-105 transition-transform duration-150"
