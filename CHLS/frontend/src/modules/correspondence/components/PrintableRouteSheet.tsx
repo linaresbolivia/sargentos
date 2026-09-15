@@ -14,18 +14,50 @@ import {
   Building2,
   Calendar,
   Clock,
+  Crosshair,
+  Info,
+  Check,
+  Sparkles,
+  Target,
 } from 'lucide-react';
 import logoUrl from '../../../assets/logo.png';
 
 interface PrintableRouteSheetProps {
   item: RouteSheetItem;
   onClose: () => void;
+  initialMode?: PrintPageMode;
+  initialSlotNumber?: number;
 }
 
-export type PrintPageMode = 'FRONT_ONLY' | 'BACK_ONLY' | 'DUPLEX_FULL' | 'STICKER_LABEL';
+export type PrintPageMode = 'FRONT_ONLY' | 'BACK_ONLY' | 'DUPLEX_FULL' | 'STICKER_LABEL' | 'SINGLE_SLOT_OVERPRINT';
 
-export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, onClose }) => {
-  const [pageMode, setPageMode] = useState<PrintPageMode>('DUPLEX_FULL');
+export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
+  item,
+  onClose,
+  initialMode,
+  initialSlotNumber,
+}) => {
+  const movements = item.movements || [];
+  const documents = item.documents || [];
+
+  // Próxima casilla sugerida automáticamente
+  const defaultSlot = initialSlotNumber || (movements.length > 0 ? Math.min(movements.length, 8) : 1);
+  const [pageMode, setPageMode] = useState<PrintPageMode>(initialMode || 'DUPLEX_FULL');
+  const [selectedSlot, setSelectedSlot] = useState<number>(defaultSlot);
+  const [selectedMovementIndex, setSelectedMovementIndex] = useState<number>(() => {
+    if (movements.length === 0) return 0;
+    const targetIdx = defaultSlot - 1;
+    return (targetIdx >= 0 && targetIdx < movements.length) ? targetIdx : movements.length - 1;
+  });
+  const [includeSlotBorder, setIncludeSlotBorder] = useState<boolean>(true);
+
+  const handleSelectSlot = (slotNum: number) => {
+    setSelectedSlot(slotNum);
+    const targetIdx = slotNum - 1;
+    if (targetIdx >= 0 && targetIdx < movements.length) {
+      setSelectedMovementIndex(targetIdx);
+    }
+  };
 
   const handlePrint = () => {
     // Motor de Impresión Aislado: Garantiza un documento 100% limpio, centrado y sin elementos de la app
@@ -102,6 +134,44 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
               page-break-inside: avoid !important;
               break-inside: avoid !important;
             }
+
+            /* REGLAS CRÍTICAS DE SOBREIMPRESIÓN EN PAPEL FÍSICO */
+            .overprint-hidden {
+              visibility: hidden !important;
+              border-color: transparent !important;
+              background: transparent !important;
+              box-shadow: none !important;
+            }
+            .overprint-hidden * {
+              visibility: hidden !important;
+              border-color: transparent !important;
+              background: transparent !important;
+              box-shadow: none !important;
+            }
+            .overprint-active-slot {
+              visibility: visible !important;
+              background: #ffffff !important;
+            }
+            .overprint-active-slot * {
+              visibility: visible !important;
+            }
+            .overprint-screen-banner {
+              display: none !important;
+            }
+            .overprint-slot-container {
+              border-color: transparent !important;
+            }
+            .overprint-slot-container > div {
+              border-top-color: transparent !important;
+              border-bottom-color: transparent !important;
+            }
+            .overprint-border {
+              border: 1.5px solid #000000 !important;
+            }
+            .overprint-no-border {
+              border: none !important;
+              border-color: transparent !important;
+            }
           </style>
         </head>
         <body>
@@ -142,14 +212,23 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
     return d.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit', hour12: false });
   };
 
-  const movements = item.movements || [];
-  const documents = item.documents || [];
-
   // Proveídos del Anverso: Proveídos 1 al 4
-  const frontSlots = Array.from({ length: 4 }, (_, i) => movements[i] || null);
+  const frontSlots = Array.from({ length: 4 }, (_, i) => {
+    const slotNumber = i + 1;
+    if (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot === slotNumber) {
+      return movements[selectedMovementIndex] || movements[i] || null;
+    }
+    return movements[i] || null;
+  });
 
   // Proveídos del Reverso: Proveídos 5 al 8
-  const backSlots = Array.from({ length: 4 }, (_, i) => movements[i + 4] || null);
+  const backSlots = Array.from({ length: 4 }, (_, i) => {
+    const slotNumber = i + 5;
+    if (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot === slotNumber) {
+      return movements[selectedMovementIndex] || movements[i + 4] || null;
+    }
+    return movements[i + 4] || null;
+  });
 
   // URL de verificación en vivo del QR
   const verificationUrl = `${window.location.origin}/correspondencia?code=${encodeURIComponent(item.hrCode)}`;
@@ -160,106 +239,253 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
       {/* ========================================================================= */}
       {/* BARRA DE HERRAMIENTAS DE IMPRESIÓN (OCULTA AL IMPRIMIR)                   */}
       {/* ========================================================================= */}
-      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 print:hidden bg-slate-900/95 border-2 border-emerald-500/40 p-2 rounded-2xl shadow-2xl backdrop-blur-xl max-w-[95vw] flex-wrap justify-center">
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-50 flex flex-col items-center gap-2 print:hidden bg-slate-900/95 border-2 border-emerald-500/40 p-2 sm:p-3 rounded-2xl shadow-2xl backdrop-blur-xl max-w-[96vw] w-auto">
         
-        {/* Badge Informativo de Formato Bond Carta */}
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-brand-gold/40 text-brand-gold text-xs font-black tracking-wide">
-          <span>📄 Formato: Papel Bond Tamaño Carta (21.59 × 27.94 cm)</span>
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          {/* Badge Informativo de Formato Bond Carta */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-brand-gold/40 text-brand-gold text-xs font-black tracking-wide">
+            <span>📄 Formato: Papel Bond Tamaño Carta (21.59 × 27.94 cm)</span>
+          </div>
+
+          {/* Selector de Modos de Impresión */}
+          <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-black gap-1 flex-wrap justify-center">
+            <button
+              type="button"
+              onClick={() => setPageMode('FRONT_ONLY')}
+              title="Imprimir únicamente el Anverso (Carátula Carta)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                pageMode === 'FRONT_ONLY'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>1. Anverso</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPageMode('BACK_ONLY')}
+              title="Imprimir únicamente el Reverso (Proveídos Carta)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                pageMode === 'BACK_ONLY'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              <span>2. Reverso</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPageMode('DUPLEX_FULL')}
+              title="Imprimir Hoja Completa (Anverso + Reverso Dúplex Carta)"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                pageMode === 'DUPLEX_FULL'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-brand-gold" />
+              <span>3. Dúplex Completo</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPageMode('SINGLE_SLOT_OVERPRINT')}
+              title="Sobreimpresión en papel físico: imprime únicamente una casilla seleccionada sin alterar el resto de la hoja física"
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                pageMode === 'SINGLE_SLOT_OVERPRINT'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md font-extrabold ring-1 ring-emerald-400'
+                  : 'text-emerald-400 hover:text-white hover:bg-emerald-500/10'
+              }`}
+            >
+              <Crosshair className="w-3.5 h-3.5 text-emerald-400" />
+              <span>4. Sobreimpresión (Solo 1 Casilla)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setPageMode('STICKER_LABEL')}
+              title="Imprimir Rótulo / Sticker Adhesivo"
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                pageMode === 'STICKER_LABEL'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Tag className="w-3.5 h-3.5" />
+              <span>Sticker QR</span>
+            </button>
+          </div>
+
+          {/* Botón Principal de Impresión */}
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-500 hover:from-yellow-400 hover:to-yellow-500 text-slate-950 font-black px-5 py-2 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer text-xs uppercase tracking-wider"
+          >
+            <Printer className="w-4 h-4 text-slate-950" />
+            <span>
+              {pageMode === 'SINGLE_SLOT_OVERPRINT'
+                ? `🖨️ Sobreimprimir Casilla N° ${selectedSlot} (${selectedSlot <= 4 ? 'Anverso' : 'Reverso'})`
+                : '🖨️ Imprimir Hoja de Ruta (Carta)'}
+            </span>
+          </button>
+
+          {/* Botón Cerrar */}
+          <button
+            onClick={onClose}
+            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
+            title="Cerrar ventana de impresión"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* Selector de Modos de Impresión */}
-        <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-black gap-1">
-          <button
-            type="button"
-            onClick={() => setPageMode('FRONT_ONLY')}
-            title="Imprimir únicamente el Anverso (Carátula Carta)"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              pageMode === 'FRONT_ONLY'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <FileText className="w-3.5 h-3.5" />
-            <span>1. Anverso (Carta)</span>
-          </button>
+        {/* Panel de Control de Sobreimpresión en Papel Físico */}
+        {pageMode === 'SINGLE_SLOT_OVERPRINT' && (
+          <div className="w-full bg-gradient-to-br from-slate-900 via-[#07130E] to-slate-950 border-2 border-emerald-500/50 rounded-2xl p-3 text-white shadow-2xl space-y-2.5 mt-1">
+            <div className="flex items-center justify-between flex-wrap gap-2 border-b border-emerald-500/30 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <Crosshair className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-xs tracking-tight text-white flex items-center gap-2">
+                    Control de Sobreimpresión en Hoja Física
+                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/40 uppercase font-mono font-bold">
+                      Casilla Seleccionada: N° {selectedSlot} ({selectedSlot <= 4 ? 'Anverso' : 'Reverso'})
+                    </span>
+                  </h3>
+                  <p className="text-[10.5px] text-emerald-300/80">
+                    El sistema dejará 100% en blanco la carátula y las demás casillas para estampar únicamente esta casilla sobre su hoja física.
+                  </p>
+                </div>
+              </div>
 
-          <button
-            type="button"
-            onClick={() => setPageMode('BACK_ONLY')}
-            title="Imprimir únicamente el Reverso (Proveídos Carta)"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              pageMode === 'BACK_ONLY'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-            <span>2. Reverso (Carta)</span>
-          </button>
+              {/* Toggle de Recuadro */}
+              <label className="flex items-center gap-2 text-[11px] font-bold cursor-pointer select-none bg-black/50 px-2.5 py-1 rounded-xl border border-emerald-800/40">
+                <input
+                  type="checkbox"
+                  checked={includeSlotBorder}
+                  onChange={(e) => setIncludeSlotBorder(e.target.checked)}
+                  className="rounded text-emerald-500 focus:ring-emerald-500 h-3.5 w-3.5 accent-emerald-500 cursor-pointer"
+                />
+                <span>Imprimir recuadro de la casilla</span>
+              </label>
+            </div>
 
-          <button
-            type="button"
-            onClick={() => setPageMode('DUPLEX_FULL')}
-            title="Imprimir Hoja Completa (Anverso + Reverso Dúplex Carta)"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              pageMode === 'DUPLEX_FULL'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5 text-brand-gold" />
-            <span>3. Dúplex Completo (Carta)</span>
-          </button>
+            {/* Selector de Casilla Física */}
+            <div className="space-y-1.5">
+              <span className="text-[9.5px] uppercase font-black text-slate-400 tracking-wider block">
+                1. Seleccione la casilla física donde se estampará el proveído:
+              </span>
+              <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                {/* Casillas 1 a 4 (Anverso) */}
+                {[1, 2, 3, 4].map((slot) => {
+                  const hasMove = Boolean(movements[slot - 1]);
+                  const isSelected = selectedSlot === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => handleSelectSlot(slot)}
+                      className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-center border transition-all cursor-pointer relative ${
+                        isSelected
+                          ? 'bg-emerald-600 text-white border-emerald-400 ring-2 ring-emerald-400/50 shadow-md font-black scale-105'
+                          : 'bg-black/50 hover:bg-white/10 text-slate-300 border-white/10 font-bold'
+                      }`}
+                    >
+                      <span className="text-[8px] uppercase tracking-wider text-emerald-400/90 font-mono leading-none">Anverso</span>
+                      <span className="text-xs font-mono font-black mt-0.5 leading-tight">Casilla {slot}</span>
+                      {hasMove && (
+                        <span className={`text-[7.5px] px-1 rounded-full mt-0.5 ${isSelected ? 'bg-black/40 text-emerald-200' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                          ● Con datos
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
 
-          <button
-            type="button"
-            onClick={() => setPageMode('STICKER_LABEL')}
-            title="Imprimir Rótulo / Sticker Adhesivo"
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-              pageMode === 'STICKER_LABEL'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-400 hover:text-white'
-            }`}
-          >
-            <Tag className="w-3.5 h-3.5" />
-            <span>Sticker QR</span>
-          </button>
-        </div>
+                {/* Casillas 5 a 8 (Reverso) */}
+                {[5, 6, 7, 8].map((slot) => {
+                  const hasMove = Boolean(movements[slot - 1]);
+                  const isSelected = selectedSlot === slot;
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      onClick={() => handleSelectSlot(slot)}
+                      className={`p-1.5 rounded-xl text-center flex flex-col items-center justify-center border transition-all cursor-pointer relative ${
+                        isSelected
+                          ? 'bg-teal-600 text-white border-teal-400 ring-2 ring-teal-400/50 shadow-md font-black scale-105'
+                          : 'bg-black/50 hover:bg-white/10 text-slate-300 border-white/10 font-bold'
+                      }`}
+                    >
+                      <span className="text-[8px] uppercase tracking-wider text-teal-400/90 font-mono leading-none">Reverso</span>
+                      <span className="text-xs font-mono font-black mt-0.5 leading-tight">Casilla {slot}</span>
+                      {hasMove && (
+                        <span className={`text-[7.5px] px-1 rounded-full mt-0.5 ${isSelected ? 'bg-black/40 text-teal-200' : 'bg-teal-500/20 text-teal-400'}`}>
+                          ● Con datos
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-        {/* Botón Principal de Impresión */}
-        <button
-          onClick={handlePrint}
-          className="flex items-center gap-2 bg-gradient-to-r from-brand-gold to-yellow-500 hover:from-yellow-400 hover:to-yellow-500 text-slate-950 font-black px-5 py-2 rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer text-xs uppercase tracking-wider"
-        >
-          <Printer className="w-4 h-4 text-slate-950" />
-          <span>🖨️ Imprimir Hoja de Ruta (Carta)</span>
-        </button>
+            {/* Selector de Contenido a Imprimir */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-black/50 p-2 rounded-xl border border-white/10 text-xs">
+              <div className="flex items-center gap-2 flex-1">
+                <span className="font-bold text-slate-300 whitespace-nowrap text-[11px]">2. Contenido a imprimir:</span>
+                <select
+                  value={selectedMovementIndex}
+                  onChange={(e) => setSelectedMovementIndex(Number(e.target.value))}
+                  className="bg-slate-800 border border-emerald-500/40 rounded-lg px-2.5 py-1 text-xs text-white font-medium outline-none flex-1 max-w-lg cursor-pointer"
+                >
+                  {movements.map((m, idx) => (
+                    <option key={m.id || idx} value={idx}>
+                      Proveído N° {idx + 1} — A: {m.targetPersonName ? `${m.targetPersonName} (${m.targetArea})` : m.targetArea} ({formatChlsDate(m.createdAt)})
+                    </option>
+                  ))}
+                  {movements.length === 0 && (
+                    <option value={0}>Sin derivaciones en sistema (Espacio en blanco con firma)</option>
+                  )}
+                </select>
+              </div>
 
-        {/* Botón Cerrar */}
-        <button
-          onClick={onClose}
-          className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer"
-          title="Cerrar ventana de impresión"
-        >
-          <X className="w-4 h-4" />
-        </button>
+              <div className="flex items-center gap-1.5 text-[10.5px] text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 shrink-0">
+                <Info className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                <span>
+                  {selectedSlot <= 4
+                    ? 'Inserte en la impresora la hoja por el ANVERSO'
+                    : 'Inserte en la impresora la hoja por el REVERSO'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Espaciador para la barra fija */}
-      <div className="h-20 print:hidden w-full shrink-0" />
+      <div className={`${pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'h-64' : 'h-24'} print:hidden w-full shrink-0 transition-all`} />
 
       <div id="printable-routesheet-container" className="w-full max-w-[216mm] mx-auto space-y-8 print:space-y-0 print:m-0 print:p-0 flex flex-col items-center">
 
         {/* ========================================================================= */}
         {/* PÁGINA 1: ANVERSO DE LA HOJA DE RUTA (CARÁTULA OFICIAL)                   */}
         {/* ========================================================================= */}
-        {(pageMode === 'FRONT_ONLY' || pageMode === 'DUPLEX_FULL') && (
+        {(pageMode === 'FRONT_ONLY' || pageMode === 'DUPLEX_FULL' || (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot <= 4)) && (
           <div className={`printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none ${
             pageMode === 'DUPLEX_FULL' ? 'page-break-after' : ''
           }`}>
             
             {/* Header Oficial con Membrete y QR de Validación */}
-            <div className="flex items-center justify-between pb-2 mb-1 border-b-2 border-black relative">
+            <div className={`flex items-center justify-between pb-2 mb-1 border-b-2 border-black relative transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               <div className="flex items-center gap-3">
                 <div className="w-14 h-16 shrink-0">
                   <img src={logoUrl} alt="Club Hípico Los Sargentos" className="w-full h-full object-contain" />
@@ -299,7 +525,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* Cuadrícula de Datos de Radicación del Documento */}
-            <div className="border-2 border-black mb-1.5 divide-y-2 border-collapse divide-black text-[11px]">
+            <div className={`border-2 border-black mb-1.5 divide-y-2 border-collapse divide-black text-[11px] transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               
               {/* Fila 1: Código HR | Fecha de Ingreso | Hora | Prioridad */}
               <div className="grid grid-cols-12 divide-x-2 divide-black min-h-[38px]">
@@ -390,12 +618,41 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* PROVEÍDOS Y DERIVACIONES DEL ANVERSO (Proveídos 1 al 4) */}
-            <div className="border-2 border-black divide-y-2 divide-black">
+            <div className={`border-2 border-black divide-y-2 divide-black transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-slot-container' : ''
+            }`}>
               {frontSlots.map((mov, index) => {
                 const proveidoNum = index + 1;
+                const isSelected = pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot === proveidoNum;
+                const isOverprintHidden = pageMode === 'SINGLE_SLOT_OVERPRINT' && !isSelected;
+
                 return (
-                  <div key={mov?.id || index} className="min-h-[125px] p-2 flex flex-col justify-between relative">
-                    
+                  <div
+                    key={mov?.id || index}
+                    onClick={() => {
+                      if (pageMode === 'SINGLE_SLOT_OVERPRINT') {
+                        handleSelectSlot(proveidoNum);
+                      }
+                    }}
+                    className={`min-h-[125px] p-2 flex flex-col justify-between relative transition-all ${
+                      isOverprintHidden
+                        ? 'overprint-hidden opacity-25 grayscale border-dashed cursor-pointer hover:opacity-40'
+                        : isSelected
+                        ? `overprint-active-slot ring-2 ring-emerald-500 bg-white shadow-md z-10 ${
+                            includeSlotBorder
+                              ? 'overprint-border border-2 border-emerald-600'
+                              : 'overprint-no-border border border-transparent'
+                          }`
+                        : ''
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="overprint-screen-banner absolute -top-2.5 left-3 bg-emerald-700 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1 z-20 print:hidden uppercase tracking-wider">
+                        <Target className="w-3 h-3 text-emerald-300 animate-pulse" />
+                        🎯 CASILLA N° {selectedSlot} ACTIVA — SOLO ESTA CASILLA SE IMPRIMIRÁ EN EL PAPEL FÍSICO
+                      </div>
+                    )}
+
                     {/* Encabezado del Proveído */}
                     <div className="grid grid-cols-12 border-b border-slate-400 pb-1 mb-1 text-[10px] items-center">
                       <div className="col-span-1 font-black bg-black text-white text-center py-0.5 rounded text-[9px]">
@@ -483,7 +740,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* Pie de Página del Anverso */}
-            <div className="mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono">
+            <div className={`mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — PAPEL BOND TAMAÑO CARTA — ANVERSO</span>
                 <span>• Cero Papel</span>
@@ -499,11 +758,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
         {/* ========================================================================= */}
         {/* PÁGINA 2: REVERSO DE LA HOJA DE RUTA (CONTINUACIÓN DE PROVEÍDOS & ARCHIVO) */}
         {/* ========================================================================= */}
-        {(pageMode === 'BACK_ONLY' || pageMode === 'DUPLEX_FULL') && (
+        {(pageMode === 'BACK_ONLY' || pageMode === 'DUPLEX_FULL' || (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot >= 5)) && (
           <div className="printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:rounded-none">
             
             {/* Header del Reverso */}
-            <div className="flex items-center justify-between pb-2 mb-1.5 border-b-2 border-black">
+            <div className={`flex items-center justify-between pb-2 mb-1.5 border-b-2 border-black transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               <div className="flex items-center gap-2.5">
                 <div className="w-10 h-12 shrink-0">
                   <img src={logoUrl} alt="Club Hípico Los Sargentos" className="w-full h-full object-contain" />
@@ -533,12 +794,41 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* PROVEÍDOS SUCESIVOS DEL REVERSO (Proveídos 5 al 8) */}
-            <div className="border-2 border-black divide-y-2 divide-black mb-3">
+            <div className={`border-2 border-black divide-y-2 divide-black mb-3 transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-slot-container' : ''
+            }`}>
               {backSlots.map((mov, index) => {
                 const proveidoNum = index + 5;
+                const isSelected = pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot === proveidoNum;
+                const isOverprintHidden = pageMode === 'SINGLE_SLOT_OVERPRINT' && !isSelected;
+
                 return (
-                  <div key={mov?.id || index} className="min-h-[120px] p-2 flex flex-col justify-between relative">
-                    
+                  <div
+                    key={mov?.id || index}
+                    onClick={() => {
+                      if (pageMode === 'SINGLE_SLOT_OVERPRINT') {
+                        handleSelectSlot(proveidoNum);
+                      }
+                    }}
+                    className={`min-h-[120px] p-2 flex flex-col justify-between relative transition-all ${
+                      isOverprintHidden
+                        ? 'overprint-hidden opacity-25 grayscale border-dashed cursor-pointer hover:opacity-40'
+                        : isSelected
+                        ? `overprint-active-slot ring-2 ring-emerald-500 bg-white shadow-md z-10 ${
+                            includeSlotBorder
+                              ? 'overprint-border border-2 border-emerald-600'
+                              : 'overprint-no-border border border-transparent'
+                          }`
+                        : ''
+                    }`}
+                  >
+                    {isSelected && (
+                      <div className="overprint-screen-banner absolute -top-2.5 left-3 bg-emerald-700 text-white text-[9px] font-black px-2 py-0.5 rounded shadow-md flex items-center gap-1 z-20 print:hidden uppercase tracking-wider">
+                        <Target className="w-3 h-3 text-emerald-300 animate-pulse" />
+                        🎯 CASILLA N° {selectedSlot} ACTIVA — SOLO ESTA CASILLA SE IMPRIMIRÁ EN EL REVERSO FÍSICO
+                      </div>
+                    )}
+
                     {/* Encabezado del Proveído */}
                     <div className="grid grid-cols-12 border-b border-slate-400 pb-1 mb-1 text-[10px] items-center">
                       <div className="col-span-1 font-black bg-slate-800 text-white text-center py-0.5 rounded text-[9px]">
@@ -626,7 +916,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* SECCIÓN OFICIAL DE CONCLUSIÓN Y ARCHIVO EN CUSTODIA DEFINITIVA */}
-            <div className="border-2 border-black p-2.5 rounded bg-slate-50/70 space-y-2">
+            <div className={`border-2 border-black p-2.5 rounded bg-slate-50/70 space-y-2 transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               <div className="flex items-center justify-between border-b-2 border-black pb-1">
                 <div className="flex items-center gap-1.5 font-black uppercase text-[11px] text-slate-950">
                   <FolderArchive className="w-4 h-4 text-emerald-900" />
@@ -677,7 +969,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({ item, 
             </div>
 
             {/* Pie de Página del Reverso */}
-            <div className="mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono">
+            <div className={`mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono transition-all ${
+              pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
+            }`}>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-black uppercase">🔒 HOJA DE RUTA OFICIAL CHLS — PAPEL BOND TAMAÑO CARTA — REVERSO</span>
                 <span>• Archivo Central</span>

@@ -5,6 +5,8 @@ import { RouteSheetService } from '../application/RouteSheetService';
 import { CorrespondenceChatService } from '../application/CorrespondenceChatService';
 import { CorrespondenceEmailService } from '../application/CorrespondenceEmailService';
 import { DossierPdfService } from '../application/DossierPdfService';
+import { OfficialCiteService } from '../application/OfficialCiteService';
+import { CiteDocumentPdfService } from '../application/CiteDocumentPdfService';
 import { CreateRouteSheetSchema, AddMovementSchema, UpdateStatusSchema, MergeRouteSheetsSchema } from '../domain/correspondence.dto';
 import { logger } from '@config/logger';
 import { socketService } from '@config/socket';
@@ -33,7 +35,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 25 * 1024 * 1024 }, // 25MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
 });
 
 export class CorrespondenceController {
@@ -42,6 +44,8 @@ export class CorrespondenceController {
   private chatService: CorrespondenceChatService;
   private emailService: CorrespondenceEmailService;
   private dossierPdfService: DossierPdfService;
+  private officialCiteService: OfficialCiteService;
+  private citePdfService: CiteDocumentPdfService;
 
   constructor(private prisma: PrismaClient = new PrismaClient()) {
     this.router = Router();
@@ -49,12 +53,25 @@ export class CorrespondenceController {
     this.chatService = new CorrespondenceChatService(prisma);
     this.emailService = new CorrespondenceEmailService(prisma);
     this.dossierPdfService = new DossierPdfService(prisma);
+    this.officialCiteService = new OfficialCiteService(prisma);
+    this.citePdfService = new CiteDocumentPdfService();
     this.initializeRoutes();
   }
 
   private initializeRoutes() {
     // All correspondence endpoints require authentication
     this.router.use(authenticate);
+
+    // Official CITEs Management & 5 Document Models (Instructivo JOFHR 022-2026)
+    this.router.get('/cites/metadata', this.getCiteMetadata.bind(this));
+    this.router.get('/cites/preview', this.getCitePreview.bind(this));
+    this.router.get('/cites/stats', this.getCiteStats.bind(this));
+    this.router.get('/cites', this.listOfficialCites.bind(this));
+    this.router.post('/cites', this.createOfficialCite.bind(this));
+    this.router.get('/cites/:idOrCode', this.getOfficialCiteById.bind(this));
+    this.router.get('/cites/:idOrCode/pdf', this.getOfficialCitePdf.bind(this));
+    this.router.patch('/cites/:id/status', this.updateOfficialCiteStatus.bind(this));
+    this.router.post('/cites/:id/link-routesheet', this.linkCiteToRouteSheet.bind(this));
 
     // Internal Chat & Coordination
     this.router.get('/chat/contacts', this.getChatContacts.bind(this));
@@ -1195,6 +1212,359 @@ export class CorrespondenceController {
       return false;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Resuelve el área oficial asignada al usuario autenticado
+   */
+  private async getUserAssignedAreaKey(user: any): Promise<string> {
+    if (!user) return 'GG';
+    const userId = user.userId || user.id;
+
+    try {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { email: true, firstName: true, lastName: true, roles: { select: { name: true } } },
+      });
+
+      const email = (dbUser?.email || user.email || '').toLowerCase().trim();
+      const fullName = `${dbUser?.firstName || user.firstName || ''} ${dbUser?.lastName || user.lastName || ''}`;
+      const roles = (dbUser?.roles || []).map((r) => r.name.toUpperCase());
+
+      // 1. Correo electrónico institucional
+      const emailPrefix = email.split('@')[0];
+      const fromEmail = OfficialCiteService.resolveAreaKey(emailPrefix);
+      if (fromEmail !== 'GG' || emailPrefix.includes('geren') || emailPrefix.includes('secre')) {
+        return fromEmail;
+      }
+
+      // 2. Nombre completo / cargo del usuario
+      const fromName = OfficialCiteService.resolveAreaKey(fullName);
+      if (fromName !== 'GG') return fromName;
+
+      // 3. Roles del usuario
+      for (const r of roles) {
+        const fromRole = OfficialCiteService.resolveAreaKey(r);
+        if (fromRole !== 'GG') return fromRole;
+      }
+
+      if (user.area) {
+        return OfficialCiteService.resolveAreaKey(user.area);
+      }
+
+      return 'GG';
+    } catch {
+      return 'GG';
+    }
+  }
+
+  // =========================================================================
+  // OFFICIAL CITES CONTROLLER METHODS (INSTRUCTIVO JOFHR 022-2026)
+  // =========================================================================
+
+  public async getCiteMetadata(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+      const userAreaConfig = OfficialCiteService.getAreaConfig(userAreaKey);
+
+      const metadata = this.officialCiteService.getMetadata();
+      return res.json({
+        success: true,
+        data: {
+          ...metadata,
+          userAreaKey,
+          userAreaName: userAreaConfig?.name || userAreaKey,
+          canAccessAllAreas: canAccessAll,
+          allowedDocTypesForUser: canAccessAll
+            ? ['INF', 'CI', 'INST', 'MEM', 'NE']
+            : userAreaConfig?.allowedTypes || ['INF', 'CI'],
+        },
+      });
+    } catch (error: any) {
+      logger.error('Error fetching CITE metadata:', error);
+      return res.status(500).json({ error: error.message || 'Error al obtener catálogo de CITEs' });
+    }
+  }
+
+  public async getCitePreview(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const { areaKey, docType, year } = req.query;
+      if (!docType) {
+        return res.status(400).json({ error: 'docType es obligatorio' });
+      }
+
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      // Si no tiene permiso 360, se fuerza su área asignada
+      const effectiveAreaKey = canAccessAll ? (areaKey ? String(areaKey) : userAreaKey) : userAreaKey;
+
+      const y = year ? Number(year) : new Date().getFullYear();
+      const preview = await this.officialCiteService.getNextCitePreview(
+        effectiveAreaKey,
+        String(docType),
+        y
+      );
+
+      return res.json({ success: true, data: { ...preview, areaKey: effectiveAreaKey } });
+    } catch (error: any) {
+      logger.error('Error getting CITE preview:', error);
+      return res.status(500).json({ error: error.message || 'Error al calcular correlativo de CITE' });
+    }
+  }
+
+  public async getCiteStats(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      const targetAreaKey = canAccessAll
+        ? (req.query.areaKey && req.query.areaKey !== 'ALL' ? String(req.query.areaKey) : undefined)
+        : userAreaKey;
+
+      const year = req.query.year ? Number(req.query.year) : new Date().getFullYear();
+      const stats = await this.officialCiteService.getCiteStats(year, targetAreaKey);
+      return res.json({ success: true, data: { ...stats, filteredAreaKey: targetAreaKey, userAreaKey } });
+    } catch (error: any) {
+      logger.error('Error getting CITE stats:', error);
+      return res.status(500).json({ error: error.message || 'Error al obtener estadísticas de CITEs' });
+    }
+  }
+
+  public async listOfficialCites(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      const { year, areaKey, docType, status, search, limit, offset } = req.query;
+
+      // REGLA: Responsable solo puede ver los CITEs de su propia área
+      const effectiveAreaKey = canAccessAll
+        ? (areaKey && areaKey !== 'ALL' ? String(areaKey) : undefined)
+        : userAreaKey;
+
+      const result = await this.officialCiteService.listOfficialCites({
+        year: year ? Number(year) : undefined,
+        areaKey: effectiveAreaKey,
+        docType: docType && docType !== 'ALL' ? String(docType) : undefined,
+        status: status && status !== 'ALL' ? String(status) : undefined,
+        search: search ? String(search) : undefined,
+        limit: limit ? Number(limit) : 100,
+        offset: offset ? Number(offset) : 0,
+      });
+
+      return res.json({
+        success: true,
+        data: result.items,
+        total: result.total,
+        meta: {
+          userAreaKey,
+          canAccessAllAreas: canAccessAll,
+          effectiveAreaKey,
+        },
+      });
+    } catch (error: any) {
+      logger.error('Error listing official CITEs:', error);
+      return res.status(500).json({ error: error.message || 'Error al listar libro de CITEs' });
+    }
+  }
+
+  public async createOfficialCite(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      let {
+        areaKey,
+        docType,
+        year,
+        recipient,
+        recipientRole,
+        recipientEntity,
+        senderName,
+        senderRole,
+        initials,
+        subject,
+        bodyText,
+        status,
+        routeSheetId,
+        officialDate,
+      } = req.body;
+
+      // REGLA: Responsable solo puede generar CITEs de su propia área
+      if (!canAccessAll) {
+        if (areaKey && areaKey !== userAreaKey) {
+          const userCfg = OfficialCiteService.getAreaConfig(userAreaKey);
+          return res.status(403).json({
+            error: `No tiene autorización para generar CITEs de otra área. Su área oficial asignada es: ${userCfg?.name || userAreaKey} (${userAreaKey}).`,
+          });
+        }
+        areaKey = userAreaKey;
+      } else if (!areaKey) {
+        areaKey = userAreaKey;
+      }
+
+      // Validar tipos de documentos permitidos para el área según el Instructivo JOFHR 022-2026
+      const areaCfg = OfficialCiteService.getAreaConfig(areaKey);
+      if (areaCfg && !areaCfg.allowedTypes.includes(docType)) {
+        return res.status(403).json({
+          error: `El tipo de documento '${docType}' no está permitido para el área '${areaCfg.name}' según el Instructivo JOFHR 022-2026. Tipos permitidos: ${areaCfg.allowedTypes.join(', ')}`,
+        });
+      }
+
+      if (!recipient || !senderName || !senderRole || !subject) {
+        return res.status(400).json({
+          error: 'Faltan campos obligatorios para el registro oficial del CITE',
+        });
+      }
+
+      const cite = await this.officialCiteService.createOfficialCite(
+        {
+          areaKey,
+          docType,
+          year,
+          recipient,
+          recipientRole,
+          recipientEntity,
+          senderName,
+          senderRole,
+          initials,
+          subject,
+          bodyText,
+          status,
+          routeSheetId,
+          officialDate,
+        },
+        user?.userId || user?.id
+      );
+
+      return res.status(201).json({ success: true, data: cite });
+    } catch (error: any) {
+      logger.error('Error creating official CITE:', error);
+      return res.status(500).json({ error: error.message || 'Error al generar CITE oficial' });
+    }
+  }
+
+  public async getOfficialCiteById(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      const { idOrCode } = req.params;
+      const cite = await this.officialCiteService.getCiteById(idOrCode);
+      if (!cite) {
+        return res.status(404).json({ error: `CITE ${idOrCode} no encontrado` });
+      }
+
+      // REGLA: No puede ver CITEs de otras áreas
+      const userId = user?.userId || user?.id;
+      if (!canAccessAll && cite.areaKey !== userAreaKey && cite.createdById !== userId) {
+        return res.status(403).json({ error: 'Acceso denegado: No puede consultar CITEs pertenecientes a otra área.' });
+      }
+
+      return res.json({ success: true, data: cite });
+    } catch (error: any) {
+      logger.error('Error getting official CITE:', error);
+      return res.status(500).json({ error: error.message || 'Error al buscar CITE' });
+    }
+  }
+
+  public async getOfficialCitePdf(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      const { idOrCode } = req.params;
+      const cite = await this.officialCiteService.getCiteById(idOrCode);
+      if (!cite) {
+        return res.status(404).json({ error: `CITE ${idOrCode} no encontrado` });
+      }
+
+      // REGLA: No puede descargar CITEs de otras áreas
+      const userId = user?.userId || user?.id;
+      if (!canAccessAll && cite.areaKey !== userAreaKey && cite.createdById !== userId) {
+        return res.status(403).json({ error: 'Acceso denegado: No puede descargar documentos de otra área.' });
+      }
+
+      const pdfBuffer = await this.citePdfService.generateOfficialDocumentPdf({
+        citeCode: cite.citeCode,
+        docType: cite.docType,
+        areaName: cite.areaName,
+        areaKey: cite.areaKey,
+        year: cite.year,
+        recipient: cite.recipient,
+        recipientRole: cite.recipientRole,
+        recipientEntity: cite.recipientEntity,
+        senderName: cite.senderName,
+        senderRole: cite.senderRole,
+        initials: cite.initials,
+        subject: cite.subject,
+        bodyText: cite.bodyText,
+        officialDate: cite.officialDate,
+      });
+
+      const cleanFilename = cite.citeCode.replace(/[\/\s°N]/g, '_') + '.pdf';
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `inline; filename="${cleanFilename}"`);
+      res.setHeader('Content-Length', pdfBuffer.length);
+      return res.send(pdfBuffer);
+    } catch (error: any) {
+      logger.error('Error generating official CITE PDF:', error);
+      return res.status(500).json({ error: error.message || 'Error al generar documento PDF del CITE' });
+    }
+  }
+
+  public async updateOfficialCiteStatus(req: Request, res: Response): Promise<any> {
+    try {
+      const user = (req as any).user;
+      const canAccessAll = await this.canAccessGlobal360(user);
+      const userAreaKey = await this.getUserAssignedAreaKey(user);
+
+      const { id } = req.params;
+      const { status, cancellationReason } = req.body;
+      if (!status) {
+        return res.status(400).json({ error: 'El campo status es requerido' });
+      }
+
+      const cite = await this.officialCiteService.getCiteById(id);
+      if (!cite) {
+        return res.status(404).json({ error: 'CITE no encontrado' });
+      }
+
+      if (!canAccessAll && cite.areaKey !== userAreaKey) {
+        return res.status(403).json({ error: 'No tiene autorización para modificar CITEs de otra área.' });
+      }
+
+      const updated = await this.officialCiteService.updateCiteStatus(id, status, cancellationReason);
+      return res.json({ success: true, data: updated });
+    } catch (error: any) {
+      logger.error('Error updating CITE status:', error);
+      return res.status(500).json({ error: error.message || 'Error al actualizar estado del CITE' });
+    }
+  }
+
+  public async linkCiteToRouteSheet(req: Request, res: Response): Promise<any> {
+    try {
+      const { id } = req.params;
+      const { routeSheetId } = req.body;
+      if (!routeSheetId) {
+        return res.status(400).json({ error: 'routeSheetId es requerido' });
+      }
+
+      const linked = await this.officialCiteService.linkToRouteSheet(id, routeSheetId);
+      return res.json({ success: true, data: linked });
+    } catch (error: any) {
+      logger.error('Error linking CITE to RouteSheet:', error);
+      return res.status(500).json({ error: error.message || 'Error al vincular CITE a la Hoja de Ruta' });
     }
   }
 }

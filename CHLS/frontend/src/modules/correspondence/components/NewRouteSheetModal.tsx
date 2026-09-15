@@ -33,8 +33,9 @@ import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
+import GenerateCiteModal from './GenerateCiteModal';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
-import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
+import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360 } from '../utils/organigramWorkflowService';
 import { countTotalPdfPages } from '../utils/pdfPageCounter';
 
 interface NewRouteSheetModalProps {
@@ -109,6 +110,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const [priority, setPriority] = useState<'NORMAL' | 'ALTA' | 'URGENTE'>('NORMAL');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
+  const [isGenerateCiteOpen, setIsGenerateCiteOpen] = useState(false);
 
   const rawNodes = useMemo(() => {
     return (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
@@ -118,6 +120,10 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const userNode = useMemo(() => {
     return getOrganigramNodeForUser(currentUser, workflow);
   }, [currentUser, workflow]);
+
+  const canAccess360 = useMemo(() => {
+    return canUserAccess360(currentUser, userNode);
+  }, [currentUser, userNode]);
 
   // Despacho que emite el proveído y deriva (fijado por defecto al cargo del usuario logueado)
   const [originDispatch, setOriginDispatch] = useState<string>('');
@@ -595,15 +601,26 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
-                      CITE / N° de Nota o Informe
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
+                        CITE / N° de Nota o Informe
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => setIsGenerateCiteOpen(true)}
+                        className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                        title="Generar CITE correlativo oficial según los 5 Modelos del Instructivo"
+                      >
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span>Generar CITE Oficial</span>
+                      </button>
+                    </div>
                     <input
                       type="text"
-                      placeholder="Ej. ALM-INF N° 42/2026"
+                      placeholder="Ej. CHLS-MANT-INF-N° 001/2026"
                       value={cite}
                       onChange={(e) => setCite(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-mono font-medium text-sm focus:ring-1 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-mono font-bold text-sm focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
@@ -1167,6 +1184,27 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
         </form>
 
       </div>
+
+      {/* Modal Generador de CITE Integrado */}
+      {isGenerateCiteOpen && (
+        <GenerateCiteModal
+          isOpen={isGenerateCiteOpen}
+          onClose={() => setIsGenerateCiteOpen(false)}
+          currentPerspective={senderType === 'AREA_INTERNA' ? senderArea : (userNode?.title || (currentUser as any)?.area || (currentUser as any)?.department)}
+          canAccessAllAreas={canAccess360}
+          initialSubject={reference}
+          onCiteCreated={(newCode, citeData) => {
+            setCite(newCode);
+            if (!reference && citeData?.subject) {
+              setReference(citeData.subject);
+            }
+            if (!senderName && citeData?.senderName) {
+              setSenderName(citeData.senderName);
+            }
+            setIsGenerateCiteOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 };

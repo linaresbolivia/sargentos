@@ -52,6 +52,7 @@ interface CorrespondenceTimelineViewProps {
   onAddMovement: () => void;
   onPreviewDoc?: (doc: { fileName: string; fileUrl: string; fileType?: string | null }) => void;
   onPrintTimeline?: () => void;
+  onPrintSlot?: (slotNumber: number) => void;
 }
 
 const formatArea = (raw?: string | null): string => {
@@ -118,6 +119,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   onAddMovement,
   onPreviewDoc,
   onPrintTimeline,
+  onPrintSlot,
 }) => {
   const { user } = useSelector((state: RootState) => state.auth);
   const [activeView, setActiveView] = useState<'HOLOGRAM' | 'LISTA'>('HOLOGRAM');
@@ -871,15 +873,30 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                             <span className="text-slate-600">•</span>
                             <span>{m.timeStr}</span>
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide ${
-                            m.isCurrent
-                              ? 'bg-[#C5A059] text-slate-950 shadow-xs'
-                              : m.isAccumulated
-                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                              : 'bg-slate-800 text-slate-300 border border-slate-700/80'
-                          }`}>
-                            {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
-                          </span>
+                          <div className="flex items-center gap-1.5">
+                            {m.stepNumber > 0 && m.stepNumber <= 8 && onPrintSlot && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onPrintSlot(m.stepNumber);
+                                }}
+                                title={`Sobreimprimir en la casilla física N° ${m.stepNumber} (${m.stepNumber <= 4 ? 'Anverso' : 'Reverso'})`}
+                                className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 transition-colors flex items-center gap-1 cursor-pointer"
+                              >
+                                <span>🖨️ Casilla #{m.stepNumber}</span>
+                              </button>
+                            )}
+                            <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide ${
+                              m.isCurrent
+                                ? 'bg-[#C5A059] text-slate-950 shadow-xs'
+                                : m.isAccumulated
+                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                                : 'bg-slate-800 text-slate-300 border border-slate-700/80'
+                            }`}>
+                              {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) */}
@@ -1070,6 +1087,20 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                     <span className="text-slate-400 font-normal text-[11px]">
                       (Emitido por: <strong className="text-slate-200 font-mono">{m.sourceUserName || formatArea(m.sourceArea)}</strong>{m.personName ? ` ➔ Para: ${m.personName}` : ''})
                     </span>
+                    {m.stepNumber > 0 && m.stepNumber <= 8 && onPrintSlot && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPrintSlot(m.stepNumber);
+                        }}
+                        title={`Sobreimprimir en la casilla física N° ${m.stepNumber} (${m.stepNumber <= 4 ? 'Anverso' : 'Reverso'})`}
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 transition-colors flex items-center gap-1 cursor-pointer"
+                      >
+                        <Printer className="w-3 h-3 text-emerald-400" />
+                        <span>🖨️ Casilla #{m.stepNumber} ({m.stepNumber <= 4 ? 'Anverso' : 'Reverso'})</span>
+                      </button>
+                    )}
                     {m.isAccumulated && (
                       <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9.5px] font-bold">
                         📚 EXPEDIENTE ACUMULADO
@@ -1235,6 +1266,22 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               </span>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* BOTÓN SOBREIMPRIMIR CASILLA EN PAPEL FÍSICO */}
+                {selectedMilestone.stepNumber > 0 && selectedMilestone.stepNumber <= 8 && onPrintSlot && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onPrintSlot(selectedMilestone.stepNumber);
+                      setSelectedMilestone(null);
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 flex items-center gap-1.5 cursor-pointer font-bold text-xs transition-all hover:scale-105"
+                    title={`Sobreimprimir únicamente este proveído en la Casilla N° ${selectedMilestone.stepNumber} (${selectedMilestone.stepNumber <= 4 ? 'Anverso' : 'Reverso'}) de la hoja física`}
+                  >
+                    <Printer className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>🖨️ Sobreimprimir en Casilla N° {selectedMilestone.stepNumber}</span>
+                  </button>
+                )}
+
                 {selectedMilestone.signatureUrl && (
                   <button
                     type="button"

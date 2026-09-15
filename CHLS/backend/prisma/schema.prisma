@@ -28,9 +28,10 @@ model User {
   assignedPqrs PqrsTicket[]
 
   // Correspondence relations
-  createdRouteSheets  RouteSheet[] @relation("CreatedRouteSheets")
-  assignedRouteSheets RouteSheet[] @relation("AssignedRouteSheets")
-  sourceMovements     HrMovement[] @relation("SourceMovements")
+  createdRouteSheets  RouteSheet[]   @relation("CreatedRouteSheets")
+  assignedRouteSheets RouteSheet[]   @relation("AssignedRouteSheets")
+  sourceMovements     HrMovement[]   @relation("SourceMovements")
+  officialCites       OfficialCite[] @relation("CreatedCites")
 
   // Link to the rich Person profile (Socio, Beneficiary)
   person Person?
@@ -976,6 +977,7 @@ model RouteSheet {
   
   movements             HrMovement[]
   documents             CorrDocument[]
+  officialCites         OfficialCite[]
   
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
@@ -1048,6 +1050,51 @@ model CorrChatMessage {
   createdAt         DateTime    @default(now())
 
   @@map("corr_chat_messages")
+}
+
+model OfficialCite {
+  id                 String       @id @default(uuid())
+  citeCode           String       @unique // ej. CHLS-MANT-INF-N° 001/2026 o CHLS-GG-N° 014/2026
+  year               Int          @default(2026)
+  areaKey            String       // ej. MANT, GG, JOFRH-CONTA, ALM, etc.
+  areaName           String       // ej. MANTENIMIENTO, GERENCIA GENERAL, etc.
+  docType            String       // INF, CI, INST, MEM, NE
+  correlative        Int          // Número correlativo dentro de areaKey + docType + year
+  
+  // Destinatario (Dónde / A quién)
+  recipient          String       // Nombre y/o cargo destinatario, o "TODO EL PERSONAL"
+  recipientRole      String?      // Cargo destinatario
+  recipientEntity    String?      // Entidad externa (para cartas externas: ej. Banco Bisa)
+  
+  // Emisor (Quién)
+  senderName         String       // Nombre de quien elaboró o firmó
+  senderRole         String       // Cargo de quien elaboró o firmó
+  initials           String?      // Iniciales de responsabilidad: ej. "TNT/mda"
+  
+  // Propósito (Para qué)
+  subject            String       // REFERENCIA / OBJETO DEL DOCUMENTO
+  
+  // Contenido detallado redactado
+  bodyText           String?      // Texto o JSON estructurado del cuerpo
+  
+  // Estado
+  status             String       @default("EMITIDO") // RESERVADO, EMITIDO, RADICADO_HR, ANULADO
+  cancellationReason String?
+  
+  // Enlace opcional a Hoja de Ruta
+  routeSheetId       String?
+  routeSheet         RouteSheet?  @relation(fields: [routeSheetId], references: [id], onDelete: SetNull)
+  
+  // Auditoría (Quién lo generó en el sistema)
+  createdById        String?
+  createdBy          User?        @relation("CreatedCites", fields: [createdById], references: [id], onDelete: SetNull)
+  
+  officialDate       DateTime     @default(now()) // Fecha oficial que figura en el documento
+  createdAt          DateTime     @default(now()) // Timestamp exacto de registro en sistema
+  updatedAt          DateTime     @updatedAt
+
+  @@unique([areaKey, docType, year, correlative])
+  @@map("corr_official_cites")
 }
 
 // ------------------------------------------------------

@@ -26,6 +26,8 @@ import { ChlsWorkflowCanvasModal } from '../components/ChlsWorkflowCanvasModal';
 import { RouteSheetAttachmentsModal } from '../components/RouteSheetAttachmentsModal';
 import { RouteSheetLocatorModal } from '../components/RouteSheetLocatorModal';
 import { EcoMetricsNormativeModal, EcoMetricType } from '../components/EcoMetricsNormativeModal';
+import GenerateCiteModal from '../components/GenerateCiteModal';
+import OfficialCitesLedgerModal from '../components/OfficialCitesLedgerModal';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -48,6 +50,8 @@ import {
   ChevronRight,
   Settings,
   Receipt,
+  BookOpen,
+  FileSignature,
   MessageSquare,
   Inbox,
   Send as SendIcon,
@@ -155,6 +159,8 @@ export const CorrespondenceHub: React.FC = () => {
   const [activeEcoMetric, setActiveEcoMetric] = useState<EcoMetricType | null>(null);
   const [isLocatorModalOpen, setIsLocatorModalOpen] = useState(false);
   const [locatorInitialArea, setLocatorInitialArea] = useState<string | undefined>(undefined);
+  const [isCitesLedgerOpen, setIsCitesLedgerOpen] = useState(false);
+  const [isGenerateCiteOpen, setIsGenerateCiteOpen] = useState(false);
 
   // Storage key for user-specific read/opened items
   const storageUserKey = currentUser?.id || (currentUser as any)?.username || 'user';
@@ -342,32 +348,11 @@ export const CorrespondenceHub: React.FC = () => {
     };
   }, [dispatch, selectedGestion]);
 
-  // Compute Mailbox Counts for Active Perspective
-  const inboxCount = items.filter(
-    (i) => isSameArea(i.currentArea, currentPerspective) && i.status !== 'CONCLUIDO' && i.status !== 'ANULADO'
-  ).length;
-
-  const outboxCount = items.filter(
-    (i) =>
-      i.movements?.some((m) => isSameArea(m.sourceArea, currentPerspective)) &&
-      !isSameArea(i.currentArea, currentPerspective) &&
-      i.status !== 'CONCLUIDO'
-  ).length;
-
-  const copiesCount = items.filter(
-    (i) =>
-      i.movements?.some(
-        (m) =>
-          m.instruction?.includes('[C.C.') &&
-          isSameArea(m.instruction, currentPerspective)
-      )
-  ).length;
-
-  // Helper para determinar si un expediente pertenece al Archivo Personal del usuario o despacho actual
+  // Helper para determinar si un expediente pertenece al Archivo del Cargo del usuario o despacho actual
   const isItemInPersonalArchive = (i: RouteSheetItem) => {
     const isPersonalArchived =
       (i.status === 'CONCLUIDO' || i.currentArea === 'ARCHIVO_PERSONAL' || !!i.archiveLocation) &&
-      (i.currentArea === 'ARCHIVO_PERSONAL' || i.archiveLocation?.toUpperCase().includes('PERSONAL'));
+      (i.currentArea === 'ARCHIVO_PERSONAL' || i.archiveLocation?.toUpperCase().includes('PERSONAL') || i.archiveLocation?.toUpperCase().includes('CARGO'));
     if (!isPersonalArchived) return false;
 
     const uId = currentUser?.id || (currentUser as any)?.userId;
@@ -392,14 +377,39 @@ export const CorrespondenceHub: React.FC = () => {
   const isItemInCentralArchive = (i: RouteSheetItem) => {
     const isArchived =
       i.status === 'CONCLUIDO' || i.status === 'ANULADO' || isSameArea(i.currentArea, 'ARCHIVO_CENTRAL') || !!i.archiveLocation;
-    const isPersonal = i.currentArea === 'ARCHIVO_PERSONAL' || i.archiveLocation?.toUpperCase().includes('PERSONAL');
+    const isPersonal = i.currentArea === 'ARCHIVO_PERSONAL' || i.archiveLocation?.toUpperCase().includes('PERSONAL') || i.archiveLocation?.toUpperCase().includes('CARGO');
     return isArchived && !isPersonal;
   };
 
-  // Archivo Personal: Expedientes concluidos/resguardados bajo la custodia propia del usuario o su despacho
+  // 1. Counters for Official Mailbox Trays
+  const inboxCount = items.filter(
+    (i) =>
+      isSameArea(i.currentArea, currentPerspective) &&
+      i.status !== 'CONCLUIDO' &&
+      i.status !== 'ANULADO'
+  ).length;
+
+  const outboxCount = items.filter((i) => {
+    if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
+    return i.movements?.some(
+      (m) =>
+        isSameArea(m.sourceArea, currentPerspective) &&
+        !isSameArea(m.targetArea, currentPerspective)
+    );
+  }).length;
+
+  const copiesCount = items.filter((i) => {
+    if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
+    return i.movements?.some((m) => {
+      const isCopy = m.instruction?.includes('Copia:') || m.instruction?.includes('C.C.');
+      return isCopy && isSameArea(m.targetArea, currentPerspective);
+    });
+  }).length;
+
+  // Archivo del Cargo: Expedientes concluidos/resguardados bajo la custodia del cargo actual
   const personalArchiveCount = items.filter(isItemInPersonalArchive).length;
 
-  // Archivo Central: Expedientes en custodia institucional general del Club
+  // Archivo Central: Expedientes custodiados formalmente en el Archivo Central del Club
   const centralArchiveCount = items.filter(isItemInCentralArchive).length;
 
   const allCount = items.length;
@@ -408,7 +418,7 @@ export const CorrespondenceHub: React.FC = () => {
     { id: 'INBOX', label: 'Bandeja de Entrada', icon: Inbox, count: inboxCount, desc: 'En mi despacho / Pendientes' },
     { id: 'OUTBOX', label: 'Bandeja de Salida', icon: SendIcon, count: outboxCount, desc: 'Derivados a otras áreas' },
     { id: 'COPIES', label: 'Copias C.C.', icon: FileText, count: copiesCount, desc: 'Conocimiento e informativas' },
-    { id: 'PERSONAL_ARCHIVE', label: 'Mi Archivo Personal', icon: FolderCheck, count: personalArchiveCount, desc: 'En mi custodia personal' },
+    { id: 'PERSONAL_ARCHIVE', label: 'Archivo del Cargo', icon: FolderCheck, count: personalArchiveCount, desc: 'En custodia del cargo' },
     { id: 'ARCHIVED', label: 'Archivo Central', icon: Landmark, count: centralArchiveCount, desc: 'Custodia institucional del Club' },
     { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: allCount, desc: 'Supervisión institucional' },
   ];
@@ -665,6 +675,16 @@ export const CorrespondenceHub: React.FC = () => {
               <span className="hidden lg:inline">Libro de Registro</span>
             </button>
 
+            {/* Libro Oficial de CITEs & Modelos Institucionales (Instructivo JOFHR 022-2026) */}
+            <button
+              onClick={() => setIsCitesLedgerOpen(true)}
+              title="Libro Oficial de Control de CITEs y los 5 Modelos de Documentos Institucionales"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 hover:border-emerald-500 text-xs font-bold shadow-xs transition-all cursor-pointer"
+            >
+              <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Libro de CITEs & Modelos</span>
+            </button>
+
             <button
               onClick={() => setIsWorkflowModalOpen(true)}
               title="Diseñador Visual de Organigrama & Flujos de Derivación (Canvas 360°)"
@@ -705,6 +725,16 @@ export const CorrespondenceHub: React.FC = () => {
               className="p-2 rounded-xl bg-white dark:bg-[#091913] hover:bg-emerald-500/10 dark:hover:bg-emerald-950/40 border border-slate-200 dark:border-emerald-800/40 text-slate-700 dark:text-slate-300 transition-all shadow-xs cursor-pointer"
             >
               <Settings className="w-4 h-4 text-emerald-500" />
+            </button>
+
+            {/* Botón Generar CITE Oficial */}
+            <button
+              onClick={() => setIsGenerateCiteOpen(true)}
+              title="Generar CITE y redactar nota según los 5 Modelos Oficiales (Instructivo JOFHR 022-2026)"
+              className="flex items-center gap-2 bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/40 hover:border-emerald-400 font-bold px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm shadow-xs transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
+            >
+              <FileSignature className="w-4 h-4 text-emerald-400" />
+              <span>Generar CITE</span>
             </button>
 
             {/* Botón Principal: Esmeralda Radiante Institucional */}
@@ -1733,6 +1763,33 @@ export const CorrespondenceHub: React.FC = () => {
           selectedMetric={activeEcoMetric}
           onClose={() => setActiveEcoMetric(null)}
           metrics={stats?.ecoMetrics}
+        />
+      )}
+
+      {/* Libro Oficial de Control de CITEs & Modelos Institucionales */}
+      {isCitesLedgerOpen && (
+        <OfficialCitesLedgerModal
+          isOpen={isCitesLedgerOpen}
+          currentPerspective={currentPerspective}
+          canAccessAllAreas={canAccess360}
+          onClose={() => setIsCitesLedgerOpen(false)}
+          onOpenRouteSheet={(code) => {
+            setIsCitesLedgerOpen(false);
+            handleSelectRouteSheetByCode(code);
+          }}
+        />
+      )}
+
+      {/* Generador de CITE & Redactor de Notas Oficiales */}
+      {isGenerateCiteOpen && (
+        <GenerateCiteModal
+          isOpen={isGenerateCiteOpen}
+          currentPerspective={currentPerspective}
+          canAccessAllAreas={canAccess360}
+          onClose={() => setIsGenerateCiteOpen(false)}
+          onCiteCreated={() => {
+            dispatch(fetchRouteSheets({ year: selectedGestion === 'ALL' ? undefined : selectedGestion }));
+          }}
         />
       )}
     </div>

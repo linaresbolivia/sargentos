@@ -28,10 +28,10 @@ interface ArchiveRouteSheetModalProps {
 }
 
 const PERSONAL_PRESET_LOCATIONS = [
-  'MI ARCHIVO PERSONAL / MI ESCRITORIO',
-  'MI ARCHIVO PERSONAL / GESTIÓN 2026',
-  'CARPETA PERSONAL / EXPEDIENTES CERRADOS',
-  'ARCHIVO DE GESTIÓN / MI DESPACHO',
+  'ARCHIVO DEL CARGO / ESCRITORIO',
+  'ARCHIVO DEL CARGO / GESTIÓN 2026',
+  'ARCHIVO DEL CARGO / EXPEDIENTES CERRADOS',
+  'ARCHIVO DEL CARGO / DESPACHO',
 ];
 
 const CENTRAL_PRESET_LOCATIONS = [
@@ -43,10 +43,10 @@ const CENTRAL_PRESET_LOCATIONS = [
 ];
 
 const PERSONAL_PRESET_REASONS = [
-  'Trámite atendido y guardado para mi archivo de consulta personal.',
-  'Copia de respaldo y antecedentes resguardados en mi despacho.',
-  'Concluido bajo mi responsabilidad y archivado en mi oficina.',
-  'Resolución concluida y archivada en mi legajo de gestión.',
+  'Trámite atendido y guardado en el archivo del cargo para consulta.',
+  'Copia de respaldo y antecedentes resguardados en custodia del cargo.',
+  'Concluido bajo responsabilidad del cargo y archivado en el despacho.',
+  'Resolución concluida y archivada en legajo de gestión del cargo.',
 ];
 
 const CENTRAL_PRESET_REASONS = [
@@ -115,7 +115,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
 
       const successMsg =
         archiveType === 'PERSONAL'
-          ? `Hoja de Ruta ${item.hrCode} guardada en tu Archivo Personal 📁`
+          ? `Hoja de Ruta ${item.hrCode} guardada en el Archivo del Cargo 📁`
           : `Hoja de Ruta ${item.hrCode} archivada en Archivo Central 🏛️`;
 
       toast.success(successMsg);
@@ -149,14 +149,14 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
             </div>
             <div>
               <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                <span>{archiveType === 'PERSONAL' ? 'Guardar en Mi Archivo Personal' : 'Remitir a Archivo Central'}</span>
+                <span>{archiveType === 'PERSONAL' ? 'Guardar en Archivo del Cargo' : 'Remitir a Archivo Central'}</span>
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
                   {item.hrCode}
                 </span>
               </h2>
               <p className="text-xs text-slate-500 dark:text-gray-400">
                 {archiveType === 'PERSONAL'
-                  ? 'Custodia personal en su propio archivo de trabajo / despacho'
+                  ? 'Custodia en el archivo oficial del cargo / despacho actual'
                   : 'Custodia institucional permanente y control central del Club'}
               </p>
             </div>
@@ -173,7 +173,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
-          {/* Selector simple: Archivo Personal vs Archivo Central */}
+          {/* Selector simple: Archivo del Cargo vs Archivo Central */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-emerald-300">
               Destino del Archivo:
@@ -192,9 +192,9 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
                   <FolderCheck className="w-5 h-5 shrink-0" />
                 </div>
                 <div className="text-left">
-                  <div className="leading-none font-black text-xs">📁 Mi Archivo Personal</div>
+                  <div className="leading-none font-black text-xs">📁 Archivo del Cargo</div>
                   <div className={`text-[10px] mt-1 font-normal ${archiveType === 'PERSONAL' ? 'text-emerald-100' : 'text-slate-500 dark:text-gray-400'}`}>
-                    Para consulta y custodia propia
+                    Para consulta y custodia del cargo
                   </div>
                 </div>
               </button>
@@ -230,7 +230,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
               </p>
               <p className="text-[11px] text-slate-600 dark:text-gray-400 mt-0.5">
                 {archiveType === 'PERSONAL'
-                  ? 'Este trámite se guardará en tu Archivo Personal. Podrás acceder a él en cualquier momento desde tu pestaña "Mi Archivo Personal" y también desarchivarlo si necesitas reabrirlo.'
+                  ? 'Este trámite se guardará en el Archivo del Cargo. Podrás acceder a él en cualquier momento desde la pestaña "Archivo del Cargo" y también desarchivarlo si necesitas reabrirlo.'
                   : 'Al archivar en Archivo Central, el trámite pasará a la custodia permanente de la institución y estará disponible para consulta institucional en el Libro de Archivo Central.'}
               </p>
             </div>
@@ -242,7 +242,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
               <MapPin className="w-4 h-4 text-brand-gold" />
               <span>
                 {archiveType === 'PERSONAL'
-                  ? '1. Ubicación o Carpeta en Mi Archivo Personal:'
+                  ? '1. Ubicación o Carpeta en el Archivo del Cargo:'
                   : '1. Estante / Sector en Archivo Central:'}
               </span>
             </label>
@@ -252,7 +252,7 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
               onChange={(e) => setArchiveLocation(e.target.value)}
               placeholder={
                 archiveType === 'PERSONAL'
-                  ? 'Ej. MI ARCHIVO PERSONAL / MI ESCRITORIO'
+                  ? 'Ej. ARCHIVO DEL CARGO / ESCRITORIO'
                   : 'Ej. ARCHIVO CENTRAL / ESTANTE A - SECTOR FINANZAS'
               }
               className="w-full bg-slate-50 dark:bg-black/40 border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-3.5 text-xs font-mono font-black text-slate-950 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 shadow-xs"

@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import { uploadRouteSheetDocuments, fetchRouteSheetById } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
-import { PrintableRouteSheet } from './PrintableRouteSheet';
+import { PrintableRouteSheet, PrintPageMode } from './PrintableRouteSheet';
 import { PrintableTimelineReportModal } from './PrintableTimelineReportModal';
 import { AddMovementModal } from './AddMovementModal';
 import { MergeRouteSheetsModal } from './MergeRouteSheetsModal';
@@ -24,6 +24,7 @@ import {
   BookOpen,
   Loader2,
   Send,
+  Target,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -49,6 +50,8 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   const currentItem: RouteSheetItem | null = (rawItem as any)?.routeSheet || rawItem;
 
   const [showPrintModal, setShowPrintModal] = useState(false);
+  const [printInitialMode, setPrintInitialMode] = useState<PrintPageMode | undefined>(undefined);
+  const [printInitialSlot, setPrintInitialSlot] = useState<number | undefined>(undefined);
   const [showTimelinePrintModal, setShowTimelinePrintModal] = useState(false);
   const [showAddMovementModal, setShowAddMovementModal] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
@@ -56,6 +59,21 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   const [showSlaModal, setShowSlaModal] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
   const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
+
+  const movements = currentItem?.movements || [];
+
+  const handleOpenOverprint = (slotNumber?: number) => {
+    setPrintInitialMode('SINGLE_SLOT_OVERPRINT');
+    const nextSlot = slotNumber || (movements.length > 0 ? Math.min(movements.length, 8) : 1);
+    setPrintInitialSlot(nextSlot);
+    setShowPrintModal(true);
+  };
+
+  const handleOpenNormalPrint = () => {
+    setPrintInitialMode('DUPLEX_FULL');
+    setPrintInitialSlot(undefined);
+    setShowPrintModal(true);
+  };
 
   if (!currentItem) return null;
 
@@ -86,7 +104,6 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
     }
   };
 
-  const movements = currentItem.movements || [];
   const documents = currentItem.documents || [];
   const isFusedChild = Boolean(
     currentItem.currentArea?.startsWith('FUSIONADO EN') ||
@@ -164,10 +181,10 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 <span>Imprimir Timeline (PDF)</span>
               </button>
 
-              {/* 2. Imprimir Hoja de Ruta */}
+              {/* 2. Imprimir Hoja de Ruta (Completa) */}
               <button
                 type="button"
-                onClick={() => setShowPrintModal(true)}
+                onClick={handleOpenNormalPrint}
                 className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
                 title="Imprimir carátula y carpeta física oficial de la Hoja de Ruta"
               >
@@ -175,7 +192,23 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 <span>Imprimir Hoja de Ruta</span>
               </button>
 
-              {/* 3. + Fusionar */}
+              {/* 3. 🎯 Sobreimprimir Proveído (Papel Físico) */}
+              <button
+                type="button"
+                onClick={() => handleOpenOverprint()}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600/15 to-teal-600/15 hover:from-emerald-600/25 hover:to-teal-600/25 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 hover:border-emerald-500/60 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all shadow-xs cursor-pointer group"
+                title="Imprime únicamente un proveído específico sobre la hoja física ya impresa, sin alterar ni sobreescribir la carátula"
+              >
+                <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                <div className="flex items-center gap-1.5">
+                  <span>🎯 Sobreimprimir Casilla</span>
+                  <span className="text-[10px] font-mono font-black bg-emerald-500/25 text-emerald-950 dark:text-emerald-200 px-1.5 py-0.5 rounded border border-emerald-500/40">
+                    N° {movements.length > 0 ? Math.min(movements.length, 8) : 1}
+                  </span>
+                </div>
+              </button>
+
+              {/* 4. + Fusionar */}
               {!isFusedChild && (
                 <button
                   type="button"
@@ -188,24 +221,24 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 </button>
               )}
 
-              {/* 4. Archivar (Personal o Central) */}
+              {/* 5. Archivar (Archivo del Cargo o Central) */}
               {currentItem.status !== 'CONCLUIDO' ? (
                 <button
                   type="button"
                   onClick={() => setShowArchiveModal(true)}
                   className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
-                  title="Archivar en Mi Archivo Personal o Archivo Central"
+                  title="Archivar en Archivo del Cargo o Archivo Central"
                 >
                   <FolderArchive className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>Archivar</span>
                 </button>
               ) : (
-                (currentItem.currentArea === 'ARCHIVO_PERSONAL' || currentItem.archiveLocation?.toUpperCase().includes('PERSONAL')) && (
+                (currentItem.currentArea === 'ARCHIVO_PERSONAL' || currentItem.archiveLocation?.toUpperCase().includes('PERSONAL') || currentItem.archiveLocation?.toUpperCase().includes('CARGO')) && (
                   <button
                     type="button"
                     onClick={() => setShowArchiveModal(true)}
                     className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all shadow-xs cursor-pointer"
-                    title="Remitir este expediente de su archivo personal al Archivo Central Institucional"
+                    title="Remitir este expediente del Archivo del Cargo al Archivo Central Institucional"
                   >
                     <Building2 className="w-4 h-4 text-amber-500 shrink-0" />
                     <span>Remitir a Archivo Central</span>
@@ -213,7 +246,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 )
               )}
 
-              {/* 5. + Derivar / Proveído */}
+              {/* 6. + Derivar / Proveído */}
               {currentItem.status !== 'CONCLUIDO' && (
                 <button
                   type="button"
@@ -236,6 +269,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               onAddMovement={() => setShowAddMovementModal(true)}
               onPreviewDoc={setPreviewDoc}
               onPrintTimeline={() => setShowTimelinePrintModal(true)}
+              onPrintSlot={(slot) => handleOpenOverprint(slot)}
             />
           </div>
 
@@ -309,7 +343,13 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
       {showPrintModal && (
         <PrintableRouteSheet
           item={currentItem}
-          onClose={() => setShowPrintModal(false)}
+          onClose={() => {
+            setShowPrintModal(false);
+            setPrintInitialMode(undefined);
+            setPrintInitialSlot(undefined);
+          }}
+          initialMode={printInitialMode}
+          initialSlotNumber={printInitialSlot}
         />
       )}
 
