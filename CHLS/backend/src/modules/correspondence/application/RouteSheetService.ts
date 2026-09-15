@@ -384,13 +384,85 @@ export class RouteSheetService {
           },
         };
       }
-    } else if (mailbox === 'ARCHIVED') {
-      // Trámites en Archivo Central / Concluidos
-      where.OR = [
-        { status: 'CONCLUIDO' },
-        { status: 'ANULADO' },
-        { currentArea: 'ARCHIVO_CENTRAL' },
-        { archiveLocation: { not: null } },
+    } else if (mailbox === 'USER_SCOPE') {
+      // Alcance completo para usuarios sin 360 global:
+      // 1. Su bandeja de entrada (custodia actual de su área o asignación)
+      // 2. Su bandeja de salida (derivaciones u origen)
+      // 3. Sus copias C.C.
+      // 4. Su archivo personal (archivados por su usuario o su despacho)
+      // 5. Archivo Central Institucional (concluidos/archivados institucionales disponibles para consulta)
+      const userScopeConditions: any[] = [];
+      if (userArea && userArea !== 'ALL') {
+        userScopeConditions.push({ currentArea: userArea });
+        userScopeConditions.push({ senderArea: userArea });
+        userScopeConditions.push({ movements: { some: { sourceArea: userArea } } });
+        userScopeConditions.push({ movements: { some: { targetArea: userArea } } });
+        userScopeConditions.push({ movements: { some: { targetPersonName: { contains: userArea, mode: 'insensitive' } } } });
+        userScopeConditions.push({ movements: { some: { instruction: { contains: userArea, mode: 'insensitive' } } } });
+      }
+      if (userId) {
+        userScopeConditions.push({ createdById: userId });
+        userScopeConditions.push({ archivedById: userId });
+        userScopeConditions.push({ currentAssigneeId: userId });
+        userScopeConditions.push({ movements: { some: { sourceUserId: userId } } });
+      }
+      // Archivo Central Institucional (para consulta de todos los departamentos)
+      userScopeConditions.push({
+        AND: [
+          {
+            OR: [
+              { status: 'CONCLUIDO' },
+              { status: 'ANULADO' },
+              { currentArea: 'ARCHIVO_CENTRAL' },
+            ],
+          },
+          { currentArea: { not: 'ARCHIVO_PERSONAL' } },
+          {
+            NOT: {
+              archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' },
+            },
+          },
+        ],
+      });
+
+      where.OR = userScopeConditions;
+    } else if (mailbox === 'PERSONAL_ARCHIVE') {
+      // Trámites en Archivo Personal del usuario o de su despacho
+      const personalConditions: any[] = [];
+      if (userId) {
+        personalConditions.push({ archivedById: userId });
+        personalConditions.push({ movements: { some: { sourceUserId: userId, targetArea: 'ARCHIVO_PERSONAL' } } });
+      }
+      if (userArea && userArea !== 'ALL') {
+        personalConditions.push({ movements: { some: { sourceArea: userArea, targetArea: 'ARCHIVO_PERSONAL' } } });
+        personalConditions.push({ movements: { some: { targetPersonName: { contains: userArea, mode: 'insensitive' } } } });
+      }
+      where.AND = [
+        {
+          OR: [
+            { currentArea: 'ARCHIVO_PERSONAL' },
+            { archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' } },
+          ],
+        },
+        ...(personalConditions.length > 0 ? [{ OR: personalConditions }] : []),
+      ];
+    } else if (mailbox === 'ARCHIVED' || mailbox === 'CENTRAL_ARCHIVE') {
+      // Trámites en Archivo Central Institucional
+      where.AND = [
+        {
+          OR: [
+            { status: 'CONCLUIDO' },
+            { status: 'ANULADO' },
+            { currentArea: 'ARCHIVO_CENTRAL' },
+            { archiveLocation: { not: null } },
+          ],
+        },
+        { currentArea: { not: 'ARCHIVO_PERSONAL' } },
+        {
+          NOT: {
+            archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' },
+          },
+        },
       ];
     }
 
@@ -466,9 +538,15 @@ export class RouteSheetService {
   }
 
   /**
-   * Archivar Hoja de Ruta en Archivo Central
+   * Archivar Hoja de Ruta en Archivo Personal o Archivo Central
    */
-  public async archive(id: string, data: { archiveLocation: string; archiveBox?: string; archiveNotes?: string; userId: string }) {
+  public async archive(id: string, data: {
+    archiveLocation: string;
+    archiveBox?: string;
+    archiveNotes?: string;
+    userId: string;
+    archiveType?: 'PERSONAL' | 'CENTRAL';
+  }) {
     const routeSheet = await this.prisma.routeSheet.findUnique({
       where: { id },
       include: { movements: true },
@@ -478,14 +556,23 @@ export class RouteSheetService {
 
     // Validar que el userId exista para no violar la Foreign Key de HrMovement.sourceUserId
     let validUserId = data.userId;
+    let userName = 'Usuario';
     if (!validUserId || validUserId === 'SYSTEM' || validUserId === 'SYSTEM_ADMIN') {
       validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId;
     } else {
       const userExists = await this.prisma.user.findUnique({ where: { id: validUserId } });
       if (!userExists) {
         validUserId = routeSheet.createdById || routeSheet.movements[0]?.sourceUserId || (await this.prisma.user.findFirst())?.id || '';
+      } else {
+        userName = `${userExists.firstName} ${userExists.lastName}`.trim();
       }
     }
+
+    const isPersonal = data.archiveType === 'PERSONAL' || data.archiveLocation.toUpperCase().includes('PERSONAL');
+    const targetArea = isPersonal ? 'ARCHIVO_PERSONAL' : 'ARCHIVO_CENTRAL';
+    const targetPerson = isPersonal ? `Archivo Personal (${userName})` : 'Custodia & Archivo Central';
+    const quickStamp = isPersonal ? 'ARCHIVO PERSONAL' : 'ARCHIVADO';
+    const instrHeader = isPersonal ? 'ARCHIVADO EN ARCHIVO PERSONAL' : 'ARCHIVADO EN ARCHIVO CENTRAL';
 
     const nextSeq = routeSheet.movements.length + 1;
 
@@ -497,10 +584,10 @@ export class RouteSheetService {
           sequenceNumber: nextSeq,
           sourceUserId: validUserId,
           sourceArea: routeSheet.currentArea,
-          targetArea: 'ARCHIVO_CENTRAL',
-          targetPersonName: 'Custodia & Archivo Central',
-          instruction: `ARCHIVADO EN ARCHIVO CENTRAL.\nUbicación: ${data.archiveLocation.trim()}${data.archiveBox ? ` (Caja: ${data.archiveBox.trim()})` : ''}\nMotivo / Auto: ${data.archiveNotes ? data.archiveNotes.trim() : 'Trámite concluido y remitido a custodia definitiva.'}`,
-          quickStamp: 'ARCHIVADO',
+          targetArea,
+          targetPersonName: targetPerson,
+          instruction: `${instrHeader}.\nUbicación: ${data.archiveLocation.trim()}${data.archiveBox ? ` (Caja/Gaveta: ${data.archiveBox.trim()})` : ''}\nMotivo / Auto: ${data.archiveNotes ? data.archiveNotes.trim() : 'Trámite concluido y archivado formalmente.'}`,
+          quickStamp,
         },
       });
 
@@ -509,7 +596,7 @@ export class RouteSheetService {
         where: { id },
         data: {
           status: 'CONCLUIDO',
-          currentArea: 'ARCHIVO_CENTRAL',
+          currentArea: targetArea,
           archiveLocation: data.archiveLocation.trim(),
           archiveBox: data.archiveBox?.trim() || null,
           archiveNotes: data.archiveNotes?.trim() || null,
@@ -574,7 +661,7 @@ export class RouteSheetService {
           routeSheetId: id,
           sequenceNumber: nextSeq,
           sourceUserId: validUserId,
-          sourceArea: 'ARCHIVO_CENTRAL',
+          sourceArea: routeSheet.currentArea || 'ARCHIVO_CENTRAL',
           targetArea: destArea,
           targetPersonName: 'Reapertura de Expediente',
           instruction: `REAPERTURA Y DESARCHIVO DE EXPEDIENTE.\nMotivo: ${data.unarchiveReason.trim()}\nDerivado a: ${destArea} para prosecución del trámite.`,

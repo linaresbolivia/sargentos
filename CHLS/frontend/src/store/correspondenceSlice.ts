@@ -13,7 +13,7 @@ interface CorrespondenceState {
   isSaving: boolean;
   error: string | null;
   activeFilter: string;
-  activeMailbox: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL';
+  activeMailbox: 'INBOX' | 'OUTBOX' | 'COPIES' | 'PERSONAL_ARCHIVE' | 'ARCHIVED' | 'ALL';
   selectedGestion: number | 'ALL';
   searchQuery: string;
 }
@@ -31,7 +31,7 @@ const initialState: CorrespondenceState = {
   isSaving: false,
   error: null,
   activeFilter: 'ALL',
-  activeMailbox: 'ALL',
+  activeMailbox: 'INBOX',
   selectedGestion: currentYear,
   searchQuery: '',
 };
@@ -53,7 +53,7 @@ export const fetchRouteSheets = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await api.get('/correspondence/route-sheets', { params: params || {} });
+      const response = await api.get('/correspondence/route-sheets', { params });
       return {
         items: response.data.data,
         total: response.data.total,
@@ -72,7 +72,7 @@ export const archiveRouteSheet = createAsyncThunk(
       data,
     }: {
       routeSheetId: string;
-      data: { archiveLocation: string; archiveBox?: string; archiveNotes?: string };
+      data: { archiveLocation: string; archiveBox?: string; archiveNotes?: string; archiveType?: 'PERSONAL' | 'CENTRAL' };
     },
     { rejectWithValue }
   ) => {
@@ -324,7 +324,7 @@ export const correspondenceSlice = createSlice({
     setActiveFilter: (state, action: PayloadAction<string>) => {
       state.activeFilter = action.payload;
     },
-    setActiveMailbox: (state, action: PayloadAction<'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL'>) => {
+    setActiveMailbox: (state, action: PayloadAction<'INBOX' | 'OUTBOX' | 'COPIES' | 'PERSONAL_ARCHIVE' | 'ARCHIVED' | 'ALL'>) => {
       state.activeMailbox = action.payload;
     },
     setSelectedGestion: (state, action: PayloadAction<number | 'ALL'>) => {

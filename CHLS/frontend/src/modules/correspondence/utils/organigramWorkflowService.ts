@@ -827,3 +827,94 @@ export function getOrganigramNodeForUser(
   // Si es SUPER_ADMIN o ADMIN general, por defecto es Gerencia General
   return activeNodes.find((n) => n.id === 'node-gerencia-general') || activeNodes[0];
 }
+
+/**
+ * Determina si el usuario autenticado tiene permisos para acceder a la "Vista Global 360°"
+ * y supervisar la correspondencia de toda la institución.
+ * 
+ * Regla de negocio CHLS:
+ * Únicamente tienen acceso:
+ * 1. Gerente General (Gerencia General)
+ * 2. Tecnología (Encargado de Sistemas, TI, SuperAdmin, Admin)
+ * 3. Secretaría de Gerencia (Secretaría de Despacho)
+ * 
+ * Todos los demás despachos/roles ("los demás no") solo tienen acceso a su propia correspondencia.
+ */
+export function canUserAccess360(user?: any, userNode?: WorkflowNode): boolean {
+  if (!user) return false;
+
+  const roles: string[] = Array.isArray(user.roles)
+    ? user.roles.map((r: any) => (typeof r === 'string' ? r : r.name || '').toUpperCase())
+    : [];
+
+  // SuperAdmin y Administradores de Tecnología siempre tienen acceso institucional
+  if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+    return true;
+  }
+
+  const normalize = (str: string) =>
+    (str || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+  const email = (user.email || '').toLowerCase().trim();
+  const username = normalize(user.username || '');
+  const area = normalize(user.area || user.department || '');
+  const fullName = normalize(`${user.firstName || ''} ${user.lastName || ''}`);
+  const nodeTitle = normalize(userNode?.title || '');
+  const nodeId = (userNode?.id || '').toLowerCase();
+  const manager = normalize(userNode?.manager || '');
+
+  // 1. GERENCIA GENERAL
+  const isGerencia =
+    nodeId === 'node-gerencia-general' ||
+    nodeTitle.includes('GERENCIA GENERAL') ||
+    manager.includes('GERENTE GENERAL') ||
+    area.includes('GERENCIA_GENERAL') ||
+    area === 'GERENCIA' ||
+    username === 'GERENCIA' ||
+    email.startsWith('gerencia') ||
+    fullName.includes('GERENTE GENERAL') ||
+    roles.includes('GERENTE_GENERAL') ||
+    roles.includes('MODULO_DIRECTORIO');
+
+  if (isGerencia) return true;
+
+  // 2. TECNOLOGÍA / SISTEMAS
+  const isTecnologia =
+    nodeId === 'node-sistemas' ||
+    nodeTitle.includes('SISTEMAS') ||
+    nodeTitle.includes('TECNOLOGIA') ||
+    nodeTitle.includes('TI') ||
+    manager.includes('SISTEMAS') ||
+    manager.includes('TECNOLOGIA') ||
+    area.includes('SISTEMAS') ||
+    area.includes('TECNOLOGIA') ||
+    username.includes('SISTEMAS') ||
+    email.startsWith('sistemas') ||
+    fullName.includes('SISTEMAS') ||
+    fullName.includes('TECNOLOGIA');
+
+  if (isTecnologia) return true;
+
+  // 3. SECRETARÍA DE GERENCIA
+  const isSecretariaGerencia =
+    nodeId === 'node-secretaria' ||
+    nodeTitle === 'SECRETARIA' ||
+    nodeTitle.includes('SECRETARIA DE GERENCIA') ||
+    nodeTitle.includes('SECRETARIA GENERAL') ||
+    manager.includes('SECRETARIA DE GERENCIA') ||
+    manager.includes('SECRETARIA') ||
+    area.includes('SECRETARIA_GERENCIA') ||
+    area.includes('SECRETARIA') ||
+    username.includes('SECRETARIA') ||
+    email.startsWith('secretaria') ||
+    fullName.includes('SECRETARIA');
+
+  if (isSecretariaGerencia) return true;
+
+  return false;
+}
+

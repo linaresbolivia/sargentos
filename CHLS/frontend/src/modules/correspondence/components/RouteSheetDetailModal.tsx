@@ -15,6 +15,8 @@ import {
   Printer,
   Link2,
   FolderArchive,
+  FolderCheck,
+  Building2,
   FileText,
   Download,
   ExternalLink,
@@ -113,26 +115,26 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   return (
     <>
       <div className="fixed inset-0 z-40 overflow-y-auto bg-black/80 backdrop-blur-md flex justify-center items-center p-3 sm:p-6 lg:p-8 animate-fadeIn">
-        <div className="bg-white dark:bg-[#0c1410] border-2 border-slate-200 dark:border-emerald-500/30 w-full max-w-6xl xl:max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
+        <div className="bg-white dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/40 w-full max-w-6xl xl:max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
           
           {/* Top Header */}
-          <div className="px-6 sm:px-8 py-4 border-b border-slate-100 dark:border-white/5 bg-slate-50/80 dark:bg-[#0c1410] flex flex-col gap-3.5">
+          <div className="px-6 sm:px-8 py-4 border-b border-slate-200 dark:border-emerald-800/40 bg-slate-50/80 dark:bg-[#07130E] flex flex-col gap-3.5">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3.5">
-                <CrestLogo size="sm" className="w-11 h-11 shrink-0" />
+                <CrestLogo size="sm" className="w-11 h-11 shrink-0 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.25)]" />
                 <div>
                   <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-sm font-black text-emerald-950 dark:text-emerald-300 bg-emerald-500/20 dark:bg-emerald-950/80 px-3 py-0.5 rounded-xl border border-emerald-500/40 tracking-wider">
+                    <span className="font-mono text-xs font-bold text-emerald-900 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-500/30 tracking-wider">
                       {currentItem.hrCode}
                     </span>
-                    <span className={`text-[11px] font-black uppercase px-2.5 py-0.5 rounded-full border shadow-xs ${getStatusBadge(currentItem.status)}`}>
+                    <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-md border ${getStatusBadge(currentItem.status)}`}>
                       {currentItem.status}
                     </span>
-                    <span className="text-xs font-bold text-slate-500 dark:text-gray-400 font-mono">
+                    <span className="text-xs font-semibold text-slate-500 dark:text-emerald-400/70 font-mono">
                       CITE: {currentItem.cite || 'S/N'}
                     </span>
                   </div>
-                  <h2 className="text-xl font-black text-slate-900 dark:text-white mt-1">
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
                     Expediente & Trazabilidad 360°
                   </h2>
                 </div>
@@ -142,23 +144,23 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2.5 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900 text-slate-300 hover:text-white border border-emerald-500/30 hover:border-red-400/60 shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:shadow-[0_0_18px_rgba(239,68,68,0.35)] transition-all hover:scale-105 active:scale-95 cursor-pointer touch-manipulation"
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-500 hover:text-slate-800 dark:text-emerald-400 dark:hover:text-white border border-slate-200 dark:border-emerald-800/40 transition-all cursor-pointer"
                 title="Cerrar ventana"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modern Centered Touch Screen Command Bar with Subtle Glow */}
-            <div className="flex items-center justify-center gap-2.5 sm:gap-3.5 flex-wrap pt-0.5">
+            {/* Executive Centered Command Bar */}
+            <div className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap pt-0.5">
               {/* 1. Imprimir Timeline (PDF) */}
               <button
                 type="button"
                 onClick={() => setShowTimelinePrintModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
+                className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
                 title="Imprimir o guardar en PDF el reporte oficial de trazabilidad con tabla ejecutiva y logo CHLS"
               >
-                <Printer className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                <Printer className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span>Imprimir Timeline (PDF)</span>
               </button>
 
@@ -166,10 +168,10 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowPrintModal(true)}
-                className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
+                className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
                 title="Imprimir carátula y carpeta física oficial de la Hoja de Ruta"
               >
-                <Printer className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                <Printer className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span>Imprimir Hoja de Ruta</span>
               </button>
 
@@ -178,25 +180,37 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowMergeModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
+                  className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
                   title="Fusionar con otra Hoja de Ruta"
                 >
-                  <Link2 className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                  <Link2 className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>+ Fusionar</span>
                 </button>
               )}
 
-              {/* 4. Archivar */}
-              {currentItem.status !== 'CONCLUIDO' && (
+              {/* 4. Archivar (Personal o Central) */}
+              {currentItem.status !== 'CONCLUIDO' ? (
                 <button
                   type="button"
                   onClick={() => setShowArchiveModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-b from-emerald-950/90 to-[#042014]/95 hover:from-emerald-900/90 hover:to-emerald-950 text-white border border-emerald-500/50 hover:border-emerald-400 px-4 sm:px-4.5 py-2.5 rounded-2xl text-xs sm:text-[13px] font-bold tracking-wide shadow-[0_0_15px_rgba(16,185,129,0.22)] hover:shadow-[0_0_25px_rgba(16,185,129,0.45)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation backdrop-blur-md"
-                  title="Archivar expediente en archivo central"
+                  className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
+                  title="Archivar en Mi Archivo Personal o Archivo Central"
                 >
-                  <FolderArchive className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.45)]" />
+                  <FolderArchive className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span>Archivar</span>
                 </button>
+              ) : (
+                (currentItem.currentArea === 'ARCHIVO_PERSONAL' || currentItem.archiveLocation?.toUpperCase().includes('PERSONAL')) && (
+                  <button
+                    type="button"
+                    onClick={() => setShowArchiveModal(true)}
+                    className="flex items-center gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all shadow-xs cursor-pointer"
+                    title="Remitir este expediente de su archivo personal al Archivo Central Institucional"
+                  >
+                    <Building2 className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Remitir a Archivo Central</span>
+                  </button>
+                )
               )}
 
               {/* 5. + Derivar / Proveído */}
@@ -204,10 +218,10 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowAddMovementModal(true)}
-                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-700 via-emerald-600 to-emerald-700 hover:from-emerald-600 hover:via-emerald-500 hover:to-emerald-600 text-white border border-emerald-300/60 hover:border-emerald-200 px-5 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-[13px] font-black tracking-wide shadow-[0_0_22px_rgba(16,185,129,0.45)] hover:shadow-[0_0_32px_rgba(16,185,129,0.75)] transition-all hover:scale-105 active:scale-95 cursor-pointer select-none touch-manipulation"
+                  className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold border border-emerald-400/40 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-[13px] transition-all shadow-lg shadow-emerald-950/40 cursor-pointer"
                   title="Derivar expediente o registrar un nuevo proveído formal"
                 >
-                  <Send className="w-4 h-4 text-brand-gold shrink-0 drop-shadow-[0_0_6px_rgba(204,161,75,0.6)]" />
+                  <Send className="w-4 h-4 text-white shrink-0" />
                   <span>+ Derivar / Proveído</span>
                 </button>
               )}
@@ -308,12 +322,18 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
         />
       )}
 
-      {/* Submodal for Archiving in Central Archive */}
+      {/* Submodal for Archiving in Personal or Central Archive */}
       {showArchiveModal && (
         <ArchiveRouteSheetModal
           isOpen={showArchiveModal}
           onClose={() => setShowArchiveModal(false)}
           item={currentItem}
+          initialArchiveType={
+            currentItem.status === 'CONCLUIDO' &&
+            (currentItem.currentArea === 'ARCHIVO_PERSONAL' || currentItem.archiveLocation?.toUpperCase().includes('PERSONAL'))
+              ? 'CENTRAL'
+              : 'PERSONAL'
+          }
         />
       )}
 
@@ -329,12 +349,12 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
       {/* Submodal Visor de Documentos Digitalizados */}
       {previewDoc && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#07110c] border border-emerald-500/40 w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
+          <div className="bg-white dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 w-full max-w-5xl h-[90vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden">
             {/* Header del Visor */}
             <div className="p-4 bg-slate-900 text-white flex items-center justify-between gap-3 border-b border-white/10">
               <div className="flex items-center gap-2.5 min-w-0">
-                <FileText className="w-5 h-5 text-brand-gold shrink-0" />
-                <span className="font-black text-sm truncate">{previewDoc.fileName}</span>
+                <FileText className="w-5 h-5 text-[#C5A059] shrink-0" />
+                <span className="font-bold text-sm truncate">{previewDoc.fileName}</span>
               </div>
               <div className="flex items-center gap-2 shrink-0 flex-wrap">
                 {/* Botón Imprimir Documento / Expediente */}
@@ -349,10 +369,10 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                       window.open(getDocumentFullUrl(previewDoc.fileUrl), '_blank');
                     }
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black hover:scale-105 transition-all shadow-md cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold hover:scale-105 transition-all shadow-xs cursor-pointer"
                   title="Imprimir este documento directamente"
                 >
-                  <Printer className="w-4 h-4" />
+                  <Printer className="w-4 h-4 text-[#C5A059]" />
                   <span>Imprimir</span>
                 </button>
 
@@ -364,7 +384,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                       setPreviewDoc(null);
                       setShowArchiveModal(true);
                     }}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black hover:scale-105 transition-all shadow-md cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-semibold hover:scale-105 transition-all shadow-xs cursor-pointer"
                     title="Proceder al archivo físico y digital definitivo en Archivo Central"
                   >
                     <FolderArchive className="w-4 h-4" />
@@ -377,7 +397,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                   download={previewDoc.fileName}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-brand-gold text-black text-xs font-black hover:scale-105 transition-all shadow-md cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-[#C5A059] to-[#D4AF37] text-slate-950 text-xs font-bold hover:brightness-105 transition-all shadow-xs cursor-pointer"
                 >
                   <Download className="w-4 h-4" />
                   <span>Descargar</span>

@@ -286,21 +286,21 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   const renderIcon = (type: string) => {
     switch (type) {
       case 'search':
-        return <Search className="w-4 h-4 text-cyan-400" />;
+        return <Search className="w-4 h-4 text-[#C5A059]" />;
       case 'zap':
-        return <Zap className="w-4 h-4 text-emerald-400" />;
+        return <Zap className="w-4 h-4 text-[#C5A059]" />;
       case 'settings':
-        return <Settings className="w-4 h-4 text-cyan-400" />;
+        return <Settings className="w-4 h-4 text-slate-400" />;
       case 'user':
-        return <User className="w-4 h-4 text-emerald-400" />;
+        return <User className="w-4 h-4 text-slate-400" />;
       case 'globe':
-        return <Globe className="w-4 h-4 text-cyan-400" />;
+        return <Globe className="w-4 h-4 text-[#C5A059]" />;
       case 'shield':
         return <ShieldCheck className="w-4 h-4 text-emerald-400" />;
       case 'target':
-        return <Target className="w-4 h-4 text-cyan-400" />;
+        return <Target className="w-4 h-4 text-[#C5A059]" />;
       default:
-        return <FileText className="w-4 h-4 text-cyan-400" />;
+        return <FileText className="w-4 h-4 text-slate-400" />;
     }
   };
 
@@ -321,13 +321,13 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       {/* ========================================================================= */}
       {/* Si está archivado: Banner de Ubicación en Archivo Central */}
       {item.archiveLocation && (
-        <div className="p-4 rounded-3xl bg-gradient-to-r from-amber-500/15 to-emerald-500/15 border-2 border-emerald-500/40 flex items-start gap-3.5 shadow-md animate-fadeIn">
-          <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shrink-0 mt-0.5">
-            <FolderArchive className="w-5 h-5 text-brand-gold" />
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3.5 shadow-sm animate-fadeIn">
+          <div className="p-2 rounded-xl bg-amber-500/15 text-amber-300 border border-amber-500/30 shrink-0 mt-0.5">
+            <FolderArchive className="w-5 h-5 text-[#C5A059]" />
           </div>
           <div className="space-y-1 min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs font-black uppercase text-emerald-300 tracking-wider">
+              <span className="text-xs font-bold uppercase text-amber-300 tracking-wider">
                 Expediente Resguardado en Archivo Central
               </span>
               {item.archivedAt && (
@@ -336,12 +336,12 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 </span>
               )}
             </div>
-            <p className="text-xs font-bold text-white">
-              Ubicación Topográfica: <strong className="text-brand-gold">{item.archiveLocation}</strong>
+            <p className="text-xs font-medium text-white">
+              Ubicación Topográfica: <strong className="text-[#E2C785]">{item.archiveLocation}</strong>
               {item.archiveBox ? ` — ${item.archiveBox}` : ''}
             </p>
             {item.archiveNotes && (
-              <p className="text-[11.5px] text-slate-300 italic">
+              <p className="text-[11.5px] text-slate-400 italic">
                 Auto de Conclusión: "{item.archiveNotes}"
               </p>
             )}
@@ -351,10 +351,10 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
 
       {/* Si fue fusionado en otra Hoja de Ruta: Banner de Alerta */}
       {isFusedChild && (
-        <div className="flex items-center gap-3 bg-amber-500/15 border-2 border-amber-500/40 rounded-3xl p-4 text-amber-300">
-          <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
+        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200">
+          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
           <div className="text-xs">
-            <strong className="block font-black uppercase text-sm">Trámite Acumulado y Fusionado</strong>
+            <strong className="block font-bold uppercase text-sm">Trámite Acumulado y Fusionado</strong>
             Este expediente y sus antecedentes fueron fusionados formalmente en la Hoja de Ruta principal <strong>{item.currentArea}</strong>.
           </div>
         </div>
@@ -375,46 +375,46 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         });
 
         return (
-          <div className="bg-slate-50/95 dark:bg-[#06140e] border border-slate-200/90 dark:border-emerald-500/30 rounded-2xl p-3 sm:p-3.5 shadow-sm space-y-2.5">
+          <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-sm space-y-2.5">
             {/* Fila Superior: Referencia Principal + Iniciativa Cero Papel + QR de Auditoría */}
             <div className="flex items-start justify-between gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
               <div className="flex-1 min-w-[240px] space-y-1">
-                <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
                   Referencia / Asunto
                 </span>
-                <p className="text-sm sm:text-base font-black text-slate-950 dark:text-white leading-snug uppercase tracking-tight">
+                <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-snug uppercase tracking-tight">
                   {item.reference}
                 </p>
                 {/* Iniciativa Cero Papel y Folios alineado a la izquierda debajo de la Referencia */}
                 <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
-                  <div className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                  <div className="inline-flex items-center gap-1.5 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
                     <Leaf className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
-                    <span>Iniciativa CHLS Cero Papel — Expediente Oficial con Firma Digital y Validador QR</span>
+                    <span>Iniciativa CHLS Cero Papel — Expediente con Firma Digital y QR</span>
                   </div>
-                  <span className="font-mono text-[10px] font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                  <span className="font-mono text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                     {item.pageCount || 1} Folio(s)
                   </span>
                 </div>
                 {item.attachmentDescription && (
-                  <p className="text-[11px] text-slate-600 dark:text-gray-400 leading-tight pt-0.5">
-                    <strong className="text-slate-800 dark:text-gray-300">Adjunto:</strong> {item.attachmentDescription}
+                  <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-tight pt-0.5">
+                    <strong className="text-slate-800 dark:text-slate-300">Adjunto:</strong> {item.attachmentDescription}
                   </p>
                 )}
               </div>
 
               {/* Bloque QR de Verificación & Área Actual Compacto */}
-              <div className="flex items-center gap-2.5 shrink-0 bg-white dark:bg-black/40 border border-slate-200 dark:border-emerald-500/20 px-3 py-1.5 rounded-xl shadow-2xs">
+              <div className="flex items-center gap-2.5 shrink-0 bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 px-3 py-1.5 rounded-xl shadow-2xs">
                 <div className="p-1 bg-white rounded-lg border border-slate-100 shadow-2xs shrink-0">
                   <QRCodeSVG value={verificationUrl} size={48} level="M" />
                 </div>
                 <div className="text-left leading-tight">
-                  <span className="text-[9px] font-black uppercase text-slate-400 dark:text-slate-500 block tracking-wider">
+                  <span className="text-[9px] font-bold uppercase text-slate-400 dark:text-slate-500 block tracking-wider">
                     Área Actual
                   </span>
-                  <span className="text-xs sm:text-sm font-black text-emerald-800 dark:text-brand-gold uppercase block truncate max-w-[140px]">
+                  <span className="text-xs sm:text-sm font-bold text-slate-900 dark:text-[#E2C785] uppercase block truncate max-w-[140px]">
                     {formatArea(item.currentArea)}
                   </span>
-                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-bold block mt-0.5">
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono font-medium block mt-0.5">
                     {new Date(item.createdAt).toLocaleDateString('es-BO', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </span>
                 </div>
@@ -422,66 +422,66 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </div>
 
             {/* Fila Inferior: Metadatos (Remitente, Origen/Empresa, Radicado Por + Botón Mediano de Adjuntos) */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2.5 border-t border-slate-200/80 dark:border-emerald-500/20 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2.5 border-t border-slate-200 dark:border-slate-800 text-xs">
               {/* 1. Remitente */}
-              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
-                <User className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0">
+                <User className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
                 <div className="min-w-0 flex-1 truncate">
-                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Remitente</span>
-                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderName}</span>
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Remitente</span>
+                  <span className="font-semibold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderName}</span>
                 </div>
               </div>
 
               {/* 2. Origen / Empresa */}
-              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
-                <Building2 className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 shrink-0" />
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0">
+                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                 <div className="min-w-0 flex-1 truncate">
-                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Origen / Empresa</span>
-                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}</span>
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Origen / Empresa</span>
+                  <span className="font-semibold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo')}</span>
                 </div>
               </div>
 
               {/* 3. Radicado Por */}
-              <div className="flex items-center gap-2 bg-slate-100/80 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-slate-200/60 dark:border-white/5 min-w-0">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400 shrink-0" />
+              <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 min-w-0">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
                 <div className="min-w-0 flex-1 truncate">
-                  <span className="text-[9px] font-bold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Radicado Por</span>
-                  <span className="font-bold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}</span>
+                  <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5">Radicado Por</span>
+                  <span className="font-semibold text-slate-900 dark:text-white truncate block text-[11.5px]">{item.createdBy?.firstName} {item.createdBy?.lastName || 'Secretaría'}</span>
                 </div>
               </div>
 
-              {/* 4. Botón Mediano Solicitado: Adjuntos de Radicación Inicial */}
+              {/* 4. Botón Mediano: Adjuntos de Radicación Inicial */}
               {initialDocs.length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setIsInitialDocsExpanded(!isInitialDocsExpanded)}
                   className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl border transition-all cursor-pointer text-xs group shadow-xs ${
                     isInitialDocsExpanded
-                      ? 'bg-emerald-500/25 text-emerald-300 border-emerald-500/60 shadow-[0_0_12px_rgba(16,185,129,0.3)]'
-                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50'
+                      ? 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600'
+                      : 'bg-white hover:bg-slate-50 dark:bg-slate-800/60 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
                   }`}
                   title="Ver archivos originales digitalizados en la radicación inicial"
                 >
                   <div className="flex items-center gap-2 min-w-0 truncate">
-                    <Paperclip className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+                    <Paperclip className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
                     <div className="text-left min-w-0 truncate">
-                      <span className="text-[9px] font-bold text-emerald-400/80 block uppercase leading-none mb-0.5 truncate">
+                      <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-400 block uppercase leading-none mb-0.5 truncate">
                         Adjuntos Origen ({initialDocs.length})
                       </span>
-                      <span className="font-black text-[11.5px] block truncate">
+                      <span className="font-bold text-[11.5px] block truncate">
                         {isInitialDocsExpanded ? 'Ocultar Adjuntos' : 'Ver Adjuntos'}
                       </span>
                     </div>
                   </div>
                   {isInitialDocsExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-brand-gold shrink-0" />
+                    <ChevronUp className="w-4 h-4 text-[#C5A059] shrink-0" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
                   )}
                 </button>
               ) : (
-                <div className="flex items-center gap-2 bg-slate-100/50 dark:bg-black/20 px-3 py-1.5 rounded-xl border border-dashed border-slate-300 dark:border-white/10 text-xs text-slate-400">
-                  <Paperclip className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/30 px-3 py-1.5 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+                  <Paperclip className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                   <span className="text-[11px] font-medium truncate">Sin adjuntos origen</span>
                 </div>
               )}
@@ -489,7 +489,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
 
             {/* Contenido Desplegado de los Documentos de Radicación Inicial */}
             {isInitialDocsExpanded && initialDocs.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-slate-200/80 dark:border-emerald-500/20 grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn">
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-2 gap-2.5 animate-fadeIn">
                 {initialDocs.map((doc, idx) => {
                   const isPdf = doc.fileName?.toLowerCase().endsWith('.pdf') || doc.mimeType?.includes('pdf');
                   const isImg = doc.fileName?.match(/\.(jpg|jpeg|png|webp)$/i) || doc.mimeType?.includes('image');
@@ -498,17 +498,17 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                   return (
                     <div
                       key={doc.id || idx}
-                      className="p-3 rounded-2xl bg-black/50 border border-emerald-500/30 flex items-center justify-between gap-3 transition-all hover:border-emerald-500 shadow-xs"
+                      className="p-3 rounded-xl bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3 transition-all hover:border-slate-400 dark:hover:border-slate-700 shadow-xs"
                     >
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${
                           isPdf
-                            ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                            ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
                             : isImg
-                            ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                            ? 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20'
                             : isXls
-                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
                         }`}>
                           {isPdf ? (
                             <FileText className="w-4 h-4" />
@@ -522,22 +522,22 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                         </div>
 
                         <div className="min-w-0 flex-1">
-                          <span className="font-bold text-xs text-white truncate block">
+                          <span className="font-semibold text-xs text-slate-900 dark:text-white truncate block">
                             {doc.fileName}
                           </span>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                            <span className="text-[9px] font-black uppercase tracking-wider text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 bg-slate-200/70 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-300 dark:border-slate-700">
                               Radicación Inicial
                             </span>
                             {doc.fileSize && (
-                              <span className="text-[10px] text-slate-400 font-mono">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
                                 {(doc.fileSize / 1024 / 1024).toFixed(1)} MB
                               </span>
                             )}
                             {doc.sha256Hash && (
                               <span
                                 title={`SHA-256: ${doc.sha256Hash}`}
-                                className="text-[9px] font-mono font-bold text-emerald-300 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/30 truncate max-w-[130px]"
+                                className="text-[9px] font-mono font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 truncate max-w-[130px]"
                               >
                                 🛡️ {doc.sha256Hash.substring(0, 10)}...
                               </span>
@@ -552,7 +552,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           type="button"
                           onClick={() => handleViewDoc(doc)}
                           title="Visualizar documento en pantalla"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-xs hover:scale-105"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Ver</span>
@@ -564,9 +564,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           target="_blank"
                           rel="noopener noreferrer"
                           title="Descargar archivo original a tu equipo"
-                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white/10 hover:bg-brand-gold/20 text-gray-200 hover:text-brand-gold border border-white/10 text-xs font-black transition-all cursor-pointer shadow-xs hover:scale-105"
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-xs hover:scale-105"
                         >
-                          <Download className="w-3.5 h-3.5" />
+                          <Download className="w-3.5 h-3.5 text-[#C5A059]" />
                           <span>Descargar</span>
                         </a>
                       </div>
@@ -580,17 +580,17 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       })()}
 
       {/* ========================================================================= */}
-      {/* 2. VISTA "HOLOGRAMA HUD" (EXACTA AL TEMPLATE INFOGRÁFICO SCI-FI)          */}
+      {/* 2. VISTA "TRAYECTORIA HUD 360°" (DIAGRAMA EJECUTIVO CONECTADO)            */}
       {/* ========================================================================= */}
       {activeView === 'HOLOGRAM' ? (
-        <div className="p-4 sm:p-6 rounded-3xl bg-[#020706] border-2 border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.1)] relative overflow-hidden text-white">
+        <div className="p-4 sm:p-6 rounded-3xl bg-slate-900/80 dark:bg-[#0B0F17] border border-slate-200 dark:border-slate-800 shadow-xl relative overflow-hidden text-slate-100">
           
           {/* Título de Cabecera del Template con Controles Integrados */}
-          <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20 relative z-10 flex-wrap gap-2.5">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-slate-800/80 relative z-10 flex-wrap gap-2.5">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
-              <h4 className="font-black text-xs uppercase tracking-widest text-cyan-300">
-                Línea de Trazabilidad 360° • Estructura Holográfica
+              <Compass className="w-4 h-4 text-[#C5A059]" />
+              <h4 className="font-bold text-xs uppercase tracking-widest text-slate-200">
+                Línea de Trazabilidad 360° • Trayectoria Oficial
               </h4>
             </div>
 
@@ -599,22 +599,22 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 <button
                   type="button"
                   onClick={onOpenSlaModal}
-                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-red-500/15 hover:bg-red-500/30 text-red-300 border border-red-500/40 text-[10.5px] font-black transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
+                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/40 text-[10.5px] font-bold transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
                   title="Notificar vencimiento urgente de SLA"
                 >
-                  <Bell className="w-3 h-3 text-red-400 animate-pulse" />
+                  <Bell className="w-3 h-3 text-rose-400" />
                   <span>Alerta SLA</span>
                 </button>
               )}
 
               {/* Selector de Filtro de Proveídos (Todos / Directos / Mis Proveídos) */}
-              <div className="flex items-center bg-black/60 p-0.5 rounded-xl border border-cyan-500/30 gap-1 text-[10.5px]">
+              <div className="flex items-center bg-slate-950/80 p-0.5 rounded-xl border border-slate-800 gap-1 text-[10.5px]">
                 <button
                   type="button"
                   onClick={() => setTimelineFilter('ALL')}
-                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     timelineFilter === 'ALL'
-                      ? 'bg-cyan-500 text-slate-950 shadow-[0_0_10px_rgba(6,182,212,0.5)]'
+                      ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                   title="Ver toda la trazabilidad incluyendo antecedentes acumulados"
@@ -625,9 +625,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                   <button
                     type="button"
                     onClick={() => setTimelineFilter('DIRECT')}
-                    className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                       timelineFilter === 'DIRECT'
-                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                        ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Ver únicamente los proveídos directos de esta Hoja de Ruta"
@@ -638,9 +638,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 <button
                   type="button"
                   onClick={() => setTimelineFilter('MINE')}
-                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     timelineFilter === 'MINE'
-                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                      ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                   title="Ver únicamente los proveídos emitidos por mi usuario"
@@ -650,26 +650,34 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               </div>
 
               {/* Selector de Vista: HUD / Lista */}
-              <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-[10.5px]">
+              <div className="flex items-center bg-slate-950/80 p-0.5 rounded-xl border border-slate-800 text-[10.5px]">
                 <button
                   type="button"
                   onClick={() => setActiveView('HOLOGRAM')}
-                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    (activeView as string) === 'HOLOGRAM'
+                      ? 'bg-slate-800 text-white border border-slate-700'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <Compass className="w-3 h-3" />
+                  <Compass className="w-3 h-3 text-[#C5A059]" />
                   <span>HUD</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveView('LISTA')}
-                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer text-slate-400 hover:text-white"
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    (activeView as string) === 'LISTA'
+                      ? 'bg-slate-800 text-white border border-slate-700'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <LayoutList className="w-3 h-3" />
+                  <LayoutList className="w-3 h-3 text-[#C5A059]" />
                   <span>Lista</span>
                 </button>
               </div>
 
-              <span className="text-[11px] font-mono font-bold text-slate-400">
+              <span className="text-[11px] font-mono font-semibold text-slate-400">
                 {N} Hitos • CHLS
               </span>
             </div>
@@ -681,112 +689,82 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               className="min-w-[880px] w-full h-auto overflow-visible select-none"
             >
               <defs>
-                {/* Resplandor Cian Neón */}
+                {/* Resplandor Sutil */}
                 <filter id="hud-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur1" />
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="8" result="blur2" />
+                  <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
                   <feMerge>
-                    <feMergeNode in="blur2" />
                     <feMergeNode in="blur1" />
                     <feMergeNode in="SourceGraphic" />
                   </feMerge>
                 </filter>
 
-                {/* Gradiente del Haz de Luz Holográfico en la Base */}
+                {/* Gradiente del Haz en la Base */}
                 <linearGradient id="holo-beam-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.8" />
-                  <stop offset="30%" stopColor="#10b981" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#06b6d4" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#C5A059" stopOpacity="0.2" />
+                  <stop offset="60%" stopColor="#C5A059" stopOpacity="0.04" />
+                  <stop offset="100%" stopColor="#C5A059" stopOpacity="0" />
                 </linearGradient>
 
                 {/* Gradiente de la Columna Vertebral */}
                 <linearGradient id="spine-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#06b6d4" />
-                  <stop offset="50%" stopColor="#10b981" />
-                  <stop offset="100%" stopColor="#06b6d4" />
+                  <stop offset="0%" stopColor="#C5A059" />
+                  <stop offset="50%" stopColor="#64748B" />
+                  <stop offset="100%" stopColor="#C5A059" />
                 </linearGradient>
               </defs>
 
               {/* ========================================================================= */}
-              {/* 1. PEDESTAL HOLOGRÁFICO EN LA BASE (TABLETA / PROYECTOR DE LUZ)          */}
+              {/* 1. PEDESTAL EN LA BASE                                                    */}
               {/* ========================================================================= */}
               <g transform={`translate(${CENTER_X}, ${DOCK_Y})`}>
-                {/* Haz de luz cónico ascendente */}
                 <polygon
                   points="-170,20 170,20 0,-180"
                   fill="url(#holo-beam-grad)"
-                  opacity="0.45"
+                  opacity="0.5"
                 />
-
-                {/* Sombra de la tableta */}
-                <ellipse cx="0" cy="22" rx="180" ry="25" fill="#000000" opacity="0.8" filter="blur(6px)" />
-
-                {/* Cuerpo de la tableta / base */}
+                <ellipse cx="0" cy="22" rx="180" ry="25" fill="#000000" opacity="0.5" filter="blur(6px)" />
                 <path
                   d="M -170 15 L -120 -8 L 120 -8 L 170 15 L 160 25 L -160 25 Z"
-                  fill="#0c1714"
-                  stroke="#06b6d4"
-                  strokeWidth="1.5"
+                  fill="#0F172A"
+                  stroke="#475569"
+                  strokeWidth="1.2"
                 />
-
-                {/* Pantalla luminosa central */}
-                <ellipse cx="0" cy="8" rx="115" ry="12" fill="#06b6d4" opacity="0.3" filter="url(#hud-glow)" />
-                <ellipse cx="0" cy="8" rx="60" ry="6" fill="#10b981" opacity="0.6" />
-                <circle cx="0" cy="8" r="5" fill="#ffffff" filter="url(#hud-glow)" />
+                <ellipse cx="0" cy="8" rx="100" ry="10" fill="#C5A059" opacity="0.25" filter="url(#hud-glow)" />
+                <circle cx="0" cy="8" r="4" fill="#C5A059" />
               </g>
 
               {/* ========================================================================= */}
-              {/* 2. COLUMNA VERTEBRAL CENTRAL (LÍNEA DE DATOS NEÓN DE ALTA VISIBILIDAD)   */}
+              {/* 2. COLUMNA VERTEBRAL CENTRAL ELEGANTE                                     */}
               {/* ========================================================================= */}
-              {/* Resplandor exterior de la línea central */}
               <line
                 x1={CENTER_X}
                 y1={START_Y - 25}
                 x2={CENTER_X}
                 y2={DOCK_Y}
-                stroke="#06b6d4"
-                strokeWidth="8"
+                stroke="#334155"
+                strokeWidth="4"
                 strokeLinecap="round"
-                opacity="0.35"
               />
-
-              {/* Trazo principal cian neón de la columna central */}
               <line
                 x1={CENTER_X}
                 y1={START_Y - 25}
                 x2={CENTER_X}
                 y2={DOCK_Y}
-                stroke="#22d3ee"
-                strokeWidth="3.5"
+                stroke="#64748B"
+                strokeWidth="1.5"
                 strokeLinecap="round"
               />
-
-              {/* Filo blanco luminoso central */}
-              <line
-                x1={CENTER_X}
-                y1={START_Y - 25}
-                x2={CENTER_X}
-                y2={DOCK_Y}
-                stroke="#ffffff"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                opacity="0.8"
-              />
-
-              {/* Remate superior de la columna con pulso de luz */}
-              <circle cx={CENTER_X} cy={START_Y - 25} r="7" fill="#06b6d4" opacity="0.5" />
-              <circle cx={CENTER_X} cy={START_Y - 25} r="4" fill="#22d3ee" />
-              <circle cx={CENTER_X} cy={START_Y - 25} r="2" fill="#ffffff" />
+              <circle cx={CENTER_X} cy={START_Y - 25} r="6" fill="#C5A059" opacity="0.4" />
+              <circle cx={CENTER_X} cy={START_Y - 25} r="3" fill="#C5A059" />
 
               {/* ========================================================================= */}
               {/* 3. NIVELES ALTERNADOS (NACEN ABAJO Y EL ÚLTIMO PROCESADO ESTÁ ARRIBA)    */}
               {/* ========================================================================= */}
               {milestones.map((m, idx) => {
-                // Nacen abajo (idx 0 en la base) y el último procesado arriba (idx N - 1 en START_Y)
                 const levelFromTop = N - 1 - idx;
                 const y = START_Y + levelFromTop * ROW_H;
                 const isLeft = m.isLeft;
-                const ringColor = m.isCurrent ? '#10b981' : (idx % 2 === 0 ? '#06b6d4' : '#10b981');
+                const ringColor = m.isCurrent ? '#C5A059' : '#64748B';
 
                 // Dimensiones Amplias de la Tarjeta (460px de ancho y 165px de alto)
                 const CARD_W = 460;
@@ -800,111 +778,77 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
 
                 return (
                   <g key={`hologram-level-${m.id}`}>
-                    {/* =================================================================== */}
-                    {/* A. LÍNEAS DE BRACKET / CIRCUITO HUD (CONECTORES A 90°)              */}
-                    {/* =================================================================== */}
+                    {/* A. Líneas de Conexión */}
                     {isLeft ? (
-                      // Rama hacia la IZQUIERDA
-                      <g stroke={ringColor} strokeWidth="2.5" fill="none">
-                        {/* Nodo de unión luminoso en la columna central */}
-                        <circle cx={CENTER_X} cy={ringY} r="6" fill={ringColor} stroke="none" />
-                        <circle cx={CENTER_X} cy={ringY} r="2.5" fill="#ffffff" stroke="none" />
-
-                        {/* Línea horizontal desde el centro hacia la tarjeta */}
+                      <g stroke={ringColor} strokeWidth="1.5" fill="none">
+                        <circle cx={CENTER_X} cy={ringY} r="5" fill={ringColor} stroke="none" />
                         <line x1={CENTER_X} y1={ringY} x2={cardX + CARD_W} y2={ringY} />
-
-                        {/* Línea horizontal desde la tarjeta hacia el radar orbital */}
-                        <line x1={cardX} y1={ringY} x2={ringX + 38} y2={ringY} />
-
-                        {/* Bracket angular decorativo envolvente */}
+                        <line x1={cardX} y1={ringY} x2={ringX + 36} y2={ringY} />
                         <path
-                          d={`M ${cardX + CARD_W} ${cardY + 8} L ${cardX + CARD_W + 8} ${cardY + 8} L ${cardX + CARD_W + 8} ${cardY + CARD_H - 8} L ${cardX + CARD_W} ${cardY + CARD_H - 8}`}
-                          opacity="0.8"
+                          d={`M ${cardX + CARD_W} ${cardY + 8} L ${cardX + CARD_W + 6} ${cardY + 8} L ${cardX + CARD_W + 6} ${cardY + CARD_H - 8} L ${cardX + CARD_W} ${cardY + CARD_H - 8}`}
+                          opacity="0.6"
                         />
                       </g>
                     ) : (
-                      // Rama hacia la DERECHA
-                      <g stroke={ringColor} strokeWidth="2.5" fill="none">
-                        {/* Nodo de unión luminoso en la columna central */}
-                        <circle cx={CENTER_X} cy={ringY} r="6" fill={ringColor} stroke="none" />
-                        <circle cx={CENTER_X} cy={ringY} r="2.5" fill="#ffffff" stroke="none" />
-
-                        {/* Línea horizontal desde el centro hacia la tarjeta */}
+                      <g stroke={ringColor} strokeWidth="1.5" fill="none">
+                        <circle cx={CENTER_X} cy={ringY} r="5" fill={ringColor} stroke="none" />
                         <line x1={CENTER_X} y1={ringY} x2={cardX} y2={ringY} />
-
-                        {/* Línea horizontal desde la tarjeta hacia el radar orbital */}
-                        <line x1={cardX + CARD_W} y1={ringY} x2={ringX - 38} y2={ringY} />
-
-                        {/* Bracket angular decorativo envolvente */}
+                        <line x1={cardX + CARD_W} y1={ringY} x2={ringX - 36} y2={ringY} />
                         <path
-                          d={`M ${cardX} ${cardY + 8} L ${cardX - 8} ${cardY + 8} L ${cardX - 8} ${cardY + CARD_H - 8} L ${cardX} ${cardY + CARD_H - 8}`}
-                          opacity="0.8"
+                          d={`M ${cardX} ${cardY + 8} L ${cardX - 6} ${cardY + 8} L ${cardX - 6} ${cardY + CARD_H - 8} L ${cardX} ${cardY + CARD_H - 8}`}
+                          opacity="0.6"
                         />
                       </g>
                     )}
 
-                    {/* =================================================================== */}
-                    {/* B. ANILLOS ORBITALES HUD (RADAR TARGET EXACTO A LA IMAGEN)          */}
-                    {/* =================================================================== */}
+                    {/* B. Anillos Orbitales */}
                     <g
                       transform={`translate(${ringX}, ${ringY})`}
-                      className="cursor-pointer hover:scale-115 transition-transform"
+                      className="cursor-pointer hover:scale-110 transition-transform"
                       onClick={() => setSelectedMilestone(m)}
                     >
-                      {/* Anillo exterior segmentado (arco 1) */}
                       <circle
                         cx="0"
                         cy="0"
-                        r="34"
+                        r="32"
                         fill="none"
                         stroke={ringColor}
-                        strokeWidth="1.5"
-                        strokeDasharray="36 16 24 12"
-                        opacity="0.65"
+                        strokeWidth="1.2"
+                        strokeDasharray="24 10 16 8"
+                        opacity="0.6"
                       />
-
-                      {/* Anillo intermedio segmentado (arco 2) */}
                       <circle
                         cx="0"
                         cy="0"
-                        r="26"
+                        r="24"
                         fill="none"
                         stroke={ringColor}
-                        strokeWidth="1.5"
-                        strokeDasharray="22 10 32 8"
-                        opacity="0.8"
+                        strokeWidth="1.2"
+                        opacity="0.75"
                       />
-
-                      {/* Onda de radar en pulso continuo si es la Custodia Actual */}
                       {m.isCurrent && (
                         <circle
                           cx="0"
                           cy="0"
-                          r="42"
+                          r="38"
                           fill="none"
-                          stroke="#10b981"
-                          strokeWidth="2.5"
-                          className="animate-ping opacity-75"
+                          stroke="#C5A059"
+                          strokeWidth="2"
+                          className="animate-ping opacity-60"
                         />
                       )}
-
-                      {/* Núcleo central oscuro con borde luminoso y punto de luz */}
                       <circle
                         cx="0"
                         cy="0"
-                        r="18"
-                        fill="#03140e"
+                        r="16"
+                        fill="#0B0F17"
                         stroke={ringColor}
-                        strokeWidth="2"
-                        filter="url(#hud-glow)"
+                        strokeWidth="1.5"
                       />
-                      <circle cx="0" cy="0" r="6" fill={ringColor} />
-                      <circle cx="0" cy="0" r="2.5" fill="#ffffff" />
+                      <circle cx="0" cy="0" r="5" fill={ringColor} />
                     </g>
 
-                    {/* =================================================================== */}
-                    {/* C. TARJETA FLOTANTE DE EXPEDIENTE (AMPLIA Y CÓMODA)                */}
-                    {/* =================================================================== */}
+                    {/* C. Tarjeta Flotante de Expediente */}
                     <foreignObject
                       x={cardX}
                       y={cardY}
@@ -913,42 +857,42 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                     >
                       <div
                         onClick={() => setSelectedMilestone(m)}
-                        className={`w-full h-full flex flex-col justify-between p-3.5 rounded-2xl border-2 transition-all cursor-pointer shadow-md backdrop-blur-md ${
+                        className={`w-full h-full flex flex-col justify-between p-3.5 rounded-2xl border transition-all cursor-pointer shadow-md backdrop-blur-md ${
                           m.isCurrent
-                            ? 'bg-[#031c14]/95 border-emerald-500 shadow-[0_0_30px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/30 hover:scale-102'
-                            : 'bg-[#03130d]/90 border-cyan-500/40 hover:border-cyan-400 hover:scale-102 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
+                            ? 'bg-slate-900/95 border-[#C5A059] shadow-[0_4px_20px_rgba(197,160,89,0.15)] ring-1 ring-[#C5A059]/40 hover:scale-102'
+                            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:scale-102 shadow-xs'
                         }`}
                       >
                         {/* Fila 1: Fecha, Hora y Badge de Paso */}
-                        <div className="flex items-center justify-between text-xs pb-1 border-b border-white/10">
-                          <span className="font-mono text-cyan-300 font-bold flex items-center gap-1.5">
+                        <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
+                          <span className="font-mono text-slate-300 font-medium flex items-center gap-1.5">
                             <span>📅</span>
                             <span>{m.dateStr}</span>
-                            <span className="text-slate-500">•</span>
+                            <span className="text-slate-600">•</span>
                             <span>{m.timeStr}</span>
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md font-black text-[10px] uppercase tracking-wide ${
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide ${
                             m.isCurrent
-                              ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                              ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                               : m.isAccumulated
-                              ? 'bg-amber-500/20 text-brand-gold border border-brand-gold/40'
-                              : 'bg-white/10 text-cyan-300'
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                              : 'bg-slate-800 text-slate-300 border border-slate-700/80'
                           }`}>
                             {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
                           </span>
                         </div>
 
-                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) Sin Recorte */}
-                        <div className="text-[12px] sm:text-[13px] font-black text-white flex items-center gap-2 my-0.5">
+                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) */}
+                        <div className="text-[12px] sm:text-[13px] font-bold text-white flex items-center gap-2 my-0.5">
                           <span className="text-slate-200">{formatArea(m.sourceArea)}</span>
-                          <ArrowRight className="w-4 h-4 text-cyan-400 shrink-0" />
-                          <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
+                          <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
+                          <span className="text-[#E2C785]">{formatArea(m.targetArea)}</span>
                         </div>
 
-                        {/* Fila 3: Proveído completo y sello oficial (sin recorte) */}
-                        <div className="text-[11px] text-slate-200 leading-relaxed italic my-1 break-words overflow-y-auto max-h-[85px] custom-scrollbar pr-1">
+                        {/* Fila 3: Proveído completo */}
+                        <div className="text-[11px] text-slate-300 leading-relaxed italic my-1 break-words overflow-y-auto max-h-[85px] custom-scrollbar pr-1">
                           {m.quickStamp && (
-                            <span className="font-bold mr-1.5 text-cyan-400 not-italic uppercase text-[10.5px]">
+                            <span className="font-bold mr-1.5 text-[#C5A059] not-italic uppercase text-[10.5px]">
                               ⚡ {m.quickStamp}
                             </span>
                           )}
@@ -956,7 +900,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                         </div>
 
                         {/* Fila 4: Adjuntos PDF y Responsable / Emisor */}
-                        <div className="pt-1.5 border-t border-white/10 flex items-center justify-between text-[10px]">
+                        <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px]">
                           {m.documents.length > 0 ? (
                             <button
                               type="button"
@@ -964,9 +908,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                                 e.stopPropagation();
                                 handleViewDoc(m.documents[0]);
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/40 text-cyan-200 border border-cyan-500/40 font-bold flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
                             >
-                              <FileText className="w-3.5 h-3.5 text-red-400" />
+                              <FileText className="w-3.5 h-3.5 text-[#C5A059]" />
                               <span>{m.documents.length} PDF</span>
                             </button>
                           ) : (
@@ -974,8 +918,8 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           )}
 
                           <div className="flex items-center gap-1 text-[10.5px] max-w-[260px] truncate" title={`Emitido por: ${m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}`}>
-                            <span className="text-slate-400 font-semibold shrink-0">Por:</span>
-                            <span className="text-emerald-300 font-bold font-mono truncate">
+                            <span className="text-slate-400 font-medium shrink-0">Por:</span>
+                            <span className="text-slate-300 font-semibold font-mono truncate">
                               {m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}
                             </span>
                             {m.personName && (
@@ -993,8 +937,8 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </svg>
           </div>
 
-          <p className="text-center text-xs text-cyan-500/70 font-mono mt-1">
-            💡 Diagrama holográfico HUD interactivo. Haz clic en cualquier radar o tarjeta para ver el proveído completo.
+          <p className="text-center text-xs text-slate-500 font-mono mt-1">
+            💡 Línea de trazabilidad CHLS. Haz clic en cualquier hito o tarjeta para ver el proveído completo.
           </p>
         </div>
       ) : (
@@ -1044,7 +988,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                     onClick={() => setTimelineFilter('DIRECT')}
                     className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
                       timelineFilter === 'DIRECT'
-                        ? 'bg-emerald-500 text-slate-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]'
+                        ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                         : 'text-slate-400 hover:text-white'
                     }`}
                     title="Ver únicamente los proveídos directos de esta Hoja de Ruta"
@@ -1055,9 +999,9 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 <button
                   type="button"
                   onClick={() => setTimelineFilter('MINE')}
-                  className={`px-2 py-0.5 rounded-lg font-black transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
                     timelineFilter === 'MINE'
-                      ? 'bg-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.5)]'
+                      ? 'bg-[#C5A059] text-slate-950 shadow-xs'
                       : 'text-slate-400 hover:text-white'
                   }`}
                   title="Ver únicamente los proveídos emitidos por mi usuario"
@@ -1067,39 +1011,47 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               </div>
 
               {/* Selector de Vista: HUD / Lista */}
-              <div className="flex items-center bg-black/50 p-0.5 rounded-xl border border-white/10 text-[10.5px]">
+              <div className="flex items-center bg-slate-950/80 p-0.5 rounded-xl border border-slate-800 text-[10.5px]">
                 <button
                   type="button"
                   onClick={() => setActiveView('HOLOGRAM')}
-                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer text-slate-400 hover:text-white"
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    (activeView as string) === 'HOLOGRAM'
+                      ? 'bg-slate-800 text-white border border-slate-700'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <Compass className="w-3 h-3" />
+                  <Compass className="w-3 h-3 text-[#C5A059]" />
                   <span>HUD</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveView('LISTA')}
-                  className="px-2 py-0.5 rounded-lg font-black transition-all flex items-center gap-1 cursor-pointer bg-cyan-500 text-slate-950 shadow-[0_0_12px_rgba(6,182,212,0.6)]"
+                  className={`px-2.5 py-1 rounded-lg font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                    (activeView as string) === 'LISTA'
+                      ? 'bg-slate-800 text-white border border-slate-700'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
                 >
-                  <LayoutList className="w-3 h-3" />
+                  <LayoutList className="w-3 h-3 text-[#C5A059]" />
                   <span>Lista</span>
                 </button>
               </div>
 
-              <span className="text-[11px] font-mono font-bold text-slate-400">
+              <span className="text-[11px] font-mono font-semibold text-slate-400">
                 {milestones.length} Hitos • CHLS
               </span>
             </div>
           </div>
 
-          <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-cyan-500/30">
+          <div className="relative pl-7 sm:pl-9 space-y-4 before:absolute before:left-3 sm:before:left-3.5 before:top-3 before:bottom-3 before:w-0.5 before:bg-slate-800">
           {[...milestones].reverse().map((m) => (
             <div key={m.id} className="relative">
               <div
-                className={`absolute -left-7 sm:-left-9 top-1 w-6 h-6 rounded-full font-black text-xs flex items-center justify-center shadow-xs ${
+                className={`absolute -left-7 sm:-left-9 top-1 w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center shadow-xs ${
                   m.isCurrent
-                    ? 'bg-emerald-500 text-slate-950 ring-4 ring-emerald-500/20'
-                    : 'bg-[#041a13] border border-cyan-500/50 text-cyan-300'
+                    ? 'bg-[#C5A059] text-slate-950 ring-2 ring-[#C5A059]/30'
+                    : 'bg-slate-800 border border-slate-700 text-slate-300'
                 }`}
               >
                 {m.stepNumber === 0 ? '🌱' : m.stepNumber}
@@ -1107,24 +1059,24 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
 
               <div className={`p-4 rounded-2xl border transition-all ${
                 m.isCurrent
-                  ? 'bg-[#041c14] border-emerald-500'
-                  : 'bg-[#03130d] border-cyan-500/20 hover:border-cyan-500/40'
+                  ? 'bg-slate-900/95 border-[#C5A059] shadow-[0_4px_20px_rgba(197,160,89,0.15)] ring-1 ring-[#C5A059]/40'
+                  : 'bg-slate-900/90 border-slate-800 hover:border-slate-700'
               } space-y-2 text-xs shadow-xs text-white`}>
                 <div className="flex items-center justify-between flex-wrap gap-2">
-                  <div className="flex items-center gap-2 flex-wrap font-black">
+                  <div className="flex items-center gap-2 flex-wrap font-bold">
                     <span className="text-white">{formatArea(m.sourceArea)}</span>
-                    <ArrowRight className="w-3 h-3 text-cyan-400 shrink-0" />
-                    <span className="text-emerald-300">{formatArea(m.targetArea)}</span>
-                    <span className="text-emerald-400 font-normal text-[11px]">
-                      (Emitido por: <strong className="text-white font-mono">{m.sourceUserName || formatArea(m.sourceArea)}</strong>{m.personName ? ` ➔ Para: ${m.personName}` : ''})
+                    <ArrowRight className="w-3 h-3 text-slate-500 shrink-0" />
+                    <span className="text-[#E2C785]">{formatArea(m.targetArea)}</span>
+                    <span className="text-slate-400 font-normal text-[11px]">
+                      (Emitido por: <strong className="text-slate-200 font-mono">{m.sourceUserName || formatArea(m.sourceArea)}</strong>{m.personName ? ` ➔ Para: ${m.personName}` : ''})
                     </span>
                     {m.isAccumulated && (
-                      <span className="px-2 py-0.5 rounded bg-amber-500/20 text-brand-gold border border-brand-gold/40 text-[9.5px] font-black">
+                      <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9.5px] font-bold">
                         📚 EXPEDIENTE ACUMULADO
                       </span>
                     )}
                     {m.isCurrent && (
-                      <span className="px-1.5 py-0.2 rounded bg-emerald-500 text-slate-950 text-[9px] font-black">
+                      <span className="px-1.5 py-0.2 rounded bg-[#C5A059] text-slate-950 text-[9px] font-bold">
                         ACTUAL
                       </span>
                     )}
@@ -1135,33 +1087,33 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 </div>
 
                 {m.quickStamp && (
-                  <span className="inline-flex items-center gap-1 text-[10.5px] font-black uppercase px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-300 border border-cyan-500/40">
-                    <Stamp className="w-3 h-3 text-cyan-400" />
+                  <span className="inline-flex items-center gap-1 text-[10.5px] font-bold uppercase px-2 py-0.5 rounded bg-slate-800 text-[#C5A059] border border-slate-700">
+                    <Stamp className="w-3 h-3 text-[#C5A059]" />
                     <span>{m.quickStamp}</span>
                   </span>
                 )}
 
-                <p className="text-slate-300 pl-3 border-l-2 border-cyan-500/40 italic">
+                <p className="text-slate-300 pl-3 border-l-2 border-[#C5A059]/40 italic">
                   &quot;{m.instruction}&quot;
                 </p>
 
                 {m.documents.length > 0 && (
-                  <div className="pt-2 flex items-center gap-2 flex-wrap border-t border-white/5">
+                  <div className="pt-2 flex items-center gap-2 flex-wrap border-t border-slate-800">
                     {m.documents.map((doc, di) => (
-                      <div key={doc.id || di} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-xs">
-                        <FileText className="w-3.5 h-3.5 text-red-500" />
+                      <div key={doc.id || di} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-950/60 border border-slate-800 text-xs">
+                        <FileText className="w-3.5 h-3.5 text-[#C5A059]" />
                         <span className="font-bold truncate max-w-[160px]">{doc.fileName}</span>
                         <button
                           type="button"
                           onClick={() => handleViewDoc(doc)}
-                          className="text-[10.5px] font-black text-cyan-400 hover:underline cursor-pointer ml-1"
+                          className="text-[10.5px] font-bold text-[#C5A059] hover:underline cursor-pointer ml-1"
                         >
                           Ver
                         </button>
                         <a
                           href={getDocumentFullUrl(doc.fileUrl)}
                           download={doc.fileName}
-                          className="text-[10.5px] font-black text-slate-400 hover:text-cyan-400 cursor-pointer"
+                          className="text-[10.5px] font-bold text-slate-400 hover:text-white cursor-pointer"
                         >
                           ⬇
                         </a>
@@ -1181,24 +1133,24 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       {/* ========================================================================= */}
       {selectedMilestone && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn"
           onClick={() => setSelectedMilestone(null)}
         >
           <div
-            className="bg-[#03140e] border-2 border-cyan-500/50 rounded-3xl p-6 max-w-lg w-full shadow-[0_0_50px_rgba(6,182,212,0.25)] space-y-4 text-white"
+            className="bg-slate-900 border border-slate-700 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4 text-white"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header del Hito */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-cyan-500 text-slate-950 font-black text-xs flex items-center justify-center shadow-xs">
+                <div className="w-8 h-8 rounded-xl bg-[#C5A059] text-slate-950 font-bold text-xs flex items-center justify-center shadow-xs">
                   {selectedMilestone.stepNumber === 0 ? '🌱' : `#${selectedMilestone.stepNumber}`}
                 </div>
                 <div>
-                  <h4 className="font-black text-sm text-white uppercase">
+                  <h4 className="font-bold text-sm text-white uppercase">
                     {selectedMilestone.badgeLabel}
                   </h4>
-                  <span className="text-[11px] font-mono text-cyan-300">
+                  <span className="text-[11px] font-mono text-slate-400">
                     {selectedMilestone.fullDate} • {selectedMilestone.timeStr}
                   </span>
                 </div>
@@ -1213,42 +1165,42 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </div>
 
             {/* Traspaso */}
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/10 flex items-center justify-between text-xs">
+            <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 flex items-center justify-between text-xs">
               <div>
                 <span className="text-[10px] text-slate-400 block uppercase">Origen:</span>
                 <span className="font-bold text-white">{formatArea(selectedMilestone.sourceArea)}</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-cyan-400" />
+              <ArrowRight className="w-4 h-4 text-slate-500" />
               <div className="text-right">
                 <span className="text-[10px] text-slate-400 block uppercase">Destino:</span>
-                <span className="font-bold text-emerald-300">{formatArea(selectedMilestone.targetArea)}</span>
+                <span className="font-bold text-[#E2C785]">{formatArea(selectedMilestone.targetArea)}</span>
               </div>
             </div>
 
             {/* Sello & Instrucción */}
             <div className="space-y-1 text-xs">
               {selectedMilestone.quickStamp && (
-                <div className="text-cyan-400 font-black uppercase text-[11px] mb-1">
+                <div className="text-[#C5A059] font-bold uppercase text-[11px] mb-1">
                   ⚡ {selectedMilestone.quickStamp}
                 </div>
               )}
-              <div className="p-3.5 rounded-2xl bg-black/50 border border-white/10 text-slate-200 leading-relaxed italic whitespace-pre-wrap">
+              <div className="p-3.5 rounded-2xl bg-slate-950/60 border border-slate-800 text-slate-200 leading-relaxed italic whitespace-pre-wrap">
                 &quot;{selectedMilestone.instruction}&quot;
               </div>
             </div>
 
             {/* Documentos Adjuntos */}
             {selectedMilestone.documents.length > 0 && (
-              <div className="space-y-2 pt-2 border-t border-white/10 text-xs">
-                <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+              <div className="space-y-2 pt-2 border-t border-slate-800 text-xs">
+                <span className="font-bold text-[#C5A059] flex items-center gap-1.5">
                   <Paperclip className="w-3.5 h-3.5" />
                   <span>Archivos Adjuntos ({selectedMilestone.documents.length}):</span>
                 </span>
                 <div className="space-y-2">
                   {selectedMilestone.documents.map((doc) => (
-                    <div key={doc.id} className="p-2.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between gap-2">
+                    <div key={doc.id} className="p-2.5 rounded-xl bg-slate-950/60 border border-slate-800 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <FileText className="w-4 h-4 text-red-500 shrink-0" />
+                        <FileText className="w-4 h-4 text-[#C5A059] shrink-0" />
                         <span className="font-bold text-xs truncate">{doc.fileName}</span>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">

@@ -159,7 +159,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const [initialCcPersons, setInitialCcPersons] = useState('');
   const [ccSearchQuery, setCcSearchQuery] = useState('');
   const [showCcSelector, setShowCcSelector] = useState(false);
-  const [initialQuickStamp, setInitialQuickStamp] = useState('FAVOR SU ATENCIÓN Y TRÁMITE');
+  const [initialQuickStamp, setInitialQuickStamp] = useState<string>('');
   const [initialInstruction, setInitialInstruction] = useState('Favor su atención y trámite correspondiente.');
 
   // Auto-set initial target EXCLUSIVAMENTE a partir de los destinos conectados en el organigrama
@@ -312,7 +312,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       initialArea: initialTargetArea,
       initialInstruction: hasInitialInstruction ? initialInstruction.trim() : null,
       initialTargetPerson: hasInitialInstruction ? initialTargetPerson.trim() : null,
-      initialQuickStamp: hasInitialInstruction ? initialQuickStamp : null,
+      initialQuickStamp: hasInitialInstruction && initialQuickStamp.trim() ? initialQuickStamp.trim() : null,
       initialCcAreas: hasInitialInstruction ? initialCcAreas : [],
       initialCcPersons: hasInitialInstruction ? initialCcPersons.trim() || null : null,
       aiSummary: null,
@@ -351,27 +351,27 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-lg flex justify-center items-center p-2 sm:p-4 lg:p-6 animate-fadeIn">
-      <div className="bg-[#f8fafc] dark:bg-[#07110c] border-2 border-emerald-500/40 w-full max-w-[1680px] h-[94vh] rounded-3xl shadow-[0_0_80px_rgba(16,185,129,0.25)] overflow-hidden flex flex-col justify-between">
+      <div className="bg-slate-50 dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/40 w-full max-w-[1680px] h-[94vh] rounded-3xl shadow-2xl overflow-hidden flex flex-col justify-between">
         
         {/* Top Header Command Bar */}
-        <div className="px-6 sm:px-8 py-4 border-b border-emerald-500/30 flex justify-between items-center bg-white/90 dark:bg-[#091810] shrink-0">
+        <div className="px-6 sm:px-8 py-4 border-b border-slate-200 dark:border-emerald-800/40 flex justify-between items-center bg-white/80 dark:bg-[#07130E] shrink-0">
           <div className="flex items-center gap-4">
-            <div className="p-2 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-              <CrestLogo size="sm" className="w-10 h-10 shrink-0" />
+            <div className="p-2 rounded-2xl bg-emerald-500/10 dark:bg-[#091A14] border border-emerald-500/25">
+              <CrestLogo size="sm" className="w-10 h-10 shrink-0 filter drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
             </div>
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-wide">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                   NUEVA HOJA DE RUTA
                 </h1>
-                <span className="text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/50 shadow-[0_0_12px_rgba(16,185,129,0.3)]">
+                <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   Radicación 360°
                 </span>
-                <span className="text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
+                <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
                   Cero Papel
                 </span>
               </div>
-              <p className="text-xs text-emerald-800 dark:text-emerald-400 font-bold mt-0.5">
+              <p className="text-xs text-slate-500 dark:text-emerald-400/70 font-medium mt-0.5">
                 Club Hípico Los Sargentos — Despacho Radicador: {sourceNode?.title || effectiveSourceArea}
               </p>
             </div>
@@ -380,7 +380,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="p-2.5 rounded-2xl bg-slate-200/80 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
+              className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
             >
               <X className="w-6 h-6" />
             </button>
@@ -398,27 +398,27 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
             <div className="lg:col-span-6 space-y-5">
               
               {/* 1. SECCIÓN: TIPO & DATOS DEL REMITENTE */}
-              <div className="bg-white/95 dark:bg-[#0c1a13] border-2 border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-emerald-950/20 space-y-4">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+              <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-[#E2C785] border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-sm">
                       1
                     </div>
-                    <h2 className="text-sm font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                       Origen & Remitente
                     </h2>
                   </div>
-                  <span className="text-[11px] font-bold text-slate-500 dark:text-gray-400">
+                  <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     Paso 1 de 2
                   </span>
                 </div>
 
                 {/* Segmented Selector */}
                 <div>
-                  <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-gray-300 mb-2">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-2">
                     Tipo de Procedencia
                   </label>
-                  <div className="grid grid-cols-3 gap-2.5 bg-slate-100 dark:bg-black/50 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
+                  <div className="grid grid-cols-3 gap-2.5 bg-slate-100 dark:bg-slate-950/60 p-1.5 rounded-2xl border border-slate-200 dark:border-slate-800">
                     <button
                       type="button"
                       onClick={() => {
@@ -427,39 +427,39 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           setSenderArea(defaultOriginArea || (currentUser as any)?.area || 'GERENCIA GENERAL');
                         }
                       }}
-                      className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'AREA_INTERNA'
-                          ? 'bg-white dark:bg-[#152e20] text-emerald-900 dark:text-emerald-300 shadow-md border-2 border-emerald-500/50'
-                          : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-300 dark:border-slate-600'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      <Building2 className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                      <Building2 className="w-4 h-4 text-[#C5A059]" />
                       <span>Área Interna</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => { setSenderType('SOCIO'); setSenderArea(''); }}
-                      className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'SOCIO'
-                          ? 'bg-white dark:bg-[#152e20] text-brand-gold shadow-md border-2 border-brand-gold/50'
-                          : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-[#E2C785] shadow-xs border border-slate-300 dark:border-slate-600'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      <User className="w-4 h-4 text-brand-gold" />
+                      <User className="w-4 h-4 text-[#C5A059]" />
                       <span>Socio / Familiar</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={() => { setSenderType('EXTERNO'); setSenderArea(''); }}
-                      className={`flex items-center justify-center gap-2 py-3 px-3 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'EXTERNO'
-                          ? 'bg-white dark:bg-[#152e20] text-blue-700 dark:text-blue-300 shadow-md border-2 border-blue-500/50'
-                          : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                          ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-300 dark:border-slate-600'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      <Truck className="w-4 h-4 text-blue-700 dark:text-blue-400" />
+                      <Truck className="w-4 h-4 text-sky-500" />
                       <span>Courier / Externo</span>
                     </button>
                   </div>
@@ -564,11 +564,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           className={`py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border ${
                             priority === p
                               ? p === 'URGENTE'
-                                ? 'bg-red-500 text-white border-red-400 shadow-md shadow-red-500/30'
+                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-xs'
                                 : p === 'ALTA'
-                                ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/30'
-                                : 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/30'
-                              : 'bg-slate-100 dark:bg-black/40 text-slate-700 dark:text-gray-400 border-slate-300 dark:border-white/10 hover:bg-slate-200'
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs'
+                                : 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 shadow-xs'
+                              : 'bg-slate-100 dark:bg-slate-950/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800'
                           }`}
                         >
                           {p}
@@ -581,13 +581,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
               </div>
 
               {/* 2. SECCIÓN: ASUNTO & DOCUMENTO DE ORIGEN */}
-              <div className="bg-white dark:bg-[#0c1a13] border-2 border-slate-200 dark:border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-slate-200/50 dark:shadow-emerald-950/20 space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-200 dark:border-emerald-500/20 pb-3">
+              <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-[#E2C785] border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-sm">
                       2
                     </div>
-                    <h2 className="text-sm font-black text-slate-900 dark:text-emerald-400 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider">
                       Asunto & Documento de Origen
                     </h2>
                   </div>
@@ -595,7 +595,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
+                    <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
                       CITE / N° de Nota o Informe
                     </label>
                     <input
@@ -603,33 +603,33 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       placeholder="Ej. ALM-INF N° 42/2026"
                       value={cite}
                       onChange={(e) => setCite(e.target.value)}
-                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-mono font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-mono font-medium text-sm focus:ring-1 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                    <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
                       <span className="flex items-center gap-1.5">
                         <span>N° de Fojas / Folios</span>
-                        <span className="text-red-500 text-sm">*</span>
+                        <span className="text-rose-500 text-sm">*</span>
                       </span>
                       {isCountingPages ? (
-                        <span className="text-[9px] font-black uppercase text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded-full border border-brand-gold/40 flex items-center gap-1 animate-pulse">
-                          <Loader2 className="w-2.5 h-2.5 animate-spin text-brand-gold" />
+                        <span className="text-[9px] font-bold uppercase text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/30 flex items-center gap-1 animate-pulse">
+                          <Loader2 className="w-2.5 h-2.5 animate-spin text-amber-400" />
                           <span>Contabilizando...</span>
                         </span>
                       ) : (
-                        <span className="text-[9px] font-black uppercase text-emerald-800 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/40 flex items-center gap-1">
-                          <Lock className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400" />
-                          <span>{selectedFiles.length > 0 ? `Auto: ${pageCount} ${pageCount === 1 ? 'foja' : 'fojas'} (Inalterable)` : 'Automático'}</span>
+                        <span className="text-[9px] font-bold uppercase text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5 text-slate-500" />
+                          <span>{selectedFiles.length > 0 ? `Auto: ${pageCount} ${pageCount === 1 ? 'foja' : 'fojas'}` : 'Automático'}</span>
                         </span>
                       )}
                     </label>
                     <div className="relative group">
                       {isCountingPages ? (
-                        <Loader2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-brand-gold animate-spin" />
+                        <Loader2 className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-amber-400 animate-spin" />
                       ) : (
-                        <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+                        <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
                       )}
                       <input
                         type="number"
@@ -637,26 +637,26 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         value={pageCount}
                         readOnly={true}
                         tabIndex={-1}
-                        className={`w-full pl-10 pr-4 py-3 bg-slate-100/90 dark:bg-[#06100b] border-2 rounded-2xl text-slate-950 dark:text-emerald-300 font-mono font-black text-sm outline-none shadow-sm cursor-not-allowed select-none transition-all ${
+                        className={`w-full pl-10 pr-4 py-3 bg-slate-100/90 dark:bg-slate-950/80 border rounded-2xl text-slate-900 dark:text-slate-200 font-mono font-bold text-sm outline-none shadow-xs cursor-not-allowed select-none transition-all ${
                           isCountingPages
-                            ? 'border-brand-gold/60 ring-2 ring-brand-gold/20'
-                            : 'border-emerald-500/40 bg-emerald-500/5'
+                            ? 'border-amber-500/60 ring-1 ring-amber-500/20'
+                            : 'border-slate-300 dark:border-slate-700'
                         }`}
-                        title="Cantidad inalterable: El número de fojas se calcula y bloquea de manera 100% automática a partir de los documentos digitalizados."
+                        title="Cantidad inalterable: El número de fojas se calcula automáticamente a partir de los documentos digitalizados."
                       />
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                  <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
-                      <span className="text-slate-950 dark:text-white">Referencia / Asunto Principal</span>
-                      <span className="text-red-500 text-sm">*</span>
+                      <span className="text-slate-900 dark:text-white">Referencia / Asunto Principal</span>
+                      <span className="text-rose-500 text-sm">*</span>
                     </span>
-                    <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                      <Sparkles className="w-3 h-3 text-emerald-600 dark:text-brand-gold" />
-                      <span>Corrector ortográfico & Predicción activa</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700">
+                      <Sparkles className="w-3 h-3 text-[#C5A059]" />
+                      <span>Corrector & Predicción</span>
                     </span>
                   </label>
                   <SmartCorrespondenceTextarea
@@ -667,35 +667,35 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     required
                     enablePrediction={true}
                     enableQuickPhrases={true}
-                    className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-black uppercase text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm leading-relaxed placeholder:text-slate-400 dark:placeholder:text-gray-500 placeholder:normal-case placeholder:font-medium"
+                    className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl p-4 text-slate-900 dark:text-white font-bold uppercase text-sm focus:ring-1 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none shadow-xs leading-relaxed placeholder:text-slate-400 dark:placeholder:text-slate-500 placeholder:normal-case placeholder:font-normal"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                    <span className="text-slate-950 dark:text-white">Descripción de Documentos Adjuntos / Anexos</span>
+                  <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
+                    <span className="text-slate-900 dark:text-white">Descripción de Documentos Adjuntos / Anexos</span>
                   </label>
                   <SmartCorrespondenceInput
                     placeholder="Ej. Formulario de Requerimiento + 3 Cotizaciones de Proveedores (5 fojas)"
                     value={attachmentDescription}
                     onChange={(e) => setAttachmentDescription(e.target.value)}
-                    className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                    className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl px-4 py-3 text-slate-900 dark:text-white font-medium text-sm focus:ring-1 focus:ring-[#C5A059] focus:border-[#C5A059] outline-none shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
                   />
                 </div>
 
                 {/* Digitalización & Carga de Archivos (Eco-Híbrido) */}
-                <div className="pt-2 border-t border-emerald-500/20 space-y-2.5">
+                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <label className="block text-xs font-black uppercase text-slate-800 dark:text-emerald-300 flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5 text-brand-gold" />
+                    <label className="block text-xs font-bold uppercase text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                      <Paperclip className="w-3.5 h-3.5 text-[#C5A059]" />
                       <span>Digitalizar & Adjuntar Archivos (PDF, Fotos, Comprobantes)</span>
                     </label>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-bold text-emerald-700 dark:text-brand-gold bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                      <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
                         Eco-Híbrido Cero Papel
                       </span>
                       {selectedFiles.length > 0 && (
-                        <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/40">
+                        <span className="text-[10px] font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">
                           {pageCount} {pageCount === 1 ? 'foja digital' : 'fojas digitales'}
                         </span>
                       )}
@@ -838,25 +838,25 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
             {/* ========================================================================= */}
             <div className="lg:col-span-6 space-y-5">
               
-              <div className="bg-white/95 dark:bg-[#0c1a13] border-2 border-emerald-500/30 rounded-3xl p-5 shadow-lg shadow-emerald-950/20 space-y-4">
+              <div className="bg-white dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-3xl p-5 shadow-sm space-y-4">
                 
                 {/* Header de Sección 3 */}
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3 flex-wrap gap-2">
+                <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 flex-wrap gap-2">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-500/40 flex items-center justify-center font-black text-sm">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center font-bold text-sm">
                       3
                     </div>
-                    <h2 className="text-sm font-black text-emerald-800 dark:text-emerald-400 uppercase tracking-wider">
+                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
                       Primer Proveído / Derivación Inmediata
                     </h2>
                   </div>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-black text-emerald-800 dark:text-emerald-300 bg-emerald-500/10 px-3 py-1 rounded-xl border border-emerald-500/30">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-3 py-1 rounded-xl border border-slate-200 dark:border-slate-700">
                     <input
                       type="checkbox"
                       checked={hasInitialInstruction}
                       onChange={(e) => setHasInitialInstruction(e.target.checked)}
-                      className="rounded w-4 h-4 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                      className="rounded w-4 h-4 text-[#C5A059] focus:ring-[#C5A059]/30 cursor-pointer"
                     />
                     <span>Derivar de Inmediato</span>
                   </label>
@@ -881,8 +881,8 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                     {/* Destino y Funcionario */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                          Área de Destino Principal <span className="text-red-500">*</span>
+                        <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
+                          Área de Destino Principal <span className="text-rose-500">*</span>
                         </label>
                         <select
                           value={initialTargetArea}
@@ -898,35 +898,35 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                               setInitialTargetPerson(AREA_RESPONSIBLES[newArea].defaultPerson);
                             }
                           }}
-                          className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
+                          className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm cursor-pointer"
                         >
                           {recommendedNodes.length > 0 ? (
-                            <optgroup label="⭐ Destinos Conectados en el Organigrama">
+                            <optgroup label="Destinos Conectados en el Organigrama">
                               {recommendedNodes.map(({ node, edgeLabel }) => (
                                 <option key={node.id} value={node.areaKey || node.title}>
-                                  ⭐ {node.title} {edgeLabel ? `(${edgeLabel})` : ''}
+                                  {node.title} {edgeLabel ? `(${edgeLabel})` : ''}
                                 </option>
                               ))}
                             </optgroup>
                           ) : (
                             <option value="" disabled>
-                              ⛔ Sin conexiones autorizadas en el Organigrama
+                              Sin conexiones autorizadas en el Organigrama
                             </option>
                           )}
                         </select>
                         {recommendedNodes.length === 0 && (
-                          <p className="text-[11px] text-red-600 dark:text-red-400 font-bold mt-1.5 flex items-center gap-1">
-                            <span>⚠️ {effectiveSourceArea} no tiene conectores salientes en el Canvas 360°.</span>
+                          <p className="text-[11px] text-rose-500 dark:text-rose-400 font-medium mt-1.5 flex items-center gap-1">
+                            <span>{effectiveSourceArea} no tiene conectores salientes en el Canvas 360°.</span>
                           </p>
                         )}
                       </div>
 
                       <div>
                         <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200">
+                          <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
                             Responsable / Jefatura de Despacho
                           </label>
-                          <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-black">
+                          <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">
                             Titular
                           </span>
                         </div>
@@ -935,16 +935,16 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           placeholder="Ej. Ian Pinto / Laura Ríos"
                           value={initialTargetPerson}
                           onChange={(e) => setInitialTargetPerson(e.target.value)}
-                          className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                          className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-medium text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600"
                         />
                       </div>
                     </div>
 
                     {/* CON COPIA A (C.C. INFORMATIVO INTELIGENTE) */}
-                    <div className="bg-slate-100/80 dark:bg-[#060e0a] p-4 rounded-2xl border-2 border-slate-200 dark:border-emerald-500/20 space-y-3">
+                    <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3">
                       <div className="flex items-center justify-between flex-wrap gap-2">
-                        <label className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-gray-200 flex items-center gap-2">
-                          <Copy className="w-4 h-4 text-brand-gold" />
+                        <label className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                          <Copy className="w-3.5 h-3.5 text-[#C5A059]" />
                           <span>Con Copia a (C.C. Informativo):</span>
                         </label>
                         <div className="flex items-center gap-2">
@@ -952,7 +952,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                             <button
                               type="button"
                               onClick={() => setInitialCcAreas([])}
-                              className="text-[10px] font-bold text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                              className="text-[10px] font-semibold text-rose-500 hover:text-rose-600 transition-colors cursor-pointer"
                             >
                               Limpiar copias ({initialCcAreas.length})
                             </button>
@@ -960,26 +960,26 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           <button
                             type="button"
                             onClick={() => setShowCcSelector(!showCcSelector)}
-                            className="text-xs font-black px-3 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
                           >
-                            <span>{showCcSelector ? '▲ Ocultar Selector' : '+ Agregar Copias Institucionales'}</span>
+                            <span>{showCcSelector ? '▲ Ocultar Selector' : '+ Agregar Copias'}</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Áreas seleccionadas en C.C. (Badges dorados compactos) */}
+                      {/* Áreas seleccionadas en C.C. */}
                       {initialCcAreas.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 p-2 bg-emerald-950/20 rounded-xl border border-emerald-500/30">
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
                           {initialCcAreas.map((areaTitle) => (
                             <span
                               key={areaTitle}
-                              className="inline-flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-lg bg-brand-gold text-slate-950 shadow-sm animate-fadeIn"
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-lg bg-[#C5A059] text-slate-950 shadow-sm"
                             >
-                              <span>📋 {areaTitle}</span>
+                              <span>{areaTitle}</span>
                               <button
                                 type="button"
                                 onClick={() => setInitialCcAreas((prev) => prev.filter((a) => a !== areaTitle))}
-                                className="w-4 h-4 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-[10px] cursor-pointer"
+                                className="w-3.5 h-3.5 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center text-[9px] cursor-pointer"
                               >
                                 ✕
                               </button>
@@ -990,13 +990,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                       {/* Selector desplegable con buscador de Áreas */}
                       {showCcSelector && (
-                        <div className="p-3 bg-white dark:bg-black/60 rounded-xl border border-emerald-500/30 space-y-2 animate-fadeIn">
+                        <div className="p-3 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl space-y-2 animate-fadeIn">
                           <input
                             type="text"
-                            placeholder="🔍 Escribe para filtrar cargos y departamentos..."
+                            placeholder="Filtrar áreas..."
                             value={ccSearchQuery}
                             onChange={(e) => setCcSearchQuery(e.target.value)}
-                            className="w-full bg-slate-50 dark:bg-[#07110c] border border-slate-300 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white font-medium outline-none focus:ring-2 focus:ring-emerald-500"
+                            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-white font-medium outline-none focus:border-[#C5A059]"
                           />
                           <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto custom-scrollbar p-1">
                             {allNodes
@@ -1021,14 +1021,14 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                                         setInitialCcAreas((prev) => [...prev, areaTitle]);
                                       }
                                     }}
-                                    className={`text-[11px] font-black px-2.5 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
+                                    className={`text-[11px] font-semibold px-2 py-1 rounded-lg border transition-all flex items-center gap-1 cursor-pointer ${
                                       isSelected
-                                        ? 'bg-emerald-500 text-slate-950 border-emerald-400 font-black scale-[1.02]'
-                                        : 'bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-gray-300 border-slate-200 dark:border-white/10 hover:border-emerald-500 hover:bg-slate-50'
+                                        ? 'bg-[#C5A059] text-slate-950 border-[#C5A059]'
+                                        : 'bg-slate-100 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-[#C5A059]'
                                     }`}
                                   >
                                     <span>{isSelected ? '✓' : '+'}</span>
-                                    <span className="truncate max-w-[220px]">{node.title}</span>
+                                    <span className="truncate max-w-[200px]">{node.title}</span>
                                   </button>
                                 );
                               })}
@@ -1042,16 +1042,33 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                           placeholder="Personas o entidades externas en C.C. (ej. Asesoría Legal Externa, Auditoría)"
                           value={initialCcPersons}
                           onChange={(e) => setInitialCcPersons(e.target.value)}
-                          className="w-full bg-white dark:bg-[#07110c] border border-slate-300 dark:border-white/10 rounded-xl px-3.5 py-2 text-xs text-slate-950 dark:text-white placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                          className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder:text-slate-600 outline-none focus:border-[#C5A059] font-medium"
                         />
                       </div>
                     </div>
 
                     {/* SELLOS RÁPIDOS INSTITUCIONALES */}
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-800 dark:text-gray-300 mb-2">
-                        Sellos Rápidos de Instrucción (1 Toque)
-                      </label>
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
+                          Sellos Rápidos de Instrucción <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500 lowercase">(opcional)</span>
+                        </label>
+                        {initialQuickStamp ? (
+                          <button
+                            type="button"
+                            onClick={() => setInitialQuickStamp('')}
+                            className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1 cursor-pointer transition-colors bg-rose-500/10 hover:bg-rose-500/20 px-2 py-0.5 rounded-lg border border-rose-500/20"
+                            title="Quitar sello seleccionado"
+                          >
+                            <X className="w-3 h-3" />
+                            <span>Quitar Sello</span>
+                          </button>
+                        ) : (
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800/60 px-2 py-0.5 rounded-lg border border-slate-300/40 dark:border-slate-700/40">
+                            Sin Sello
+                          </span>
+                        )}
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {QUICK_STAMPS.map((stamp) => {
                           const isCurrent = initialQuickStamp === stamp;
@@ -1060,14 +1077,19 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                               key={stamp}
                               type="button"
                               onClick={() => {
-                                setInitialQuickStamp(stamp);
-                                setInitialInstruction(stamp + ': Favor proceder conforme a reglamento.');
+                                if (isCurrent) {
+                                  setInitialQuickStamp('');
+                                } else {
+                                  setInitialQuickStamp(stamp);
+                                  setInitialInstruction(stamp + ': Favor proceder conforme a reglamento.');
+                                }
                               }}
-                              className={`text-xs font-black p-2.5 rounded-xl border transition-all text-center leading-snug cursor-pointer ${
+                              className={`text-xs font-semibold p-2.5 rounded-xl border transition-all text-center leading-snug cursor-pointer ${
                                 isCurrent
-                                  ? 'bg-emerald-600 text-white border-emerald-400 shadow-md shadow-emerald-600/30 scale-[1.02]'
-                                  : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-gray-300 hover:border-emerald-500 hover:bg-slate-100'
+                                  ? 'bg-slate-800 dark:bg-slate-800 text-[#C5A059] border-[#C5A059]/60 shadow-sm ring-1 ring-[#C5A059]/40'
+                                  : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600'
                               }`}
+                              title={isCurrent ? 'Haz clic para deseleccionar este sello' : 'Haz clic para aplicar este sello'}
                             >
                               {stamp}
                             </button>
@@ -1078,11 +1100,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                     {/* INSTRUCCIÓN / PROVEÍDO TEXTO */}
                     <div>
-                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
-                        <span className="text-slate-950 dark:text-white">Instrucción Oficial / Proveído Detallado <span className="text-red-500">*</span></span>
-                        <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          <Sparkles className="w-3 h-3 text-emerald-600 dark:text-brand-gold" />
-                          <span>Predictivo & Fórmulas oficiales</span>
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                        <span>Instrucción Oficial / Proveído Detallado <span className="text-rose-500">*</span></span>
+                        <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                          <Sparkles className="w-3 h-3 text-amber-500" />
+                          <span>Fórmulas oficiales</span>
                         </span>
                       </label>
                       <SmartCorrespondenceTextarea
@@ -1093,13 +1115,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         enablePrediction={true}
                         enableQuickPhrases={true}
                         placeholder="Redacta la instrucción formal para el área de destino..."
-                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl p-4 text-slate-950 dark:text-white font-medium text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm leading-relaxed placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                        className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-2xl p-3.5 text-slate-900 dark:text-white font-medium text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm leading-relaxed placeholder:text-slate-400 dark:placeholder:text-slate-600"
                       />
                     </div>
 
                   </div>
                 ) : (
-                  <div className="py-12 text-center text-slate-400 dark:text-gray-500 text-xs">
+                  <div className="py-12 text-center text-slate-400 dark:text-slate-500 text-xs">
                     El documento se radicará sin derivación inicial inmediata (quedará pendiente en Secretaría General).
                   </div>
                 )}
@@ -1113,29 +1135,29 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
           {/* ========================================================================= */}
           {/* BARRA INFERIOR DE ACCIÓN (FOOTER COMMAND BAR) */}
           {/* ========================================================================= */}
-          <div className="pt-4 border-t-2 border-emerald-500/30 flex flex-col sm:flex-row justify-between items-center gap-4 bg-white/50 dark:bg-transparent rounded-2xl p-3">
+          <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-4">
             
-            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-gray-300 font-bold">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping" />
-              <span>Radicación activa para: <strong>{senderType === 'AREA_INTERNA' ? senderArea : senderName || 'Nuevo Remitente'}</strong></span>
-              <span>• Fojas: <strong>{pageCount}</strong></span>
-              <span>• Prioridad: <strong className="text-brand-gold">{priority}</strong></span>
+            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-medium">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Radicación activa: <strong className="text-slate-900 dark:text-slate-200">{senderType === 'AREA_INTERNA' ? senderArea : senderName || 'Nuevo Remitente'}</strong></span>
+              <span>• Fojas: <strong className="text-slate-900 dark:text-slate-200">{pageCount}</strong></span>
+              <span>• Prioridad: <strong className="text-amber-500">{priority}</strong></span>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-3.5 rounded-2xl font-bold text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer text-sm"
+                className="px-5 py-2.5 rounded-xl font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer text-sm"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={isSaving}
-                className="flex items-center justify-center gap-3 bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-slate-950 font-black px-8 py-3.5 rounded-2xl text-base shadow-xl shadow-emerald-600/30 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-7 py-3 rounded-xl text-sm shadow-lg shadow-emerald-950/40 border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                <Send className="w-5 h-5 text-slate-950" />
+                <Send className="w-4 h-4 text-white" />
                 <span>{isSaving ? 'Generando Hoja de Ruta...' : 'Generar Hoja de Ruta Oficial 360°'}</span>
               </button>
             </div>

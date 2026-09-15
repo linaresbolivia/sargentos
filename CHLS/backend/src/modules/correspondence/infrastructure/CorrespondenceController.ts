@@ -113,8 +113,24 @@ export class CorrespondenceController {
     try {
       const { status, priority, area, search, senderType, limit, offset, mailbox, userArea, year } = req.query;
       const user = (req as any).user;
-      const effectiveArea = (userArea as string) || user?.area || (area as string);
+      const userId = user?.userId || user?.id;
+      let effectiveArea = (userArea as string) || user?.area || (area as string);
       const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+
+      let requestedMailbox = (mailbox as any);
+      const has360 = await this.canAccessGlobal360(user);
+
+      // Seguridad Institucional CHLS:
+      // Si no se especifica mailbox (carga general):
+      // - Usuarios con acceso 360 reciben 'ALL' (supervisión global).
+      // - Usuarios estándar reciben 'USER_SCOPE' (inbox, outbox, copias, archivo personal y archivo central para consulta).
+      if (!requestedMailbox) {
+        requestedMailbox = has360 ? 'ALL' : 'USER_SCOPE';
+      } else if (requestedMailbox === 'ALL') {
+        if (!has360) {
+          requestedMailbox = 'USER_SCOPE';
+        }
+      }
 
       const result = await this.routeSheetService.list({
         status: status as string,
@@ -123,9 +139,9 @@ export class CorrespondenceController {
         search: search as string,
         senderType: senderType as string,
         year: year && year !== 'ALL' ? parseInt(year as string, 10) : undefined,
-        mailbox: (mailbox as any) || 'ALL',
+        mailbox: requestedMailbox,
         userArea: effectiveArea,
-        userId: user?.id,
+        userId,
         userName,
         limit: limit ? parseInt(limit as string, 10) : 100,
         offset: offset ? parseInt(offset as string, 10) : 0,
@@ -788,18 +804,18 @@ export class CorrespondenceController {
     }
   }
 
-  // 14. Archive Route Sheet to Central Archive
+  // 14. Archive Route Sheet to Personal or Central Archive
   public async archiveRouteSheet(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { archiveLocation, archiveBox, archiveNotes } = req.body;
+      const { archiveLocation, archiveBox, archiveNotes, archiveType } = req.body;
       const user = (req as any).user;
       const userId = user?.userId || user?.id || req.body.userId;
 
       if (!archiveLocation || !archiveLocation.trim()) {
         return res.status(400).json({
           success: false,
-          message: 'Debe especificar la ubicación física en el Archivo Central (ej. Tomo, Gaveta o Estante)',
+          message: 'Debe especificar la ubicación física del archivo (ej. Estante, Caja o Carpeta)',
         });
       }
 
@@ -808,11 +824,15 @@ export class CorrespondenceController {
         archiveBox,
         archiveNotes,
         userId,
+        archiveType: archiveType as 'PERSONAL' | 'CENTRAL',
       });
 
+      const isPersonal = archiveType === 'PERSONAL' || archiveLocation.toUpperCase().includes('PERSONAL');
       return res.status(200).json({
         success: true,
-        message: 'Hoja de Ruta archivada con éxito en el Archivo Central',
+        message: isPersonal
+          ? 'Hoja de Ruta guardada exitosamente en su Archivo Personal'
+          : 'Hoja de Ruta archivada con éxito en el Archivo Central',
         data: updated,
       });
     } catch (error: any) {
@@ -1103,4 +1123,79 @@ export class CorrespondenceController {
       });
     }
   }
+
+  /**
+   * Valida si el usuario actual tiene autorización para la "Vista Global 360°"
+   * Permitido exclusivamente para:
+   * 1. Gerente General
+   * 2. Tecnología (Encargado de Sistemas, TI, SuperAdmin, Admin)
+   * 3. Secretaría de Gerencia
+   */
+  private async canAccessGlobal360(user: any): Promise<boolean> {
+    if (!user) return false;
+    const roles: string[] = (user.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+
+    // SuperAdmin y Administradores de Tecnología
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      return true;
+    }
+
+    try {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: user.userId || user.id },
+        select: { email: true, firstName: true, lastName: true, roles: { select: { name: true } } },
+      });
+
+      const userRoles = dbUser?.roles?.map((r) => r.name.toUpperCase()) || roles;
+      if (userRoles.includes('SUPER_ADMIN') || userRoles.includes('ADMIN')) {
+        return true;
+      }
+
+      const normalize = (s: string) => (s || '').toUpperCase().trim();
+      const uEmail = (dbUser?.email || user.email || '').toLowerCase().trim();
+      const uFull = normalize(`${dbUser?.firstName || user.firstName || ''} ${dbUser?.lastName || user.lastName || ''}`);
+
+      // 1. Gerencia General
+      if (
+        userRoles.includes('GERENTE_GENERAL') ||
+        userRoles.includes('MODULO_DIRECTORIO') ||
+        uEmail.startsWith('gerencia') ||
+        uEmail.includes('gerente') ||
+        uFull.includes('GERENTE GENERAL') ||
+        uFull.includes('GERENCIA')
+      ) {
+        return true;
+      }
+
+      // 2. Tecnología / Sistemas
+      if (
+        userRoles.includes('SISTEMAS') ||
+        userRoles.includes('TECNOLOGIA') ||
+        uEmail.startsWith('sistemas') ||
+        uEmail.startsWith('admin') ||
+        uEmail.includes('tecnologia') ||
+        (uEmail.includes('@chls.bo') && uEmail.startsWith('ti')) ||
+        uFull.includes('SISTEMAS') ||
+        uFull.includes('TECNOLOGIA')
+      ) {
+        return true;
+      }
+
+      // 3. Secretaría de Gerencia
+      if (
+        userRoles.includes('SECRETARIA') ||
+        uEmail.startsWith('secretaria') ||
+        uFull.includes('SECRETARIA')
+      ) {
+        return true;
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
 }
+
