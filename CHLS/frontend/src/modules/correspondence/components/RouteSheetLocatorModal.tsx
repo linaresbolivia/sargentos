@@ -167,10 +167,17 @@ export const RouteSheetLocatorModal: React.FC<RouteSheetLocatorModalProps> = ({
         const matchCite = (item.cite || '').toLowerCase().includes(q);
         const matchRef = item.reference.toLowerCase().includes(q);
         const matchSender = item.senderName.toLowerCase().includes(q);
-        const matchArea = (item.currentArea || '').toLowerCase().includes(q);
+        const matchArea = (item.currentArea || '').toLowerCase().includes(q) || (item.senderArea || '').toLowerCase().includes(q);
         const matchArchive = (item.archiveLocation || '').toLowerCase().includes(q);
+        const matchMovements = item.movements?.some(
+          (m) =>
+            (m.sourceArea && m.sourceArea.toLowerCase().includes(q)) ||
+            (m.targetArea && m.targetArea.toLowerCase().includes(q)) ||
+            (m.targetPersonName && m.targetPersonName.toLowerCase().includes(q)) ||
+            (m.instruction && m.instruction.toLowerCase().includes(q))
+        );
 
-        if (!matchCode && !matchCite && !matchRef && !matchSender && !matchArea && !matchArchive) {
+        if (!matchCode && !matchCite && !matchRef && !matchSender && !matchArea && !matchArchive && !matchMovements) {
           return false;
         }
       }

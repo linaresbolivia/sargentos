@@ -30,10 +30,12 @@ import {
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
+import { fetchRouteSheets } from '@store/correspondenceSlice';
 import toast from 'react-hot-toast';
 
 export const MainPortal: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
+  const correspondenceItems = useSelector((state: RootState) => state.correspondence?.items || []);
   const dispatch = useDispatch<AppDispatch>();
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -58,6 +60,48 @@ export const MainPortal: React.FC = () => {
   const isWhatsappUser = user.roles.includes('MODULO_WHATSAPP') || isAdmin || isSuperAdmin;
   const isPqrsUser = user.roles.includes('MODULO_PQRS') || user.roles.includes('MODULO_USUARIO_PQRS') || isAdmin;
   const canAccessCourtsAdmin = isAdmin || user.roles.includes('MODULO_CANCHAS');
+
+  useEffect(() => {
+    if (canAccessCorrespondence && correspondenceItems.length === 0) {
+      dispatch(fetchRouteSheets());
+    }
+  }, [canAccessCorrespondence, dispatch, correspondenceItems.length]);
+
+  // Cálculo de trámites pendientes de recepción (que llegan o que salen hasta ser recepcionados)
+  const pendingCorrespondenceCount = React.useMemo(() => {
+    if (!canAccessCorrespondence || !correspondenceItems.length) return 0;
+    const userArea = (user as any)?.area || (user as any)?.department;
+    const uId = user.id || (user as any).userId;
+    const userFullName = `${user.firstName || ''} ${user.lastName || ''}`.trim().toLowerCase();
+
+    return correspondenceItems.filter((i) => {
+      if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
+      const latestMov = i.movements && i.movements.length > 0 ? i.movements[i.movements.length - 1] : null;
+
+      // 1. Que llegan hasta ser recepcionados (en custodia de mi área o dirigidos a mí y pendientes de recepción)
+      const isIncoming = Boolean(
+        (userArea && i.currentArea && i.currentArea.toLowerCase() === userArea.toLowerCase()) ||
+        (latestMov?.targetPersonName && userFullName && latestMov.targetPersonName.toLowerCase().includes(userFullName)) ||
+        (latestMov?.targetArea && userArea && latestMov.targetArea.toLowerCase() === userArea.toLowerCase())
+      );
+
+      if (isIncoming && (i.status === 'DERIVADO' || Boolean(latestMov && !latestMov.receivedAt))) {
+        return true;
+      }
+
+      // 2. Que salen hasta ser recepcionados (derivados por mí o mi área pendientes de recepción en destino)
+      const isOutgoing = Boolean(
+        (uId && latestMov?.sourceUserId === uId) ||
+        (userArea && latestMov?.sourceArea && latestMov.sourceArea.toLowerCase() === userArea.toLowerCase())
+      );
+
+      if (isOutgoing && latestMov && !latestMov.receivedAt && i.status === 'DERIVADO') {
+        return true;
+      }
+
+      return false;
+    }).length;
+  }, [correspondenceItems, canAccessCorrespondence, user]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -298,6 +342,15 @@ export const MainPortal: React.FC = () => {
                 to="/admin/correspondencia"
                 className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
               >
+                {/* Globo de WhatsApp en Rojo para trámites que llegan o salen hasta ser recepcionados */}
+                {pendingCorrespondenceCount > 0 && (
+                  <div
+                    className="absolute top-2.5 right-2.5 z-30 min-w-[24px] h-[24px] px-1.5 rounded-full bg-red-600 text-white font-mono font-black text-xs flex items-center justify-center shadow-[0_0_14px_rgba(239,68,68,0.95)] ring-2 ring-white dark:ring-[#040f09] animate-pulse"
+                    title={`${pendingCorrespondenceCount} hojas de ruta que llegan o salen pendientes de recepción`}
+                  >
+                    {pendingCorrespondenceCount}
+                  </div>
+                )}
                 <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
                   <FileText className="w-6 h-6" />
                 </div>
@@ -312,7 +365,14 @@ export const MainPortal: React.FC = () => {
                     </span>
                   </div>
                   <p className="text-xs text-gray-300 line-clamp-1">
-                    Hojas de Ruta digitales, proveídos y libro oficial.
+                    {pendingCorrespondenceCount > 0 ? (
+                      <span className="text-red-400 font-bold flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                        {pendingCorrespondenceCount} trámite(s) por recepcionar
+                      </span>
+                    ) : (
+                      'Hojas de Ruta digitales, proveídos y libro oficial.'
+                    )}
                   </p>
                 </div>
                 <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />

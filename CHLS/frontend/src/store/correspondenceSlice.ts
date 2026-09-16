@@ -166,6 +166,30 @@ export const updateRouteSheetStatus = createAsyncThunk(
   }
 );
 
+export const receiveRouteSheet = createAsyncThunk(
+  'correspondence/receiveRouteSheet',
+  async (routeSheetId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/receive`);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al recepcionar la Hoja de Ruta');
+    }
+  }
+);
+
+export const undoRouteSheetDerivation = createAsyncThunk(
+  'correspondence/undoDerivation',
+  async (routeSheetId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/undo-derivation`);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al deshacer la derivación');
+    }
+  }
+);
+
 export const mergeRouteSheets = createAsyncThunk(
   'correspondence/mergeRouteSheets',
   async (
@@ -338,25 +362,30 @@ export const correspondenceSlice = createSlice({
     },
     // Realtime Socket Handlers
     handleRealtimeCreated: (state, action: PayloadAction<RouteSheetItem>) => {
-      const exists = state.items.some((i) => i.id === action.payload.id);
-      if (!exists) {
+      const index = state.items.findIndex((i) => i.id === action.payload.id);
+      if (index === -1) {
         state.items.unshift(action.payload);
         state.total += 1;
+      } else {
+        state.items[index] = { ...state.items[index], ...action.payload };
       }
     },
-    handleRealtimeUpdated: (state, action: PayloadAction<{ id: string; status: any; currentArea?: string }>) => {
-      const index = state.items.findIndex((i) => i.id === action.payload.id);
+    handleRealtimeUpdated: (state, action: PayloadAction<Partial<RouteSheetItem> & { id: string }>) => {
+      const payload = action.payload;
+      const index = state.items.findIndex((i) => i.id === payload.id);
       if (index !== -1) {
-        state.items[index].status = action.payload.status;
-        if (action.payload.currentArea) {
-          state.items[index].currentArea = action.payload.currentArea;
-        }
+        state.items[index] = {
+          ...state.items[index],
+          ...payload,
+          movements: payload.movements || state.items[index].movements,
+        };
       }
-      if (state.selectedItem && state.selectedItem.id === action.payload.id) {
-        state.selectedItem.status = action.payload.status;
-        if (action.payload.currentArea) {
-          state.selectedItem.currentArea = action.payload.currentArea;
-        }
+      if (state.selectedItem && state.selectedItem.id === payload.id) {
+        state.selectedItem = {
+          ...state.selectedItem,
+          ...payload,
+          movements: payload.movements || state.selectedItem.movements,
+        };
       }
     },
     updateWorkflowLocal: (state, action: PayloadAction<CorrespondenceWorkflow>) => {
@@ -448,6 +477,20 @@ export const correspondenceSlice = createSlice({
         state.selectedItem = action.payload;
         const index = state.items.findIndex((i) => i.id === action.payload.id);
         if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(receiveRouteSheet.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(undoRouteSheetDerivation.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload?.id);
+        if (index !== -1 && action.payload) {
           state.items[index] = action.payload;
         }
       });

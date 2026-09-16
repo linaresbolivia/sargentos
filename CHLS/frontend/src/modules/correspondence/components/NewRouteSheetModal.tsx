@@ -35,7 +35,7 @@ import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
 import GenerateCiteModal from './GenerateCiteModal';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
-import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360 } from '../utils/organigramWorkflowService';
+import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet } from '../utils/organigramWorkflowService';
 import { countTotalPdfPages } from '../utils/pdfPageCounter';
 
 interface NewRouteSheetModalProps {
@@ -125,6 +125,10 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
     return canUserAccess360(currentUser, userNode);
   }, [currentUser, userNode]);
 
+  const canCreate = useMemo(() => {
+    return canUserCreateRouteSheet(currentUser, userNode);
+  }, [currentUser, userNode]);
+
   // Despacho que emite el proveído y deriva (fijado por defecto al cargo del usuario logueado)
   const [originDispatch, setOriginDispatch] = useState<string>('');
 
@@ -201,6 +205,31 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   };
 
   if (!isOpen) return null;
+
+  if (!canCreate) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
+        <div className="bg-white dark:bg-[#071812] border border-amber-500/30 rounded-3xl max-w-md w-full p-6 sm:p-8 text-center shadow-2xl">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center mx-auto mb-4 text-amber-500">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Acceso Restringido</h3>
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mt-2.5 leading-relaxed">
+            Por normativa y directriz institucional del Club Hípico Los Sargentos, la creación y radicación de Hojas de Ruta está reservada exclusivamente para <strong>Gerencia General</strong> y <strong>Secretaría de Gerencia</strong>.
+          </p>
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl bg-slate-900 dark:bg-emerald-950 text-white dark:text-emerald-200 border border-slate-700 dark:border-emerald-800/60 font-bold text-xs hover:bg-slate-800 dark:hover:bg-emerald-900 transition-all cursor-pointer"
+            >
+              Cerrar Ventana
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const processFiles = async (newFiles: File[]) => {
     if (!newFiles || newFiles.length === 0) return;
@@ -288,6 +317,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    if (!canCreate) {
+      toast.error('Acceso denegado: Solo Gerencia General y Secretaría de Gerencia pueden emitir Hojas de Ruta.');
+      return;
+    }
+
     if (!senderName.trim()) {
       toast.error('Por favor ingresa el nombre de quien remite');
       return;
@@ -321,6 +355,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       initialQuickStamp: hasInitialInstruction && initialQuickStamp.trim() ? initialQuickStamp.trim() : null,
       initialCcAreas: hasInitialInstruction ? initialCcAreas : [],
       initialCcPersons: hasInitialInstruction ? initialCcPersons.trim() || null : null,
+      sourceArea: effectiveSourceArea,
       aiSummary: null,
       suggestedArea: null,
     };

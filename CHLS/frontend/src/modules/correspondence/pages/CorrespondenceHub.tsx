@@ -12,6 +12,8 @@ import {
   setSelectedGestion,
   setSearchQuery,
   setSelectedItem,
+  receiveRouteSheet,
+  undoRouteSheetDerivation,
   handleRealtimeCreated,
   handleRealtimeUpdated,
 } from '@store/correspondenceSlice';
@@ -31,6 +33,7 @@ import OfficialCitesLedgerModal from '../components/OfficialCitesLedgerModal';
 import toast from 'react-hot-toast';
 import {
   Search,
+  X,
   Plus,
   FileText,
   Clock,
@@ -78,6 +81,7 @@ import {
   ShieldCheck,
   HelpCircle,
   Lock,
+  RotateCcw,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -85,7 +89,7 @@ import BackButton from '@shared/components/BackButton';
 import { GatehouseInvoiceReceiptModal } from '../../gatehouse/components/GatehouseInvoiceReceiptModal';
 import io from 'socket.io-client';
 
-import { DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser, canUserAccess360 } from '../utils/organigramWorkflowService';
+import { DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet, didUserParticipateInRouteSheet } from '../utils/organigramWorkflowService';
 
 // Generar lista de despachos oficiales a partir del Organigrama Institucional CHLS
 const OFFICIAL_DEPARTMENTS = DEFAULT_ORGANIGRAM_NODES.map((node) => ({
@@ -121,6 +125,11 @@ export const CorrespondenceHub: React.FC = () => {
   // Regla CHLS: Solo Gerente General, Tecnología/Sistemas y Secretaría de Gerencia tienen acceso al 360°
   const canAccess360 = useMemo(() => {
     return canUserAccess360(currentUser, userNode);
+  }, [currentUser, userNode]);
+
+  // Regla Institucional CHLS: Solo Gerencia General y Secretaría de Gerencia pueden radicar Hojas de Ruta
+  const canCreateRouteSheet = useMemo(() => {
+    return canUserCreateRouteSheet(currentUser, userNode);
   }, [currentUser, userNode]);
 
   const defaultPerspective = useMemo(() => {
@@ -242,7 +251,12 @@ export const CorrespondenceHub: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    dispatch(fetchRouteSheets({ year: selectedGestion === 'ALL' ? undefined : selectedGestion }));
+    dispatch(
+      fetchRouteSheets({
+        year: selectedGestion === 'ALL' ? undefined : selectedGestion,
+        userArea: currentPerspective && currentPerspective !== 'ALL' ? currentPerspective : undefined,
+      })
+    );
     dispatch(fetchCorrespondenceStats());
     dispatch(fetchWorkflowSettings());
 
@@ -346,7 +360,7 @@ export const CorrespondenceHub: React.FC = () => {
     return () => {
       socket.disconnect();
     };
-  }, [dispatch, selectedGestion]);
+  }, [dispatch, selectedGestion, currentPerspective]);
 
   // Helper para determinar si un expediente pertenece al Archivo del Cargo del usuario o despacho actual
   const isItemInPersonalArchive = (i: RouteSheetItem) => {
@@ -381,22 +395,81 @@ export const CorrespondenceHub: React.FC = () => {
     return isArchived && !isPersonal;
   };
 
-  // 1. Counters for Official Mailbox Trays
-  const inboxCount = items.filter(
-    (i) =>
-      isSameArea(i.currentArea, currentPerspective) &&
-      i.status !== 'CONCLUIDO' &&
-      i.status !== 'ANULADO'
-  ).length;
+  const userFullName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
 
-  const outboxCount = items.filter((i) => {
+  // Helper para determinar si un expediente pertenece a la Bandeja de Entrada de la perspectiva / usuario
+  const isItemInInbox = (i: RouteSheetItem) => {
     if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
-    return i.movements?.some(
-      (m) =>
-        isSameArea(m.sourceArea, currentPerspective) &&
-        !isSameArea(m.targetArea, currentPerspective)
+
+    // 1. Custodia actual del área seleccionada
+    if (isSameArea(i.currentArea, currentPerspective)) return true;
+
+    // 2. Si el último proveído está dirigido al funcionario activo o a la perspectiva actual,
+    // asegurando que NO haya sido enviado por la misma perspectiva hacia otra área
+    if (i.movements && i.movements.length > 0) {
+      const lastMov = i.movements[i.movements.length - 1];
+      if (isSameArea(lastMov.sourceArea, currentPerspective) && !isSameArea(lastMov.targetArea, currentPerspective)) {
+        return false;
+      }
+      if (lastMov.targetPersonName) {
+        if (userFullName && isSameArea(lastMov.targetPersonName, userFullName)) return true;
+        if (isSameArea(lastMov.targetPersonName, currentPerspective)) return true;
+      }
+      if (lastMov.targetArea && isSameArea(lastMov.targetArea, currentPerspective)) return true;
+    }
+
+    return false;
+  };
+
+  // 1. Counters for Official Mailbox Trays
+  const inboxCount = items.filter(isItemInInbox).length;
+
+  // Helper para determinar si un expediente en Bandeja de Entrada está pendiente de recepción formal (llega hasta ser recepcionado)
+  const isItemPendingInboxReception = (i: RouteSheetItem) => {
+    if (!isItemInInbox(i)) return false;
+    if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
+    const latestMov = i.movements && i.movements.length > 0 ? i.movements[i.movements.length - 1] : null;
+    return i.status === 'DERIVADO' || Boolean(latestMov && !latestMov.receivedAt);
+  };
+
+  const inboxPendingReceptionCount = items.filter(isItemPendingInboxReception).length;
+
+  // Helper para determinar si un expediente pertenece a la Bandeja de Salida:
+  // Trámites derivados desde mi despacho hacia otras áreas que aún están EN TRÁNSITO (pendientes de recepción por el destinatario).
+  // Una vez que el destinatario recepciona el trámite, este sale formalmente de la Bandeja de Salida del remitente.
+  const isItemInOutbox = (i: RouteSheetItem) => {
+    if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
+
+    // Solo trámites en estado DERIVADO (pendientes de recepción en destino)
+    if (i.status !== 'DERIVADO') return false;
+
+    // Si actualmente está en custodia del despacho activo, pertenece a Bandeja de Entrada, no a Salida
+    if (isItemInInbox(i)) return false;
+
+    if (!i.movements || i.movements.length === 0) return false;
+
+    // El último movimiento de derivación
+    const lastMov = i.movements[i.movements.length - 1];
+
+    // Si el último proveído ya fue recepcionado en destino, ya no está en la bandeja de salida
+    if (lastMov.receivedAt) return false;
+
+    const uId = currentUser?.id || (currentUser as any)?.userId;
+
+    // El último proveído fue derivado desde el área de la perspectiva activa hacia otra área
+    const isFromMyPerspective =
+      isSameArea(lastMov.sourceArea, currentPerspective) &&
+      !isSameArea(lastMov.targetArea, currentPerspective);
+
+    // O el último proveído fue emitido directamente por el usuario activo hacia otra área
+    const isDerivedByMe = Boolean(
+      uId && lastMov.sourceUserId === uId && !isSameArea(lastMov.targetArea, currentPerspective)
     );
-  }).length;
+
+    return isFromMyPerspective || isDerivedByMe;
+  };
+
+  const outboxCount = items.filter(isItemInOutbox).length;
 
   const copiesCount = items.filter((i) => {
     if (i.status === 'CONCLUIDO' || i.status === 'ANULADO') return false;
@@ -415,12 +488,12 @@ export const CorrespondenceHub: React.FC = () => {
   const allCount = items.length;
 
   const allMailboxTabs = [
-    { id: 'INBOX', label: 'Bandeja de Entrada', icon: Inbox, count: inboxCount, desc: 'En mi despacho / Pendientes' },
-    { id: 'OUTBOX', label: 'Bandeja de Salida', icon: SendIcon, count: outboxCount, desc: 'Derivados a otras áreas' },
-    { id: 'COPIES', label: 'Copias C.C.', icon: FileText, count: copiesCount, desc: 'Conocimiento e informativas' },
-    { id: 'PERSONAL_ARCHIVE', label: 'Archivo del Cargo', icon: FolderCheck, count: personalArchiveCount, desc: 'En custodia del cargo' },
-    { id: 'ARCHIVED', label: 'Archivo Central', icon: Landmark, count: centralArchiveCount, desc: 'Custodia institucional del Club' },
-    { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: allCount, desc: 'Supervisión institucional' },
+    { id: 'INBOX', label: 'Bandeja de Entrada', icon: Inbox, count: inboxCount, pendingCount: inboxPendingReceptionCount, desc: 'En mi despacho / Pendientes' },
+    { id: 'OUTBOX', label: 'Bandeja de Salida', icon: SendIcon, count: outboxCount, pendingCount: outboxCount, desc: 'En tránsito / Por recepcionar' },
+    { id: 'COPIES', label: 'Copias C.C.', icon: FileText, count: copiesCount, pendingCount: 0, desc: 'Conocimiento e informativas' },
+    { id: 'PERSONAL_ARCHIVE', label: 'Archivo del Cargo', icon: FolderCheck, count: personalArchiveCount, pendingCount: 0, desc: 'En custodia del cargo' },
+    { id: 'ARCHIVED', label: 'Archivo Central', icon: Landmark, count: centralArchiveCount, pendingCount: 0, desc: 'Custodia institucional del Club' },
+    { id: 'ALL', label: 'Vista Global 360°', icon: Compass, count: allCount, pendingCount: 0, desc: 'Supervisión institucional' },
   ];
 
   // Regla CHLS: Solo Gerente General, Tecnología y Secretaría de Gerencia pueden visualizar la "Vista Global 360°"
@@ -429,18 +502,92 @@ export const CorrespondenceHub: React.FC = () => {
       return allMailboxTabs;
     }
     return allMailboxTabs.filter((tab) => tab.id !== 'ALL');
-  }, [canAccess360, inboxCount, outboxCount, copiesCount, personalArchiveCount, centralArchiveCount, allCount]);
+  }, [canAccess360, inboxCount, inboxPendingReceptionCount, outboxCount, copiesCount, personalArchiveCount, centralArchiveCount, allCount]);
 
-  // Client-side Filter by Active Mailbox
+  // Helper para verificar si un trámite pasó por el usuario o su despacho (generado, enviado/derivado, o en custodia)
+  const isItemInUserHistory = (i: RouteSheetItem) => {
+    return didUserParticipateInRouteSheet(i, currentUser, currentPerspective || userNode?.title);
+  };
+
+  // Helper para verificar si un trámite tiene una derivación pendiente que puede ser deshecha EXCLUSIVAMENTE por el usuario creador
+  const canUndoDerivation = (item: RouteSheetItem) => {
+    if (item.status === 'CONCLUIDO' || item.status === 'ANULADO') return false;
+    if (!item.movements || item.movements.length === 0) return false;
+    const latestMov = item.movements[item.movements.length - 1];
+    if (latestMov.receivedAt) return false; // Ya recepcionada formalmente en destino
+
+    const uId = currentUser?.id || (currentUser as any)?.userId;
+    const userEmail = currentUser?.email?.toLowerCase().trim();
+    const movSourceEmail = latestMov.sourceUser?.email?.toLowerCase().trim();
+
+    // REGLA ESTRICTA: Solo el usuario que emitió la derivación puede deshacerla
+    const isOwner = Boolean(
+      (uId && latestMov.sourceUserId === uId) ||
+      (userEmail && movSourceEmail && movSourceEmail === userEmail)
+    );
+
+    return isOwner;
+  };
+
+  const handleUndoDerivation = async (item: RouteSheetItem, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+    const dest = latestMov?.targetArea || 'el despacho de destino';
+    const source = latestMov?.sourceArea || 'su despacho';
+
+    const confirmMsg = `¿Está seguro de deshacer la derivación hacia ${dest}?\n\nEl expediente retornará inmediatamente a la custodia de ${source} y el proveído en tránsito será cancelado.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      await dispatch(undoRouteSheetDerivation(item.id)).unwrap();
+      dispatch(fetchCorrespondenceStats());
+      toast.success(`Derivación cancelada. El expediente ${item.hrCode} ha retornado a su custodia ↩️`);
+    } catch (err: any) {
+      toast.error(typeof err === 'string' ? err : 'Error al deshacer la derivación');
+    }
+  };
+
+  const isSearching = Boolean(searchQuery.trim());
+
+  // Client-side Filter by Active Mailbox or Global Search within user scope
   const filteredItems = items.filter((item) => {
-    // 1. Mailbox Filter (si no tiene acceso a 360 y activeMailbox es ALL, forzar comportamiento de INBOX)
+    // 0. Seguridad institucional: Si el usuario no tiene acceso a la Vista Global 360°,
+    // sólo puede acceder y encontrar trámites que pasaron por su usuario/despacho (generados, enviados, recibidos)
+    if (!canAccess360 && !isItemInUserHistory(item)) {
+      return false;
+    }
+
+    // Si el usuario escribe una búsqueda por texto:
+    // Permite encontrar las Hojas de Ruta que pasaron por su usuario (generadas, enviadas a otros despachos, o recibidas)
+    if (isSearching) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchCode = item.hrCode.toLowerCase().includes(q);
+      const matchRef = item.reference.toLowerCase().includes(q);
+      const matchSender = item.senderName.toLowerCase().includes(q);
+      const matchCite = item.cite?.toLowerCase().includes(q);
+      const matchArea = item.senderArea?.toLowerCase().includes(q) || item.currentArea?.toLowerCase().includes(q);
+      const matchArchive = item.archiveLocation?.toLowerCase().includes(q) || item.archiveBox?.toLowerCase().includes(q);
+      const matchMovements = item.movements?.some(
+        (m) =>
+          m.sourceArea?.toLowerCase().includes(q) ||
+          m.targetArea?.toLowerCase().includes(q) ||
+          (m.targetPersonName && m.targetPersonName.toLowerCase().includes(q)) ||
+          (m.instruction && m.instruction.toLowerCase().includes(q))
+      );
+
+      if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchArchive && !matchMovements) {
+        return false;
+      }
+      return true;
+    }
+
+    // 1. Mailbox Filter (cuando no hay búsqueda activa)
     if (activeMailbox === 'INBOX' || (!canAccess360 && activeMailbox === 'ALL')) {
-      if (!isSameArea(item.currentArea, currentPerspective) || item.status === 'CONCLUIDO' || item.status === 'ANULADO') {
+      if (!isItemInInbox(item)) {
         return false;
       }
     } else if (activeMailbox === 'OUTBOX') {
-      const hasSentFromMyArea = item.movements?.some((m) => isSameArea(m.sourceArea, currentPerspective));
-      if (!hasSentFromMyArea || isSameArea(item.currentArea, currentPerspective) || item.status === 'CONCLUIDO') {
+      if (!isItemInOutbox(item)) {
         return false;
       }
     } else if (activeMailbox === 'COPIES') {
@@ -470,19 +617,7 @@ export const CorrespondenceHub: React.FC = () => {
       }
     }
 
-    // 4. Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchCode = item.hrCode.toLowerCase().includes(q);
-      const matchRef = item.reference.toLowerCase().includes(q);
-      const matchSender = item.senderName.toLowerCase().includes(q);
-      const matchCite = item.cite?.toLowerCase().includes(q);
-      const matchArea = item.senderArea?.toLowerCase().includes(q) || item.currentArea?.toLowerCase().includes(q);
-      const matchArchive = item.archiveLocation?.toLowerCase().includes(q) || item.archiveBox?.toLowerCase().includes(q);
-      if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchArchive) return false;
-    }
-
-    // 5. Read / Opened Status Filter
+    // 4. Read / Opened Status Filter
     if (readFilter !== 'ALL') {
       const isRead = !!(readItemsMap[item.id] || readItemsMap[item.hrCode]);
       if (readFilter === 'UNREAD' && isRead) return false;
@@ -578,9 +713,41 @@ export const CorrespondenceHub: React.FC = () => {
                   CHLS 360°
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 dark:text-emerald-400/70">
-                Club Hípico Los Sargentos — Sistema Oficial de Custodia & Gestión Documental
-              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-xs text-slate-500 dark:text-emerald-400/70">
+                  Club Hípico Los Sargentos — Sistema Oficial de Custodia & Gestión Documental
+                </p>
+                {(inboxPendingReceptionCount > 0 || outboxCount > 0) && (
+                  <div className="flex items-center gap-2">
+                    {inboxPendingReceptionCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => dispatch(setActiveMailbox('INBOX'))}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 dark:bg-red-950/40 border border-red-500/40 text-red-600 dark:text-red-400 text-[11px] font-bold shadow-xs hover:bg-red-500/20 transition-all cursor-pointer"
+                        title="Ver trámites entrantes pendientes de recepcionar"
+                      >
+                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white font-mono font-black text-[10px] flex items-center justify-center shadow-[0_0_8px_rgba(239,68,68,0.85)] animate-pulse">
+                          {inboxPendingReceptionCount}
+                        </span>
+                        <span>Llegan por recepcionar</span>
+                      </button>
+                    )}
+                    {outboxCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => dispatch(setActiveMailbox('OUTBOX'))}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-500/10 dark:bg-red-950/40 border border-red-500/40 text-red-600 dark:text-red-400 text-[11px] font-bold shadow-xs hover:bg-red-500/20 transition-all cursor-pointer"
+                        title="Ver trámites salientes en tránsito pendientes de recepción en destino"
+                      >
+                        <span className="min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white font-mono font-black text-[10px] flex items-center justify-center shadow-[0_0_8px_rgba(239,68,68,0.85)] animate-pulse">
+                          {outboxCount}
+                        </span>
+                        <span>Salen por recepcionar</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -737,14 +904,24 @@ export const CorrespondenceHub: React.FC = () => {
               <span>Generar CITE</span>
             </button>
 
-            {/* Botón Principal: Esmeralda Radiante Institucional */}
-            <button
-              onClick={() => setIsNewModalOpen(true)}
-              className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-4 sm:px-5 py-2 rounded-xl shadow-lg shadow-emerald-950/40 border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-95 text-xs sm:text-sm cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-white stroke-[2.5]" />
-              <span>Nueva Hoja de Ruta</span>
-            </button>
+            {/* Botón Principal: Esmeralda Radiante Institucional (Exclusivo Gerencia y Secretaría de Gerencia) */}
+            {canCreateRouteSheet ? (
+              <button
+                onClick={() => setIsNewModalOpen(true)}
+                className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-4 sm:px-5 py-2 rounded-xl shadow-lg shadow-emerald-950/40 border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-95 text-xs sm:text-sm cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-white stroke-[2.5]" />
+                <span>Nueva Hoja de Ruta</span>
+              </button>
+            ) : (
+              <div
+                title="Por normativa institucional CHLS, la creación y radicación oficial de Hojas de Ruta está reservada para Gerencia General y Secretaría de Gerencia."
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/60 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700/50 text-xs font-semibold select-none cursor-not-allowed"
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                <span className="hidden sm:inline">Radicación Exclusiva Gerencia</span>
+              </div>
+            )}
 
             {/* Chat Interno situado al extremo derecho */}
             <button
@@ -930,8 +1107,18 @@ export const CorrespondenceHub: React.FC = () => {
                   lang="es-BO"
                   autoCorrect="on"
                   autoCapitalize="sentences"
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#06110D] border border-slate-200 dark:border-emerald-800/40 rounded-xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-400 dark:placeholder-emerald-400/40 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition-all font-medium"
+                  className="w-full pl-10 pr-9 py-2.5 bg-slate-50 dark:bg-[#06110D] border border-slate-200 dark:border-emerald-800/40 rounded-xl text-xs sm:text-sm text-slate-950 dark:text-white placeholder-slate-400 dark:placeholder-emerald-400/40 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 outline-none transition-all font-medium"
                 />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => dispatch(setSearchQuery(''))}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded cursor-pointer"
+                    title="Limpiar búsqueda"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
               </div>
               <button
                 type="button"
@@ -948,12 +1135,25 @@ export const CorrespondenceHub: React.FC = () => {
             </div>
 
             <div className="text-right hidden md:block">
-              <span className="text-xs font-medium text-slate-500 dark:text-emerald-300/70 block">
-                Mostrando <strong className="text-slate-900 dark:text-emerald-400 font-mono font-bold">{filteredItems.length}</strong> trámites en
-              </span>
-              <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
-                {MAILBOX_TABS.find((t) => t.id === activeMailbox)?.label || 'Bandeja de Entrada'}
-              </span>
+              {isSearching ? (
+                <>
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 block">
+                    Resultados de búsqueda: <strong className="text-slate-900 dark:text-white font-mono font-bold">{filteredItems.length}</strong> encontrados
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {canAccess360 ? 'En toda la institución (Supervisión 360°)' : 'Trámites de su despacho (generados, enviados y recibidos)'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs font-medium text-slate-500 dark:text-emerald-300/70 block">
+                    Mostrando <strong className="text-slate-900 dark:text-emerald-400 font-mono font-bold">{filteredItems.length}</strong> trámites en
+                  </span>
+                  <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
+                    {MAILBOX_TABS.find((t) => t.id === activeMailbox)?.label || 'Bandeja de Entrada'}
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -962,6 +1162,9 @@ export const CorrespondenceHub: React.FC = () => {
             {MAILBOX_TABS.map((tab) => {
               const isActive = activeMailbox === tab.id;
               const Icon = tab.icon;
+              const hasRedWhatsAppBadge = (tab as any).pendingCount > 0;
+              const pendingBadgeCount = (tab as any).pendingCount;
+
               return (
                 <button
                   key={tab.id}
@@ -976,25 +1179,64 @@ export const CorrespondenceHub: React.FC = () => {
                     <div className={`p-1.5 rounded-lg ${isActive ? 'bg-emerald-500/25 text-emerald-300' : 'bg-slate-200/60 dark:bg-[#0B1E17] text-slate-600 dark:text-emerald-400'}`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
-                    <span
-                      className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md ${
-                        isActive
-                          ? 'bg-emerald-400 text-slate-950 shadow-xs'
-                          : tab.count > 0
-                          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
-                          : 'bg-slate-100 dark:bg-[#06110D] text-slate-400 dark:text-slate-600'
-                      }`}
-                    >
-                      {tab.count}
-                    </span>
+
+                    {hasRedWhatsAppBadge ? (
+                      <div className="flex items-center gap-1.5">
+                        {tab.id === 'INBOX' && tab.count > pendingBadgeCount && (
+                          <span
+                            className="font-mono text-xs font-semibold text-slate-400 dark:text-slate-500"
+                            title={`Total de expedientes en bandeja: ${tab.count}`}
+                          >
+                            {tab.count}
+                          </span>
+                        )}
+                        <span
+                          className="min-w-[22px] h-[22px] px-1.5 rounded-full bg-red-600 text-white font-mono font-black text-xs flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.9)] ring-2 ring-white dark:ring-[#07130E] animate-pulse"
+                          title={
+                            tab.id === 'INBOX'
+                              ? `${pendingBadgeCount} expedientes entrantes pendientes de recepcionar en su despacho`
+                              : `${pendingBadgeCount} expedientes salientes en tránsito pendientes de recepción en destino`
+                          }
+                        >
+                          {pendingBadgeCount}
+                        </span>
+                      </div>
+                    ) : (
+                      <span
+                        className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md ${
+                          isActive
+                            ? 'bg-emerald-400 text-slate-950 shadow-xs'
+                            : tab.count > 0
+                            ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/30'
+                            : 'bg-slate-100 dark:bg-[#06110D] text-slate-400 dark:text-slate-600'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
                   </div>
 
                   <div>
-                    <span className="font-bold text-xs sm:text-sm block truncate">
-                      {tab.label}
-                    </span>
-                    <span className={`text-[10px] block truncate font-medium ${isActive ? 'text-emerald-200' : 'text-slate-400 dark:text-slate-500'}`}>
-                      {tab.desc}
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-bold text-xs sm:text-sm block truncate">
+                        {tab.label}
+                      </span>
+                      {hasRedWhatsAppBadge && (
+                        <span className="w-2 h-2 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.9)] animate-ping shrink-0" />
+                      )}
+                    </div>
+                    <span className={`text-[10px] block truncate font-medium ${
+                      hasRedWhatsAppBadge
+                        ? 'text-red-600 dark:text-red-400 font-bold'
+                        : isActive
+                        ? 'text-emerald-200'
+                        : 'text-slate-400 dark:text-slate-500'
+                    }`}>
+                      {tab.id === 'INBOX' && pendingBadgeCount > 0
+                        ? `⚠️ ${pendingBadgeCount} por recepcionar`
+                        : tab.id === 'OUTBOX' && pendingBadgeCount > 0
+                        ? `⏳ ${pendingBadgeCount} en tránsito por recibir`
+                        : tab.desc}
                     </span>
                   </div>
                 </button>
@@ -1171,13 +1413,15 @@ export const CorrespondenceHub: React.FC = () => {
                 No hay trámites en custodia o registro que coincidan con los criterios actuales.
               </p>
             </div>
-            <button
-              onClick={() => setIsNewModalOpen(true)}
-              className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg shadow-emerald-950/40 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ Radicar nueva Hoja de Ruta</span>
-            </button>
+            {canCreateRouteSheet && (
+              <button
+                onClick={() => setIsNewModalOpen(true)}
+                className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white px-6 py-3 rounded-2xl shadow-lg shadow-emerald-950/40 transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Radicar nueva Hoja de Ruta</span>
+              </button>
+            )}
           </div>
         ) : viewMode === 'TABLE' ? (
           /* TABLA OFICIAL EN FILAS Y COLUMNAS ORDENADA POR LLEGADA */
@@ -1283,6 +1527,14 @@ export const CorrespondenceHub: React.FC = () => {
                             <span className="font-mono font-bold text-xs text-emerald-900 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-950/50 px-2.5 py-1 rounded-lg border border-emerald-500/30 tracking-wider">
                               {item.hrCode}
                             </span>
+                            {/* Globo WhatsApp si el expediente está pendiente de recepción (entrante o saliente) */}
+                            {((isSameArea(item.currentArea, currentPerspective) && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO') ||
+                              (activeMailbox === 'OUTBOX' && !item.movements?.[item.movements.length - 1]?.receivedAt)) && (
+                              <span
+                                className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_rgba(239,68,68,0.95)] ring-2 ring-white dark:ring-[#07130E] animate-pulse shrink-0"
+                                title={activeMailbox === 'OUTBOX' ? 'En tránsito: Aún no recepcionado en destino' : 'Pendiente de recepción en su despacho'}
+                              />
+                            )}
                             {item.priority === 'URGENTE' && (
                               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Prioridad Urgente" />
                             )}
@@ -1365,6 +1617,41 @@ export const CorrespondenceHub: React.FC = () => {
                             <span className={`inline-block text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${getStatusBadge(item.status)}`}>
                               {item.status}
                             </span>
+                            {/* Si estamos en Bandeja de Salida, mostrar estado de recepción en destino en globo rojo WhatsApp */}
+                            {activeMailbox === 'OUTBOX' && (() => {
+                              const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+                              const isReceived = Boolean(latestMov?.receivedAt);
+                              return (
+                                <div>
+                                  {!isReceived ? (
+                                    <span
+                                      className="inline-flex items-center gap-1.5 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
+                                      title={`En tránsito: Aún no recepcionado por ${latestMov?.targetArea || item.currentArea}`}
+                                    >
+                                      <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                      <span>POR RECEPCIONAR</span>
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30" title={`Recepcionado por ${latestMov?.targetArea || item.currentArea} el ${new Date(latestMov!.receivedAt!).toLocaleDateString('es-BO')}`}>
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                                      <span>Recepcionado</span>
+                                    </span>
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            {/* Si estamos en Bandeja de Entrada y está pendiente de recepción en el despacho */}
+                            {activeMailbox === 'INBOX' && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO' && (
+                              <div>
+                                <span
+                                  className="inline-flex items-center gap-1.5 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
+                                  title="Expediente entrante pendiente de recepción formal en su despacho"
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                  <span>POR RECEPCIONAR</span>
+                                </span>
+                              </div>
+                            )}
                             <div>
                               {getSlaBadge(item)}
                             </div>
@@ -1374,6 +1661,40 @@ export const CorrespondenceHub: React.FC = () => {
                         {/* 9. Acciones Rápidas */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
+                            {/* Botón directo de Recepción si está derivado a mi despacho y pendiente de recibir */}
+                            {isSameArea(item.currentArea, currentPerspective) && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO' && (
+                              <button
+                                type="button"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  try {
+                                    await dispatch(receiveRouteSheet(item.id)).unwrap();
+                                    toast.success(`Trámite ${item.hrCode} recepcionado en ${currentPerspective} 📥`);
+                                  } catch (err: any) {
+                                    toast.error(typeof err === 'string' ? err : 'Error al recepcionar el trámite');
+                                  }
+                                }}
+                                title={`Recepcionar oficialmente en ${currentPerspective}`}
+                                className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                              >
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span className="hidden xl:inline">Recepcionar</span>
+                              </button>
+                            )}
+
+                            {/* Botón directo de Deshacer Derivación si fue emitida por mi despacho y aún NO ha sido recepcionada en destino */}
+                            {canUndoDerivation(item) && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleUndoDerivation(item, e)}
+                                title={`Deshacer derivación a ${item.currentArea}. El trámite retornará a la custodia de su despacho`}
+                                className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                              >
+                                <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                                <span className="hidden xl:inline">Deshacer</span>
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               onClick={() => handleOpenItemDetail(item)}
@@ -1482,6 +1803,14 @@ export const CorrespondenceHub: React.FC = () => {
                         <span className="font-mono text-xs font-semibold text-slate-900 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 tracking-wider">
                           {item.hrCode}
                         </span>
+                        {/* Globo WhatsApp si el expediente está pendiente de recepción (entrante o saliente) */}
+                        {((isSameArea(item.currentArea, currentPerspective) && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO') ||
+                          (activeMailbox === 'OUTBOX' && !item.movements?.[item.movements.length - 1]?.receivedAt)) && (
+                          <span
+                            className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_rgba(239,68,68,0.95)] ring-2 ring-white dark:ring-[#07130E] animate-pulse shrink-0"
+                            title={activeMailbox === 'OUTBOX' ? 'En tránsito: Aún no recepcionado en destino' : 'Pendiente de recepción en su despacho'}
+                          />
+                        )}
                         {!isRead && (
                           <span className="w-2 h-2 rounded-full bg-sky-500" title="Sin Abrir" />
                         )}
@@ -1491,9 +1820,36 @@ export const CorrespondenceHub: React.FC = () => {
                       </span>
                     </div>
 
-                    {/* SLA Indicator */}
-                    <div>
-                      {getSlaBadge(item)}
+                    {/* SLA Indicator & Reception Status */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div>{getSlaBadge(item)}</div>
+                      {activeMailbox === 'OUTBOX' && (() => {
+                        const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+                        const isReceived = Boolean(latestMov?.receivedAt);
+                        return !isReceived ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
+                            title={`En tránsito: Aún no recepcionado por ${latestMov?.targetArea || item.currentArea}`}
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                            <span>Por Recepcionar</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-1.5 py-0.5 rounded border border-emerald-500/30" title={`Recepcionado por ${latestMov?.targetArea || item.currentArea} el ${new Date(latestMov!.receivedAt!).toLocaleDateString('es-BO')}`}>
+                            <CheckCircle2 className="w-2.5 h-2.5 text-emerald-500" />
+                            <span>Recepcionado</span>
+                          </span>
+                        );
+                      })()}
+                      {activeMailbox === 'INBOX' && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO' && (
+                        <span
+                          className="inline-flex items-center gap-1 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
+                          title="Expediente entrante pendiente de recepción formal en su despacho"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          <span>Por Recepcionar</span>
+                        </span>
+                      )}
                     </div>
 
                     {/* Reference / Asunto */}
@@ -1563,6 +1919,40 @@ export const CorrespondenceHub: React.FC = () => {
                     </button>
 
                     <div className="flex items-center gap-1">
+                      {/* Botón directo de Recepción en Tarjeta */}
+                      {isSameArea(item.currentArea, currentPerspective) && (item.status === 'DERIVADO' || !item.movements?.[item.movements.length - 1]?.receivedAt) && item.status !== 'CONCLUIDO' && (
+                        <button
+                          type="button"
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            try {
+                              await dispatch(receiveRouteSheet(item.id)).unwrap();
+                              toast.success(`Trámite ${item.hrCode} recepcionado en ${currentPerspective} 📥`);
+                            } catch (err: any) {
+                              toast.error(typeof err === 'string' ? err : 'Error al recepcionar el trámite');
+                            }
+                          }}
+                          title={`Recepcionar oficialmente en ${currentPerspective}`}
+                          className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                        >
+                          <CheckCircle2 className="w-3 h-3" />
+                          <span>Recepcionar</span>
+                        </button>
+                      )}
+
+                      {/* Botón directo de Deshacer Derivación en Tarjeta */}
+                      {canUndoDerivation(item) && (
+                        <button
+                          type="button"
+                          onClick={(e) => handleUndoDerivation(item, e)}
+                          title={`Deshacer derivación a ${item.currentArea}. El trámite retornará a la custodia de su despacho`}
+                          className="px-2 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3 text-amber-600 dark:text-amber-400" />
+                          <span>Deshacer</span>
+                        </button>
+                      )}
+
                       {/* Botón de Adjuntos en Tarjeta */}
                       {(() => {
                         const movDocs = (item.movements || []).flatMap((m) => m.documents || []);
@@ -1686,7 +2076,7 @@ export const CorrespondenceHub: React.FC = () => {
             setIsLocatorModalOpen(false);
             setLocatorInitialArea(undefined);
           }}
-          items={items}
+          items={canAccess360 ? items : items.filter(isItemInUserHistory)}
           workflow={workflow}
           initialArea={locatorInitialArea}
           onSelectItem={(item) => {

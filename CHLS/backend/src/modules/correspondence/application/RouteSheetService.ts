@@ -281,7 +281,7 @@ export class RouteSheetService {
             routeSheetId: created.id,
             sequenceNumber: 1,
             sourceUserId: createdById,
-            sourceArea: 'SECRETARIA_GENERAL',
+            sourceArea: (data as any).sourceArea?.trim() || data.senderArea?.trim() || 'GERENCIA GENERAL',
             targetArea: targetArea,
             targetPersonName: data.initialTargetPerson?.trim() || null,
             instruction: fullInstruction,
@@ -293,20 +293,36 @@ export class RouteSheetService {
       return created;
     });
 
-    // Notificar en tiempo real
+    const fullCreated = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheet.id },
+      include: {
+        person: true,
+        createdBy: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        movements: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: {
+            sourceUser: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+            documents: true,
+          },
+        },
+        documents: true,
+      },
+    });
+
+    const enriched = this.enrichRouteSheet(fullCreated || routeSheet);
+
+    // Notificar en tiempo real con objeto completo para sincronizar bandejas de entrada y salida
     try {
-      socketService.getIo()?.emit('correspondence:created', {
-        id: routeSheet.id,
-        hrCode: routeSheet.hrCode,
-        reference: routeSheet.reference,
-        status: routeSheet.status,
-        senderName: routeSheet.senderName,
-      });
+      socketService.getIo()?.emit('correspondence:created', enriched);
     } catch (err) {
       logger.warn('Socket emission failed for correspondence:created', err);
     }
 
-    return routeSheet;
+    return enriched;
   }
 
   /**
@@ -321,6 +337,7 @@ export class RouteSheetService {
     year?: number;
     mailbox?: 'INBOX' | 'OUTBOX' | 'COPIES' | 'ARCHIVED' | 'ALL' | string;
     userArea?: string;
+    userAreaAliases?: string[];
     userId?: string;
     userName?: string;
     limit?: number;
@@ -335,6 +352,7 @@ export class RouteSheetService {
       year,
       mailbox = 'ALL',
       userArea,
+      userAreaAliases = [],
       userId,
       userName,
       limit = 50,
@@ -342,6 +360,56 @@ export class RouteSheetService {
     } = params;
 
     const where: any = {};
+
+    // Expansión inteligente de términos de área institucional
+    const rawAreaTerms = Array.from(new Set([userArea, ...userAreaAliases].filter(Boolean) as string[])).filter(
+      (t) => t !== 'ALL' && t.trim().length > 0
+    );
+
+    const areaTerms = new Set<string>();
+    for (const term of rawAreaTerms) {
+      areaTerms.add(term);
+      const up = term.toUpperCase();
+      if (up.includes('MANTEN') || up.includes('GONZALES')) {
+        areaTerms.add('MANTENIMIENTO');
+        areaTerms.add('JEFE DE MANTENIMIENTO');
+      }
+      if (up.includes('CONTRAT') || up.includes('COMPRA')) {
+        areaTerms.add('CONTRATACIONES');
+        areaTerms.add('RESPONSABLE DE CONTRATACIONES');
+        areaTerms.add('COMPRAS');
+      }
+      if (up.includes('SECRETAR')) {
+        areaTerms.add('SECRETARÍA');
+        areaTerms.add('SECRETARIA GENERAL');
+      }
+      if (up.includes('GEREN')) {
+        areaTerms.add('GERENCIA GENERAL');
+        areaTerms.add('GERENCIA');
+      }
+      if (up.includes('FINAN') || up.includes('OPERACIONES FINANCIERAS')) {
+        areaTerms.add('SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS');
+        areaTerms.add('FINANZAS');
+      }
+      if (up.includes('RRHH') || up.includes('RECURSOS HUMANOS')) {
+        areaTerms.add('RECURSOS HUMANOS');
+        areaTerms.add('RRHH');
+      }
+      if (up.includes('ALMAC')) {
+        areaTerms.add('ALMACÉN');
+        areaTerms.add('ALMACEN');
+      }
+      if (up.includes('CONTA')) {
+        areaTerms.add('CONTABILIDAD');
+        areaTerms.add('ENCARGADO DE CONTABILIDAD');
+      }
+      if (up.includes('SISTEM') || up.includes('TECNOL')) {
+        areaTerms.add('SISTEMAS');
+        areaTerms.add('ENCARGADO DE SISTEMAS');
+        areaTerms.add('TECNOLOGIA');
+      }
+    }
+    const finalAreaTerms = Array.from(areaTerms);
 
     // Filtro por Gestión / Año
     if (year && Number(year) > 0) {
@@ -351,30 +419,59 @@ export class RouteSheetService {
     // 1. Filtrado por Bandeja Oficial (Custodia y Flujo)
     if (mailbox === 'INBOX') {
       // Trámites actualmente en custodia del área del usuario (no concluidos/archivados)
-      if (userArea && userArea !== 'ALL') {
-        where.currentArea = userArea;
+      if (finalAreaTerms.length > 0 || userName) {
+        const inboxConditions: any[] = [];
+        for (const term of finalAreaTerms) {
+          inboxConditions.push({ currentArea: { contains: term, mode: 'insensitive' } });
+        }
+        if (userName && userName.trim().length > 2) {
+          inboxConditions.push({ movements: { some: { targetPersonName: { contains: userName, mode: 'insensitive' } } } });
+        }
+        if (userId) {
+          inboxConditions.push({ currentAssigneeId: userId });
+        }
+        if (inboxConditions.length > 0) {
+          where.OR = inboxConditions;
+        }
       }
       where.status = { notIn: ['CONCLUIDO', 'ANULADO'] };
     } else if (mailbox === 'OUTBOX') {
-      // Trámites que este usuario o área derivó a otros y están en tránsito
+      // Trámites que este usuario o área derivó a otros y están EN TRÁNSITO (pendientes de recepción en destino)
+      where.status = 'DERIVADO';
       const outboxConditions: any[] = [];
       if (userId) {
-        outboxConditions.push({ createdById: userId });
-        outboxConditions.push({ movements: { some: { sourceUserId: userId } } });
+        outboxConditions.push({
+          movements: {
+            some: {
+              sourceUserId: userId,
+              receivedAt: null,
+            },
+          },
+        });
       }
-      if (userArea && userArea !== 'ALL') {
-        outboxConditions.push({ movements: { some: { sourceArea: userArea } } });
+      if (finalAreaTerms.length > 0) {
+        for (const term of finalAreaTerms) {
+          outboxConditions.push({
+            movements: {
+              some: {
+                sourceArea: { contains: term, mode: 'insensitive' },
+                receivedAt: null,
+              },
+            },
+          });
+        }
       }
       if (outboxConditions.length > 0) {
         where.OR = outboxConditions;
       }
-      if (userArea && userArea !== 'ALL') {
-        where.currentArea = { not: userArea };
+      if (finalAreaTerms.length > 0) {
+        where.AND = finalAreaTerms.map((term) => ({
+          currentArea: { not: { contains: term, mode: 'insensitive' } },
+        }));
       }
-      where.status = { notIn: ['CONCLUIDO', 'ANULADO'] };
     } else if (mailbox === 'COPIES') {
       // Trámites donde el área o funcionario fue incluido con Copia C.C.
-      const searchTerms = [userArea, userName].filter(Boolean) as string[];
+      const searchTerms = [...finalAreaTerms, userName].filter(Boolean) as string[];
       if (searchTerms.length > 0) {
         where.movements = {
           some: {
@@ -392,38 +489,37 @@ export class RouteSheetService {
       // 4. Su archivo personal (archivados por su usuario o su despacho)
       // 5. Archivo Central Institucional (concluidos/archivados institucionales disponibles para consulta)
       const userScopeConditions: any[] = [];
-      if (userArea && userArea !== 'ALL') {
-        userScopeConditions.push({ currentArea: userArea });
-        userScopeConditions.push({ senderArea: userArea });
-        userScopeConditions.push({ movements: { some: { sourceArea: userArea } } });
-        userScopeConditions.push({ movements: { some: { targetArea: userArea } } });
-        userScopeConditions.push({ movements: { some: { targetPersonName: { contains: userArea, mode: 'insensitive' } } } });
-        userScopeConditions.push({ movements: { some: { instruction: { contains: userArea, mode: 'insensitive' } } } });
+
+      // A. Áreas asociadas
+      for (const term of finalAreaTerms) {
+        userScopeConditions.push({ currentArea: { contains: term, mode: 'insensitive' } });
+        userScopeConditions.push({ senderArea: { contains: term, mode: 'insensitive' } });
+        userScopeConditions.push({ movements: { some: { sourceArea: { contains: term, mode: 'insensitive' } } } });
+        userScopeConditions.push({ movements: { some: { targetArea: { contains: term, mode: 'insensitive' } } } });
+        userScopeConditions.push({ movements: { some: { targetPersonName: { contains: term, mode: 'insensitive' } } } });
+        userScopeConditions.push({ movements: { some: { instruction: { contains: term, mode: 'insensitive' } } } });
       }
+
+      // B. Persona / Funcionario por nombre
+      if (userName && userName.trim().length > 2) {
+        userScopeConditions.push({ movements: { some: { targetPersonName: { contains: userName, mode: 'insensitive' } } } });
+        const nameParts = userName.split(' ').filter((p) => p.length >= 3);
+        if (nameParts.length >= 2) {
+          userScopeConditions.push({
+            movements: {
+              some: { targetPersonName: { contains: `${nameParts[0]} ${nameParts[1]}`, mode: 'insensitive' } },
+            },
+          });
+        }
+      }
+
+      // C. Identificadores de usuario directo (generado, archivado, asignado o derivado/enviado)
       if (userId) {
         userScopeConditions.push({ createdById: userId });
         userScopeConditions.push({ archivedById: userId });
         userScopeConditions.push({ currentAssigneeId: userId });
         userScopeConditions.push({ movements: { some: { sourceUserId: userId } } });
       }
-      // Archivo Central Institucional (para consulta de todos los departamentos)
-      userScopeConditions.push({
-        AND: [
-          {
-            OR: [
-              { status: 'CONCLUIDO' },
-              { status: 'ANULADO' },
-              { currentArea: 'ARCHIVO_CENTRAL' },
-            ],
-          },
-          { currentArea: { not: 'ARCHIVO_PERSONAL' } },
-          {
-            NOT: {
-              archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' },
-            },
-          },
-        ],
-      });
 
       where.OR = userScopeConditions;
     } else if (mailbox === 'PERSONAL_ARCHIVE') {
@@ -484,14 +580,27 @@ export class RouteSheetService {
 
     if (search && search.trim()) {
       const q = search.trim();
-      const searchConditions = [
+      const searchConditions: any[] = [
         { hrCode: { contains: q, mode: 'insensitive' } },
         { reference: { contains: q, mode: 'insensitive' } },
         { senderName: { contains: q, mode: 'insensitive' } },
         { cite: { contains: q, mode: 'insensitive' } },
         { senderArea: { contains: q, mode: 'insensitive' } },
+        { currentArea: { contains: q, mode: 'insensitive' } },
         { archiveLocation: { contains: q, mode: 'insensitive' } },
         { archiveBox: { contains: q, mode: 'insensitive' } },
+        {
+          movements: {
+            some: {
+              OR: [
+                { sourceArea: { contains: q, mode: 'insensitive' } },
+                { targetArea: { contains: q, mode: 'insensitive' } },
+                { targetPersonName: { contains: q, mode: 'insensitive' } },
+                { instruction: { contains: q, mode: 'insensitive' } },
+              ],
+            },
+          },
+        },
       ];
 
       if (where.OR) {
@@ -807,17 +916,194 @@ export class RouteSheetService {
     const enrichedRouteSheet = this.enrichRouteSheet(result.routeSheet);
 
     try {
-      socketService.getIo()?.emit('correspondence:updated', {
-        id: routeSheetId,
-        hrCode: routeSheet.hrCode,
-        status: updatedStatus,
-        currentArea: data.targetArea,
-      });
+      socketService.getIo()?.emit('correspondence:updated', enrichedRouteSheet);
     } catch (err) {
       logger.warn('Socket emit error on correspondence:updated', err);
     }
 
     return { movement: result.movement, routeSheet: enrichedRouteSheet };
+  }
+
+  /**
+   * Recepcionar formalmente una derivación de Hoja de Ruta en el despacho de destino
+   */
+  public async receive(routeSheetId: string, userId: string) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheetId },
+      include: {
+        movements: {
+          orderBy: { sequenceNumber: 'desc' },
+          take: 1,
+        },
+      },
+    });
+
+    if (!routeSheet) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    const latestMovement = routeSheet.movements[0];
+    const now = new Date();
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Si existe un movimiento previo sin fecha de recepción, estampar la fecha/hora de recepción formal
+      if (latestMovement && !latestMovement.receivedAt) {
+        await tx.hrMovement.update({
+          where: { id: latestMovement.id },
+          data: { receivedAt: now },
+        });
+      }
+
+      // 2. Actualizar estado general de la Hoja de Ruta a RECIBIDO
+      return tx.routeSheet.update({
+        where: { id: routeSheetId },
+        data: {
+          status: 'RECIBIDO',
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: {
+            orderBy: { sequenceNumber: 'asc' },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
+          },
+          documents: true,
+        },
+      });
+    });
+
+    const enrichedRouteSheet = this.enrichRouteSheet(updated);
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', enrichedRouteSheet);
+    } catch (err) {
+      logger.warn('Socket emit error on correspondence:updated (receive)', err);
+    }
+
+    return enrichedRouteSheet;
+  }
+
+  /**
+   * Deshacer una derivación de Hoja de Ruta emitida
+   * Regla de negocio: Solo es permitido si el despacho de destino AÚN NO ha recepcionado el trámite (receivedAt === null).
+   * Al deshacer, se elimina el último proveído y la custodia retorna al despacho remitente en estado RECIBIDO.
+   */
+  public async undoDerivation(
+    routeSheetId: string,
+    userId: string,
+    userArea?: string,
+    isSuperAdmin: boolean = false,
+    userEmail?: string
+  ) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheetId },
+      include: {
+        movements: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: { sourceUser: true, documents: true },
+        },
+      },
+    });
+
+    if (!routeSheet) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    if (routeSheet.status === 'CONCLUIDO' || routeSheet.status === 'ANULADO') {
+      throw new Error('No es posible deshacer la derivación de un trámite concluido o archivado.');
+    }
+
+    if (!routeSheet.movements || routeSheet.movements.length === 0) {
+      throw new Error('El expediente no cuenta con movimientos o derivaciones registradas para deshacer.');
+    }
+
+    const latestMovement = routeSheet.movements[routeSheet.movements.length - 1];
+
+    // REGLA CRUCIAL 1: Solo se puede deshacer si el destinatario NO ha recepcionado formalmente
+    if (latestMovement.receivedAt) {
+      const formattedDate = new Date(latestMovement.receivedAt).toLocaleDateString('es-BO', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      throw new Error(
+        `No es posible deshacer la derivación: El despacho de destino (${latestMovement.targetArea}) ya recepcionó formalmente este expediente el ${formattedDate}.`
+      );
+    }
+
+    // REGLA CRUCIAL 2: Solo el usuario que creó la derivación puede deshacerla
+    const clean = (s?: string | null) => (s || '').trim().toLowerCase();
+    const isOwner = Boolean(
+      (userId && latestMovement.sourceUserId === userId) ||
+      (userEmail && latestMovement.sourceUser?.email && clean(latestMovement.sourceUser.email) === clean(userEmail))
+    );
+
+    if (!isOwner) {
+      const creatorName = latestMovement.sourceUser
+        ? `${latestMovement.sourceUser.firstName || ''} ${latestMovement.sourceUser.lastName || ''}`.trim() || latestMovement.sourceUser.email
+        : 'el funcionario que emitió la derivación';
+      throw new Error(
+        `No tiene autorización para deshacer esta derivación. Únicamente el usuario que creó la derivación (${creatorName}) tiene la potestad de deshacerla.`
+      );
+    }
+
+    // Despacho al que debe retornar la custodia: El área de origen de este proveído
+    const revertedArea = latestMovement.sourceArea || routeSheet.senderArea || 'GERENCIA GENERAL';
+    const revertedStatus = 'RECIBIDO';
+    const prevMovement = routeSheet.movements.length > 1 ? routeSheet.movements[routeSheet.movements.length - 2] : null;
+    const revertedAssigneeId = latestMovement.sourceUserId || userId || (prevMovement ? prevMovement.sourceUserId : routeSheet.createdById);
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      // 1. Eliminar documentos adjuntos registrados específicamente en esta última derivación
+      await tx.corrDocument.deleteMany({
+        where: { movementId: latestMovement.id },
+      });
+
+      // 2. Eliminar el último proveído / movimiento
+      await tx.hrMovement.delete({
+        where: { id: latestMovement.id },
+      });
+
+      // 3. Actualizar la Hoja de Ruta retornando la custodia al despacho remitente
+      return tx.routeSheet.update({
+        where: { id: routeSheetId },
+        data: {
+          currentArea: revertedArea,
+          status: revertedStatus,
+          currentAssigneeId: revertedAssigneeId,
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: {
+            orderBy: { sequenceNumber: 'asc' },
+            include: {
+              sourceUser: true,
+              documents: true,
+            },
+          },
+          documents: true,
+        },
+      });
+    });
+
+    const enrichedRouteSheet = this.enrichRouteSheet(updated);
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', enrichedRouteSheet);
+    } catch (err) {
+      logger.warn('Socket emit error on correspondence:updated (undoDerivation)', err);
+    }
+
+    return {
+      message: `Derivación cancelada exitosamente. El expediente ${enrichedRouteSheet.hrCode} ha retornado a la custodia de ${revertedArea}.`,
+      routeSheet: enrichedRouteSheet,
+    };
   }
 
   /**
@@ -847,11 +1133,7 @@ export class RouteSheetService {
     const enriched = this.enrichRouteSheet(updated);
 
     try {
-      socketService.getIo()?.emit('correspondence:updated', {
-        id: routeSheetId,
-        hrCode: updated.hrCode,
-        status: updated.status,
-      });
+      socketService.getIo()?.emit('correspondence:updated', enriched);
     } catch (err) {
       logger.warn('Socket emit error on correspondence:updated', err);
     }

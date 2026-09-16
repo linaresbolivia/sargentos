@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { addMovement, uploadRouteSheetDocuments, fetchRouteSheetById, fetchRouteSheets } from '@store/correspondenceSlice';
+import { addMovement, uploadRouteSheetDocuments, fetchRouteSheetById, fetchRouteSheets, fetchWorkflowSettings } from '@store/correspondenceSlice';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 import {
   X,
@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Lock,
+  GitBranch,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RouteSheetItem } from '../types/correspondence.types';
@@ -109,8 +110,12 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     return getOrganigramDestinations(item.currentArea, workflow);
   }, [item.currentArea, workflow]);
 
+  const { upwardNodes = [], downwardNodes = [], lateralNodes = [], recommendedNodes = [] } = organigramInfo;
+  const hasConnectedDestinations = recommendedNodes.length > 0;
+
   const [targetArea, setTargetArea] = useState<string>('');
   const [targetPersonName, setTargetPersonName] = useState<string>('');
+  const [allowExtraordinaryDerivation, setAllowExtraordinaryDerivation] = useState(false);
   const [selectedCcAreas, setSelectedCcAreas] = useState<string[]>([]);
   const [ccPersonsText, setCcPersonsText] = useState('');
   const [quickStamp, setQuickStamp] = useState<string>('');
@@ -125,6 +130,14 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   const [isCcDropdownOpen, setIsCcDropdownOpen] = useState(false);
   const ccDropdownRef = useRef<HTMLDivElement>(null);
   const [searchDestinationTerm, setSearchDestinationTerm] = useState('');
+
+  // Sincronizar siempre con los ajustes y flujo guardado más reciente del Organigrama al abrir el modal
+  useEffect(() => {
+    if (isOpen) {
+      dispatch(fetchWorkflowSettings());
+      setQuickStamp('');
+    }
+  }, [isOpen, dispatch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -146,34 +159,70 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     });
   }, [allAvailableAreas, targetArea, selectedCcAreas, searchCcTerm]);
 
-  // Resuelve y autocompleta el responsable / titular del despacho o cargo seleccionado
+  // Resuelve y autocompleta el responsable / titular del despacho o cargo seleccionado respetando el Organigrama Oficial
   const getResponsibleForCargo = (cargoOrArea: string): string => {
     if (!cargoOrArea) return '';
     const activeNodes = workflow?.nodes && workflow.nodes.length > 0 ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
 
-    const matchedNode = activeNodes.find(
+    // 1. Coincidencia exacta primero por title, areaKey, o id
+    const exactNode = activeNodes.find(
       (n) =>
-        (n.title && n.title.toUpperCase() === cargoOrArea.toUpperCase()) ||
-        (n.areaKey && n.areaKey.toUpperCase() === cargoOrArea.toUpperCase()) ||
-        n.id === cargoOrArea ||
-        isSameArea(n.title, cargoOrArea) ||
-        isSameArea(n.areaKey, cargoOrArea)
+        (n.title && n.title.toUpperCase().trim() === cargoOrArea.toUpperCase().trim()) ||
+        (n.areaKey && n.areaKey.toUpperCase().trim() === cargoOrArea.toUpperCase().trim()) ||
+        n.id === cargoOrArea
     );
-
-    if (matchedNode?.manager && matchedNode.manager.trim()) {
-      return matchedNode.manager.trim();
+    if (exactNode?.manager && exactNode.manager.trim()) {
+      return exactNode.manager.trim();
     }
 
+    // 2. Coincidencia normalizada exacta (sin acentos ni espacios redundantes)
+    const normCargo = cargoOrArea
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const normNode = activeNodes.find((n) => {
+      const nTitle = (n.title || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const nKey = (n.areaKey || '')
+        .toUpperCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      return nTitle === normCargo || nKey === normCargo;
+    });
+    if (normNode?.manager && normNode.manager.trim()) {
+      return normNode.manager.trim();
+    }
+
+    // 3. Catálogo estático AREA_RESPONSIBLES si existe clave exacta
     if (AREA_RESPONSIBLES[cargoOrArea]) {
       return AREA_RESPONSIBLES[cargoOrArea].defaultPerson;
     }
 
-    const matchedKey = Object.keys(AREA_RESPONSIBLES).find((k) => isSameArea(k, cargoOrArea));
+    const matchedKey = Object.keys(AREA_RESPONSIBLES).find(
+      (k) => k.toUpperCase().trim() === cargoOrArea.toUpperCase().trim()
+    );
     if (matchedKey && AREA_RESPONSIBLES[matchedKey]) {
       return AREA_RESPONSIBLES[matchedKey].defaultPerson;
     }
 
-    return matchedNode?.subtitle || matchedNode?.title || cargoOrArea;
+    // 4. Búsqueda por isSameArea sólo si no hubo coincidencia exacta
+    const matchedNode = activeNodes.find(
+      (n) => isSameArea(n.title, cargoOrArea) || isSameArea(n.areaKey, cargoOrArea)
+    );
+    if (matchedNode?.manager && matchedNode.manager.trim()) {
+      return matchedNode.manager.trim();
+    }
+
+    return exactNode?.subtitle || exactNode?.title || cargoOrArea;
   };
 
   // Auto-seleccionar el primer destino conectado del organigrama o primer despacho oficial y su responsable
@@ -181,7 +230,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     let initialCargo = '';
     if (organigramInfo.recommendedNodes && organigramInfo.recommendedNodes.length > 0) {
       initialCargo = organigramInfo.recommendedNodes[0].node.title;
-    } else if (organigramInfo.allNodes && organigramInfo.allNodes.length > 0) {
+    } else if (allowExtraordinaryDerivation && organigramInfo.allNodes && organigramInfo.allNodes.length > 0) {
       const firstNonCurrent = organigramInfo.allNodes.find(n => !isSameArea(n.title, item.currentArea)) || organigramInfo.allNodes[0];
       initialCargo = firstNonCurrent.title;
     }
@@ -191,13 +240,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       const autoResp = getResponsibleForCargo(initialCargo);
       setTargetPersonName(autoResp);
     }
-  }, [organigramInfo, item.currentArea]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setQuickStamp('');
-    }
-  }, [isOpen]);
+  }, [organigramInfo, item.currentArea, allowExtraordinaryDerivation]);
 
   if (!isOpen) return null;
 
@@ -419,8 +462,9 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                     <span>1. Derivar a (Cargo o Despacho de Destino)</span>
                     <span className="text-rose-500">*</span>
                   </span>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    Línea de Mando
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <GitBranch className="w-3 h-3" />
+                    <span>Regido por Organigrama 360°</span>
                   </span>
                 </div>
 
@@ -428,9 +472,9 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   {/* Selector de Cargo / Despacho con llenado automático del Responsable */}
                   <div>
                     <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                      <span className="font-semibold">Seleccionar Cargo o Despacho</span>
+                      <span className="font-semibold">Seleccionar Cargo o Despacho de Destino</span>
                       <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">
-                        Destino Institucional
+                        Flujo Institucional
                       </span>
                     </label>
                     <select
@@ -443,28 +487,105 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                       }}
                       className="w-full bg-white dark:bg-[#07130E] border border-slate-300 dark:border-emerald-800/50 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer transition-all"
                     >
-                      {/* 1. Destinos Recomendados según Conexiones del Organigrama */}
-                      {organigramInfo.recommendedNodes.length > 0 && (
-                        <optgroup label="Destinos Recomendados (Conectores Activos)">
-                          {organigramInfo.recommendedNodes.map(({ node, edgeLabel, direction }) => (
-                            <option key={`rec-${node.id}`} value={node.title} className="bg-slate-900 text-white font-semibold">
-                              {direction === 'DOWN' ? '↓' : '↑'} {node.title} — {getResponsibleForCargo(node.title)} ({edgeLabel})
+                      {!targetArea && (
+                        <option value="" disabled>
+                          -- Seleccione el cargo o despacho de destino --
+                        </option>
+                      )}
+
+                      {/* 1. Línea Ascendente (Jefatura Superior / Elevación de Informe) */}
+                      {upwardNodes.length > 0 && (
+                        <optgroup label="↑ JEFATURA SUPERIOR / MAE (Elevación de Informe & Aprobación)">
+                          {upwardNodes.map(({ node, edgeLabel }) => (
+                            <option key={`up-${node.id}`} value={node.title} className="bg-slate-900 text-amber-300 font-semibold">
+                              ↑ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
                             </option>
                           ))}
                         </optgroup>
                       )}
 
-                      {/* 2. Todos los Cargos y Despachos Oficiales CHLS */}
-                      <optgroup label="Todos los Cargos y Despachos Institucionales CHLS">
-                        {organigramInfo.allNodes
-                          .filter((n) => !isSameArea(n.title, item.currentArea))
-                          .map((node) => (
-                            <option key={`all-${node.id}`} value={node.title} className="bg-slate-900 text-white font-medium">
-                              {node.title} — {getResponsibleForCargo(node.title)}
+                      {/* 2. Línea Descendente (Dependencias Directas & Subordinados) */}
+                      {downwardNodes.length > 0 && (
+                        <optgroup label="↓ DEPENDENCIAS & SUBORDINADOS (Derivación & Instrucción Directa)">
+                          {downwardNodes.map(({ node, edgeLabel }) => (
+                            <option key={`down-${node.id}`} value={node.title} className="bg-slate-900 text-emerald-300 font-semibold">
+                              ↓ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
                             </option>
                           ))}
-                      </optgroup>
+                        </optgroup>
+                      )}
+
+                      {/* 3. Línea Transversal (Coordinación Interdepartamental) */}
+                      {lateralNodes.length > 0 && (
+                        <optgroup label="↔ COORDINACIÓN INTERDEPARTAMENTAL (Canales Transversales Autorizados)">
+                          {lateralNodes.map(({ node, edgeLabel }) => (
+                            <option key={`lat-${node.id}`} value={node.title} className="bg-slate-900 text-sky-300 font-semibold">
+                              ↔ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
+                            </option>
+                          ))}
+                        </optgroup>
+                      )}
+
+                      {/* Si no hay conexiones en el organigrama y no está activada la excepción */}
+                      {!hasConnectedDestinations && !allowExtraordinaryDerivation && (
+                        <option value="" disabled className="bg-slate-900 text-rose-400 font-semibold">
+                          ⚠️ Sin conexiones autorizadas en el Organigrama 360°
+                        </option>
+                      )}
+
+                      {/* Destinos extraordinarios (sólo si el usuario activa la casilla de excepción) */}
+                      {allowExtraordinaryDerivation && (
+                        <optgroup label="⚠️ Despachos No Vinculados (Derivación Extraordinaria fuera de Organigrama)">
+                          {organigramInfo.allNodes
+                            .filter(
+                              (n) =>
+                                !isSameArea(n.title, item.currentArea) &&
+                                !recommendedNodes.some((r) => r.node.id === n.id)
+                            )
+                            .map((node) => (
+                              <option key={`all-${node.id}`} value={node.title} className="bg-slate-900 text-slate-300 font-medium">
+                                • {node.title} — {node.manager || getResponsibleForCargo(node.title)}
+                              </option>
+                            ))}
+                        </optgroup>
+                      )}
                     </select>
+
+                    {/* Barra informativa de estado del Organigrama y Toggle de Excepción */}
+                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 px-0.5">
+                      <span className="flex items-center gap-1.5 font-medium">
+                        <GitBranch className="w-3.5 h-3.5 text-emerald-500" />
+                        <span>
+                          {hasConnectedDestinations
+                            ? `${recommendedNodes.length} destino(s) autorizado(s) en Organigrama`
+                            : 'Sin líneas definidas en Organigrama'}
+                        </span>
+                      </span>
+                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors select-none">
+                        <input
+                          type="checkbox"
+                          checked={allowExtraordinaryDerivation}
+                          onChange={(e) => setAllowExtraordinaryDerivation(e.target.checked)}
+                          className="rounded text-emerald-500 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer"
+                        />
+                        <span className="text-[10px] uppercase tracking-wider font-semibold">
+                          Excepción fuera de organigrama
+                        </span>
+                      </label>
+                    </div>
+
+                    {/* Alerta visible si no existen líneas autorizadas */}
+                    {!hasConnectedDestinations && !allowExtraordinaryDerivation && (
+                      <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2 mt-2">
+                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                        <div>
+                          <p className="font-bold">El despacho "{item.currentArea}" no tiene líneas de derivación en el Organigrama 360°.</p>
+                          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                            Para definir a quién puede derivar oficialmente, trace sus conexiones en el menú <strong>Organigrama & Flujos</strong>, o active la casilla de excepción.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div>

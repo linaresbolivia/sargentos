@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { uploadRouteSheetDocuments, fetchRouteSheetById } from '@store/correspondenceSlice';
+import { uploadRouteSheetDocuments, fetchRouteSheetById, receiveRouteSheet, undoRouteSheetDerivation } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet, PrintPageMode } from './PrintableRouteSheet';
 import { PrintableTimelineReportModal } from './PrintableTimelineReportModal';
@@ -25,10 +25,13 @@ import {
   Loader2,
   Send,
   Target,
+  CheckCircle2,
+  Inbox,
+  RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
-import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
+import { getDocumentFullUrl, isSameArea, getOrganigramNodeForUser, canUserAccess360 } from '../utils/organigramWorkflowService';
 import { api } from '@config/api';
 
 interface RouteSheetDetailModalProps {
@@ -59,8 +62,76 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   const [showSlaModal, setShowSlaModal] = useState(false);
   const [previewDoc, setPreviewDoc] = useState<{ fileName: string; fileUrl: string; fileType?: string | null } | null>(null);
   const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
+  const [isReceiving, setIsReceiving] = useState(false);
+
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const workflow = useSelector((state: RootState) => state.correspondence.workflow);
+  const userNode = getOrganigramNodeForUser(currentUser, workflow);
+  const userArea = userNode?.title || (currentUser as any)?.area || 'GERENCIA GENERAL';
+
+  const handleReceive = async () => {
+    if (!currentItem) return;
+    try {
+      setIsReceiving(true);
+      await dispatch(receiveRouteSheet(currentItem.id)).unwrap();
+      toast.success(`Trámite ${currentItem.hrCode} recepcionado formalmente en ${userArea} 📥`);
+    } catch (err: any) {
+      toast.error(typeof err === 'string' ? err : 'Error al recepcionar trámite');
+    } finally {
+      setIsReceiving(false);
+    }
+  };
 
   const movements = currentItem?.movements || [];
+  const latestMovement = movements.length > 0 ? movements[movements.length - 1] : null;
+  const isLatestMovementUnreceived = Boolean(latestMovement && !latestMovement.receivedAt);
+
+  const [isUndoing, setIsUndoing] = useState(false);
+  const canAccess360 = canUserAccess360(currentUser, userNode);
+
+  const uId = currentUser?.id || (currentUser as any)?.userId;
+  const userEmail = currentUser?.email?.toLowerCase().trim();
+  const movementSourceEmail = latestMovement?.sourceUser?.email?.toLowerCase().trim();
+  const isCurrentUserSender = Boolean(
+    latestMovement && (
+      (uId && latestMovement.sourceUserId === uId) ||
+      (userEmail && movementSourceEmail && movementSourceEmail === userEmail)
+    )
+  );
+
+  // REGLA ESTRICTA: Solo el usuario que creó la derivación puede deshacerla
+  const canUndoLatestDerivation = Boolean(
+    currentItem &&
+    currentItem.status !== 'CONCLUIDO' &&
+    currentItem.status !== 'ANULADO' &&
+    latestMovement &&
+    isLatestMovementUnreceived &&
+    isCurrentUserSender
+  );
+
+  const handleUndoDerivation = async () => {
+    if (!currentItem || !latestMovement) return;
+    const dest = latestMovement.targetArea || 'el despacho de destino';
+    const confirmMsg = `¿Está seguro de deshacer la derivación hacia ${dest}?\n\nEl expediente retornará inmediatamente a la custodia de ${latestMovement.sourceArea || 'su despacho'} y el proveído en tránsito será cancelado.`;
+    if (!window.confirm(confirmMsg)) return;
+
+    try {
+      setIsUndoing(true);
+      await dispatch(undoRouteSheetDerivation(currentItem.id)).unwrap();
+      toast.success(`Derivación cancelada. El expediente ${currentItem.hrCode} ha retornado a su custodia ↩️`);
+    } catch (err: any) {
+      toast.error(typeof err === 'string' ? err : 'Error al deshacer la derivación');
+    } finally {
+      setIsUndoing(false);
+    }
+  };
+
+  const isPendingReception =
+    Boolean(currentItem &&
+    isSameArea(currentItem.currentArea, userArea) &&
+    (currentItem.status === 'DERIVADO' || !currentItem.movements?.[currentItem.movements.length - 1]?.receivedAt) &&
+    currentItem.status !== 'CONCLUIDO' &&
+    currentItem.status !== 'ANULADO');
 
   const handleOpenOverprint = (slotNumber?: number) => {
     setPrintInitialMode('SINGLE_SLOT_OVERPRINT');
@@ -140,17 +211,29 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               <div className="flex items-center gap-3.5">
                 <CrestLogo size="sm" className="w-11 h-11 shrink-0 filter drop-shadow-[0_0_10px_rgba(16,185,129,0.25)]" />
                 <div>
-                  <div className="flex items-center gap-2.5">
-                    <span className="font-mono text-xs font-bold text-emerald-900 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-500/30 tracking-wider">
-                      {currentItem.hrCode}
-                    </span>
-                    <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-md border ${getStatusBadge(currentItem.status)}`}>
-                      {currentItem.status}
-                    </span>
-                    <span className="text-xs font-semibold text-slate-500 dark:text-emerald-400/70 font-mono">
-                      CITE: {currentItem.cite || 'S/N'}
-                    </span>
-                  </div>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-emerald-900 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-500/30 tracking-wider">
+                        {currentItem.hrCode}
+                      </span>
+                      <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-md border ${getStatusBadge(currentItem.status)}`}>
+                        {currentItem.status}
+                      </span>
+                      {isPendingReception && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10.5px] font-black shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse" title="Pendiente de recepción formal en su despacho">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          POR RECEPCIONAR
+                        </span>
+                      )}
+                      {isLatestMovementUnreceived && isCurrentUserSender && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[10.5px] font-black shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse" title={`En tránsito: Aún no recepcionado por ${latestMovement?.targetArea || currentItem.currentArea}`}>
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          EN TRÁNSITO (POR RECEPCIONAR EN DESTINO)
+                        </span>
+                      )}
+                      <span className="text-xs font-semibold text-slate-500 dark:text-emerald-400/70 font-mono">
+                        CITE: {currentItem.cite || 'S/N'}
+                      </span>
+                    </div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white mt-1 tracking-tight">
                     Expediente & Trazabilidad 360°
                   </h2>
@@ -170,6 +253,42 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
             {/* Executive Centered Command Bar */}
             <div className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap pt-0.5">
+              {/* 0. Recepcionar Trámite (Si está pendiente para el área del usuario) */}
+              {isPendingReception && (
+                <button
+                  type="button"
+                  onClick={handleReceive}
+                  disabled={isReceiving}
+                  className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold border border-blue-400/50 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-[13px] transition-all shadow-lg shadow-blue-900/40 cursor-pointer animate-pulse"
+                  title="Confirmar la recepción formal física/digital de este trámite en su departamento"
+                >
+                  {isReceiving ? (
+                    <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                  ) : (
+                    <Inbox className="w-4 h-4 text-white shrink-0" />
+                  )}
+                  <span>📥 Recepcionar Trámite</span>
+                </button>
+              )}
+
+              {/* 0.b. Deshacer Derivación (Si la última derivación fue emitida por el usuario o su despacho y aún NO ha sido recepcionada en destino) */}
+              {canUndoLatestDerivation && (
+                <button
+                  type="button"
+                  onClick={handleUndoDerivation}
+                  disabled={isUndoing}
+                  className="flex items-center gap-2 bg-gradient-to-r from-amber-600/20 to-orange-600/20 hover:from-amber-600/30 hover:to-orange-600/30 text-amber-900 dark:text-amber-200 font-bold border border-amber-500/50 hover:border-amber-500 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] transition-all shadow-md shadow-amber-950/20 cursor-pointer animate-pulse"
+                  title={`Deshacer derivación a ${latestMovement?.targetArea}. El expediente retornará a su despacho`}
+                >
+                  {isUndoing ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-amber-600 dark:text-amber-400 shrink-0" />
+                  ) : (
+                    <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                  )}
+                  <span>↩️ Deshacer Derivación</span>
+                </button>
+              )}
+
               {/* 1. Imprimir Timeline (PDF) */}
               <button
                 type="button"
@@ -263,6 +382,66 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
           {/* Modal Content: Unified Timeline Visual 360° */}
           <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6 flex-1 text-sm">
+            {isPendingReception && (
+              <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-blue-500/15 border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-blue-500/20 text-blue-600 dark:text-blue-400 rounded-xl border border-blue-500/30 shrink-0">
+                    <Inbox className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-blue-900 dark:text-blue-200">
+                      Trámite derivado pendiente de recepción oficial
+                    </h4>
+                    <p className="text-xs text-blue-700/80 dark:text-blue-300/80">
+                      Este documento fue derivado a su unidad ({userArea || currentItem.currentArea}). Confirme la recepción para acusar recibo formal en la trazabilidad.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleReceive}
+                  disabled={isReceiving}
+                  className="shrink-0 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                >
+                  {isReceiving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  Recepcionar Ahora
+                </button>
+              </div>
+            )}
+
+            {/* Banner de Trámite en Tránsito (Opción de Deshacer Derivación) */}
+            {canUndoLatestDerivation && (
+              <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl border border-amber-500/30 shrink-0">
+                    <RotateCcw className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                        Derivación en tránsito hacia {latestMovement?.targetArea}
+                      </h4>
+                      <span className="text-[10px] uppercase font-bold bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                        Pendiente de Recepción
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+                      Derivación emitida por usted ({latestMovement?.sourceUser?.firstName || 'Remitente'}). Como creador de este proveído, puede deshacer esta derivación mientras el despacho de destino no la haya recepcionado formalmente.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleUndoDerivation}
+                  disabled={isUndoing}
+                  className="shrink-0 flex items-center justify-center gap-2 bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2 rounded-xl text-xs shadow-md transition-all cursor-pointer"
+                >
+                  {isUndoing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                  Deshacer Derivación
+                </button>
+              </div>
+            )}
+
             <CorrespondenceTimelineView
               item={currentItem}
               onOpenSlaModal={() => setShowSlaModal(true)}

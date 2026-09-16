@@ -24,6 +24,9 @@ export const CreateRouteSheetSchema = z.object({
   initialCcAreas: z.array(z.string()).optional().default([]),
   initialCcPersons: z.string().optional().nullable(),
   
+  // Optional source/originating dispatch
+  sourceArea: z.string().optional().nullable(),
+  
   // Optional AI suggestions
   aiSummary: z.string().optional().nullable(),
   suggestedArea: z.string().optional().nullable(),

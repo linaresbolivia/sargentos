@@ -107,6 +107,7 @@ interface HolographicMilestone {
   signatureUrl?: string | null;
   sourceUserName?: string | null;
   sourceUserId?: string | null;
+  receivedAt?: string | null;
   isAccumulated?: boolean;
   documents: CorrDocument[];
   isCurrent: boolean;
@@ -247,6 +248,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
         signatureUrl: mov.signatureUrl,
         sourceUserName: mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : null,
         sourceUserId: mov.sourceUserId || null,
+        receivedAt: mov.receivedAt,
         documents: movDocs,
         isCurrent: isCurrentStep,
         iconType: icon,
@@ -899,11 +901,31 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                           </div>
                         </div>
 
-                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) */}
-                        <div className="text-[12px] sm:text-[13px] font-bold text-white flex items-center gap-2 my-0.5">
-                          <span className="text-slate-200">{formatArea(m.sourceArea)}</span>
-                          <ArrowRight className="w-4 h-4 text-slate-500 shrink-0" />
-                          <span className="text-[#E2C785]">{formatArea(m.targetArea)}</span>
+                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) y Estado de Recepción */}
+                        <div className="flex items-center justify-between gap-2 my-0.5">
+                          <div className="text-[12px] sm:text-[13px] font-bold text-white flex items-center gap-2 truncate">
+                            <span className="text-slate-200 truncate">{formatArea(m.sourceArea)}</span>
+                            <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <span className="text-[#E2C785] truncate">{formatArea(m.targetArea)}</span>
+                          </div>
+                          {m.stepNumber > 0 && (
+                            m.receivedAt ? (
+                              <span
+                                className="text-[9.5px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0 flex items-center gap-1"
+                                title={`Recepcionado en destino el ${formatDate(m.receivedAt)} a las ${formatTime(m.receivedAt)}`}
+                              >
+                                ✓ Recepcionado
+                              </span>
+                            ) : (
+                              <span
+                                className="text-[9.5px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.85)] shrink-0 flex items-center gap-1 animate-pulse"
+                                title="Pendiente de recepción física/digital en el área de destino"
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                                <span>Por Recepcionar</span>
+                              </span>
+                            )
+                          )}
                         </div>
 
                         {/* Fila 3: Proveído completo */}
@@ -1101,6 +1123,24 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                         <span>🖨️ Casilla #{m.stepNumber} ({m.stepNumber <= 4 ? 'Anverso' : 'Reverso'})</span>
                       </button>
                     )}
+                    {m.stepNumber > 0 && (
+                      m.receivedAt ? (
+                        <span
+                          className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 text-[9.5px] font-bold flex items-center gap-1"
+                          title={`Recepcionado el ${formatDate(m.receivedAt)} a las ${formatTime(m.receivedAt)}`}
+                        >
+                          ✓ Recepcionado {formatDate(m.receivedAt)} {formatTime(m.receivedAt)}
+                        </span>
+                      ) : (
+                        <span
+                          className="px-2.5 py-0.5 rounded-full bg-red-600 text-white text-[9.5px] font-bold flex items-center gap-1 shadow-[0_0_8px_rgba(239,68,68,0.85)] animate-pulse"
+                          title="Pendiente de recepción física y digital en destino"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                          <span>Por Recepcionar</span>
+                        </span>
+                      )
+                    )}
                     {m.isAccumulated && (
                       <span className="px-2 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 text-[9.5px] font-bold">
                         📚 EXPEDIENTE ACUMULADO
@@ -1207,6 +1247,23 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 <span className="font-bold text-[#E2C785]">{formatArea(selectedMilestone.targetArea)}</span>
               </div>
             </div>
+
+            {selectedMilestone.stepNumber > 0 && (
+              <div className={`px-3.5 py-2.5 rounded-2xl text-xs flex items-center justify-between border ${
+                selectedMilestone.receivedAt
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                  : 'bg-red-500/15 border-red-500/40 text-red-300'
+              }`}>
+                <span className="font-semibold flex items-center gap-1.5">
+                  {selectedMilestone.receivedAt ? '✓ Estado de Recepción:' : '🔴 Estado de Recepción:'}
+                </span>
+                <span className="font-bold font-mono">
+                  {selectedMilestone.receivedAt
+                    ? `Recepcionado el ${formatDate(selectedMilestone.receivedAt)} a las ${formatTime(selectedMilestone.receivedAt)}`
+                    : 'Pendiente de recepción física/digital en destino'}
+                </span>
+              </div>
+            )}
 
             {/* Sello & Instrucción */}
             <div className="space-y-1 text-xs">

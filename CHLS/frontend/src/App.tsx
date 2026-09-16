@@ -138,6 +138,7 @@ export const App: React.FC = () => {
           {/* Super Admin only protected routes */}
           <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
             <Route path="/superadmin" element={<SuperAdminDashboard />} />
+            <Route path="/admin/super" element={<SuperAdminDashboard />} />
           </Route>
 
           {/* Whatsapp Module protected routes */}

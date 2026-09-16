@@ -1,4 +1,4 @@
-import { CorrespondenceWorkflow, WorkflowNode, WorkflowEdge } from '../types/correspondence.types';
+import { CorrespondenceWorkflow, WorkflowNode, WorkflowEdge, RouteSheetItem } from '../types/correspondence.types';
 export type { WorkflowNode, WorkflowEdge };
 
 export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
@@ -639,19 +639,55 @@ export const DEFAULT_OFFICIAL_WORKFLOW: CorrespondenceWorkflow = {
   edges: DEFAULT_ORGANIGRAM_EDGES,
 };
 
+export interface OrganigramDestination {
+  node: WorkflowNode;
+  edgeLabel: string;
+  edgeStyle: 'HIERARCHICAL' | 'OPERATIONAL' | 'CONDITIONAL';
+  direction: 'UP' | 'DOWN' | 'LATERAL';
+}
+
+export interface OrganigramDestinationsResult {
+  currentNode?: WorkflowNode;
+  sourceNode?: WorkflowNode;
+  recommendedNodes: OrganigramDestination[];
+  upwardNodes: OrganigramDestination[];
+  downwardNodes: OrganigramDestination[];
+  lateralNodes: OrganigramDestination[];
+  allNodes: WorkflowNode[];
+}
+
+function cleanEdgeLabel(rawLabel?: string, direction?: 'UP' | 'DOWN' | 'LATERAL', style?: string): string {
+  if (!rawLabel) {
+    if (direction === 'UP') return 'Elevación a Jefatura';
+    if (direction === 'DOWN') return style === 'HIERARCHICAL' ? 'Línea Directa' : 'Instrucción Operativa';
+    return 'Coordinación Transversal';
+  }
+  const clean = rawLabel.trim();
+  if (
+    clean.toLowerCase().startsWith('derivación') ||
+    clean.toLowerCase().startsWith('derivacion') ||
+    clean.toLowerCase().startsWith('informe a')
+  ) {
+    if (direction === 'UP') return 'Línea de Mando Ascendente';
+    if (direction === 'DOWN') return style === 'HIERARCHICAL' ? 'Línea Jerárquica Directa' : 'Asignación Operativa';
+    return 'Coordinación Transversal';
+  }
+  return clean;
+}
+
 /**
  * Obtiene los destinos parametrizados en el organigrama para un área o usuario dado
  */
 export function getOrganigramDestinations(
   sourceAreaName: string,
   workflow?: CorrespondenceWorkflow | null
-) {
+): OrganigramDestinationsResult {
   const activeNodes = (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
   const activeEdges = (workflow && Array.isArray(workflow.edges)) ? workflow.edges : DEFAULT_ORGANIGRAM_EDGES;
 
   const raw = (sourceAreaName || '').toUpperCase().trim();
 
-  // 1. Buscar nodo de origen con coincidencia exacta o equivalencia isSameArea
+  // 1. Buscar nodo de origen con coincidencia exacta primero
   let sourceNode = activeNodes.find((n) => {
     const title = (n.title || '').toUpperCase().trim();
     const areaKey = (n.areaKey || '').toUpperCase().trim();
@@ -664,9 +700,7 @@ export function getOrganigramDestinations(
       return (
         isSameArea(n.title, raw) ||
         isSameArea(n.areaKey, raw) ||
-        isSameArea(n.manager, raw) ||
-        (n.title && n.title.includes(raw)) ||
-        (raw && raw.includes(n.title))
+        isSameArea(n.manager, raw)
       );
     });
   }
@@ -684,36 +718,41 @@ export function getOrganigramDestinations(
   const sourceIds = incomingEdges.map((e) => e.source);
 
   // Combinar destinos parametrizados con su titular, cargo y etiqueta de flujo
-  const recommendedTargetNodes = activeNodes
+  const recommendedTargetNodes: OrganigramDestination[] = activeNodes
     .filter((n) => targetIds.includes(n.id))
     .map((node) => {
       const edge = outgoingEdges.find((e) => e.target === node.id);
+      const isHierarchical = edge?.style === 'HIERARCHICAL';
+      const dir: 'DOWN' | 'LATERAL' = isHierarchical ? 'DOWN' : 'LATERAL';
       return {
         node,
-        edgeLabel: edge?.label || 'Línea de Mando',
-        edgeStyle: edge?.style || 'HIERARCHICAL',
-        direction: 'DOWN' as const,
+        edgeLabel: cleanEdgeLabel(edge?.label, dir, edge?.style),
+        edgeStyle: (edge?.style || 'HIERARCHICAL') as any,
+        direction: dir,
       };
     });
 
-  const recommendedSourceNodes = activeNodes
+  const recommendedSourceNodes: OrganigramDestination[] = activeNodes
     .filter((n) => sourceIds.includes(n.id) && !targetIds.includes(n.id))
     .map((node) => {
       const edge = incomingEdges.find((e) => e.source === node.id);
       return {
         node,
-        edgeLabel: edge?.label ? `Informe a ${edge.label}` : 'Instancia Superior / Jefatura',
-        edgeStyle: edge?.style || 'HIERARCHICAL',
+        edgeLabel: cleanEdgeLabel(edge?.label, 'UP', edge?.style),
+        edgeStyle: (edge?.style || 'HIERARCHICAL') as any,
         direction: 'UP' as const,
       };
     });
 
-  const recommendedNodes = [...recommendedTargetNodes, ...recommendedSourceNodes];
+  const recommendedNodes: OrganigramDestination[] = [...recommendedSourceNodes, ...recommendedTargetNodes];
 
   return {
     currentNode: sourceNode,
     sourceNode,
     recommendedNodes,
+    upwardNodes: recommendedNodes.filter((n) => n.direction === 'UP'),
+    downwardNodes: recommendedNodes.filter((n) => n.direction === 'DOWN'),
+    lateralNodes: recommendedNodes.filter((n) => n.direction === 'LATERAL'),
     allNodes: activeNodes,
   };
 }
@@ -736,7 +775,27 @@ export function isSameArea(areaA?: string | null, areaB?: string | null): boolea
 
   if (a === b) return true;
 
-  // Equivalencias institucionales CHLS
+  // Evitar falsos positivos entre subgerencias y departamentos que comparten nombres parciales
+  const aHasSubgerencia = a.includes('SUBGERENCIA');
+  const bHasSubgerencia = b.includes('SUBGERENCIA');
+  if (aHasSubgerencia !== bHasSubgerencia) {
+    return false;
+  }
+
+  // Evitar falsos positivos entre diferentes niveles (Asistente vs Responsable, Analista vs Encargado)
+  const aHasAsistente = a.includes('ASISTENTE');
+  const bHasAsistente = b.includes('ASISTENTE');
+  if (aHasAsistente !== bHasAsistente) {
+    return false;
+  }
+
+  const aHasAnalista = a.includes('ANALISTA');
+  const bHasAnalista = b.includes('ANALISTA');
+  if (aHasAnalista !== bHasAnalista) {
+    return false;
+  }
+
+  // Equivalencias institucionales CHLS exactas
   if ((a.includes('SECRETAR') || a === 'SECRETARIA GENERAL') && (b.includes('SECRETAR') || b === 'SECRETARIA GENERAL')) return true;
   if ((a.includes('GERENCIA GENERAL') || a === 'GERENCIA') && (b.includes('GERENCIA GENERAL') || b === 'GERENCIA')) return true;
   if ((a.includes('TESORERIA') || a.includes('FINANZAS')) && (b.includes('TESORERIA') || b.includes('FINANZAS'))) return true;
@@ -744,13 +803,13 @@ export function isSameArea(areaA?: string | null, areaB?: string | null): boolea
   if (a.includes('HIPIC') && b.includes('HIPIC')) return true;
   if (a.includes('DEPORTE') && b.includes('DEPORTE')) return true;
   if (a.includes('LEGAL') && b.includes('LEGAL')) return true;
-  if (a.includes('MANTENIMIENTO') && b.includes('MANTENIMIENTO')) return true;
+  if ((a.includes('MANTENIMIENTO') || a.includes('GONZALES')) && (b.includes('MANTENIMIENTO') || b.includes('GONZALES'))) return true;
   if (a.includes('ALMACEN') && b.includes('ALMACEN')) return true;
   if (a.includes('CONTABILIDAD') && b.includes('CONTABILIDAD')) return true;
   if (a.includes('RECEPCION') && b.includes('RECEPCION')) return true;
   if (a.includes('SISTEMAS') && b.includes('SISTEMAS')) return true;
 
-  return a.includes(b) || b.includes(a);
+  return false;
 }
 
 /**
@@ -766,7 +825,9 @@ export function getDocumentFullUrl(fileUrl?: string | null): string {
     : `http://${window.location.hostname}:5000`;
   const cleanPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
   return `${baseUrl}${cleanPath}`;
-}/**
+}
+
+/**
  * Detecta automáticamente el nodo del organigrama que corresponde al usuario autenticado (currentUser).
  * Realiza coincidencia por email, coincidencia por nombre de titular (manager) o por cargo/rol (title).
  */
@@ -789,11 +850,30 @@ export function getOrganigramNodeForUser(
 
   const uName = normalize(fullName);
   const uDept = normalize(user.area || user.department || '');
+  const prefix = email.split('@')[0];
 
-  // 1. Coincidencia por correo electrónico oficial
+  // 0. Mapeos prioritarios por funcionario / cuenta conocida
+  if (prefix === 'mantenimiento' || prefix === 'cgonzales' || uName.includes('CRISTIAN GONZALES')) {
+    const mantNode = activeNodes.find((n) => n.id === 'node-jefe-mantenimiento');
+    if (mantNode) return mantNode;
+  }
+  if (prefix === 'contrataciones' || prefix === 'compras' || uName.includes('CONTRATACIONES')) {
+    const conNode = activeNodes.find((n) => n.id === 'node-contrataciones');
+    if (conNode) return conNode;
+  }
+
+  // 1. Coincidencia por correo electrónico oficial o prefijo de email
   if (email) {
     const byEmail = activeNodes.find((n) => (n.email || '').toLowerCase().trim() === email);
     if (byEmail) return byEmail;
+
+    if (prefix) {
+      const byPrefix = activeNodes.find((n) => {
+        const nPrefix = (n.email || '').split('@')[0].toLowerCase().trim();
+        return nPrefix && nPrefix === prefix;
+      });
+      if (byPrefix) return byPrefix;
+    }
   }
 
   // 2. Coincidencia exacta o por inclusión con el Titular / Manager del nodo
@@ -918,3 +998,148 @@ export function canUserAccess360(user?: any, userNode?: WorkflowNode): boolean {
   return false;
 }
 
+/**
+ * Determina si el usuario autenticado tiene autorización para radicar/crear Hojas de Ruta.
+ * Por normativa institucional del Club Hípico Los Sargentos, la creación y radicación oficial
+ * de Hojas de Ruta está restringida exclusivamente a:
+ * 1. Gerencia General
+ * 2. Secretaría de Gerencia
+ * 3. Super Administradores y TI (Soporte Técnico)
+ */
+export function canUserCreateRouteSheet(user: any, userNode?: WorkflowNode | null): boolean {
+  if (!user) return false;
+
+  const roles: string[] = (user.roles || []).map((r: any) =>
+    (typeof r === 'string' ? r : r.name || '').toUpperCase()
+  );
+
+  if (roles.includes('SUPER_ADMIN')) {
+    return true;
+  }
+
+  const normalize = (str: string) =>
+    (str || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+
+  const email = (user.email || '').toLowerCase().trim();
+  const username = normalize(user.username || '');
+  const area = normalize(user.area || user.department || '');
+  const fullName = normalize(`${user.firstName || ''} ${user.lastName || ''}`);
+  const nodeTitle = normalize(userNode?.title || '');
+  const nodeId = (userNode?.id || '').toLowerCase();
+  const manager = normalize(userNode?.manager || '');
+
+  // 1. GERENCIA GENERAL
+  const isGerencia =
+    nodeId === 'node-gerencia-general' ||
+    nodeTitle.includes('GERENCIA GENERAL') ||
+    manager.includes('GERENTE GENERAL') ||
+    area.includes('GERENCIA_GENERAL') ||
+    area === 'GERENCIA' ||
+    username === 'GERENCIA' ||
+    email.startsWith('gerencia') ||
+    fullName.includes('GERENTE GENERAL') ||
+    roles.includes('GERENTE_GENERAL') ||
+    roles.includes('MODULO_DIRECTORIO');
+
+  if (isGerencia) return true;
+
+  // 2. SECRETARÍA DE GERENCIA
+  const isSecretariaGerencia =
+    nodeId === 'node-secretaria' ||
+    nodeTitle === 'SECRETARIA' ||
+    nodeTitle.includes('SECRETARIA DE GERENCIA') ||
+    nodeTitle.includes('SECRETARIA GENERAL') ||
+    manager.includes('SECRETARIA DE GERENCIA') ||
+    manager.includes('SECRETARIA') ||
+    area.includes('SECRETARIA_GERENCIA') ||
+    area.includes('SECRETARIA') ||
+    username.includes('SECRETARIA') ||
+    email.startsWith('secretaria') ||
+    fullName.includes('SECRETARIA') ||
+    roles.includes('SECRETARIA');
+
+  if (isSecretariaGerencia) return true;
+
+  // 3. TECNOLOGÍA / SISTEMAS (Soporte técnico y parametrización)
+  const isTecnologia =
+    roles.includes('SUPER_ADMIN') ||
+    username === 'SUPERADMIN' ||
+    email.startsWith('superadmin') ||
+    email.startsWith('sistemas') ||
+    email.startsWith('tecnologia') ||
+    (email.includes('@sargentos') && email.startsWith('admin'));
+
+  if (isTecnologia) return true;
+
+  return false;
+}
+
+/**
+ * Valida de forma rigurosa si una Hoja de Ruta pasó por el usuario, fue enviada/creada por él
+ * o tuvo alguna acción con el usuario logueado o su despacho.
+ */
+export function didUserParticipateInRouteSheet(
+  item: RouteSheetItem,
+  user: any,
+  userArea?: string
+): boolean {
+  if (!user || !item) return false;
+
+  const uId = user.id || user.userId;
+  const userEmail = (user.email || '').toLowerCase().trim();
+  const firstName = (user.firstName || '').toLowerCase().trim();
+  const lastName = (user.lastName || '').toLowerCase().trim();
+  const userFullName = `${firstName} ${lastName}`.trim();
+  const uArea = (userArea || user.area || user.position || '').trim();
+
+  // 1. Radicado / Creado por el usuario logueado
+  if (uId && item.createdById === uId) return true;
+  if (userEmail && item.createdBy?.email && item.createdBy.email.toLowerCase().trim() === userEmail) return true;
+  if (userFullName && item.senderName && item.senderName.toLowerCase().includes(userFullName)) return true;
+
+  // 2. Asignado actualmente al usuario
+  if (uId && item.currentAssigneeId === uId) return true;
+
+  // 3. Archivador directo (archivado por el usuario)
+  if (uId && item.archivedById === uId) return true;
+
+  // 4. En custodia actual del despacho / área del funcionario
+  if (uArea && (isSameArea(item.currentArea, uArea) || isSameArea(item.senderArea, uArea))) {
+    return true;
+  }
+
+  // 5. Proveídos / Derivaciones / Movimientos del trámite
+  if (item.movements && item.movements.length > 0) {
+    return item.movements.some((m) => {
+      // a. Enviado / derivado por el usuario o su despacho
+      if (uId && m.sourceUserId === uId) return true;
+      if (userEmail && m.sourceUser?.email && m.sourceUser.email.toLowerCase().trim() === userEmail) return true;
+      if (uArea && isSameArea(m.sourceArea, uArea)) return true;
+
+      // b. Dirigido al despacho o funcionario
+      if (uArea && isSameArea(m.targetArea, uArea)) return true;
+      if (m.targetPersonName) {
+        const targetClean = m.targetPersonName.toLowerCase().trim();
+        if (userFullName && (targetClean.includes(userFullName) || userFullName.includes(targetClean))) return true;
+        if (firstName.length >= 3 && targetClean.includes(firstName)) return true;
+        if (lastName.length >= 3 && targetClean.includes(lastName)) return true;
+        if (uArea && isSameArea(m.targetPersonName, uArea)) return true;
+      }
+
+      // c. Con copia C.C. hacia el despacho o funcionario
+      if (m.instruction && m.instruction.includes('[C.C.')) {
+        if (uArea && isSameArea(m.instruction, uArea)) return true;
+        if (userFullName && m.instruction.toLowerCase().includes(userFullName)) return true;
+        if (firstName.length >= 3 && m.instruction.toLowerCase().includes(firstName)) return true;
+      }
+
+      return false;
+    });
+  }
+
+  return false;
+}

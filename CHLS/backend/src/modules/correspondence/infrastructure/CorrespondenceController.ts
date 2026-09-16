@@ -92,6 +92,9 @@ export class CorrespondenceController {
     this.router.post('/route-sheets', this.createRouteSheet.bind(this));
     this.router.post('/route-sheets/merge', this.mergeRouteSheets.bind(this));
     this.router.post('/route-sheets/:id/movements', this.addMovement.bind(this));
+    this.router.post('/route-sheets/:id/receive', this.receiveRouteSheet.bind(this));
+    this.router.post('/route-sheets/:id/undo-derivation', this.undoDerivation.bind(this));
+    this.router.post('/route-sheets/:id/movements/undo', this.undoDerivation.bind(this));
     this.router.post('/route-sheets/:id/notify-sla', this.notifySlaAlert.bind(this));
     this.router.patch('/route-sheets/:id/status', this.updateStatus.bind(this));
     this.router.post('/route-sheets/:id/archive', this.archiveRouteSheet.bind(this));
@@ -131,11 +134,68 @@ export class CorrespondenceController {
       const { status, priority, area, search, senderType, limit, offset, mailbox, userArea, year } = req.query;
       const user = (req as any).user;
       const userId = user?.userId || user?.id;
-      let effectiveArea = (userArea as string) || user?.area || (area as string);
-      const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : undefined;
+
+      // Cargar datos completos del usuario desde la BD si no vienen completos en el token JWT
+      let dbUser: any = null;
+      if (userId) {
+        dbUser = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, firstName: true, lastName: true, roles: { select: { name: true } } },
+        });
+      }
+
+      const userName = dbUser
+        ? `${dbUser.firstName || ''} ${dbUser.lastName || ''}`.trim()
+        : user
+        ? `${user.firstName || ''} ${user.lastName || ''}`.trim()
+        : undefined;
+      const userEmail = (dbUser?.email || user?.email || '').toLowerCase().trim();
+
+      // Resolver área efectiva y sus alias
+      let effectiveArea = (userArea as string) || (area as string);
+      const userAreaAliases: string[] = [];
+
+      if (!effectiveArea) {
+        // Resolver según email, nombre o roles
+        const areaKey = await this.getUserAssignedAreaKey(dbUser || user);
+        const areaConfig = OfficialCiteService.getAreaConfig(areaKey);
+        if (areaConfig) {
+          effectiveArea = areaConfig.name;
+          userAreaAliases.push(areaConfig.name);
+        }
+
+        // Mapeos específicos de funcionarios clave
+        if (userEmail.includes('mantenimiento') || userEmail.includes('cgonzales') || userName?.includes('Cristian Gonzales')) {
+          effectiveArea = 'JEFE DE MANTENIMIENTO';
+          userAreaAliases.push('JEFE DE MANTENIMIENTO', 'MANTENIMIENTO');
+        } else if (userEmail.includes('contratacion') || userEmail.includes('compras')) {
+          effectiveArea = 'RESPONSABLE DE CONTRATACIONES';
+          userAreaAliases.push('RESPONSABLE DE CONTRATACIONES', 'CONTRATACIONES');
+        } else if (userEmail.includes('secretaria')) {
+          effectiveArea = 'SECRETARÍA';
+          userAreaAliases.push('SECRETARÍA', 'SECRETARIA GENERAL');
+        } else if (userEmail.includes('gerencia')) {
+          effectiveArea = 'GERENCIA GENERAL';
+          userAreaAliases.push('GERENCIA GENERAL');
+        } else if (userEmail.includes('finanzas')) {
+          effectiveArea = 'SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS';
+          userAreaAliases.push('SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS', 'FINANZAS');
+        }
+      } else {
+        userAreaAliases.push(effectiveArea);
+        if (effectiveArea.includes('MANTEN')) {
+          userAreaAliases.push('JEFE DE MANTENIMIENTO', 'MANTENIMIENTO');
+        } else if (effectiveArea.includes('CONTRAT') || effectiveArea.includes('COMPRA')) {
+          userAreaAliases.push('RESPONSABLE DE CONTRATACIONES', 'CONTRATACIONES');
+        } else if (effectiveArea.includes('SECRETAR')) {
+          userAreaAliases.push('SECRETARÍA', 'SECRETARIA GENERAL');
+        } else if (effectiveArea.includes('FINAN') || effectiveArea.includes('OPERACIONES FINANCIERAS')) {
+          userAreaAliases.push('SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS', 'FINANZAS');
+        }
+      }
 
       let requestedMailbox = (mailbox as any);
-      const has360 = await this.canAccessGlobal360(user);
+      const has360 = await this.canAccessGlobal360(dbUser || user);
 
       // Seguridad Institucional CHLS:
       // Si no se especifica mailbox (carga general):
@@ -158,9 +218,10 @@ export class CorrespondenceController {
         year: year && year !== 'ALL' ? parseInt(year as string, 10) : undefined,
         mailbox: requestedMailbox,
         userArea: effectiveArea,
+        userAreaAliases,
         userId,
         userName,
-        limit: limit ? parseInt(limit as string, 10) : 100,
+        limit: limit ? parseInt(limit as string, 10) : 500,
         offset: offset ? parseInt(offset as string, 10) : 0,
       });
 
@@ -215,6 +276,15 @@ export class CorrespondenceController {
 
       if (!userId) {
         return res.status(401).json({ success: false, message: 'Usuario no autenticado' });
+      }
+
+      // Restricción Institucional CHLS: Solo Gerencia General y Secretaría de Gerencia pueden radicar Hojas de Ruta
+      const isAuthorized = await this.canCreateRouteSheet(user, req.body);
+      if (!isAuthorized) {
+        return res.status(403).json({
+          success: false,
+          message: 'Acceso denegado: Por normativa institucional, la radicación de Hojas de Ruta está reservada exclusivamente para Gerencia General y Secretaría de Gerencia.',
+        });
       }
 
       const created = await this.routeSheetService.create(validated, userId);
@@ -311,6 +381,71 @@ export class CorrespondenceController {
         success: false,
         message: 'Error al registrar la instrucción',
         error: error.message,
+      });
+    }
+  }
+
+  // 4.b. Receive Movement / Route Sheet in Destination Area
+  public async receiveRouteSheet(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+      const userId = user?.id || user?.userId;
+
+      const updated = await this.routeSheetService.receive(id, userId);
+
+      return res.status(200).json({
+        success: true,
+        message: `Hoja de Ruta ${updated.hrCode} recepcionada exitosamente en el despacho`,
+        data: updated,
+      });
+    } catch (error: any) {
+      logger.error('Error receiving route sheet:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al recepcionar la hoja de ruta',
+        error: error.message,
+      });
+    }
+  }
+
+  // 4.c. Undo Derivation / Cancel outgoing unreceived movement
+  public async undoDerivation(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+      const userId = user?.id || user?.userId;
+
+      // Cargar datos completos del usuario desde la BD
+      let dbUser: any = null;
+      if (userId) {
+        dbUser = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: { id: true, email: true, firstName: true, lastName: true, roles: { select: { name: true } } },
+        });
+      }
+
+      const has360 = await this.canAccessGlobal360(dbUser || user);
+      let userArea = req.body?.userArea || (req.query?.userArea as string);
+      if (!userArea) {
+        const areaKey = await this.getUserAssignedAreaKey(dbUser || user);
+        const areaConfig = OfficialCiteService.getAreaConfig(areaKey);
+        userArea = areaConfig?.name || 'GERENCIA GENERAL';
+      }
+
+      const userEmail = dbUser?.email || user?.email;
+      const result = await this.routeSheetService.undoDerivation(id, userId, userArea, has360, userEmail);
+
+      return res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.routeSheet,
+      });
+    } catch (error: any) {
+      logger.error('Error undoing route sheet derivation:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Error al deshacer la derivación',
       });
     }
   }
@@ -1205,6 +1340,87 @@ export class CorrespondenceController {
         userRoles.includes('SECRETARIA') ||
         uEmail.startsWith('secretaria') ||
         uFull.includes('SECRETARIA')
+      ) {
+        return true;
+      }
+
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Valida si el usuario actual tiene autorización para radicar/crear Hojas de Ruta.
+   * Por directriz institucional CHLS, solo pueden crear Hojas de Ruta:
+   * 1. Gerencia General
+   * 2. Secretaría de Gerencia
+   * 3. Super Administradores y TI (soporte técnico institucional)
+   * 4. Portería/Caseta únicamente cuando se trate de recepción de facturas de servicios básicos.
+   */
+  private async canCreateRouteSheet(user: any, body?: any): Promise<boolean> {
+    if (!user) return false;
+    const roles: string[] = (user.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+
+    // SuperAdmin maestro
+    if (roles.includes('SUPER_ADMIN')) {
+      return true;
+    }
+
+    try {
+      const dbUser = await this.prisma.user.findUnique({
+        where: { id: user.userId || user.id },
+        select: { email: true, firstName: true, lastName: true, roles: { select: { name: true } } },
+      });
+
+      const userRoles = dbUser?.roles?.map((r) => r.name.toUpperCase()) || roles;
+      if (userRoles.includes('SUPER_ADMIN')) {
+        return true;
+      }
+
+      const normalize = (s: string) => (s || '').toUpperCase().trim();
+      const uEmail = (dbUser?.email || user.email || '').toLowerCase().trim();
+      const uFull = normalize(`${dbUser?.firstName || user.firstName || ''} ${dbUser?.lastName || user.lastName || ''}`);
+
+      // 1. Gerencia General
+      if (
+        userRoles.includes('GERENTE_GENERAL') ||
+        userRoles.includes('MODULO_DIRECTORIO') ||
+        uEmail.startsWith('gerencia') ||
+        uEmail.includes('gerente') ||
+        uFull.includes('GERENTE GENERAL') ||
+        uFull.includes('GERENCIA')
+      ) {
+        return true;
+      }
+
+      // 2. Secretaría de Gerencia
+      if (
+        userRoles.includes('SECRETARIA') ||
+        uEmail.startsWith('secretaria') ||
+        uFull.includes('SECRETARIA')
+      ) {
+        return true;
+      }
+
+      // 3. Soporte Sistemas / TI
+      if (
+        userRoles.includes('SISTEMAS') ||
+        userRoles.includes('TECNOLOGIA') ||
+        uEmail.startsWith('sistemas') ||
+        uEmail.startsWith('admin@') ||
+        uEmail.startsWith('tecnologia') ||
+        (uEmail.includes('@sargentos') && uEmail.startsWith('admin'))
+      ) {
+        return true;
+      }
+
+      // 4. Recepción de facturas de servicios básicos desde caseta / portería
+      if (
+        (userRoles.includes('MODULO_PORTERIA') || uEmail.startsWith('caseta') || uEmail.startsWith('porteria')) &&
+        (body?.reference?.toUpperCase().includes('FACTURA') || body?.senderType === 'EXTERNO')
       ) {
         return true;
       }

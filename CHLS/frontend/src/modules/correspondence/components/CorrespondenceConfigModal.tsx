@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   Calendar,
   Hash,
+  UserPlus,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -935,27 +936,44 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
               {/* TAB 5: GESTIÓN DE USUARIOS */}
               {activeTab === 'USERS' && (
                 <div className="space-y-4">
-                  <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-2xl text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-brand-gold/20 text-brand-gold flex items-center justify-center mx-auto">
-                      <ShieldCheck className="w-6 h-6" />
+                  <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-2xl text-center space-y-4">
+                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-500/30 shadow-md">
+                      <ShieldCheck className="w-7 h-7" />
                     </div>
-                    <h3 className="font-bold text-sm text-slate-800 dark:text-white">
-                      Permisos y Roles de Funcionarios
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-gray-400 max-w-md mx-auto">
-                      Para crear nuevos usuarios institucionales (Secretarias, Jefes de Área, Guardias) o asignar el rol <strong className="text-emerald-500 font-mono">MODULO_CORRESPONDENCIA</strong>, dirígete al panel central de SuperAdmin.
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onClose();
-                        navigate('/admin/super');
-                      }}
-                      className="inline-flex items-center gap-2 bg-slate-900 dark:bg-white/10 hover:bg-slate-800 text-white font-bold px-5 py-2.5 rounded-xl text-xs shadow-md transition-transform active:scale-95 cursor-pointer"
-                    >
-                      <span>Ir al Panel de Usuarios SuperAdmin</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
+                    <div>
+                      <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                        Alta de Funcionarios & Gestión de Personal Staff
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-gray-400 max-w-lg mx-auto mt-1">
+                        Para registrar un nuevo funcionario institucional (Jefes de Área, Secretarias, Contrataciones, Finanzas, Mantenimiento) o editar sus permisos en el Organigrama de Correspondencia:
+                      </p>
+                    </div>
+                    
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          navigate('/superadmin?tab=INSTITUTIONAL&create=staff');
+                        }}
+                        className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-950/40 transition-transform active:scale-95 cursor-pointer"
+                      >
+                        <UserPlus className="w-4 h-4" />
+                        <span>+ Crear Funcionario / Staff Ahora</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          navigate('/superadmin?tab=INSTITUTIONAL');
+                        }}
+                        className="inline-flex items-center gap-2 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold px-5 py-3 rounded-xl text-xs transition-colors cursor-pointer"
+                      >
+                        <span>Ver Padrón de Usuarios</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

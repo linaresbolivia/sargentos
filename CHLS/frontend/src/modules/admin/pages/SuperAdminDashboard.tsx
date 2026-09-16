@@ -1,15 +1,21 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '@config/api';
+import {
+  getOrganigramNodeForUser,
+  DEFAULT_ORGANIGRAM_NODES,
+} from '@modules/correspondence/utils/organigramWorkflowService';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { logout } from '@store/authSlice';
 import {
   LogOut,
+  User,
   UserPlus,
   Users,
+  AtSign,
   ShieldCheck,
   Shield,
   Key,
@@ -164,6 +170,7 @@ export const PROFILE_PRESETS = [
 export const SuperAdminDashboard = () => {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -176,6 +183,7 @@ export const SuperAdminDashboard = () => {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
 
   // Form Fields
+  const [newUsername, setNewUsername] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -186,6 +194,8 @@ export const SuperAdminDashboard = () => {
   const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
   const [baseRole, setBaseRole] = useState<string>('STAFF');
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [selectedOrganigramNodeId, setSelectedOrganigramNodeId] = useState<string>('');
+  const [userPosition, setUserPosition] = useState<string>('');
 
   // Quick Password Reset Modal
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
@@ -207,6 +217,17 @@ export const SuperAdminDashboard = () => {
   useEffect(() => {
     fetchUsers();
   }, []);
+
+  // Listen to searchParams (e.g. ?tab=INSTITUTIONAL&create=staff from correspondence config)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && ['ALL', 'INSTITUTIONAL', 'DIRECTORIO', 'SECRETARIA', 'FINANZAS', 'PORTERIA', 'MEMBER', 'INACTIVE'].includes(tab)) {
+      setUserTypeFilter(tab as any);
+    }
+    if (searchParams.get('create') === 'staff') {
+      handleOpenCreate();
+    }
+  }, [searchParams]);
 
   const fetchUsers = async () => {
     try {
@@ -234,6 +255,71 @@ export const SuperAdminDashboard = () => {
     toast.success(`Plantilla "${preset.name}" aplicada ⚡`);
   };
 
+  // Username change handler: auto-syncs official email
+  const handleUsernameChange = (val: string) => {
+    const clean = val.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+    setNewUsername(clean);
+    if (!newUserEmail || newUserEmail.endsWith('@sargentos.com.bo') || newUserEmail.endsWith('@chls.bo')) {
+      setNewUserEmail(clean ? `${clean}@sargentos.com.bo` : '');
+    }
+  };
+
+  // Select Organigram Node / Department
+  const handleSelectOrganigramNode = (nodeId: string) => {
+    setSelectedOrganigramNodeId(nodeId);
+    if (!nodeId) return;
+
+    const node = DEFAULT_ORGANIGRAM_NODES.find((n) => n.id === nodeId);
+    if (node) {
+      if (!userPosition || DEFAULT_ORGANIGRAM_NODES.some((n) => n.title === userPosition || n.manager === userPosition)) {
+        setUserPosition(node.title || node.manager || '');
+      }
+
+      if (node.email) {
+        setNewUserEmail(node.email);
+        const prefix = node.email.split('@')[0];
+        setNewUsername(prefix);
+      }
+
+      // Auto-assign roles for this area in correspondence
+      const newRoles = new Set(selectedRoles);
+      newRoles.add('MODULO_CORRESPONDENCIA');
+
+      if (node.type === 'GERENCIA') {
+        newRoles.add('MODULO_DIRECTORIO');
+        newRoles.add('MODULO_PQRS');
+      } else if (node.type === 'SECRETARIA') {
+        newRoles.add('MODULO_SOCIOS');
+        newRoles.add('MODULO_PQRS');
+        newRoles.add('MODULO_WHATSAPP');
+        newRoles.add('MODULO_USUARIO_PQRS');
+      } else if (node.type === 'FINANZAS') {
+        newRoles.add('MODULO_FACTURACION');
+        newRoles.add('MODULO_CONTABILIDAD');
+      } else if (node.type === 'COMPRAS') {
+        newRoles.add('MODULO_CONTRATACIONES');
+      } else if (node.type === 'OPERACIONES') {
+        if (node.id.includes('mantenimiento') || node.id.includes('piscinero')) {
+          newRoles.add('MODULO_ACTIVOS_FIJOS');
+        } else if (node.id.includes('almacen')) {
+          newRoles.add('MODULO_ALMACENES');
+          newRoles.add('MODULO_ACTIVOS_FIJOS');
+        } else if (node.id.includes('rrhh')) {
+          newRoles.add('MODULO_RRHH');
+        } else if (node.id.includes('sistemas')) {
+          newRoles.add('MODULO_CONTROL_ACCESO');
+          newRoles.add('MODULO_PQRS');
+        }
+      } else if (node.type === 'RECEPCION') {
+        newRoles.add('MODULO_CONTROL_ACCESO');
+        newRoles.add('MODULO_PQRS');
+      }
+
+      setSelectedRoles(Array.from(newRoles));
+      toast.success(`Área "${node.title}" seleccionada. Módulos asignados ⚡`);
+    }
+  };
+
   // Generate Random Secure Password
   const generateRandomPassword = () => {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -245,6 +331,7 @@ export const SuperAdminDashboard = () => {
   };
 
   const resetForm = () => {
+    setNewUsername('');
     setNewUserEmail('');
     setNewUserPassword('');
     setNewUserFirstName('');
@@ -256,6 +343,8 @@ export const SuperAdminDashboard = () => {
     setIsActive(true);
     setEditingUserId(null);
     setShowPassword(false);
+    setSelectedOrganigramNodeId('');
+    setUserPosition('');
   };
 
   const handleOpenCreate = () => {
@@ -275,12 +364,24 @@ export const SuperAdminDashboard = () => {
     } else {
       setModalMode('edit');
       setEditingUserId(user.id);
+
+      const loginPrefix = user.email.includes('@') ? user.email.split('@')[0] : user.email;
+      setNewUsername(loginPrefix);
       setNewUserEmail(user.email);
       setNewUserFirstName(user.firstName);
       setNewUserLastName(user.lastName);
       setNewUserDocumentId(user.documentId || '');
       setNewUserPhone(user.phone || '');
       setIsActive(user.isActive);
+
+      const matchedNode = getOrganigramNodeForUser(user);
+      if (matchedNode) {
+        setSelectedOrganigramNodeId(matchedNode.id);
+        setUserPosition(matchedNode.title || matchedNode.manager || '');
+      } else {
+        setSelectedOrganigramNodeId('');
+        setUserPosition('');
+      }
 
       const baseRoles = ['USER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'];
       const userBaseRole = user.roles.find((r) => baseRoles.includes(r.name))?.name || 'STAFF';
@@ -296,13 +397,30 @@ export const SuperAdminDashboard = () => {
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      const finalRoles = new Set([...selectedRoles, baseRole]);
+      if (baseRole !== 'USER') {
+        finalRoles.add('MODULO_CORRESPONDENCIA');
+      }
+
+      let finalEmail = newUserEmail.trim();
+      if (!finalEmail && newUsername.trim()) {
+        finalEmail = `${newUsername.trim().toLowerCase()}@sargentos.com.bo`;
+      } else if (finalEmail && !finalEmail.includes('@')) {
+        finalEmail = `${finalEmail.toLowerCase()}@sargentos.com.bo`;
+      }
+
+      if (!finalEmail) {
+        toast.error('Por favor ingresa el Nombre de Usuario o Correo');
+        return;
+      }
+
       const payload: any = {
-        email: newUserEmail.trim(),
+        email: finalEmail,
         firstName: newUserFirstName.trim(),
         lastName: newUserLastName.trim(),
         documentId: newUserDocumentId.trim() || null,
         phone: newUserPhone.trim() || null,
-        roles: Array.from(new Set([...selectedRoles, baseRole])),
+        roles: Array.from(finalRoles),
         isActive,
       };
 
@@ -312,7 +430,7 @@ export const SuperAdminDashboard = () => {
 
       if (modalMode === 'create') {
         await api.post('/users', payload);
-        toast.success(`¡Usuario ${payload.firstName} ${payload.lastName} creado exitosamente! 👤✨`);
+        toast.success(`¡Usuario ${newUsername || payload.firstName} creado exitosamente! 👤✨`);
       } else if (modalMode === 'edit' && editingUserId) {
         await api.put(`/users/${editingUserId}`, payload);
         toast.success(`Perfil de ${payload.firstName} actualizado correctamente ⚙️`);
@@ -587,8 +705,8 @@ export const SuperAdminDashboard = () => {
         {/* Main Panel */}
         <div className="bg-white/[0.02] border border-white/10 rounded-3xl overflow-hidden shadow-2xl backdrop-blur-md">
           
-          {/* Controls Bar: Search & Segments */}
-          <div className="p-5 border-b border-white/10 bg-white/[0.01] flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4">
+          {/* Controls Bar: Search, Segments & Quick Staff Creation */}
+          <div className="p-5 border-b border-white/10 bg-white/[0.01] flex flex-col xl:flex-row justify-between items-stretch xl:items-center gap-4">
             
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
@@ -611,16 +729,16 @@ export const SuperAdminDashboard = () => {
             </div>
 
             {/* Segment Tabs */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0 scrollbar-none flex-wrap sm:flex-nowrap">
               {[
-                { id: 'ALL', label: 'Todos' },
-                { id: 'INSTITUTIONAL', label: '💼 Personal Staff' },
+                { id: 'ALL', label: `Todos (${metrics.total})` },
+                { id: 'INSTITUTIONAL', label: `💼 Personal Staff (${metrics.staff})` },
                 { id: 'DIRECTORIO', label: '🏛️ Directorio' },
                 { id: 'SECRETARIA', label: '📑 Secretaría' },
                 { id: 'FINANZAS', label: '💰 Finanzas' },
                 { id: 'PORTERIA', label: '🚪 Portería' },
-                { id: 'MEMBER', label: '🎾 Socios' },
-                { id: 'INACTIVE', label: '🚫 Inactivos' },
+                { id: 'MEMBER', label: `🎾 Socios (${metrics.members})` },
+                { id: 'INACTIVE', label: `🚫 Inactivos (${metrics.inactive})` },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -634,6 +752,19 @@ export const SuperAdminDashboard = () => {
                   {tab.label}
                 </button>
               ))}
+            </div>
+
+            {/* Direct CTA Button to create Staff */}
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleOpenCreate}
+                className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black px-4 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 active:scale-95 transition-all cursor-pointer"
+                title="Crear nuevo usuario para funcionario institucional / personal staff"
+              >
+                <Shield className="w-4 h-4 text-slate-950" />
+                <span>+ Crear Funcionario / Staff</span>
+              </button>
             </div>
           </div>
 
@@ -654,8 +785,30 @@ export const SuperAdminDashboard = () => {
               <tbody className="divide-y divide-white/5">
                 {filteredUsers.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-16 text-center text-slate-500 font-medium">
-                      No se encontraron usuarios con los criterios de búsqueda.
+                    <td colSpan={6} className="py-16 text-center text-slate-400 font-medium">
+                      <div className="max-w-md mx-auto space-y-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
+                          <Users className="w-6 h-6" />
+                        </div>
+                        <p className="text-sm font-bold text-white">
+                          No se encontraron usuarios con los criterios de búsqueda.
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {userTypeFilter === 'INSTITUTIONAL'
+                            ? 'No hay funcionarios registrados en este filtro. Puedes crear uno inmediatamente.'
+                            : 'Intenta ajustar tus términos de búsqueda o crear un nuevo usuario.'}
+                        </p>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={handleOpenCreate}
+                            className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black px-4 py-2 rounded-xl text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer"
+                          >
+                            <Shield className="w-3.5 h-3.5 text-slate-950" />
+                            <span>+ Registrar Nuevo Funcionario / Staff</span>
+                          </button>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 ) : (
@@ -666,6 +819,7 @@ export const SuperAdminDashboard = () => {
                     const isStaff = user.roles.some((r) => r.name === 'STAFF');
 
                     const userModules = user.roles.filter((r) => r.name.startsWith('MODULO_'));
+                    const orgNode = !isMember ? getOrganigramNodeForUser(user) : undefined;
 
                     return (
                       <tr
@@ -692,6 +846,12 @@ export const SuperAdminDashboard = () => {
                                 {user.firstName} {user.lastName}
                               </div>
                               <div className="text-slate-400 text-xs font-mono truncate">{user.email}</div>
+                              {orgNode && (
+                                <div className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5 truncate">
+                                  <Building2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>{orgNode.title}</span>
+                                </div>
+                              )}
                             </div>
                           </div>
                         </td>
@@ -866,38 +1026,105 @@ export const SuperAdminDashboard = () => {
                 </div>
               </div>
 
-              {/* Datos Personales */}
-              <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/10 space-y-4">
-                <span className="text-xs font-black uppercase text-slate-300 block">
-                  1. Datos del Funcionario & Login
-                </span>
+              {/* 1. Cargo Institucional en el Organigrama & Despacho Oficial */}
+              <div className="bg-gradient-to-br from-emerald-950/40 via-slate-900/70 to-slate-950 p-5 rounded-2xl border-2 border-emerald-500/40 space-y-4 shadow-lg shadow-emerald-950/30">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black uppercase text-emerald-400 flex items-center gap-2 tracking-wider">
+                    <Building2 className="w-4 h-4 text-emerald-400" />
+                    <span>1. Cargo Institucional en el Organigrama (¿Qué puesto ocupará?)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Puesto de Organigrama
+                  </span>
+                </div>
+
+                <p className="text-[11px] text-slate-300 leading-relaxed">
+                  Selecciona el despacho al que pertenece este puesto. Esto define a qué áreas puede derivar o de quiénes puede recibir Hojas de Ruta en el Organigrama.
+                </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Nombre(s) <span className="text-red-500">*</span>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Área / Despacho Oficial (Organigrama) <span className="text-emerald-400">*</span>
+                    </label>
+                    <select
+                      value={selectedOrganigramNodeId}
+                      onChange={(e) => handleSelectOrganigramNode(e.target.value)}
+                      className="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                    >
+                      <option value="">-- Seleccionar Área del Organigrama --</option>
+                      {DEFAULT_ORGANIGRAM_NODES.map((node) => (
+                        <option key={node.id} value={node.id}>
+                          {node.title} — ({node.subtitle || node.manager})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Cargo / Puesto Formal en el Organigrama <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. Responsable de Archivo Central, Jefe de Mantenimiento..."
+                      value={userPosition}
+                      onChange={(e) => setUserPosition(e.target.value)}
+                      className="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                {selectedOrganigramNodeId && (
+                  <div className="bg-slate-950/80 p-3 rounded-xl border border-emerald-500/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-slate-300">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        Habilitado para derivar y recepcionar con SLA según conexiones del organigrama.
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Funcionario Titular (La Persona Física que ocupa el cargo) */}
+              <div className="bg-gradient-to-br from-blue-950/30 via-slate-900/60 to-slate-950 p-5 rounded-2xl border border-blue-500/30 space-y-4 shadow-lg shadow-blue-950/20">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black uppercase text-blue-400 flex items-center gap-2 tracking-wider">
+                    <Users className="w-4 h-4 text-blue-400" />
+                    <span>2. Funcionario Asignado (¿Quién es la persona que ocupa este cargo?)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-blue-300 bg-blue-500/20 border border-blue-500/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Datos del Personal
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Nombre(s) de la Persona <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Carlos"
+                      placeholder="Ej. Juan Carlos"
                       value={newUserFirstName}
                       onChange={(e) => setNewUserFirstName(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-brand-gold"
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Apellido(s) <span className="text-red-500">*</span>
+                    <label className="block text-[11px] font-bold text-slate-300 mb-1">
+                      Apellido(s) de la Persona <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
                       required
-                      placeholder="Ej. Mendoza Atanacio"
+                      placeholder="Ej. Pérez Rodríguez"
                       value={newUserLastName}
                       onChange={(e) => setNewUserLastName(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-brand-gold"
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
@@ -905,76 +1132,130 @@ export const SuperAdminDashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Documento / CI (Opcional)
+                      Documento / C.I. (Opcional)
                     </label>
                     <input
                       type="text"
                       placeholder="Ej. 4892110 LP"
                       value={newUserDocumentId}
                       onChange={(e) => setNewUserDocumentId(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono outline-none focus:ring-2 focus:ring-brand-gold"
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Teléfono / WhatsApp (Opcional)
+                      Teléfono / WhatsApp Corporativo (Opcional)
                     </label>
                     <input
                       type="text"
                       placeholder="Ej. 77218940"
                       value={newUserPhone}
                       onChange={(e) => setNewUserPhone(e.target.value)}
-                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono outline-none focus:ring-2 focus:ring-brand-gold"
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* 3. Cuenta de Usuario del Sistema & Login (El Usuario con el que ingresará) */}
+              <div className="bg-gradient-to-br from-amber-950/40 via-slate-900/80 to-slate-950 p-5 rounded-2xl border-2 border-brand-gold/60 space-y-4 shadow-[0_0_30px_rgba(212,175,55,0.18)]">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <span className="text-xs font-black uppercase text-brand-gold flex items-center gap-2 tracking-wider">
+                    <User className="w-4 h-4 text-brand-gold" />
+                    <span>3. Cuenta de Usuario del Sistema (¿Con qué USUARIO iniciará sesión?)</span>
+                  </span>
+                  <span className="text-[10px] font-bold text-brand-gold bg-brand-gold/20 border border-brand-gold/40 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Credenciales de Login
+                  </span>
+                </div>
+
+                <div className="p-3 bg-brand-gold/10 rounded-xl border border-brand-gold/25 flex items-start gap-2.5">
+                  <Key className="w-4 h-4 text-brand-gold shrink-0 mt-0.5" />
+                  <p className="text-xs text-amber-200/90 leading-relaxed">
+                    <strong>Definición de Usuario:</strong> Aquí se define el <strong>Nombre de Usuario</strong> con el que este funcionario ingresará a la plataforma. Puede ser el alias del cargo (ej. <code>archivo</code>, <code>mantenimiento</code>) o el usuario personal (ej. <code>jcperez</code>, <code>cgonzales</code>).
+                  </p>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* CAMPO USUARIO PRINCIPAL */}
                   <div>
-                    <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                      Correo Electrónico (Login) <span className="text-red-500">*</span>
+                    <label className="block text-xs font-black uppercase text-brand-gold mb-1 tracking-wider flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-brand-gold" />
+                      <span>Nombre de Usuario (Login) *</span>
                     </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        placeholder="ej. archivo, cgonzales, secretaria, jcperez"
+                        value={newUsername}
+                        onChange={(e) => handleUsernameChange(e.target.value)}
+                        className="w-full bg-slate-900 border-2 border-brand-gold/60 focus:border-brand-gold rounded-xl px-3.5 py-2.5 text-sm text-brand-gold font-mono font-black outline-none focus:ring-2 focus:ring-brand-gold shadow-inner"
+                      />
+                    </div>
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      El funcionario puede escribir solo este nombre de usuario para iniciar sesión.
+                    </p>
+                  </div>
+
+                  {/* CORREO INSTITUCIONAL */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[11px] font-bold text-slate-300 flex items-center gap-1">
+                        <AtSign className="w-3 h-3 text-slate-400" />
+                        <span>Correo Electrónico Oficial *</span>
+                      </label>
+                      {newUsername && (
+                        <span className="text-[10px] text-brand-gold/80 font-mono">
+                          Auto-sincronizado
+                        </span>
+                      )}
+                    </div>
                     <input
                       type="email"
                       required
-                      placeholder="ej. cmendoza@chls.bo"
+                      placeholder="ej. archivo@sargentos.com.bo"
                       value={newUserEmail}
                       onChange={(e) => setNewUserEmail(e.target.value)}
                       className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-brand-gold"
                     />
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Se utiliza para recepción de notificaciones y login con correo completo.
+                    </p>
                   </div>
+                </div>
 
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="text-[11px] font-bold text-slate-400">
-                        {modalMode === 'create' ? 'Contraseña Inicial' : 'Nueva Contraseña (Opcional)'}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setNewUserPassword(generateRandomPassword())}
-                        className="text-[10px] text-brand-gold hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-2.5 h-2.5" />
-                        <span>Generar Clave</span>
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder={modalMode === 'create' ? 'Contraseña generada...' : 'Dejar en blanco para conservar'}
-                        value={newUserPassword}
-                        onChange={(e) => setNewUserPassword(e.target.value)}
-                        className="w-full bg-slate-900 border border-white/15 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white font-mono outline-none focus:ring-2 focus:ring-brand-gold"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
+                {/* CONTRASEÑA */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[11px] font-bold text-slate-300">
+                      {modalMode === 'create' ? 'Contraseña Inicial *' : 'Nueva Contraseña (Opcional)'}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setNewUserPassword(generateRandomPassword())}
+                      className="text-[10px] text-brand-gold hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5" />
+                      <span>Generar Clave Aleatoria</span>
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder={modalMode === 'create' ? 'Contraseña generada...' : 'Dejar en blanco para conservar contraseña actual'}
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/15 rounded-xl pl-3.5 pr-10 py-2.5 text-xs text-white font-mono font-bold outline-none focus:ring-2 focus:ring-brand-gold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -983,7 +1264,7 @@ export const SuperAdminDashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="bg-white/[0.02] p-4 rounded-2xl border border-white/10 space-y-2">
                   <label className="block text-xs font-black uppercase text-slate-300">
-                    2. Rol Base Institucional
+                    4. Rol Base Institucional
                   </label>
                   <select
                     value={baseRole}
@@ -1021,7 +1302,7 @@ export const SuperAdminDashboard = () => {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-black uppercase text-slate-300 block">
-                    3. Matriz de Módulos Autorizados ({selectedRoles.length} Seleccionados)
+                    5. Matriz de Módulos Autorizados ({selectedRoles.length} Seleccionados)
                   </label>
                   <div className="flex gap-2">
                     <button

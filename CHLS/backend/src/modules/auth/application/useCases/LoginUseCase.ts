@@ -24,17 +24,27 @@ export class LoginUseCase {
   public async execute(input: LoginInput): Promise<Result<AuthResponseDto>> {
     // 1. Normalize and validate email/username input
     const rawInput = (input.email || '').trim().toLowerCase();
-    const formattedEmail = rawInput.includes('@') ? rawInput : `${rawInput}@sargentos.com.bo`;
+    let user = null;
 
-    const emailResult = Email.create(formattedEmail);
-    if (emailResult.isFailure) {
-      return Result.fail<AuthResponseDto>('Credenciales inválidas.');
+    if (rawInput.includes('@')) {
+      const emailResult = Email.create(rawInput);
+      if (!emailResult.isFailure) {
+        user = await this.userRepository.findByEmail(emailResult.getValue().value);
+      }
+    } else {
+      // Allow login with just username (e.g. 'archivo', 'cgonzales', 'secretaria')
+      const emailSargentos = Email.create(`${rawInput}@sargentos.com.bo`);
+      if (!emailSargentos.isFailure) {
+        user = await this.userRepository.findByEmail(emailSargentos.getValue().value);
+      }
+      if (!user) {
+        const emailChls = Email.create(`${rawInput}@chls.bo`);
+        if (!emailChls.isFailure) {
+          user = await this.userRepository.findByEmail(emailChls.getValue().value);
+        }
+      }
     }
 
-    const email = emailResult.getValue();
-
-    // 2. Fetch user
-    const user = await this.userRepository.findByEmail(email.value);
     if (!user) {
       return Result.fail<AuthResponseDto>('Credenciales inválidas.');
     }
