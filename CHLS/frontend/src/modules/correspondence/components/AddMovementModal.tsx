@@ -1,7 +1,14 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { addMovement, uploadRouteSheetDocuments, fetchRouteSheetById, fetchRouteSheets, fetchWorkflowSettings } from '@store/correspondenceSlice';
+import {
+  addMovement,
+  uploadRouteSheetDocuments,
+  fetchRouteSheetById,
+  fetchRouteSheets,
+  fetchCorrespondenceStats,
+  fetchWorkflowSettings,
+} from '@store/correspondenceSlice';
 import { DigitalSignaturePad } from './DigitalSignaturePad';
 import {
   X,
@@ -30,8 +37,9 @@ import { RouteSheetItem } from '../types/correspondence.types';
 import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
-import { getOrganigramDestinations, WorkflowNode, DEFAULT_ORGANIGRAM_NODES, isSameArea } from '../utils/organigramWorkflowService';
+import { getOrganigramDestinations, WorkflowNode, DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
 import { countPdfPages } from '../utils/pdfPageCounter';
+import DestinationSearchCombobox from './DestinationSearchCombobox';
 
 interface AddMovementModalProps {
   isOpen: boolean;
@@ -98,6 +106,7 @@ const AREA_RESPONSIBLES: Record<string, { title: string; defaultPerson: string }
 export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onClose, item }) => {
   const dispatch = useDispatch<AppDispatch>();
   const workflow = useSelector((state: RootState) => state.correspondence.workflow);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
 
   // Calcular todos los nombres de áreas oficiales disponibles
   const allAvailableAreas = useMemo(() => {
@@ -109,6 +118,43 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   const organigramInfo = useMemo(() => {
     return getOrganigramDestinations(item.currentArea, workflow);
   }, [item.currentArea, workflow]);
+
+  // Detectar automáticamente el nodo oficial del usuario autenticado en el Organigrama
+  const userNode = useMemo(() => {
+    return getOrganigramNodeForUser(currentUser, workflow);
+  }, [currentUser, workflow]);
+
+  // Nombre oficial del firmante individualizado según el usuario autenticado
+  const effectiveSignerName = useMemo(() => {
+    if (!currentUser) return organigramInfo.currentNode?.manager || item.currentArea;
+    const fullName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim();
+    if (fullName && fullName !== 'Usuario Desconocido') return fullName;
+    if (userNode?.manager && !userNode.manager.toLowerCase().includes('gerente general')) {
+      return userNode.manager;
+    }
+    return currentUser.email ? currentUser.email.split('@')[0] : 'Funcionario Autorizado';
+  }, [currentUser, userNode, organigramInfo, item.currentArea]);
+
+  // Cargo oficial del firmante individualizado según el usuario autenticado
+  const effectiveSignerPosition = useMemo(() => {
+    if (!currentUser) return 'Titular de Despacho';
+    if ((currentUser as any).position) return (currentUser as any).position;
+    if (userNode?.subtitle) {
+      return userNode.subtitle.replace(/\s*\(\d+\)$/, '').trim();
+    }
+    if (userNode?.title) return userNode.title;
+    if (currentUser.roles && currentUser.roles.length > 0) {
+      const r = currentUser.roles[0];
+      const rName = typeof r === 'string' ? r : (r as any).name || '';
+      if (rName) return rName.replace(/_/g, ' ');
+    }
+    return 'Titular de Despacho';
+  }, [currentUser, userNode]);
+
+  // Área oficial del firmante según el usuario autenticado
+  const effectiveSignerArea = useMemo(() => {
+    return (currentUser as any)?.area || userNode?.title || item.currentArea;
+  }, [currentUser, userNode, item.currentArea]);
 
   const { upwardNodes = [], downwardNodes = [], lateralNodes = [], recommendedNodes = [] } = organigramInfo;
   const hasConnectedDestinations = recommendedNodes.length > 0;
@@ -149,22 +195,11 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredCcAreas = useMemo(() => {
-    const query = searchCcTerm.toLowerCase().trim();
-    return allAvailableAreas.filter((area) => {
-      if (area === targetArea) return false;
-      if (selectedCcAreas.includes(area)) return false;
-      if (!query) return true;
-      return area.toLowerCase().includes(query);
-    });
-  }, [allAvailableAreas, targetArea, selectedCcAreas, searchCcTerm]);
-
   // Resuelve y autocompleta el responsable / titular del despacho o cargo seleccionado respetando el Organigrama Oficial
   const getResponsibleForCargo = (cargoOrArea: string): string => {
     if (!cargoOrArea) return '';
     const activeNodes = workflow?.nodes && workflow.nodes.length > 0 ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
 
-    // 1. Coincidencia exacta primero por title, areaKey, o id
     const exactNode = activeNodes.find(
       (n) =>
         (n.title && n.title.toUpperCase().trim() === cargoOrArea.toUpperCase().trim()) ||
@@ -175,7 +210,6 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       return exactNode.manager.trim();
     }
 
-    // 2. Coincidencia normalizada exacta (sin acentos ni espacios redundantes)
     const normCargo = cargoOrArea
       .toUpperCase()
       .normalize('NFD')
@@ -202,7 +236,6 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       return normNode.manager.trim();
     }
 
-    // 3. Catálogo estático AREA_RESPONSIBLES si existe clave exacta
     if (AREA_RESPONSIBLES[cargoOrArea]) {
       return AREA_RESPONSIBLES[cargoOrArea].defaultPerson;
     }
@@ -214,7 +247,6 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
       return AREA_RESPONSIBLES[matchedKey].defaultPerson;
     }
 
-    // 4. Búsqueda por isSameArea sólo si no hubo coincidencia exacta
     const matchedNode = activeNodes.find(
       (n) => isSameArea(n.title, cargoOrArea) || isSameArea(n.areaKey, cargoOrArea)
     );
@@ -224,6 +256,18 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
 
     return exactNode?.subtitle || exactNode?.title || cargoOrArea;
   };
+
+  const filteredCcAreas = useMemo(() => {
+    const query = searchCcTerm.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    return allAvailableAreas.filter((area) => {
+      if (area === targetArea) return false;
+      if (selectedCcAreas.includes(area)) return false;
+      if (!query) return true;
+      const normArea = area.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      const resp = getResponsibleForCargo(area).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+      return normArea.includes(query) || resp.includes(query);
+    });
+  }, [allAvailableAreas, targetArea, selectedCcAreas, searchCcTerm]);
 
   // Auto-seleccionar el primer destino conectado del organigrama o primer despacho oficial y su responsable
   useEffect(() => {
@@ -399,6 +443,7 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
         // Refrescar expediente y lista completa
         await dispatch(fetchRouteSheetById(item.id));
         await dispatch(fetchRouteSheets());
+        dispatch(fetchCorrespondenceStats());
 
         toast.success(`Derivación oficial enviada a ${targetArea} con éxito`, { id: toastId });
         onClose();
@@ -446,227 +491,99 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
           </button>
         </div>
 
-        {/* Form Body - 3 Columns on Desktop */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 lg:p-7 overflow-y-auto flex-1 space-y-6 text-sm">
+        {/* Form Body - Secuencia Natural de Lectura Humana: Izquierda a Derecha por Fila */}
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 lg:p-6 overflow-y-auto flex-1 space-y-3.5 text-sm">
           
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 xl:gap-6">
+          {/* Fila 1 (Izquierda a Derecha): 1. Destino | 2. Con Copia (C.C.) | 3. Estado */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
             
-            {/* Left Column: Destino Principal & Con Copia (C.C.) */}
-            <div className="space-y-6">
-              
-              {/* 1. Destino Principal Parametrizado por Cargo / Organigrama */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200 dark:border-emerald-800/40 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-emerald-500" />
-                    <span>1. Derivar a (Cargo o Despacho de Destino)</span>
-                    <span className="text-rose-500">*</span>
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
-                    <GitBranch className="w-3 h-3" />
-                    <span>Regido por Organigrama 360°</span>
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {/* Selector de Cargo / Despacho con llenado automático del Responsable */}
-                  <div>
-                    <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                      <span className="font-semibold">Seleccionar Cargo o Despacho de Destino</span>
-                      <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">
-                        Flujo Institucional
-                      </span>
-                    </label>
-                    <select
-                      value={targetArea}
-                      onChange={(e) => {
-                        const selCargo = e.target.value;
-                        setTargetArea(selCargo);
-                        const autoResp = getResponsibleForCargo(selCargo);
-                        setTargetPersonName(autoResp);
-                      }}
-                      className="w-full bg-white dark:bg-[#07130E] border border-slate-300 dark:border-emerald-800/50 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none shadow-sm cursor-pointer transition-all"
-                    >
-                      {!targetArea && (
-                        <option value="" disabled>
-                          -- Seleccione el cargo o despacho de destino --
-                        </option>
-                      )}
-
-                      {/* 1. Línea Ascendente (Jefatura Superior / Elevación de Informe) */}
-                      {upwardNodes.length > 0 && (
-                        <optgroup label="↑ JEFATURA SUPERIOR / MAE (Elevación de Informe & Aprobación)">
-                          {upwardNodes.map(({ node, edgeLabel }) => (
-                            <option key={`up-${node.id}`} value={node.title} className="bg-slate-900 text-amber-300 font-semibold">
-                              ↑ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-
-                      {/* 2. Línea Descendente (Dependencias Directas & Subordinados) */}
-                      {downwardNodes.length > 0 && (
-                        <optgroup label="↓ DEPENDENCIAS & SUBORDINADOS (Derivación & Instrucción Directa)">
-                          {downwardNodes.map(({ node, edgeLabel }) => (
-                            <option key={`down-${node.id}`} value={node.title} className="bg-slate-900 text-emerald-300 font-semibold">
-                              ↓ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-
-                      {/* 3. Línea Transversal (Coordinación Interdepartamental) */}
-                      {lateralNodes.length > 0 && (
-                        <optgroup label="↔ COORDINACIÓN INTERDEPARTAMENTAL (Canales Transversales Autorizados)">
-                          {lateralNodes.map(({ node, edgeLabel }) => (
-                            <option key={`lat-${node.id}`} value={node.title} className="bg-slate-900 text-sky-300 font-semibold">
-                              ↔ {node.title} — {node.manager || getResponsibleForCargo(node.title)} ({edgeLabel})
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-
-                      {/* Si no hay conexiones en el organigrama y no está activada la excepción */}
-                      {!hasConnectedDestinations && !allowExtraordinaryDerivation && (
-                        <option value="" disabled className="bg-slate-900 text-rose-400 font-semibold">
-                          ⚠️ Sin conexiones autorizadas en el Organigrama 360°
-                        </option>
-                      )}
-
-                      {/* Destinos extraordinarios (sólo si el usuario activa la casilla de excepción) */}
-                      {allowExtraordinaryDerivation && (
-                        <optgroup label="⚠️ Despachos No Vinculados (Derivación Extraordinaria fuera de Organigrama)">
-                          {organigramInfo.allNodes
-                            .filter(
-                              (n) =>
-                                !isSameArea(n.title, item.currentArea) &&
-                                !recommendedNodes.some((r) => r.node.id === n.id)
-                            )
-                            .map((node) => (
-                              <option key={`all-${node.id}`} value={node.title} className="bg-slate-900 text-slate-300 font-medium">
-                                • {node.title} — {node.manager || getResponsibleForCargo(node.title)}
-                              </option>
-                            ))}
-                        </optgroup>
-                      )}
-                    </select>
-
-                    {/* Barra informativa de estado del Organigrama y Toggle de Excepción */}
-                    <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 pt-1.5 px-0.5">
-                      <span className="flex items-center gap-1.5 font-medium">
-                        <GitBranch className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>
-                          {hasConnectedDestinations
-                            ? `${recommendedNodes.length} destino(s) autorizado(s) en Organigrama`
-                            : 'Sin líneas definidas en Organigrama'}
-                        </span>
-                      </span>
-                      <label className="flex items-center gap-1.5 cursor-pointer hover:text-emerald-500 dark:hover:text-emerald-400 transition-colors select-none">
-                        <input
-                          type="checkbox"
-                          checked={allowExtraordinaryDerivation}
-                          onChange={(e) => setAllowExtraordinaryDerivation(e.target.checked)}
-                          className="rounded text-emerald-500 focus:ring-emerald-500/20 w-3.5 h-3.5 cursor-pointer"
-                        />
-                        <span className="text-[10px] uppercase tracking-wider font-semibold">
-                          Excepción fuera de organigrama
-                        </span>
-                      </label>
-                    </div>
-
-                    {/* Alerta visible si no existen líneas autorizadas */}
-                    {!hasConnectedDestinations && !allowExtraordinaryDerivation && (
-                      <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2 mt-2">
-                        <AlertCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                        <div>
-                          <p className="font-bold">El despacho "{item.currentArea}" no tiene líneas de derivación en el Organigrama 360°.</p>
-                          <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
-                            Para definir a quién puede derivar oficialmente, trace sus conexiones en el menú <strong>Organigrama & Flujos</strong>, o active la casilla de excepción.
-                          </p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 font-semibold">
-                        <User className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>Responsable / Titular de Despacho</span>
-                      </label>
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-                        <CheckCircle2 className="w-3 h-3 text-emerald-500" />
-                        Autocompletado
-                      </span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Nombre del responsable o titular..."
-                      value={targetPersonName}
-                      onChange={(e) => setTargetPersonName(e.target.value)}
-                      className="w-full bg-white dark:bg-[#07130E] border border-slate-300 dark:border-emerald-800/50 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-sm focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600 transition-all"
-                    />
-                  </div>
-                </div>
+            {/* 1. Destino Principal */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-emerald-500" />
+                  <span>1. Destino</span>
+                  <span className="text-rose-500">*</span>
+                </span>
               </div>
 
-              {/* 2. Con Copia a (C.C. Informativo con Lista Desplegable) */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
-                <div className="flex items-center justify-between flex-wrap gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                    <Copy className="w-4 h-4 text-[#C5A059]" />
-                    <span>2. Con Copia a (C.C. Informativo)</span>
-                  </span>
-                  {selectedCcAreas.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-                        {selectedCcAreas.length} {selectedCcAreas.length === 1 ? 'área' : 'áreas'} con copia
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedCcAreas([])}
-                        className="text-[10px] text-rose-500 hover:text-rose-600 font-bold hover:underline cursor-pointer"
-                      >
-                        Limpiar todo
-                      </button>
-                    </div>
-                  )}
+              <DestinationSearchCombobox
+                currentArea={item.currentArea}
+                selectedCargo={targetArea}
+                selectedPersonName={targetPersonName}
+                workflow={workflow}
+                onSelect={(cargo, personName) => {
+                  setTargetArea(cargo);
+                  setTargetPersonName(personName || getResponsibleForCargo(cargo));
+                }}
+                getResponsibleForCargo={getResponsibleForCargo}
+                accentColor="emerald"
+                placeholder="Buscar cargo o funcionario..."
+              />
+            </div>
+
+            {/* 2. Con Copia a (C.C.) */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Copy className="w-4 h-4 text-[#C5A059]" />
+                  <span>2. Con Copia (C.C.)</span>
+                </span>
+                {selectedCcAreas.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCcAreas([])}
+                    className="text-[11px] text-rose-500 hover:underline font-semibold cursor-pointer"
+                  >
+                    Limpiar
+                  </button>
+                )}
+              </div>
+
+              <div ref={ccDropdownRef} className="relative">
+                <div className={`relative flex items-center bg-white dark:bg-[#07130E] border rounded-xl transition-all shadow-sm ${
+                  isCcDropdownOpen
+                    ? 'border-[#C5A059] ring-2 ring-[#C5A059]/20'
+                    : 'border-slate-300 dark:border-slate-700'
+                }`}>
+                  <Search className={`w-4 h-4 ml-3.5 mr-2 shrink-0 ${isCcDropdownOpen ? 'text-[#C5A059]' : 'text-slate-400'}`} />
+                  <input
+                    type="text"
+                    placeholder="Buscar para copia..."
+                    value={searchCcTerm}
+                    onFocus={() => setIsCcDropdownOpen(true)}
+                    onChange={(e) => {
+                      setSearchCcTerm(e.target.value);
+                      setIsCcDropdownOpen(true);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchCcTerm.trim()) {
+                        e.preventDefault();
+                        const val = searchCcTerm.trim();
+                        if (!selectedCcAreas.includes(val)) {
+                          setSelectedCcAreas((prev) => [...prev, val]);
+                        }
+                        setSearchCcTerm('');
+                        setIsCcDropdownOpen(false);
+                      }
+                    }}
+                    className="w-full bg-transparent py-2 pr-10 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 outline-none truncate"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setIsCcDropdownOpen((prev) => !prev)}
+                    className="p-1 mr-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  >
+                    <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCcDropdownOpen ? 'rotate-180 text-[#C5A059]' : ''}`} />
+                  </button>
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Busca o despliega la lista para seleccionar las áreas que deben recibir copia informativa de este trámite:
-                </p>
-
-                {/* Combobox con Buscador Integrado y Menú Desplegable */}
-                <div ref={ccDropdownRef} className="relative">
-                  <div className="relative flex items-center">
-                    <Search className="w-4 h-4 absolute left-3.5 text-slate-400 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="Buscar o desplegar área para copia C.C. ..."
-                      value={searchCcTerm}
-                      onFocus={() => setIsCcDropdownOpen(true)}
-                      onChange={(e) => {
-                        setSearchCcTerm(e.target.value);
-                        setIsCcDropdownOpen(true);
-                      }}
-                      className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl pl-10 pr-10 py-2.5 text-slate-900 dark:text-white font-medium text-sm focus:border-[#C5A059] outline-none shadow-sm"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setIsCcDropdownOpen((prev) => !prev)}
-                      className="absolute right-3 p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer"
-                      title={isCcDropdownOpen ? 'Cerrar lista' : 'Abrir lista desplegable'}
-                    >
-                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isCcDropdownOpen ? 'rotate-180 text-amber-500' : ''}`} />
-                    </button>
-                  </div>
-
-                  {/* Panel Desplegable Flotante */}
-                  {isCcDropdownOpen && (
-                    <div className="absolute left-0 right-0 top-full mt-2 z-50 max-h-60 overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-1.5 space-y-1 animate-fadeIn backdrop-blur-md">
-                      {filteredCcAreas.length > 0 ? (
-                        filteredCcAreas.map((area) => (
+                {isCcDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-48 overflow-y-auto bg-white dark:bg-[#07130E] border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl p-1.5 space-y-0.5 animate-fadeIn backdrop-blur-md">
+                    {filteredCcAreas.length > 0 ? (
+                      filteredCcAreas.map((area) => {
+                        const resp = getResponsibleForCargo(area);
+                        return (
                           <button
                             key={area}
                             type="button"
@@ -675,358 +592,211 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                               setSearchCcTerm('');
                               setIsCcDropdownOpen(false);
                             }}
-                            className="w-full text-left px-3.5 py-2.5 rounded-xl text-xs font-semibold text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between transition-colors cursor-pointer group"
+                            className="w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
                           >
-                            <span className="truncate">{area}</span>
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 group-hover:bg-[#C5A059] group-hover:text-slate-950 transition-colors shrink-0 ml-2">
-                              + Agregar
-                            </span>
+                            <div className="min-w-0 flex-1 truncate">
+                              <span className="font-bold uppercase truncate">{area}</span>
+                              {resp && <span className="text-[11px] text-slate-400 ml-1.5 truncate">({resp})</span>}
+                            </div>
+                            <span className="text-[10px] text-[#C5A059] font-bold shrink-0">+ Copia</span>
                           </button>
-                        ))
-                      ) : (
-                        <div className="p-4 text-center text-xs text-slate-400">
-                          {searchCcTerm.trim()
-                            ? `No se encontraron áreas con "${searchCcTerm}".`
-                            : 'Todas las áreas disponibles ya han sido seleccionadas.'}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Áreas Seleccionadas con Badges Removibles */}
-                {selectedCcAreas.length > 0 ? (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-semibold uppercase text-slate-400 tracking-wider block">
-                      Áreas que recibirán copia (haz clic en ✕ para remover):
-                    </span>
-                    <div className="flex flex-wrap gap-1.5 p-2 bg-slate-100 dark:bg-slate-900/60 rounded-xl border border-slate-200 dark:border-slate-800">
-                      {selectedCcAreas.map((area) => (
-                        <span
-                          key={area}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#C5A059] text-slate-950 text-xs font-semibold shadow-sm transition-all"
-                        >
-                          <span>{area}</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedCcAreas((prev) => prev.filter((a) => a !== area))}
-                            title="Quitar copia a esta área"
-                            className="w-3.5 h-3.5 rounded-full bg-black/20 hover:bg-black/40 flex items-center justify-center transition-colors cursor-pointer text-[9px]"
-                          >
-                            ✕
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-slate-100/50 dark:bg-slate-900/30 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                    <span className="text-xs text-slate-400 italic">
-                      Sin áreas con copia seleccionadas. Elige del menú desplegable superior si deseas notificar en paralelo.
-                    </span>
+                        );
+                      })
+                    ) : searchCcTerm.trim() ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const val = searchCcTerm.trim();
+                          if (!selectedCcAreas.includes(val)) {
+                            setSelectedCcAreas((prev) => [...prev, val]);
+                          }
+                          setSearchCcTerm('');
+                          setIsCcDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 cursor-pointer"
+                      >
+                        <span className="font-semibold text-[#C5A059] truncate">+ Agregar "{searchCcTerm.trim()}" en copia</span>
+                      </button>
+                    ) : (
+                      <div className="p-2.5 text-center text-xs text-slate-400">
+                        Todas las áreas agregadas
+                      </div>
+                    )}
                   </div>
                 )}
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                    Personas o Cargos Específicos en C.C. (Opcional)
-                  </label>
-                  <SmartCorrespondenceInput
-                    placeholder="Ej. Asesoría Legal Externa, Auditoría Interna, etc."
-                    value={ccPersonsText}
-                    onChange={(e) => setCcPersonsText(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder:text-slate-600 outline-none focus:border-[#C5A059] shadow-sm"
-                  />
-                </div>
               </div>
 
+              {selectedCcAreas.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {selectedCcAreas.map((area) => (
+                    <span
+                      key={area}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-amber-500/15 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs font-semibold"
+                    >
+                      <span className="truncate max-w-[180px]">{area}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedCcAreas((prev) => prev.filter((a) => a !== area))}
+                        className="w-3.5 h-3.5 rounded-full hover:bg-amber-500/30 flex items-center justify-center text-[10px] cursor-pointer"
+                      >
+                        ✕
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Right Column: Sellos, Instrucción & Estado */}
-            <div className="space-y-6">
-              
-              {/* 3. Sellos Frecuentes de 1 Toque */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3.5 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                    <Stamp className="w-4 h-4 text-[#C5A059]" />
-                    <span>3. Sellos Frecuentes de 1 Toque</span>
-                    <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500 lowercase">(opcional)</span>
-                  </span>
-                  {quickStamp ? (
+            {/* 3. Estado */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-sky-500" />
+                  <span>3. Estado</span>
+                </label>
+              </div>
+              <select
+                value={newStatus}
+                onChange={(e) => setNewStatus(e.target.value)}
+                className="w-full bg-white dark:bg-[#07130E] border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-semibold text-xs focus:border-[#C5A059] outline-none shadow-sm cursor-pointer"
+              >
+                <option value="DERIVADO">DERIVADO (En traslado a otra área)</option>
+                <option value="EN_PROCESO">EN PROCESO</option>
+                <option value="OBSERVADO">OBSERVADO</option>
+                <option value="EN_APROBACION">EN APROBACIÓN</option>
+                <option value="CONCLUIDO">CONCLUIDO</option>
+              </select>
+            </div>
+
+          </div>
+
+          {/* Fila 2 (Izquierda a Derecha): 4. Sellos Rápidos | 5. Proveído / Instrucción | 6. Documentos Adjuntos (PDF) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
+            
+            {/* 4. Sellos Rápidos */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Stamp className="w-4 h-4 text-[#C5A059]" />
+                  <span>4. Sellos Rápidos</span>
+                </span>
+                {quickStamp && (
+                  <button
+                    type="button"
+                    onClick={() => setQuickStamp('')}
+                    className="text-[11px] text-rose-500 hover:underline font-semibold cursor-pointer"
+                  >
+                    Quitar Sello
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-1.5 flex-1">
+                {QUICK_STAMPS.map((stamp) => {
+                  const isSelected = quickStamp === stamp;
+                  return (
                     <button
+                      key={stamp}
                       type="button"
-                      onClick={() => setQuickStamp('')}
-                      className="text-[11px] font-semibold text-rose-500 hover:text-rose-600 dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-1 cursor-pointer transition-colors bg-rose-500/10 hover:bg-rose-500/20 px-2.5 py-1 rounded-xl border border-rose-500/20"
-                      title="Quitar sello seleccionado"
+                      onClick={() => handleSelectStamp(stamp)}
+                      className={`text-[11px] font-bold px-2.5 py-1.5 rounded-xl border transition-all text-left flex items-center justify-between gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-amber-500/15 dark:bg-amber-950/40 text-amber-600 dark:text-[#C5A059] border-[#C5A059] ring-2 ring-[#C5A059]/40 shadow-sm'
+                          : 'bg-white dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600'
+                      }`}
                     >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Quitar Sello</span>
+                      <span className="truncate">{stamp}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />}
                     </button>
-                  ) : (
-                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-200/60 dark:bg-slate-800/60 px-2 py-0.5 rounded-lg border border-slate-300/40 dark:border-slate-700/40">
-                      Sin Sello
-                    </span>
-                  )}
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {QUICK_STAMPS.map((stamp) => {
-                    const isSelected = quickStamp === stamp;
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 5. Proveído / Instrucción */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-[#C5A059]" />
+                  <span>5. Proveído / Instrucción</span>
+                  <span className="text-rose-500">*</span>
+                </label>
+              </div>
+              <SmartCorrespondenceTextarea
+                rows={3}
+                value={instruction}
+                onChange={(e) => setInstruction(e.target.value)}
+                required
+                enablePrediction={true}
+                enableQuickPhrases={true}
+                placeholder="Escribe la instrucción o proveído formal..."
+                className="w-full flex-1 bg-white dark:bg-[#07130E] border border-slate-300 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white font-medium text-xs focus:border-[#C5A059] outline-none leading-relaxed shadow-sm resize-none"
+              />
+            </div>
+
+            {/* 6. Documentos Adjuntos (PDF) */}
+            <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                  <Paperclip className="w-4 h-4 text-[#C5A059]" />
+                  <span>6. Documentos Adjuntos (PDF)</span>
+                </span>
+                {attachedPages > 0 && (
+                  <span className="text-[10px] font-mono font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                    +{attachedPages} {attachedPages === 1 ? 'foja' : 'fojas'}
+                  </span>
+                )}
+              </div>
+
+              <label className="border border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 bg-white dark:bg-[#07130E] py-2 px-3 rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-all text-xs font-semibold text-slate-700 dark:text-slate-300 hover:text-emerald-500 shadow-sm">
+                <UploadCloud className="w-4 h-4 text-emerald-500" />
+                <span>+ Adjuntar archivo PDF</span>
+                <input type="file" multiple accept=".pdf,application/pdf" onChange={handleFileChange} className="hidden" />
+              </label>
+
+              {movementFiles.length > 0 && (
+                <div className="space-y-1 max-h-20 overflow-y-auto">
+                  {movementFiles.map((file, idx) => {
+                    const pages = filePageCounts[file.name] || 1;
                     return (
-                      <button
-                        key={stamp}
-                        type="button"
-                        onClick={() => handleSelectStamp(stamp)}
-                        className={`text-xs font-semibold px-3 py-2 rounded-xl border transition-all text-left flex items-center justify-between gap-2 cursor-pointer ${
-                          isSelected
-                            ? 'bg-slate-800 dark:bg-slate-800 text-[#C5A059] border-[#C5A059]/60 shadow-sm ring-1 ring-[#C5A059]/40'
-                            : 'bg-white dark:bg-slate-950/60 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600'
-                        }`}
-                        title={isSelected ? 'Haz clic para deseleccionar este sello' : 'Haz clic para aplicar este sello'}
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between gap-2 px-2.5 py-1 rounded-lg bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs"
                       >
-                        <span className="truncate">{stamp}</span>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />}
-                      </button>
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                          <span className="truncate max-w-[150px] font-medium text-slate-800 dark:text-slate-200">{file.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className="text-[10px] font-mono text-amber-500 font-bold">{pages} {pages === 1 ? 'pág' : 'págs'}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFile(idx)}
+                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
-              </div>
-
-              {/* 4. Instrucción / Proveído */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#C5A059]" />
-                    <span>4. Instrucción / Proveído del Trámite</span>
-                    <span className="text-rose-500">*</span>
-                  </div>
-                  <span className="text-[10px] text-amber-500 font-semibold flex items-center gap-1">
-                    <Sparkles className="w-3 h-3" />
-                    <span>Autocorrector de acentos & Predicción</span>
-                  </span>
-                </label>
-                <SmartCorrespondenceTextarea
-                  rows={3}
-                  value={instruction}
-                  onChange={(e) => setInstruction(e.target.value)}
-                  required
-                  enablePrediction={true}
-                  enableQuickPhrases={true}
-                  placeholder="Escribe la instrucción o proveído formal..."
-                  className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-2xl p-3.5 text-slate-900 dark:text-white font-medium text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none leading-relaxed shadow-sm"
-                />
-
-                {/* 5. Digitalizar / Adjuntar Documento de Respuesta / Informe Técnico */}
-                <div className="pt-2 border-t border-slate-200 dark:border-slate-800 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                      <Paperclip className="w-3.5 h-3.5 text-[#C5A059]" />
-                      <span>5. Digitalizar / Adjuntar Documento Oficial (PDF)</span>
-                    </label>
-                    <span className="text-[10px] font-semibold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
-                      Solo PDF
-                    </span>
-                  </div>
-
-                  <label className="border border-dashed border-slate-300 dark:border-slate-700 hover:border-[#C5A059] bg-slate-100/50 dark:bg-slate-950/40 p-4 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all text-center group shadow-sm">
-                    <input
-                      type="file"
-                      multiple
-                      accept=".pdf,application/pdf"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-                    <div className="flex items-center gap-2 mb-1">
-                      <UploadCloud className="w-5 h-5 text-[#C5A059] group-hover:scale-110 transition-transform" />
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        + Digitalizar / Adjuntar Informe o Proveído en PDF
-                      </span>
-                    </div>
-                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                      Haz clic para seleccionar o arrastra aquí el documento escaneado (.pdf) de respuesta o informe
-                    </span>
-                  </label>
-
-                  {/* Chips of attached files con conteo individual de hojas */}
-                  {movementFiles.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {movementFiles.map((file, idx) => {
-                        const pages = filePageCounts[file.name] || 1;
-                        return (
-                          <div
-                            key={idx}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-900 dark:text-slate-200 shadow-sm"
-                          >
-                            <FileCheck className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                            <span className="truncate max-w-[170px] sm:max-w-[210px]">{file.name}</span>
-                            <span className="text-[10px] font-bold font-mono text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
-                              {pages} {pages === 1 ? 'hoja' : 'hojas'}
-                            </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              ({(file.size / 1024 / 1024).toFixed(1)} MB)
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFile(idx)}
-                              className="text-slate-400 hover:text-rose-500 transition-colors p-0.5 ml-0.5 cursor-pointer"
-                              title="Remover archivo"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {/* Panel Destacado de Conteo y Registro de Hojas Adjuntas (Inalterable) */}
-                  {movementFiles.length > 0 && (
-                    <div className="bg-slate-100/80 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-sm animate-fadeIn">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 shrink-0">
-                          <FileText className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-bold uppercase text-slate-800 dark:text-slate-200">
-                              Cantidad de Hojas Adjuntas
-                            </span>
-                            <span className="text-[9.5px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 flex items-center gap-1">
-                              <Lock className="w-2.5 h-2.5 text-amber-500" />
-                              <span>Conteo Automático Protegido</span>
-                            </span>
-                          </div>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Total de páginas auditadas en {movementFiles.length} archivo(s) PDF (no modificable manualmente)
-                          </p>
-                        </div>
-                      </div>
-
-                      <div
-                        className="flex items-center gap-2 shrink-0 bg-white dark:bg-slate-900 px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 shadow-inner select-none cursor-not-allowed"
-                        title="Conteo automatizado por lectura digital de PDF. No modificable manualmente."
-                      >
-                        <Lock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                        <span className="w-10 text-center font-mono font-bold text-base text-slate-900 dark:text-slate-100">
-                          {attachedPages}
-                        </span>
-                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-400 font-mono">
-                          {attachedPages === 1 ? 'hoja' : 'hojas'}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
+              )}
             </div>
 
-            {/* Column 3 (Right): Estado, Firma Digital & Resumen en Vivo */}
-            <div className="space-y-5">
-              
-              {/* 5. Nuevo Estado */}
-              <div className="bg-slate-50 dark:bg-slate-900/60 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                  5. Nuevo Estado de la Hoja de Ruta
-                </label>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white font-semibold text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm"
-                >
-                  <option value="DERIVADO">DERIVADO (En traslado a otra área)</option>
-                  <option value="EN_PROCESO">EN PROCESO (En elaboración de informe)</option>
-                  <option value="OBSERVADO">OBSERVADO (Requiere corrección o datos)</option>
-                  <option value="EN_APROBACION">EN APROBACIÓN (Directorio / Gerencia)</option>
-                  <option value="CONCLUIDO">CONCLUIDO (Atendido y finalizado)</option>
-                </select>
-              </div>
+          </div>
 
-              {/* 6. Firma Digital & Sello Institucional */}
-              <DigitalSignaturePad
-                signerName={organigramInfo.currentNode?.manager || item.currentArea}
-                signerArea={item.currentArea}
-                signerPosition={organigramInfo.currentNode?.subtitle || organigramInfo.currentNode?.type || 'Titular de Despacho'}
-                onSignatureChange={setSignatureUrl}
-                initialSignature={signatureUrl}
-              />
-
-              {/* 7. Tarjeta de Resumen / Auditoría en Vivo de la Derivación */}
-              <div className="bg-slate-100/80 dark:bg-slate-900/80 p-5 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-[#C5A059]" />
-                    <span>Resumen Oficial de Derivación</span>
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    HR: {item.hrCode}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">Área Emisora:</span>
-                    <strong className="text-slate-900 dark:text-white">{item.currentArea}</strong>
-                  </div>
-
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">Área Destino:</span>
-                    <strong className="text-[#C5A059]">{targetArea || 'Sin seleccionar'}</strong>
-                  </div>
-
-                  {targetPersonName && (
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                      <span className="text-slate-500 dark:text-slate-400">Responsable:</span>
-                      <span className="text-slate-800 dark:text-slate-200 font-semibold">{targetPersonName}</span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">Copias C.C.:</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                      {selectedCcAreas.length > 0 ? `${selectedCcAreas.length} área(s)` : 'Ninguna'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">Adjuntos PDF:</span>
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                      {movementFiles.length > 0 ? `${movementFiles.length} archivo(s)` : 'Sin adjuntos'}
-                    </span>
-                  </div>
-
-                  {movementFiles.length > 0 && (
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                      <span className="text-slate-500 dark:text-slate-400">Hojas Adjuntas:</span>
-                      <span className="font-mono font-bold text-amber-500">
-                        + {attachedPages} {attachedPages === 1 ? 'hoja / foja' : 'hojas / fojas'}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
-                    <span className="text-slate-500 dark:text-slate-400">Fojas Totales HR:</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-white">
-                      {item.pageCount || 1} {attachedPages > 0 ? `➔ ${(item.pageCount || 1) + attachedPages} fojas` : 'fojas'}
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 dark:text-slate-400">Firma Digital:</span>
-                    <span className={`font-semibold text-[11px] px-2.5 py-0.5 rounded-lg ${
-                      signatureUrl
-                        ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                        : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                    }`}>
-                      {signatureUrl ? '✓ Registrada' : 'Pendiente'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-
+          {/* Fila 3: 7. Firma Digital & Sello Institucional */}
+          <div>
+            <DigitalSignaturePad
+              userId={currentUser?.id}
+              signerName={effectiveSignerName}
+              signerArea={effectiveSignerArea}
+              signerPosition={effectiveSignerPosition}
+              stampText={quickStamp}
+              onSignatureChange={setSignatureUrl}
+              initialSignature={signatureUrl}
+            />
           </div>
 
           {/* Footer Action Buttons */}

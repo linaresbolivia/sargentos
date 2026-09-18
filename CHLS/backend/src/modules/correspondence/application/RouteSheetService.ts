@@ -223,14 +223,59 @@ export class RouteSheetService {
   }
 
   /**
+   * Normaliza y compara dos áreas institucionales
+   */
+  private isSameArea(areaA?: string | null, areaB?: string | null): boolean {
+    if (!areaA || !areaB) return false;
+    const normalize = (s: string) =>
+      s
+        .toUpperCase()
+        .replace(/[_\-\s]+/g, ' ')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .trim();
+
+    const a = normalize(areaA);
+    const b = normalize(areaB);
+
+    if (a === b) return true;
+
+    if (a.includes('SUBGERENCIA') !== b.includes('SUBGERENCIA')) return false;
+    if (a.includes('ASISTENTE') !== b.includes('ASISTENTE')) return false;
+    if (a.includes('ANALISTA') !== b.includes('ANALISTA')) return false;
+
+    if ((a.includes('SECRETAR') || a === 'SECRETARIA GENERAL') && (b.includes('SECRETAR') || b === 'SECRETARIA GENERAL')) return true;
+    if ((a.includes('GERENCIA GENERAL') || a === 'GERENCIA') && (b.includes('GERENCIA GENERAL') || b === 'GERENCIA')) return true;
+    if ((a.includes('TESORERIA') || a.includes('FINANZAS')) && (b.includes('TESORERIA') || b.includes('FINANZAS'))) return true;
+    if ((a.includes('CONTRATACION') || a.includes('COMPRAS')) && (b.includes('CONTRATACION') || b.includes('COMPRAS'))) return true;
+    if (a.includes('HIPIC') && b.includes('HIPIC')) return true;
+    if (a.includes('DEPORTE') && b.includes('DEPORTE')) return true;
+    if (a.includes('LEGAL') && b.includes('LEGAL')) return true;
+    if ((a.includes('MANTENIMIENTO') || a.includes('GONZALES')) && (b.includes('MANTENIMIENTO') || b.includes('GONZALES'))) return true;
+    if (a.includes('ALMACEN') && b.includes('ALMACEN')) return true;
+    if (a.includes('CONTABILIDAD') && b.includes('CONTABILIDAD')) return true;
+    if (a.includes('RECEPCION') && b.includes('RECEPCION')) return true;
+    if (a.includes('SISTEMAS') && b.includes('SISTEMAS')) return true;
+
+    return false;
+  }
+
+  /**
    * Crear nueva Hoja de Ruta
    */
   public async create(data: CreateRouteSheetInput, createdById: string) {
     const nowDate = new Date();
     const { hrCode, correlativeNumber, year } = await this.generateNextCode(nowDate);
 
-    const initialStatus: RouteSheetStatus = data.initialInstruction ? 'DERIVADO' : 'RECIBIDO';
+    const sourceArea = (data as any).sourceArea?.trim() || data.senderArea?.trim() || 'GERENCIA GENERAL';
     const targetArea = data.suggestedArea || data.initialArea || 'SECRETARIA_GENERAL';
+
+    // Determinar si es una derivación saliente hacia otra área o funcionario
+    const isOutgoingDerivation =
+      Boolean(data.initialInstruction?.trim()) ||
+      (Boolean(targetArea) && !this.isSameArea(targetArea, sourceArea));
+
+    const initialStatus: RouteSheetStatus = isOutgoingDerivation ? 'DERIVADO' : 'RECIBIDO';
 
     const routeSheet = await this.prisma.$transaction(async (tx) => {
       const created = await tx.routeSheet.create({
@@ -264,8 +309,8 @@ export class RouteSheetService {
         },
       });
 
-      // Si se especificó una instrucción inicial (primer proveído de Gerencia/Secretaría)
-      if (data.initialInstruction) {
+      // Si es una derivación inicial saliente hacia destino
+      if (isOutgoingDerivation) {
         const ccParts: string[] = [];
         if (data.initialCcAreas && data.initialCcAreas.length > 0) {
           ccParts.push(data.initialCcAreas.join(', '));
@@ -274,18 +319,23 @@ export class RouteSheetService {
           ccParts.push(data.initialCcPersons.trim());
         }
         const ccSuffix = ccParts.length > 0 ? `\n[C.C.: ${ccParts.join(' | ')}]` : '';
-        const fullInstruction = `${data.initialInstruction.trim()}${ccSuffix}`;
+        const instructionText =
+          data.initialInstruction?.trim() ||
+          data.initialQuickStamp?.trim() ||
+          'Radicación y derivación oficial para atención y trámite.';
+        const fullInstruction = `${instructionText}${ccSuffix}`;
 
         await tx.hrMovement.create({
           data: {
             routeSheetId: created.id,
             sequenceNumber: 1,
             sourceUserId: createdById,
-            sourceArea: (data as any).sourceArea?.trim() || data.senderArea?.trim() || 'GERENCIA GENERAL',
+            sourceArea: sourceArea,
             targetArea: targetArea,
             targetPersonName: data.initialTargetPerson?.trim() || null,
             instruction: fullInstruction,
             quickStamp: data.initialQuickStamp || 'FAVOR SU ATENCIÓN',
+            receivedAt: null,
           },
         });
       }
@@ -437,7 +487,7 @@ export class RouteSheetService {
       where.status = { notIn: ['CONCLUIDO', 'ANULADO'] };
     } else if (mailbox === 'OUTBOX') {
       // Trámites que este usuario o área derivó a otros y están EN TRÁNSITO (pendientes de recepción en destino)
-      where.status = 'DERIVADO';
+      where.status = { notIn: ['CONCLUIDO', 'ANULADO', 'RECIBIDO'] };
       const outboxConditions: any[] = [];
       if (userId) {
         outboxConditions.push({
@@ -538,72 +588,65 @@ export class RouteSheetService {
           OR: [
             { currentArea: 'ARCHIVO_PERSONAL' },
             { archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' } },
+            { archiveLocation: { contains: 'CARGO', mode: 'insensitive' } },
           ],
         },
-        ...(personalConditions.length > 0 ? [{ OR: personalConditions }] : []),
       ];
-    } else if (mailbox === 'ARCHIVED' || mailbox === 'CENTRAL_ARCHIVE') {
-      // Trámites en Archivo Central Institucional
-      where.AND = [
-        {
-          OR: [
-            { status: 'CONCLUIDO' },
-            { status: 'ANULADO' },
-            { currentArea: 'ARCHIVO_CENTRAL' },
-            { archiveLocation: { not: null } },
-          ],
-        },
-        { currentArea: { not: 'ARCHIVO_PERSONAL' } },
-        {
-          NOT: {
-            archiveLocation: { contains: 'PERSONAL', mode: 'insensitive' },
-          },
-        },
+      if (personalConditions.length > 0) {
+        where.OR = personalConditions;
+      }
+    } else if (mailbox === 'ARCHIVED') {
+      // Archivo Central Institucional
+      where.OR = [
+        { status: 'CONCLUIDO' },
+        { status: 'ANULADO' },
+        { currentArea: 'ARCHIVO_CENTRAL' },
+        { archiveLocation: { contains: 'CENTRAL', mode: 'insensitive' } },
       ];
     }
 
-    if (status && status !== 'ALL' && mailbox !== 'INBOX' && mailbox !== 'OUTBOX' && mailbox !== 'ARCHIVED') {
-      where.status = status as RouteSheetStatus;
+    // Filtros adicionales opcionales
+    if (status && status !== 'ALL') {
+      where.status = status;
     }
-
     if (priority && priority !== 'ALL') {
-      where.priority = priority as RouteSheetPriority;
+      where.priority = priority;
     }
-
-    if (area && area !== 'ALL' && mailbox !== 'INBOX') {
-      where.currentArea = area;
+    if (area && area !== 'ALL') {
+      where.currentArea = { contains: area, mode: 'insensitive' };
     }
-
     if (senderType && senderType !== 'ALL') {
-      where.senderType = senderType as RouteSheetSenderType;
+      where.senderType = senderType;
     }
 
-    if (search && search.trim()) {
+    // Búsqueda Inteligente Global
+    if (search && search.trim().length > 0) {
       const q = search.trim();
       const searchConditions: any[] = [
         { hrCode: { contains: q, mode: 'insensitive' } },
         { reference: { contains: q, mode: 'insensitive' } },
         { senderName: { contains: q, mode: 'insensitive' } },
+        { senderDoc: { contains: q, mode: 'insensitive' } },
+        { senderEmail: { contains: q, mode: 'insensitive' } },
         { cite: { contains: q, mode: 'insensitive' } },
-        { senderArea: { contains: q, mode: 'insensitive' } },
         { currentArea: { contains: q, mode: 'insensitive' } },
+        { senderArea: { contains: q, mode: 'insensitive' } },
         { archiveLocation: { contains: q, mode: 'insensitive' } },
         { archiveBox: { contains: q, mode: 'insensitive' } },
         {
           movements: {
             some: {
               OR: [
+                { instruction: { contains: q, mode: 'insensitive' } },
                 { sourceArea: { contains: q, mode: 'insensitive' } },
                 { targetArea: { contains: q, mode: 'insensitive' } },
                 { targetPersonName: { contains: q, mode: 'insensitive' } },
-                { instruction: { contains: q, mode: 'insensitive' } },
               ],
             },
           },
         },
       ];
-
-      if (where.OR) {
+      if (where.OR && where.OR.length > 0) {
         where.AND = [{ OR: where.OR }, { OR: searchConditions }];
         delete where.OR;
       } else {
@@ -611,16 +654,15 @@ export class RouteSheetService {
       }
     }
 
-    const [rawItems, total] = await Promise.all([
+    const [total, rawItems] = await Promise.all([
+      this.prisma.routeSheet.count({ where }),
       this.prisma.routeSheet.findMany({
         where,
         take: limit,
         skip: offset,
         orderBy: { createdAt: 'desc' },
         include: {
-          person: {
-            select: { id: true, firstName: true, lastName: true, documentId: true, alphaCode: true },
-          },
+          person: true,
           createdBy: {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
@@ -636,14 +678,13 @@ export class RouteSheetService {
           documents: true,
         },
       }),
-      this.prisma.routeSheet.count({ where }),
     ]);
 
     const settings = this.getSettingsConfig();
     const defaultDays = Number(settings.defaultSlaDays) || 5;
     const items = rawItems.map((item) => this.enrichRouteSheet(item, defaultDays));
 
-    return { items, total };
+    return { total, items };
   }
 
   /**
@@ -946,19 +987,21 @@ export class RouteSheetService {
     const now = new Date();
 
     const updated = await this.prisma.$transaction(async (tx) => {
-      // 1. Si existe un movimiento previo sin fecha de recepción, estampar la fecha/hora de recepción formal
-      if (latestMovement && !latestMovement.receivedAt) {
-        await tx.hrMovement.update({
-          where: { id: latestMovement.id },
-          data: { receivedAt: now },
-        });
-      }
+      // 1. Estampar la fecha/hora de recepción formal en cualquier movimiento pendiente
+      await tx.hrMovement.updateMany({
+        where: {
+          routeSheetId,
+          receivedAt: null,
+        },
+        data: { receivedAt: now },
+      });
 
       // 2. Actualizar estado general de la Hoja de Ruta a RECIBIDO
       return tx.routeSheet.update({
         where: { id: routeSheetId },
         data: {
           status: 'RECIBIDO',
+          currentAssigneeId: userId,
         },
         include: {
           person: true,

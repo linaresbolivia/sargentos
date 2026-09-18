@@ -32,6 +32,32 @@
     transition: background 0.5s ease, color 0.5s ease;
   }
 
+  /* Universal Form Controls - High Contrast in Light and Dark Modes */
+  input,
+  textarea,
+  select {
+    color: #0f172a;
+    caret-color: #0f172a;
+  }
+  .dark input,
+  .dark textarea,
+  .dark select {
+    color: #f8fafc;
+    caret-color: #38bdf8;
+  }
+
+  /* Placeholder contrast */
+  input::placeholder,
+  textarea::placeholder {
+    color: #94a3b8;
+    opacity: 1;
+  }
+  .dark input::placeholder,
+  .dark textarea::placeholder {
+    color: #64748b;
+    opacity: 1;
+  }
+
   h1, h2, h3, h4, h5, h6, .serif-brand {
     font-family: 'Arial', Helvetica, sans-serif;
   }
@@ -113,12 +139,17 @@
   .glass-input {
     background: var(--glass-input);
     border: 1px solid var(--glass-border);
-    color: var(--text-primary);
+    color: #0f172a !important;
+    caret-color: #0f172a;
     border-radius: 8px;
     font-size: 0.875rem;
     padding: 0.625rem 1rem;
     transition: all 0.3s ease-in-out;
     outline: none;
+  }
+  .dark .glass-input {
+    color: #f8fafc !important;
+    caret-color: #38bdf8;
   }
   .glass-input:focus {
     border-color: #cca14b;
@@ -134,8 +165,14 @@
   input:-webkit-autofill:focus, 
   input:-webkit-autofill:active{
     -webkit-box-shadow: 0 0 0 30px var(--glass-input) inset !important;
-    -webkit-text-fill-color: var(--text-primary) !important;
+    -webkit-text-fill-color: #0f172a !important;
     transition: background-color 5000s ease-in-out 0s;
+  }
+  .dark input:-webkit-autofill,
+  .dark input:-webkit-autofill:hover, 
+  .dark input:-webkit-autofill:focus, 
+  .dark input:-webkit-autofill:active{
+    -webkit-text-fill-color: #f8fafc !important;
   }
 
   /* Premium Buttons - Minimalist & Elite Gold fill */
@@ -330,14 +367,21 @@
   /* Date & Time Picker Custom Icon Visibility & Gold Accent */
   input[type="date"],
   input[type="time"] {
+    color-scheme: light;
+  }
+  .dark input[type="date"],
+  .dark input[type="time"] {
     color-scheme: dark;
   }
   input[type="date"]::-webkit-calendar-picker-indicator,
   input[type="time"]::-webkit-calendar-picker-indicator {
-    filter: invert(0.8) sepia(1) saturate(5) hue-rotate(5deg);
     cursor: pointer;
     opacity: 0.85;
     transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  .dark input[type="date"]::-webkit-calendar-picker-indicator,
+  .dark input[type="time"]::-webkit-calendar-picker-indicator {
+    filter: invert(0.8) sepia(1) saturate(5) hue-rotate(5deg);
   }
   input[type="date"]::-webkit-calendar-picker-indicator:hover,
   input[type="time"]::-webkit-calendar-picker-indicator:hover {
@@ -391,7 +435,7 @@
 @media print {
   @page {
     size: letter portrait;
-    margin: 6mm 8mm;
+    margin: 8mm 10mm 10mm 10mm;
   }
 
   *, *::before, *::after {
@@ -421,6 +465,15 @@
     display: none !important;
   }
 
+  /* Aislamiento total cuando el modal de Hoja de Ruta está abierto */
+  body.printable-route-sheet-open > #root,
+  body.printable-route-sheet-open > *:not(#printable-routesheet-portal-root) {
+    display: none !important;
+  }
+  body.printable-route-sheet-open #printable-routesheet-portal-root {
+    display: block !important;
+  }
+
   .print\:block {
     display: block !important;
   }
@@ -444,14 +497,18 @@
   /* Contenedor de la Hoja de Ruta Oficial */
   .printable-sheet-page {
     width: 100% !important;
-    max-width: 100% !important;
+    max-width: 196mm !important;
+    height: auto !important;
+    min-height: auto !important;
     margin: 0 auto !important;
     padding: 0 !important;
     background: #ffffff !important;
     color: #000000 !important;
     border: none !important;
     box-shadow: none !important;
+    overflow: visible !important;
     page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 }
 

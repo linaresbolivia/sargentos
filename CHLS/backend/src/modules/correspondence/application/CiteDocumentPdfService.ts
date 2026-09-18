@@ -214,13 +214,16 @@ export class CiteDocumentPdfService {
 
     } else {
       // CARTA EXTERNA (NE)
-      page.drawText(data.citeCode, {
-        x: marginLeft,
-        y: currentY,
-        size: 11,
-        font: fontBold,
-        color: rgb(0.1, 0.1, 0.1),
-      });
+      const isSN = !data.citeCode || data.citeCode.startsWith('S/N') || data.citeCode === 'S/N';
+      if (!isSN) {
+        page.drawText(data.citeCode, {
+          x: marginLeft,
+          y: currentY,
+          size: 11,
+          font: fontBold,
+          color: rgb(0.1, 0.1, 0.1),
+        });
+      }
 
       const fechaStr = formatDateBolivia(data.officialDate);
       const fechaW = fontRegular.widthOfTextAtSize(fechaStr, 10);

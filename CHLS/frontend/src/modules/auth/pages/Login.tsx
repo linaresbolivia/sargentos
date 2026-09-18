@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { toast } from 'react-hot-toast';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { CrestLogo } from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
 import { LanguageToggle } from '@shared/components/LanguageToggle';
@@ -15,6 +15,7 @@ export const Login: React.FC = () => {
   const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const { isLoading } = useSelector((state: RootState) => state.auth);
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -70,13 +71,13 @@ export const Login: React.FC = () => {
           <div className="flex flex-col gap-1.5 relative">
             <label className="text-xs font-medium text-gray-300 px-1">Usuario / Área / Correo Institucional</label>
             <div className="relative flex items-center">
-              <Mail size={16} className="absolute left-3 text-gray-500" />
+              <Mail size={16} className="absolute left-3 text-slate-400 dark:text-gray-400" />
               <input
                 type="text"
                 placeholder="Ej. tecnologia, gerencia, caja..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full glass-input pl-10 text-white placeholder-gray-400"
+                className="w-full glass-input pl-10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-400 font-medium"
                 autoComplete="username"
                 required
               />
@@ -86,15 +87,24 @@ export const Login: React.FC = () => {
           <div className="flex flex-col gap-1.5 relative">
             <label className="text-xs font-medium text-gray-300 px-1">{t('login.passwordLabel')}</label>
             <div className="relative flex items-center">
-              <Lock size={16} className="absolute left-3 text-gray-500" />
+              <Lock size={16} className="absolute left-3 text-slate-400 dark:text-gray-400" />
               <input
-                type="password"
+                type={showPassword ? 'text' : 'password'}
                 placeholder={t('login.passwordPlaceholder')}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full glass-input pl-10"
+                className="w-full glass-input pl-10 pr-10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-400 font-medium"
+                autoComplete="current-password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors cursor-pointer"
+                title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
             </div>
           </div>
 

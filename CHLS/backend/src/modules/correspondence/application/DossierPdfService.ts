@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { PrismaClient } from '@prisma/client';
-import { PDFDocument, rgb, StandardFonts, PageSizes } from 'pdf-lib';
+import { PDFDocument, PDFPage, PDFImage, rgb, StandardFonts, PageSizes } from 'pdf-lib';
 import QRCode from 'qrcode';
 import { logger } from '@config/logger';
 
@@ -132,9 +132,12 @@ export class DossierPdfService {
 
     // =========================================================================
     // 2. BLOQUE ADJUNTOS: ANEXOS Y EXPEDIENTE DIGITALIZADO (DESPUÉS DE HOJA DE RUTA)
+    // Orden archivístico cronológico inverso: Inmediatamente después de la Hoja
+    // de Ruta viene el ÚLTIMO PDF adjuntado, seguido en orden descendente por
+    // las derivaciones precedentes hasta llegar a los documentos iniciales de origen.
     // =========================================================================
     const originDocs = (routeSheet.documents || []).filter((d) => !d.movementId);
-    const movementsList = routeSheet.movements || [];
+    const movementsList = [...(routeSheet.movements || [])].reverse(); // De la última derivación a la primera
     const seenDocIds = new Set<string>();
     const allDossierDocs: Array<{
       doc: any;
@@ -142,23 +145,11 @@ export class DossierPdfService {
       sequenceNumber: number;
     }> = [];
 
-    // Documentos adjuntados en radicación inicial
-    for (const doc of originDocs) {
-      if (!seenDocIds.has(doc.id)) {
-        seenDocIds.add(doc.id);
-        allDossierDocs.push({
-          doc,
-          originLabel: 'Radicación Inicial (Origen)',
-          sequenceNumber: 0,
-        });
-      }
-    }
-
-    // Documentos adjuntados en cada derivación (en estricto orden cronológico)
+    // 1. Documentos adjuntados en cada derivación (del último proveído al primero)
     for (const mov of movementsList) {
       const movDocs = (mov.documents && mov.documents.length > 0)
-        ? mov.documents
-        : (routeSheet.documents || []).filter((d) => d.movementId === mov.id);
+        ? [...mov.documents].reverse()
+        : [...(routeSheet.documents || []).filter((d) => d.movementId === mov.id)].reverse();
 
       for (const doc of movDocs) {
         if (!seenDocIds.has(doc.id)) {
@@ -172,23 +163,20 @@ export class DossierPdfService {
       }
     }
 
-    if (allDossierDocs.length > 0) {
-      // Carátula e inventario de fojas físicas de anexos
-      await this.appendAnnexesCoverPage(
-        masterDoc,
-        routeSheet.hrCode,
-        allDossierDocs,
-        fontRegular,
-        fontBold,
-        fontTimes,
-        logoImage,
-        emeraldDark,
-        goldColor,
-        slateDark,
-        textGrey,
-        lightBg
-      );
+    // 2. Documentos adjuntados en radicación inicial (al final del compendio de antecedentes)
+    const reversedOriginDocs = [...originDocs].reverse();
+    for (const doc of reversedOriginDocs) {
+      if (!seenDocIds.has(doc.id)) {
+        seenDocIds.add(doc.id);
+        allDossierDocs.push({
+          doc,
+          originLabel: 'Radicación Inicial (Origen)',
+          sequenceNumber: 0,
+        });
+      }
+    }
 
+    if (allDossierDocs.length > 0) {
       // Fusión física página por página de los archivos adjuntos
       await this.mergeAttachedDocuments(
         masterDoc,
@@ -205,19 +193,162 @@ export class DossierPdfService {
     for (let i = 0; i < totalPages; i++) {
       const page = masterDoc.getPage(i);
       page.drawText(
-        cleanAnsi(`Expediente CHLS No. ${routeSheet.hrCode}  |  Foja ${i + 1} de ${totalPages}  |  Dossier Compilado Oficial`),
+        cleanAnsi(`Expediente CHLS No. ${routeSheet.hrCode}  |  Foja ${i + 1} de ${totalPages}  |  Dossier Compilado Oficial (Tamaño Carta)`),
         {
-          x: 45,
-          y: 16,
+          x: 30,
+          y: 24,
           size: 7,
           font: fontRegular,
-          color: rgb(0.45, 0.45, 0.45),
+          color: rgb(0.4, 0.4, 0.4),
         }
       );
     }
 
     const pdfBytes = await masterDoc.save();
     return Buffer.from(pdfBytes);
+  }
+
+  /**
+   * Incrusta la imagen de la firma digital o dibuja el sello oficial institucional en la casilla de proveído
+   */
+  private async drawSlotSignatureAndSeal(
+    page: PDFPage,
+    masterDoc: PDFDocument,
+    mov: any,
+    slotY: number,
+    isBackPage: boolean,
+    fontBold: any,
+    fontRegular: any,
+    slateDark: any,
+    textGrey: any,
+    emeraldDark: any
+  ) {
+    const stampRightX = 495;
+    const dividerY = isBackPage ? slotY + 28 : slotY + 34;
+
+    // Línea divisoria de firma
+    page.drawLine({
+      start: { x: 425, y: dividerY },
+      end: { x: 565, y: dividerY },
+      thickness: 0.8,
+      color: rgb(0.6, 0.6, 0.6),
+    });
+
+    // 1. Nombre oficial del firmante
+    const uName = mov.signerName || (mov.sourceUser ? `${mov.sourceUser.firstName || ''} ${mov.sourceUser.lastName || ''}`.trim() : '') || 'DESPACHO OFICIAL';
+    const nameLen = fontBold.widthOfTextAtSize(cleanAnsi(uName), isBackPage ? 7 : 7.5);
+    page.drawText(cleanAnsi(uName), {
+      x: Math.max(425, stampRightX - nameLen / 2),
+      y: isBackPage ? slotY + 19 : slotY + 24,
+      size: isBackPage ? 7 : 7.5,
+      font: fontBold,
+      color: slateDark,
+    });
+
+    // 2. Cargo o Área Oficial del firmante
+    const positionOrArea = mov.signerPosition || mov.signerArea || mov.sourceArea || 'GERENCIA GENERAL';
+    const areaLen = fontBold.widthOfTextAtSize(cleanAnsi(positionOrArea), isBackPage ? 6 : 6.5);
+    page.drawText(cleanAnsi(positionOrArea), {
+      x: Math.max(425, stampRightX - areaLen / 2),
+      y: isBackPage ? slotY + 10 : slotY + 15,
+      size: isBackPage ? 6 : 6.5,
+      font: fontBold,
+      color: textGrey,
+    });
+
+    if (!isBackPage) {
+      page.drawText('CLUB HÍPICO LOS SARGENTOS', {
+        x: 435,
+        y: slotY + 7,
+        size: 5.5,
+        font: fontBold,
+        color: emeraldDark,
+      });
+    }
+
+    // 3. Firma Digital (Imagen PNG/JPG) o Sello Oficial Institucional
+    let embeddedSig: PDFImage | null = null;
+    if (mov.signatureUrl && typeof mov.signatureUrl === 'string' && mov.signatureUrl.includes('base64,')) {
+      try {
+        const b64Data = mov.signatureUrl.split('base64,')[1].trim();
+        const buf = Buffer.from(b64Data, 'base64');
+        if (mov.signatureUrl.includes('image/jpeg') || mov.signatureUrl.includes('image/jpg')) {
+          embeddedSig = await masterDoc.embedJpg(buf);
+        } else {
+          embeddedSig = await masterDoc.embedPng(buf);
+        }
+      } catch (err) {
+        logger.warn(`[DossierPdfService] Error incrustando firma para movimiento:`, err);
+      }
+    }
+
+    if (embeddedSig) {
+      const maxW = 135;
+      const maxH = isBackPage ? 32 : 46;
+      const dims = embeddedSig.scaleToFit(maxW, maxH);
+      const imgX = stampRightX - dims.width / 2;
+      const imgY = dividerY + 2 + (maxH - dims.height) / 2;
+
+      page.drawImage(embeddedSig, {
+        x: imgX,
+        y: imgY,
+        width: dims.width,
+        height: dims.height,
+      });
+
+      // Leyenda oficial de firma digital validada
+      page.drawText('[OK] FIRMA DIGITAL CHLS', {
+        x: 446,
+        y: dividerY + maxH + 3,
+        size: isBackPage ? 5 : 5.5,
+        font: fontBold,
+        color: rgb(0.04, 0.45, 0.25),
+      });
+    } else {
+      // Sello Oficial Tipográfico Institucional CHLS
+      const sealBoxH = isBackPage ? 26 : 38;
+      const sealBoxY = dividerY + 4;
+      page.drawRectangle({
+        x: 430,
+        y: sealBoxY,
+        width: 130,
+        height: sealBoxH,
+        borderColor: rgb(0.04, 0.35, 0.22),
+        borderWidth: 1,
+        color: rgb(0.97, 0.99, 0.98),
+      });
+      page.drawRectangle({
+        x: 432,
+        y: sealBoxY + 2,
+        width: 126,
+        height: sealBoxH - 4,
+        borderColor: rgb(0.85, 0.68, 0.15),
+        borderWidth: 0.6,
+      });
+      page.drawText('DESPACHO OFICIAL CHLS', {
+        x: 446,
+        y: sealBoxY + (isBackPage ? 16 : 25),
+        size: isBackPage ? 5.5 : 6.5,
+        font: fontBold,
+        color: rgb(0.04, 0.35, 0.22),
+      });
+      page.drawText('[SELLO DE CONFORMIDAD]', {
+        x: 441,
+        y: sealBoxY + (isBackPage ? 8 : 15),
+        size: isBackPage ? 5 : 6,
+        font: fontBold,
+        color: rgb(0.85, 0.68, 0.15),
+      });
+      if (!isBackPage) {
+        page.drawText(cleanAnsi(mov.sourceArea || 'GERENCIA GENERAL').substring(0, 24), {
+          x: 445,
+          y: sealBoxY + 6,
+          size: 5,
+          font: fontBold,
+          color: textGrey,
+        });
+      }
+    }
   }
 
   /**
@@ -284,16 +415,31 @@ export class DossierPdfService {
 
     const movements = routeSheet.movements || [];
     const documents = routeSheet.documents || [];
-    const frontSlots = Array.from({ length: 4 }, (_, i) => movements[i] || null);
-    const backSlots = Array.from({ length: 4 }, (_, i) => movements[i + 4] || null);
+    const effectiveMovements = movements.length > 0
+      ? [...movements]
+      : [{
+          id: 'initial-radicacion',
+          orderIndex: 1,
+          sourceArea: routeSheet.originArea || 'SECRETARÍA GENERAL',
+          sourceUser: routeSheet.senderName ? { firstName: routeSheet.senderName, lastName: '' } : null,
+          targetArea: routeSheet.currentArea || 'GERENCIA GENERAL',
+          targetPersonName: routeSheet.currentArea === 'GERENCIA GENERAL' ? 'Gerente General' : '',
+          instruction: routeSheet.initialInstruction || 'Radicación e ingreso formal de documentación al sistema institucional.',
+          quickStamp: 'RADICADO',
+          createdAt: routeSheet.createdAt,
+          signatureUrl: (routeSheet as any).initialSignatureUrl || null,
+          documents: documents,
+        }];
+    const frontSlots = Array.from({ length: 4 }, (_, i) => effectiveMovements[i] || null);
+    const backSlots = Array.from({ length: 4 }, (_, i) => effectiveMovements[i + 4] || null);
 
     // =========================================================================
     // PÁGINA 1: ANVERSO DE LA HOJA DE RUTA (CARTA)
     // =========================================================================
     const frontPage = masterDoc.addPage(PageSizes.Letter);
     const { width: W, height: H } = frontPage.getSize();
-    const startX = 28;
-    const tableW = 556;
+    const startX = 30;
+    const tableW = 552;
 
     // 1. Membrete Superior Oficial
     if (logoImage) {
@@ -479,9 +625,9 @@ export class DossierPdfService {
     frontPage.drawText(cleanAnsi(attachText).substring(0, 110), { x: 34, y: 557, size: 7.5, font: fontRegular, color: slateDark });
 
     // 3. Proveídos y Derivaciones del Anverso (Proveídos 1 al 4)
-    const slotHeight = 121;
+    const slotHeight = 118;
     const slotGap = 4;
-    const slotsBaseY = [429, 304, 179, 54]; // Posición Y inferior de cada casilla
+    const slotsBaseY = [435, 313, 191, 69]; // Posición Y inferior de cada casilla con margen inferior seguro (Carta)
 
     for (let index = 0; index < 4; index++) {
       const mov = frontSlots[index];
@@ -598,52 +744,19 @@ export class DossierPdfService {
           });
         }
 
-        // Columna Derecha: Firma y Sello
-        const stampRightX = 495;
-        frontPage.drawLine({
-          start: { x: 425, y: slotY + 36 },
-          end: { x: 565, y: slotY + 36 },
-          thickness: 0.8,
-          color: rgb(0.6, 0.6, 0.6),
-        });
-
-        const uName = mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : 'DESPACHO OFICIAL';
-        const nameLen = fontBold.widthOfTextAtSize(cleanAnsi(uName), 7.5);
-        frontPage.drawText(cleanAnsi(uName), {
-          x: Math.max(425, stampRightX - nameLen / 2),
-          y: slotY + 26,
-          size: 7.5,
-          font: fontBold,
-          color: slateDark,
-        });
-
-        const areaName = mov.sourceArea || 'GERENCIA GENERAL';
-        const areaLen = fontBold.widthOfTextAtSize(cleanAnsi(areaName), 6.5);
-        frontPage.drawText(cleanAnsi(areaName), {
-          x: Math.max(425, stampRightX - areaLen / 2),
-          y: slotY + 17,
-          size: 6.5,
-          font: fontBold,
-          color: textGrey,
-        });
-
-        frontPage.drawText('CLUB HÍPICO LOS SARGENTOS', {
-          x: 435,
-          y: slotY + 9,
-          size: 5.5,
-          font: fontBold,
-          color: emeraldDark,
-        });
-
-        if (mov.signatureUrl) {
-          frontPage.drawText(cleanAnsi('[OK] FIRMA DIGITAL CHLS'), {
-            x: 440,
-            y: slotY + 40,
-            size: 6.5,
-            font: fontBold,
-            color: rgb(0.1, 0.3, 0.7),
-          });
-        }
+        // Columna Derecha: Firma y Sello Oficial
+        await this.drawSlotSignatureAndSeal(
+          frontPage,
+          masterDoc,
+          mov,
+          slotY,
+          false,
+          fontBold,
+          fontRegular,
+          slateDark,
+          textGrey,
+          emeraldDark
+        );
       } else {
         // Casilla reservada en blanco
         frontPage.drawText(cleanAnsi(`Espacio reservado para instruccion / proveido N ${proveidoNum}`), {
@@ -670,16 +783,16 @@ export class DossierPdfService {
     }
 
     // Pie de Pagina del Anverso
-    frontPage.drawText(cleanAnsi('HOJA DE RUTA OFICIAL CHLS - PAPEL BOND TAMANO CARTA - ANVERSO | Cero Papel | Validez Legal'), {
+    frontPage.drawText(cleanAnsi('HOJA DE RUTA OFICIAL CHLS - PAPEL BOND TAMAÑO CARTA - ANVERSO | Cero Papel | Validez Legal'), {
       x: startX,
-      y: 36,
+      y: 48,
       size: 6.5,
       font: fontBold,
       color: slateDark,
     });
-    frontPage.drawText(`Impresion: ${formatChlsDate(new Date())} ${formatChlsTime(new Date())}`, {
-      x: 445,
-      y: 36,
+    frontPage.drawText(`Impresión: ${formatChlsDate(new Date())} ${formatChlsTime(new Date())}`, {
+      x: 440,
+      y: 48,
       size: 6.5,
       font: fontRegular,
       color: textGrey,
@@ -741,8 +854,8 @@ export class DossierPdfService {
     });
 
     // 2. Proveídos del Reverso (Proveídos 5 al 8)
-    const backSlotH = 88;
-    const backSlotBaseY = [628, 534, 440, 346];
+    const backSlotH = 86;
+    const backSlotBaseY = [632, 542, 452, 362];
 
     for (let index = 0; index < 4; index++) {
       const mov = backSlots[index];
@@ -842,30 +955,19 @@ export class DossierPdfService {
           instrY -= 10;
         }
 
-        // Firma
-        const stampRightX = 495;
-        backPage.drawLine({
-          start: { x: 425, y: slotY + 28 },
-          end: { x: 565, y: slotY + 28 },
-          thickness: 0.8,
-          color: rgb(0.6, 0.6, 0.6),
-        });
-        const uName = mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : 'DESPACHO OFICIAL';
-        const nameLen = fontBold.widthOfTextAtSize(cleanAnsi(uName), 7);
-        backPage.drawText(cleanAnsi(uName), {
-          x: Math.max(425, stampRightX - nameLen / 2),
-          y: slotY + 19,
-          size: 7,
-          font: fontBold,
-          color: slateDark,
-        });
-        backPage.drawText(cleanAnsi(mov.sourceArea || 'GERENCIA GENERAL'), {
-          x: 435,
-          y: slotY + 10,
-          size: 6,
-          font: fontBold,
-          color: textGrey,
-        });
+        // Firma y Sello Oficial
+        await this.drawSlotSignatureAndSeal(
+          backPage,
+          masterDoc,
+          mov,
+          slotY,
+          true,
+          fontBold,
+          fontRegular,
+          slateDark,
+          textGrey,
+          emeraldDark
+        );
       } else {
         backPage.drawText(`Espacio reservado para instrucción / proveído N° ${proveidoNum}`, {
           x: 34,
@@ -891,8 +993,8 @@ export class DossierPdfService {
     }
 
     // 3. Recuadro Oficial de "CUSTODIA & ARCHIVO FINAL"
-    const archY = 165;
-    const archH = 165;
+    const archY = 175;
+    const archH = 175;
     backPage.drawRectangle({
       x: startX,
       y: archY,
@@ -1024,16 +1126,16 @@ export class DossierPdfService {
     if (notesLines[1]) backPage.drawText(notesLines[1], { x: 34, y: archY + 15, size: 7.5, font: fontRegular, color: slateDark });
 
     // Pie de Pagina del Reverso
-    backPage.drawText(cleanAnsi('HOJA DE RUTA OFICIAL CHLS - REVERSO | Validez Legal Institucional | Auditoria Administrativa'), {
+    backPage.drawText(cleanAnsi('HOJA DE RUTA OFICIAL CHLS - REVERSO | Validez Legal Institucional | Auditoría Administrativa'), {
       x: startX,
-      y: 36,
+      y: 48,
       size: 6.5,
       font: fontBold,
       color: slateDark,
     });
-    backPage.drawText(`Impresion: ${formatChlsDate(new Date())} ${formatChlsTime(new Date())}`, {
-      x: 445,
-      y: 36,
+    backPage.drawText(`Impresión: ${formatChlsDate(new Date())} ${formatChlsTime(new Date())}`, {
+      x: 440,
+      y: 48,
       size: 6.5,
       font: fontRegular,
       color: textGrey,
@@ -1041,189 +1143,7 @@ export class DossierPdfService {
   }
 
 
-  /**
-   * Helper que añade la carátula divisoria e inventario de anexos físicos digitalizados
-   */
-  private async appendAnnexesCoverPage(
-    masterDoc: PDFDocument,
-    hrCode: string,
-    attachments: Array<{
-      doc: any;
-      originLabel: string;
-      sequenceNumber: number;
-    }>,
-    fontRegular: any,
-    fontBold: any,
-    fontTimes: any,
-    logoImage: any,
-    emeraldDark: any,
-    goldColor: any,
-    slateDark: any,
-    textGrey: any,
-    lightBg: any
-  ) {
-    const page = masterDoc.addPage(PageSizes.Letter);
-    const { width: W, height: H } = page.getSize();
 
-    // Membrete Superior
-    if (logoImage) {
-      page.drawImage(logoImage, {
-        x: 45,
-        y: H - 85,
-        width: 42,
-        height: 50,
-      });
-    }
-
-    page.drawText('CLUB HÍPICO LOS SARGENTOS', {
-      x: 95,
-      y: H - 52,
-      size: 14,
-      font: fontTimes,
-      color: slateDark,
-    });
-    page.drawText('SISTEMA OFICIAL DE CORRESPONDENCIA & GESTIÓN DOCUMENTAL', {
-      x: 95,
-      y: H - 65,
-      size: 8,
-      font: fontBold,
-      color: emeraldDark,
-    });
-    page.drawText(cleanAnsi(`EXPEDIENTE DIGITALIZADO - HOJA DE RUTA ${hrCode}`), {
-      x: 95,
-      y: H - 76,
-      size: 7.5,
-      font: fontRegular,
-      color: textGrey,
-    });
-
-    // Línea divisoria
-    page.drawLine({
-      start: { x: 45, y: H - 98 },
-      end: { x: W - 45, y: H - 98 },
-      thickness: 2,
-      color: goldColor,
-    });
-
-    // Banner de Sección de Anexos
-    page.drawRectangle({
-      x: 45,
-      y: H - 155,
-      width: W - 90,
-      height: 46,
-      color: emeraldDark,
-    });
-    page.drawText('SECCIÓN II: ANEXOS Y DOCUMENTACIÓN DE RESPALDO DIGITALIZADA', {
-      x: 55,
-      y: H - 128,
-      size: 11,
-      font: fontBold,
-      color: rgb(1, 1, 1),
-    });
-    page.drawText('COMPILACIÓN FÍSICA PÁGINA A PÁGINA DE ANTECEDENTES Y ARCHIVOS ADJUNTOS', {
-      x: 55,
-      y: H - 144,
-      size: 7.5,
-      font: fontRegular,
-      color: goldColor,
-    });
-
-    let curY = H - 175;
-    const tableW = W - 90;
-
-    page.drawText('ÍNDICE DE ANEXOS FÍSICOS INCORPORADOS AL EXPEDIENTE:', {
-      x: 45,
-      y: curY,
-      size: 8.5,
-      font: fontBold,
-      color: slateDark,
-    });
-    curY -= 16;
-
-    // Encabezado de tabla de anexos
-    page.drawRectangle({
-      x: 45,
-      y: curY - 18,
-      width: tableW,
-      height: 18,
-      color: lightBg,
-      borderColor: rgb(0.8, 0.85, 0.85),
-      borderWidth: 1,
-    });
-    page.drawText('#', { x: 52, y: curY - 12, size: 7.5, font: fontBold, color: slateDark });
-    page.drawText('NOMBRE DEL ARCHIVO', { x: 80, y: curY - 12, size: 7.5, font: fontBold, color: slateDark });
-    page.drawText('ETAPA / INCORPORADO EN', { x: 270, y: curY - 12, size: 7.5, font: fontBold, color: slateDark });
-    page.drawText('CÓDIGO HASH SHA-256 (INTEGRIDAD)', { x: 420, y: curY - 12, size: 7.5, font: fontBold, color: slateDark });
-    curY -= 20;
-
-    // Filas de anexos (hasta 12 por página de carátula)
-    attachments.forEach((att, idx) => {
-      const isEven = idx % 2 === 0;
-      page.drawRectangle({
-        x: 45,
-        y: curY - 22,
-        width: tableW,
-        height: 22,
-        color: isEven ? rgb(0.98, 0.98, 0.98) : rgb(1, 1, 1),
-        borderColor: rgb(0.9, 0.9, 0.9),
-        borderWidth: 0.5,
-      });
-
-      page.drawText(String(idx + 1), { x: 52, y: curY - 14, size: 7.5, font: fontBold, color: emeraldDark });
-      page.drawText(cleanAnsi(att.doc.fileName || 'Documento').substring(0, 32), {
-        x: 80,
-        y: curY - 14,
-        size: 7.5,
-        font: fontBold,
-        color: slateDark,
-      });
-      page.drawText(cleanAnsi(att.originLabel).substring(0, 26), {
-        x: 270,
-        y: curY - 14,
-        size: 7,
-        font: fontRegular,
-        color: textGrey,
-      });
-      const hashStr = att.doc.sha256Hash ? att.doc.sha256Hash.substring(0, 20) + '...' : 'Registrado';
-      page.drawText(hashStr, {
-        x: 420,
-        y: curY - 14,
-        size: 6.8,
-        font: fontRegular,
-        color: textGrey,
-      });
-
-      curY -= 22;
-    });
-
-    curY -= 20;
-
-    // Recuadro de Certificación Legal
-    page.drawRectangle({
-      x: 45,
-      y: curY - 50,
-      width: tableW,
-      height: 50,
-      color: rgb(0.95, 0.98, 0.96),
-      borderColor: emeraldDark,
-      borderWidth: 1,
-    });
-    page.drawText('CERTIFICACIÓN Y CADENA DE CUSTODIA DOCUMENTAL:', {
-      x: 55,
-      y: curY - 16,
-      size: 7.5,
-      font: fontBold,
-      color: emeraldDark,
-    });
-    page.drawText(
-      cleanAnsi('A continuación se compilan fojas físicas de cada anexo en estricto orden cronológico.'),
-      { x: 55, y: curY - 28, size: 7.5, font: fontRegular, color: slateDark }
-    );
-    page.drawText(
-      cleanAnsi('La foliación continua institucional inferior acredita la validez administrativa del expediente.'),
-      { x: 55, y: curY - 40, size: 7.5, font: fontRegular, color: textGrey }
-    );
-  }
 
   /**
    * Helper que fusiona página por página todos los documentos físicos (PDFs e imágenes)
@@ -1255,11 +1175,35 @@ export class DossierPdfService {
         if (isPdf) {
           const attachedBytes = fs.readFileSync(diskPath);
           const attachedDoc = await PDFDocument.load(attachedBytes, { ignoreEncryption: true });
-          const copiedPages = await masterDoc.copyPages(attachedDoc, attachedDoc.getPageIndices());
-          for (const cPage of copiedPages) {
-            masterDoc.addPage(cPage);
+          const embeddedPages = await masterDoc.embedPdf(attachedDoc, attachedDoc.getPageIndices());
+
+          for (const embPage of embeddedPages) {
+            const letterPage = masterDoc.addPage(PageSizes.Letter);
+            const { width: pageW, height: pageH } = letterPage.getSize(); // 612 x 792 (Carta)
+
+            // Márgenes seguros estándar para papel Carta (Latinoamérica)
+            const marginX = 28;
+            const marginTop = 28;
+            const marginBottom = 44; // Resguardo seguro para la foliación continua a 24 pt
+            const maxW = pageW - marginX * 2; // 556 pt
+            const maxH = pageH - marginTop - marginBottom; // 720 pt
+
+            // Escala proporcional garantizando que quepa al 100% en hoja Carta
+            const scale = Math.min(maxW / embPage.width, maxH / embPage.height, 1);
+            const scaledW = embPage.width * scale;
+            const scaledH = embPage.height * scale;
+
+            const posX = marginX + (maxW - scaledW) / 2;
+            const posY = marginBottom + (maxH - scaledH) / 2;
+
+            letterPage.drawPage(embPage, {
+              x: posX,
+              y: posY,
+              width: scaledW,
+              height: scaledH,
+            });
           }
-          logger.info(`[DossierPdfService] Fusionadas ${copiedPages.length} páginas físicas de ${doc.fileName} (${originLabel}).`);
+          logger.info(`[DossierPdfService] Fusionadas y adaptadas a formato Carta ${embeddedPages.length} páginas de ${doc.fileName} (${originLabel}).`);
         } else if (isImg) {
           const imgBytes = fs.readFileSync(diskPath);
           const isPng = doc.fileName?.toLowerCase().endsWith('.png');
@@ -1268,15 +1212,19 @@ export class DossierPdfService {
           const imgPage = masterDoc.addPage(PageSizes.Letter);
           const { width: ipW, height: ipH } = imgPage.getSize();
 
-          const maxW = ipW - 80;
-          const maxH = ipH - 100;
+          const marginX = 30;
+          const marginTop = 30;
+          const marginBottom = 44;
+          const headerSpace = 20;
+          const maxW = ipW - marginX * 2;
+          const maxH = ipH - marginTop - marginBottom - headerSpace;
           const scale = Math.min(maxW / embeddedImg.width, maxH / embeddedImg.height, 1);
           const dw = embeddedImg.width * scale;
           const dh = embeddedImg.height * scale;
 
           imgPage.drawText(cleanAnsi(`DOCUMENTO DIGITALIZADO: ${doc.fileName} (${originLabel})`), {
-            x: 45,
-            y: ipH - 40,
+            x: marginX,
+            y: ipH - 24,
             size: 8,
             font: fontBold,
             color: emeraldDark,
@@ -1284,7 +1232,7 @@ export class DossierPdfService {
 
           imgPage.drawImage(embeddedImg, {
             x: (ipW - dw) / 2,
-            y: (ipH - dh) / 2 - 15,
+            y: marginBottom + (maxH - dh) / 2,
             width: dw,
             height: dh,
           });

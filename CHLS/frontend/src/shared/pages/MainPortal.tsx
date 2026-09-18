@@ -138,19 +138,19 @@ export const MainPortal: React.FC = () => {
           <CrestLogo size="md" className="w-12 h-14 shrink-0" />
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold tracking-widest uppercase text-brand-gold">
+              <span className="text-xs font-bold tracking-widest uppercase text-amber-800 dark:text-brand-gold">
                 Club Hípico Los Sargentos
               </span>
             </div>
             <div className="flex items-center gap-2.5 mt-0.5">
-              <h1 className="text-base sm:text-lg font-black tracking-wider uppercase text-transparent bg-clip-text bg-gradient-to-r from-amber-100 via-brand-gold to-yellow-400 drop-shadow-sm">
+              <h1 className="text-base sm:text-lg font-black tracking-wider uppercase text-[#0B1320] dark:text-transparent dark:bg-clip-text dark:bg-gradient-to-r dark:from-amber-100 dark:via-brand-gold dark:to-yellow-400 drop-shadow-xs">
                 CLUB INTELIGENTE
               </h1>
-              <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)]">
+              <span className="text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/40 shadow-xs">
                 Enterprise Suite 360°
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-gray-400 font-medium">
+            <p className="text-[11px] text-slate-600 dark:text-gray-400 font-medium">
               Portal Unificado de Gestión Institucional
             </p>
           </div>
@@ -158,10 +158,10 @@ export const MainPortal: React.FC = () => {
 
         <div className="flex items-center gap-4">
           {/* Live Clock Pill */}
-          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-mono text-slate-600 dark:text-gray-300 shadow-xs">
-            <Clock className="w-3.5 h-3.5 text-brand-gold animate-pulse" />
+          <div className="hidden md:flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 text-xs font-mono text-slate-700 dark:text-gray-300 shadow-xs">
+            <Clock className="w-3.5 h-3.5 text-amber-700 dark:text-brand-gold animate-pulse" />
             <span className="capitalize">{formattedDate}</span>
-            <span className="text-brand-gold font-bold">| {formattedTime}</span>
+            <span className="text-amber-800 dark:text-brand-gold font-bold">| {formattedTime}</span>
           </div>
 
           <ThemeToggle />
@@ -277,12 +277,12 @@ export const MainPortal: React.FC = () => {
           </div>
 
           {/* Quick Help & Protocols Badge - Gold Theme */}
-          <div className="p-4 rounded-2xl bg-gradient-to-r from-brand-gold/15 via-amber-500/10 to-transparent border border-brand-gold/40 text-xs text-amber-200/90 flex items-center gap-3 shadow-md shadow-brand-gold/5">
-            <div className="p-2 rounded-xl bg-brand-gold/20 text-brand-gold shrink-0 border border-brand-gold/40">
+          <div className="p-4 rounded-2xl bg-amber-500/10 dark:bg-gradient-to-r dark:from-brand-gold/15 dark:via-amber-500/10 dark:to-transparent border border-amber-300 dark:border-brand-gold/40 text-xs text-slate-700 dark:text-amber-200/90 flex items-center gap-3 shadow-xs">
+            <div className="p-2 rounded-xl bg-amber-200 dark:bg-brand-gold/20 text-amber-800 dark:text-brand-gold shrink-0 border border-amber-300 dark:border-brand-gold/40">
               <Compass className="w-4 h-4" />
             </div>
             <p className="text-[11px] leading-relaxed">
-              <strong className="text-brand-gold font-bold">Trazabilidad Total:</strong> Las operaciones y firmas digitales se registran con auditoría institucional 360°.
+              <strong className="text-amber-900 dark:text-brand-gold font-bold">Trazabilidad Total:</strong> Las operaciones y firmas digitales se registran con auditoría institucional 360°.
             </p>
           </div>
 
@@ -297,7 +297,7 @@ export const MainPortal: React.FC = () => {
             <div>
               <h2 className="text-sm font-black uppercase tracking-widest text-slate-900 dark:text-white flex items-center gap-2">
                 <span>Módulos del Sistema</span>
-                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-500/40 shadow-xs">
                   ACCESO DIRECTO
                 </span>
               </h2>

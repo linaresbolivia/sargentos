@@ -278,14 +278,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
     isLeft: idx % 2 === 0,
   }));
 
-  // 2. Geometría SVG Amplia y Espaciosa para el Diagrama Holográfico Vertical
   const N = milestones.length;
-  const ROW_H = 220; // Espacio vertical amplio para textos completos de proveídos
-  const START_Y = 60;
-  const TOTAL_W = 1260; // Ancho ampliado para alta legibilidad ejecutiva
-  const CENTER_X = 630; // Columna central espaciosa
-  const TOTAL_H = START_Y + N * ROW_H + 140;
-  const DOCK_Y = TOTAL_H - 50;
 
   const renderIcon = (type: string) => {
     switch (type) {
@@ -318,7 +311,7 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
     : `https://chls.bo/correspondencia?code=${encodeURIComponent(item.hrCode)}`;
 
   return (
-    <div className="space-y-4 text-slate-900 dark:text-white max-w-6xl mx-auto animate-fadeIn">
+    <div className="space-y-4 text-slate-900 dark:text-white w-full animate-fadeIn">
 
       {/* ========================================================================= */}
       {/* 0. BANNERS DE ESTADO ESPECIAL: ARCHIVO CENTRAL & FUSIÓN                   */}
@@ -687,293 +680,160 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
             </div>
           </div>
 
-          <div className="overflow-x-auto custom-scrollbar pt-4 pb-2">
-            <svg
-              viewBox={`0 0 ${TOTAL_W} ${TOTAL_H}`}
-              className="min-w-[880px] w-full h-auto overflow-visible select-none"
-            >
-              <defs>
-                {/* Resplandor Sutil */}
-                <filter id="hud-glow" x="-50%" y="-50%" width="200%" height="200%">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
-                  <feMerge>
-                    <feMergeNode in="blur1" />
-                    <feMergeNode in="SourceGraphic" />
-                  </feMerge>
-                </filter>
-
-                {/* Gradiente del Haz en la Base */}
-                <linearGradient id="holo-beam-grad" x1="0%" y1="100%" x2="0%" y2="0%">
-                  <stop offset="0%" stopColor="#C5A059" stopOpacity="0.2" />
-                  <stop offset="60%" stopColor="#C5A059" stopOpacity="0.04" />
-                  <stop offset="100%" stopColor="#C5A059" stopOpacity="0" />
-                </linearGradient>
-
-                {/* Gradiente de la Columna Vertebral */}
-                <linearGradient id="spine-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#C5A059" />
-                  <stop offset="50%" stopColor="#64748B" />
-                  <stop offset="100%" stopColor="#C5A059" />
-                </linearGradient>
-              </defs>
-
-              {/* ========================================================================= */}
-              {/* 1. PEDESTAL EN LA BASE                                                    */}
-              {/* ========================================================================= */}
-              <g transform={`translate(${CENTER_X}, ${DOCK_Y})`}>
-                <polygon
-                  points="-170,20 170,20 0,-180"
-                  fill="url(#holo-beam-grad)"
-                  opacity="0.5"
-                />
-                <ellipse cx="0" cy="22" rx="180" ry="25" fill="#000000" opacity="0.5" filter="blur(6px)" />
-                <path
-                  d="M -170 15 L -120 -8 L 120 -8 L 170 15 L 160 25 L -160 25 Z"
-                  fill="#0F172A"
-                  stroke="#475569"
-                  strokeWidth="1.2"
-                />
-                <ellipse cx="0" cy="8" rx="100" ry="10" fill="#C5A059" opacity="0.25" filter="url(#hud-glow)" />
-                <circle cx="0" cy="8" r="4" fill="#C5A059" />
-              </g>
-
-              {/* ========================================================================= */}
-              {/* 2. COLUMNA VERTEBRAL CENTRAL ELEGANTE                                     */}
-              {/* ========================================================================= */}
-              <line
-                x1={CENTER_X}
-                y1={START_Y - 25}
-                x2={CENTER_X}
-                y2={DOCK_Y}
-                stroke="#334155"
-                strokeWidth="4"
-                strokeLinecap="round"
-              />
-              <line
-                x1={CENTER_X}
-                y1={START_Y - 25}
-                x2={CENTER_X}
-                y2={DOCK_Y}
-                stroke="#64748B"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <circle cx={CENTER_X} cy={START_Y - 25} r="6" fill="#C5A059" opacity="0.4" />
-              <circle cx={CENTER_X} cy={START_Y - 25} r="3" fill="#C5A059" />
-
-              {/* ========================================================================= */}
-              {/* 3. NIVELES ALTERNADOS (NACEN ABAJO Y EL ÚLTIMO PROCESADO ESTÁ ARRIBA)    */}
-              {/* ========================================================================= */}
+          {/* Track Horizontal de Trazabilidad 360° (Ocupa todo el ancho, fluido y responsive) */}
+          <div className="overflow-x-auto custom-scrollbar py-4 px-1">
+            <div className="flex items-stretch gap-3 sm:gap-4 min-w-full">
               {milestones.map((m, idx) => {
-                const levelFromTop = N - 1 - idx;
-                const y = START_Y + levelFromTop * ROW_H;
-                const isLeft = m.isLeft;
-                const ringColor = m.isCurrent ? '#C5A059' : '#64748B';
-
-                // Dimensiones Amplias de la Tarjeta (460px de ancho y 165px de alto)
-                const CARD_W = 460;
-                const CARD_H = 165;
-                const cardY = y;
-
-                // Posición de los anillos orbitales HUD y Tarjetas Flotantes
-                const ringX = isLeft ? 50 : 1210;
-                const ringY = y + CARD_H / 2;
-                const cardX = isLeft ? 115 : 685;
+                const isLast = idx === milestones.length - 1;
 
                 return (
-                  <g key={`hologram-level-${m.id}`}>
-                    {/* A. Líneas de Conexión */}
-                    {isLeft ? (
-                      <g stroke={ringColor} strokeWidth="1.5" fill="none">
-                        <circle cx={CENTER_X} cy={ringY} r="5" fill={ringColor} stroke="none" />
-                        <line x1={CENTER_X} y1={ringY} x2={cardX + CARD_W} y2={ringY} />
-                        <line x1={cardX} y1={ringY} x2={ringX + 36} y2={ringY} />
-                        <path
-                          d={`M ${cardX + CARD_W} ${cardY + 8} L ${cardX + CARD_W + 6} ${cardY + 8} L ${cardX + CARD_W + 6} ${cardY + CARD_H - 8} L ${cardX + CARD_W} ${cardY + CARD_H - 8}`}
-                          opacity="0.6"
-                        />
-                      </g>
-                    ) : (
-                      <g stroke={ringColor} strokeWidth="1.5" fill="none">
-                        <circle cx={CENTER_X} cy={ringY} r="5" fill={ringColor} stroke="none" />
-                        <line x1={CENTER_X} y1={ringY} x2={cardX} y2={ringY} />
-                        <line x1={cardX + CARD_W} y1={ringY} x2={ringX - 36} y2={ringY} />
-                        <path
-                          d={`M ${cardX} ${cardY + 8} L ${cardX - 6} ${cardY + 8} L ${cardX - 6} ${cardY + CARD_H - 8} L ${cardX} ${cardY + CARD_H - 8}`}
-                          opacity="0.6"
-                        />
-                      </g>
-                    )}
-
-                    {/* B. Anillos Orbitales */}
-                    <g
-                      transform={`translate(${ringX}, ${ringY})`}
-                      className="cursor-pointer hover:scale-110 transition-transform"
+                  <React.Fragment key={`h-milestone-${m.id}`}>
+                    {/* Tarjeta de Hito Horizontal */}
+                    <div
                       onClick={() => setSelectedMilestone(m)}
+                      className={`flex flex-col justify-between p-4 rounded-2xl border transition-all cursor-pointer min-w-[300px] sm:min-w-[340px] md:min-w-[360px] flex-1 shrink-0 shadow-lg relative select-none ${
+                        m.isCurrent
+                          ? 'bg-gradient-to-b from-slate-900 via-[#0e1626] to-slate-950 border-[#C5A059] shadow-[0_4px_25px_rgba(197,160,89,0.2)] ring-2 ring-[#C5A059]/50 hover:scale-[1.01]'
+                          : 'bg-slate-900/90 hover:bg-slate-900 border-slate-800 hover:border-slate-700 hover:scale-[1.01]'
+                      }`}
                     >
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r="32"
-                        fill="none"
-                        stroke={ringColor}
-                        strokeWidth="1.2"
-                        strokeDasharray="24 10 16 8"
-                        opacity="0.6"
-                      />
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r="24"
-                        fill="none"
-                        stroke={ringColor}
-                        strokeWidth="1.2"
-                        opacity="0.75"
-                      />
+                      {/* Badge superior de Custodia Actual si corresponde */}
                       {m.isCurrent && (
-                        <circle
-                          cx="0"
-                          cy="0"
-                          r="38"
-                          fill="none"
-                          stroke="#C5A059"
-                          strokeWidth="2"
-                          className="animate-ping opacity-60"
-                        />
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-3 py-0.5 rounded-full bg-[#C5A059] text-slate-950 text-[10px] font-black tracking-wider uppercase shadow-[0_0_15px_rgba(197,160,89,0.8)] flex items-center gap-1.5 animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-950 animate-ping" />
+                          <span>📍 CUSTODIA ACTUAL</span>
+                        </div>
                       )}
-                      <circle
-                        cx="0"
-                        cy="0"
-                        r="16"
-                        fill="#0B0F17"
-                        stroke={ringColor}
-                        strokeWidth="1.5"
-                      />
-                      <circle cx="0" cy="0" r="5" fill={ringColor} />
-                    </g>
 
-                    {/* C. Tarjeta Flotante de Expediente */}
-                    <foreignObject
-                      x={cardX}
-                      y={cardY}
-                      width={CARD_W}
-                      height={CARD_H}
-                    >
-                      <div
-                        onClick={() => setSelectedMilestone(m)}
-                        className={`w-full h-full flex flex-col justify-between p-3.5 rounded-2xl border transition-all cursor-pointer shadow-md backdrop-blur-md ${
-                          m.isCurrent
-                            ? 'bg-slate-900/95 border-[#C5A059] shadow-[0_4px_20px_rgba(197,160,89,0.15)] ring-1 ring-[#C5A059]/40 hover:scale-102'
-                            : 'bg-slate-900/90 border-slate-800 hover:border-slate-700 hover:scale-102 shadow-xs'
-                        }`}
-                      >
-                        {/* Fila 1: Fecha, Hora y Badge de Paso */}
-                        <div className="flex items-center justify-between text-xs pb-1 border-b border-slate-800">
-                          <span className="font-mono text-slate-300 font-medium flex items-center gap-1.5">
-                            <span>📅</span>
-                            <span>{m.dateStr}</span>
-                            <span className="text-slate-600">•</span>
-                            <span>{m.timeStr}</span>
-                          </span>
-                          <div className="flex items-center gap-1.5">
-                            {m.stepNumber > 0 && m.stepNumber <= 8 && onPrintSlot && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onPrintSlot(m.stepNumber);
-                                }}
-                                title={`Sobreimprimir en la casilla física N° ${m.stepNumber} (${m.stepNumber <= 4 ? 'Anverso' : 'Reverso'})`}
-                                className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/20 hover:bg-emerald-500/35 text-emerald-300 border border-emerald-500/40 transition-colors flex items-center gap-1 cursor-pointer"
-                              >
-                                <span>🖨️ Casilla #{m.stepNumber}</span>
-                              </button>
-                            )}
+                      {/* Header de la Tarjeta: Fecha, Hora y Casilla */}
+                      <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-800/80 gap-2">
+                        <span className="font-mono text-slate-300 font-medium flex items-center gap-1.5 text-[11px]">
+                          <span>📅</span>
+                          <span>{m.dateStr}</span>
+                          <span className="text-slate-600">•</span>
+                          <span>{m.timeStr}</span>
+                        </span>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {m.stepNumber > 0 && m.stepNumber <= 8 && onPrintSlot && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onPrintSlot(m.stepNumber);
+                              }}
+                              title={`Sobreimprimir en la casilla física N° ${m.stepNumber}`}
+                              className="px-2 py-0.5 rounded text-[9.5px] font-mono font-bold bg-emerald-500/15 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition-colors flex items-center gap-1 cursor-pointer"
+                            >
+                              <span>🖨️ Casilla #{m.stepNumber}</span>
+                            </button>
+                          )}
+                          {!m.isCurrent && (
                             <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] uppercase tracking-wide ${
-                              m.isCurrent
-                                ? 'bg-[#C5A059] text-slate-950 shadow-xs'
-                                : m.isAccumulated
+                              m.isAccumulated
                                 ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
                                 : 'bg-slate-800 text-slate-300 border border-slate-700/80'
                             }`}>
-                              {m.isCurrent ? '📍 CUSTODIA ACTUAL' : m.badgeLabel}
+                              {m.badgeLabel}
                             </span>
-                          </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Traspaso de Áreas (Origen ➔ Destino) */}
+                      <div className="py-2.5 space-y-1">
+                        <div className="text-xs sm:text-[13px] font-bold text-white flex items-center gap-2 truncate">
+                          <span className="text-slate-200 truncate">{formatArea(m.sourceArea)}</span>
+                          <ArrowRight className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
+                          <span className="text-[#E2C785] truncate">{formatArea(m.targetArea)}</span>
                         </div>
 
-                        {/* Fila 2: Traspaso de Áreas (Origen ➔ Destino) y Estado de Recepción */}
-                        <div className="flex items-center justify-between gap-2 my-0.5">
-                          <div className="text-[12px] sm:text-[13px] font-bold text-white flex items-center gap-2 truncate">
-                            <span className="text-slate-200 truncate">{formatArea(m.sourceArea)}</span>
-                            <ArrowRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                            <span className="text-[#E2C785] truncate">{formatArea(m.targetArea)}</span>
-                          </div>
-                          {m.stepNumber > 0 && (
-                            m.receivedAt ? (
+                        {/* Estado de Recepción */}
+                        {m.stepNumber > 0 && (
+                          <div className="flex items-center gap-2 pt-0.5">
+                            {m.receivedAt ? (
                               <span
-                                className="text-[9.5px] font-semibold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shrink-0 flex items-center gap-1"
+                                className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 inline-flex items-center gap-1"
                                 title={`Recepcionado en destino el ${formatDate(m.receivedAt)} a las ${formatTime(m.receivedAt)}`}
                               >
-                                ✓ Recepcionado
+                                <span>✓ Recepcionado</span>
                               </span>
                             ) : (
                               <span
-                                className="text-[9.5px] font-bold text-white bg-red-600 px-2 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.85)] shrink-0 flex items-center gap-1 animate-pulse"
+                                className="text-[10px] font-bold text-white bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.85)] inline-flex items-center gap-1 animate-pulse"
                                 title="Pendiente de recepción física/digital en el área de destino"
                               >
                                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                                 <span>Por Recepcionar</span>
                               </span>
-                            )
-                          )}
-                        </div>
-
-                        {/* Fila 3: Proveído completo */}
-                        <div className="text-[11px] text-slate-300 leading-relaxed italic my-1 break-words overflow-y-auto max-h-[85px] custom-scrollbar pr-1">
-                          {m.quickStamp && (
-                            <span className="font-bold mr-1.5 text-[#C5A059] not-italic uppercase text-[10.5px]">
-                              ⚡ {m.quickStamp}
-                            </span>
-                          )}
-                          <span>&quot;{m.instruction || 'Sin notas'}&quot;</span>
-                        </div>
-
-                        {/* Fila 4: Adjuntos PDF y Responsable / Emisor */}
-                        <div className="pt-1.5 border-t border-slate-800 flex items-center justify-between text-[10px]">
-                          {m.documents.length > 0 ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewDoc(m.documents[0]);
-                              }}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
-                            >
-                              <FileText className="w-3.5 h-3.5 text-[#C5A059]" />
-                              <span>{m.documents.length} PDF</span>
-                            </button>
-                          ) : (
-                            <span className="text-slate-500 font-mono">Sin anexos</span>
-                          )}
-
-                          <div className="flex items-center gap-1 text-[10.5px] max-w-[260px] truncate" title={`Emitido por: ${m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}`}>
-                            <span className="text-slate-400 font-medium shrink-0">Por:</span>
-                            <span className="text-slate-300 font-semibold font-mono truncate">
-                              {m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}
-                            </span>
-                            {m.personName && (
-                              <span className="text-slate-400 text-[9.5px] truncate font-mono shrink-0" title={`Dirigido a: ${m.personName}`}>
-                                ➔ {m.personName}
-                              </span>
                             )}
                           </div>
+                        )}
+                      </div>
+
+                      {/* Proveído / Instrucción */}
+                      <div className="text-[11.5px] text-slate-300 leading-relaxed italic my-1.5 bg-black/30 p-2.5 rounded-xl border border-slate-800/60 break-words flex-1">
+                        {m.quickStamp && (
+                          <span className="font-bold mr-1.5 text-[#C5A059] not-italic uppercase text-[10.5px] block sm:inline">
+                            ⚡ {m.quickStamp}
+                          </span>
+                        )}
+                        <span>&quot;{m.instruction || 'Sin notas'}&quot;</span>
+                      </div>
+
+                      {/* Footer de la Tarjeta: Adjuntos & Firmante */}
+                      <div className="pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[10.5px] gap-2">
+                        {m.documents.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewDoc(m.documents[0]);
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold flex items-center gap-1.5 cursor-pointer transition-colors shadow-xs"
+                          >
+                            <FileText className="w-3.5 h-3.5 text-[#C5A059]" />
+                            <span>{m.documents.length} PDF</span>
+                          </button>
+                        ) : (
+                          <span className="text-slate-500 font-mono text-[10px]">Sin anexos</span>
+                        )}
+
+                        <div className="flex items-center gap-1 text-[10.5px] max-w-[200px] truncate" title={`Emitido por: ${m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}`}>
+                          <span className="text-slate-400 font-medium shrink-0">Por:</span>
+                          <span className="text-slate-200 font-semibold font-mono truncate">
+                            {m.sourceUserName || formatArea(m.sourceArea) || 'Oficial'}
+                          </span>
+                          {m.personName && (
+                            <span className="text-slate-400 text-[10px] truncate font-mono shrink-0" title={`Dirigido a: ${m.personName}`}>
+                              ➔ {m.personName}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </foreignObject>
-                  </g>
+                    </div>
+
+                    {/* Conector Horizontal entre Hitos */}
+                    {!isLast && (
+                      <div className="flex flex-col items-center justify-center shrink-0 px-0.5 sm:px-1 select-none">
+                        <div className="flex items-center">
+                          <div className="w-3 sm:w-6 h-0.5 bg-gradient-to-r from-[#C5A059]/40 to-emerald-500/60" />
+                          <div className="w-7 h-7 rounded-full bg-slate-800 border-2 border-emerald-500/60 flex items-center justify-center text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)] shrink-0">
+                            <ArrowRight className="w-4 h-4 text-emerald-400" />
+                          </div>
+                          <div className="w-3 sm:w-6 h-0.5 bg-gradient-to-r from-emerald-500/60 to-[#C5A059]/40" />
+                        </div>
+                        {m.durationFormatted && (
+                          <span className="text-[9.5px] font-mono text-slate-400 mt-1.5 uppercase tracking-wider bg-slate-950/80 px-2 py-0.5 rounded border border-slate-800">
+                            {m.durationFormatted}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </React.Fragment>
                 );
               })}
-            </svg>
+            </div>
           </div>
 
           <p className="text-center text-xs text-slate-500 font-mono mt-1">

@@ -7,6 +7,7 @@ import EmojiPicker, { Theme, EmojiStyle, EmojiClickData } from 'emoji-picker-rea
 import { CrestLogo } from '@shared/components/CrestLogo';
 import { WhatsAppEmojiText } from '@shared/components/WhatsAppEmojiRenderer';
 import { WhatsAppRichInput, WhatsAppRichInputHandle } from '@shared/components/WhatsAppRichInput';
+import { useTheme } from '@shared/context/ThemeContext';
 import {
   X,
   Send,
@@ -539,6 +540,14 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
   onClearChannelUnread,
 }) => {
   const currentUser = useSelector((state: RootState) => state.auth.user);
+  let isLight = false;
+  try {
+    const themeCtx = useTheme();
+    isLight = themeCtx.theme === 'light';
+  } catch {
+    isLight = typeof document !== 'undefined' && !document.documentElement.classList.contains('dark');
+  }
+
   const currentUsername = useMemo(() => {
     return (
       (currentUser as any)?.username ||
@@ -547,10 +556,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
     ).toLowerCase();
   }, [currentUser]);
 
-  // Sidebar Tabs: 'USERS' (Direct 1-on-1 Messages) or 'ORGANIGRAM' (Channels by Department)
-  const [sidebarTab, setSidebarTab] = useState<'USERS' | 'ORGANIGRAM'>('USERS');
-  
-  // Presence Filter: 'ALL' | 'ONLINE' | 'AWAY' | 'OFFLINE'
+  // Presence Filter: All contacts displayed by default (tabs removed for clarity)
   const [presenceFilter, setPresenceFilter] = useState<'ALL' | 'ONLINE' | 'AWAY' | 'OFFLINE'>('ALL');
   const [presenceMap, setPresenceMap] = useState<Record<string, UserPresenceInfo>>({});
 
@@ -588,6 +594,17 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
       setAttachedHrCode(currentRouteSheet.hrCode);
     }
   }, [currentRouteSheet]);
+
+  // Close chat on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   // Fetch all active system users / contacts & initial presence state
   const fetchContactsAndPresence = async () => {
@@ -1215,7 +1232,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         if (e.currentTarget === e.target) setIsDraggingOver(false);
       }}
       onDrop={handleDropFile}
-      className="fixed inset-0 z-50 overflow-hidden bg-black/80 backdrop-blur-md flex justify-end animate-fadeIn"
+      className="fixed inset-0 z-50 overflow-hidden bg-[#0b141a] flex flex-col animate-fadeIn"
     >
       {/* Drag & Drop Visual Overlay */}
       {isDraggingOver && (
@@ -1230,141 +1247,52 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
         </div>
       )}
 
-      {/* Click outside backdrop */}
-      <div className="flex-1" onClick={onClose} />
-
-      {/* Main Container: Dual-Pane WhatsApp Web Style Structure */}
-      <div
-        className={`bg-[#0b141a] border-l-2 border-emerald-500/40 h-full shadow-[0_0_80px_rgba(16,185,129,0.3)] flex transition-all duration-300 ${
-          isExpanded ? 'w-full max-w-6xl' : 'w-full max-w-4xl sm:max-w-5xl'
-        }`}
-      >
+      {/* Main Container: Dual-Pane Layout */}
+      <div className={`w-full h-full flex overflow-hidden ${isLight ? 'bg-[#F0F2F5]' : 'bg-[#0b141a]'}`}>
         
         {/* ========================================================================= */}
-        {/* LEFT PANEL: CONTACTS & ORGANIGRAM SIDEBAR (Estilo WhatsApp Web)           */}
+        {/* LEFT PANEL: MENU ESTILO CORRESPONDENCIA (PLOMO PETRÓLEO + CABECERA VERDE)  */}
         {/* ========================================================================= */}
-        <div className="w-80 sm:w-92 border-r border-emerald-500/25 bg-[#111b21] flex flex-col shrink-0">
+        <div className="w-80 sm:w-88 lg:w-96 border-r border-slate-700/60 bg-[#151E28] flex flex-col shrink-0 text-slate-100 shadow-xl">
           
-          {/* Sidebar Top Header with Official Club Crest */}
-          <div className="p-3 border-b border-emerald-500/25 bg-[#202c33] flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-11 h-11 rounded-2xl bg-black/40 border border-brand-gold/40 p-1 flex items-center justify-center shadow-[0_0_15px_rgba(212,175,55,0.3)] shrink-0">
-                <CrestLogo size="sm" className="w-full h-full" />
-              </div>
-              <div className="min-w-0">
-                <h3 className="font-black text-white text-sm leading-tight flex items-center gap-1.5 truncate">
-                  <span className="text-brand-gold font-serif">CHLS</span>
-                  <span className="text-gray-200">Chat Interno</span>
-                </h3>
-                <span className="text-[10.5px] font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                  <span className="truncate">Conectado como @{currentUsername}</span>
-                </span>
-              </div>
+          {/* Cabecera Estilo Menú con Color Institucional (#008744) */}
+          <div className="bg-[#008744] text-white px-4 py-3.5 flex items-center justify-between shadow-md border-b border-emerald-700/40 shrink-0">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <MessageSquare className="w-5 h-5 text-white shrink-0" />
+              <span className="text-base font-bold tracking-wide truncate">Chat Interno</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-black/25 text-emerald-200 font-bold border border-white/20 tracking-wider">
+                CHLS
+              </span>
+              {/* Botón rápido de cierre en móviles */}
+              <button
+                type="button"
+                onClick={onClose}
+                title="Cerrar Chat"
+                className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 md:hidden cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           </div>
 
-          {/* Segmented Tab Switcher: [ 👤 Contactos (Directo) ] | [ 🏛️ Organigrama ] */}
-          <div className="p-2 bg-[#111b21] border-b border-emerald-500/20 grid grid-cols-2 gap-1.5">
-            <button
-              type="button"
-              onClick={() => setSidebarTab('USERS')}
-              className={`py-1.5 px-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none ${
-                sidebarTab === 'USERS'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'bg-[#202c33] text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Contactos ({contacts.length})</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setSidebarTab('ORGANIGRAM')}
-              className={`py-1.5 px-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all cursor-pointer select-none ${
-                sidebarTab === 'ORGANIGRAM'
-                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20'
-                  : 'bg-[#202c33] text-gray-400 hover:text-white hover:bg-white/10'
-              }`}
-            >
-              <Building2 className="w-3.5 h-3.5" />
-              <span>Organigrama</span>
-            </button>
-          </div>
-
-          {/* If in USERS Tab: Presence Status Filter Chips */}
-          {sidebarTab === 'USERS' && (
-            <div className="px-2.5 py-2 bg-[#111b21] border-b border-emerald-500/20 flex items-center gap-1 overflow-x-auto scrollbar-none">
-              <button
-                type="button"
-                onClick={() => setPresenceFilter('ALL')}
-                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide transition-all cursor-pointer select-none whitespace-nowrap ${
-                  presenceFilter === 'ALL'
-                    ? 'bg-gradient-to-r from-brand-gold to-yellow-400 text-slate-950 shadow-xs font-black'
-                    : 'bg-[#202c33] text-gray-400 hover:text-white'
-                }`}
-              >
-                Todos ({presenceCounts.all})
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPresenceFilter('ONLINE')}
-                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
-                  presenceFilter === 'ONLINE'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md font-black'
-                    : 'bg-[#202c33] text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                <span>En línea ({presenceCounts.online})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPresenceFilter('AWAY')}
-                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
-                  presenceFilter === 'AWAY'
-                    ? 'bg-amber-400 text-slate-950 shadow-md font-black'
-                    : 'bg-[#202c33] text-amber-400 hover:bg-amber-500/20 border border-amber-500/30'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span>Ausente ({presenceCounts.away})</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPresenceFilter('OFFLINE')}
-                className={`px-2.5 py-1 rounded-lg text-[10.5px] font-black tracking-wide flex items-center gap-1 transition-all cursor-pointer select-none whitespace-nowrap ${
-                  presenceFilter === 'OFFLINE'
-                    ? 'bg-purple-500 text-white shadow-md font-black'
-                    : 'bg-[#202c33] text-purple-300 hover:bg-purple-500/20 border border-purple-500/30'
-                }`}
-              >
-                <span className="w-2 h-2 rounded-full bg-purple-400" />
-                <span>Desconectados ({presenceCounts.offline})</span>
-              </button>
-            </div>
-          )}
-
-          {/* Search within Contacts or Channels */}
-          <div className="p-3 bg-[#111b21] border-b border-emerald-500/20">
-            <div className="flex items-center gap-2 bg-[#202c33] px-3 py-2 rounded-xl border border-white/10 focus-within:border-emerald-500">
-              <Search className="w-4 h-4 text-gray-400 shrink-0" />
+          {/* Barra de Búsqueda Rápida */}
+          <div className="p-3 bg-[#151E28] border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 bg-[#1E293B] px-3 py-2 rounded-xl border border-slate-700/60 focus-within:border-emerald-500">
+              <Search className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 type="text"
-                placeholder={sidebarTab === 'USERS' ? 'Buscar contacto, cargo o área...' : 'Buscar departamento o área...'}
+                placeholder="Buscar contacto, cargo o área..."
                 value={sidebarSearch}
                 onChange={(e) => setSidebarSearch(e.target.value)}
-                className="bg-transparent text-xs text-white outline-none w-full placeholder-gray-500 font-medium"
+                className="bg-transparent text-xs text-white outline-none w-full placeholder-slate-400 font-medium"
               />
               {sidebarSearch && (
                 <button
                   type="button"
                   onClick={() => setSidebarSearch('')}
-                  className="text-gray-400 hover:text-white text-xs cursor-pointer"
+                  className="text-slate-400 hover:text-white text-xs cursor-pointer"
                 >
                   ✕
                 </button>
@@ -1372,339 +1300,143 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
             </div>
           </div>
 
-          {/* SIDEBAR CONTENT: USERS DIRECT MESSAGES LIST */}
-          {sidebarTab === 'USERS' ? (
-            <div className="flex-1 overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-emerald-500/40 p-2 space-y-1">
-              
-              {/* TOP PINNED: SALA GENERAL CHLS */}
-              {presenceFilter === 'ALL' && (
+          {/* Lista con Formato del Menú de Correspondencia */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar flex flex-col justify-between">
+            <div>
+              {/* Sección: Canales */}
+              <div>
+                <div className="px-4 pt-3 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-400/80">
+                  Canales
+                </div>
+
+                {/* Sala General CHLS */}
                 <button
                   type="button"
                   onClick={() => handleSelectGeneralOrChannel('GENERAL')}
-                  className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer select-none group relative mb-2 ${
+                  className={`w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm transition-all cursor-pointer group border-b border-white/[0.04] ${
                     !selectedContact && activeChannel === 'GENERAL'
-                      ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-500/20 border border-emerald-400'
-                      : 'bg-[#202c33]/80 hover:bg-[#202c33] text-gray-200 border border-emerald-500/30'
+                      ? 'bg-[#1E293B] text-white font-bold border-l-4 border-[#00A652] shadow-xs'
+                      : 'text-slate-200 hover:text-white hover:bg-white/[0.05] font-medium border-l-4 border-transparent'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 flex items-center justify-center text-lg shrink-0 shadow-inner">
-                    🌐
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center justify-between gap-1">
-                      <h4 className="text-xs font-black truncate text-white">
-                        Sala General CHLS
-                      </h4>
-                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 uppercase">
-                        Público
-                      </span>
+                  <div className="flex items-center gap-3.5 min-w-0 truncate">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center justify-center text-sm shrink-0">
+                      🌐
                     </div>
-                    <p className="text-[11px] truncate text-emerald-200/80 mt-0.5 font-medium">
-                      Anuncios y coordinación general
-                    </p>
+                    <div className="text-left truncate min-w-0">
+                      <div className="truncate font-semibold text-white">Sala General CHLS</div>
+                      <div className="text-[11px] text-slate-400 truncate">Anuncios y coordinación</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <span className="font-mono text-[9.5px] px-1.5 py-0.5 rounded font-bold bg-white/10 text-emerald-300 border border-emerald-500/30">
+                      PÚBLICO
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform shrink-0" />
                   </div>
                 </button>
-              )}
-
-              <div className="px-2 py-1 text-[10px] font-black uppercase text-brand-gold tracking-wider flex items-center justify-between">
-                <div className="flex items-center gap-1">
-                  <Users className="w-3 h-3 text-brand-gold" />
-                  <span>Contactos por Cargo ({filteredContacts.length})</span>
-                </div>
               </div>
 
-              {filteredContacts.map((contact) => {
-                const isMe = contact.username.toLowerCase() === currentUsername;
-                const isSelected = selectedContact?.id === contact.id;
-                const dmChannel = getDmChannelId(currentUsername, contact.username);
-                const unread = channelUnreadCounts[dmChannel] || channelUnreadCounts[contact.username] || 0;
+              {/* Sección: Contactos Oficiales */}
+              <div>
+                <div className="px-4 pt-3 pb-1 text-[10px] font-black uppercase tracking-wider text-slate-400/80 flex items-center justify-between">
+                  <span>Contactos ({filteredContacts.length})</span>
+                  <span className="text-[9.5px] text-emerald-400 font-mono font-normal">
+                    {presenceCounts.online} en línea
+                  </span>
+                </div>
 
-                const status = getContactPresence(contact);
+                {filteredContacts.map((contact) => {
+                  const isMe = contact.username.toLowerCase() === currentUsername;
+                  const isSelected = selectedContact?.id === contact.id;
+                  const dmChannel = getDmChannelId(currentUsername, contact.username);
+                  const unread = channelUnreadCounts[dmChannel] || channelUnreadCounts[contact.username] || 0;
+                  const status = getContactPresence(contact);
+                  const isOnline = status === 'ONLINE';
+                  const isAway = status === 'AWAY';
 
-                // Paleta de 3 colores según estado: Verde (ONLINE), Amarillo (AWAY), Lila (OFFLINE)
-                const isOnline = status === 'ONLINE';
-                const isAway = status === 'AWAY';
-                const isOffline = status === 'OFFLINE';
+                  return (
+                    <button
+                      key={contact.id}
+                      type="button"
+                      onClick={() => handleSelectContact(contact)}
+                      className={`w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm transition-all cursor-pointer group border-b border-white/[0.04] ${
+                        isSelected
+                          ? 'bg-[#1E293B] text-white font-bold border-l-4 border-[#00A652] shadow-xs'
+                          : 'text-slate-200 hover:text-white hover:bg-white/[0.05] font-medium border-l-4 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0 truncate">
+                        {/* Avatar con Punto de Presencia */}
+                        <div className="relative shrink-0">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs uppercase ${
+                              isSelected
+                                ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                                : isOnline
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                : isAway
+                                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                                : 'bg-slate-800 text-slate-300 border border-slate-700/60'
+                            }`}
+                          >
+                            {contact.name.substring(0, 2)}
+                          </div>
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#151E28] ${
+                              isOnline
+                                ? 'bg-emerald-400 animate-pulse'
+                                : isAway
+                                ? 'bg-amber-400'
+                                : 'bg-slate-500'
+                            }`}
+                          />
+                        </div>
 
-                return (
-                  <button
-                    key={contact.id}
-                    type="button"
-                    onClick={() => handleSelectContact(contact)}
-                    className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer select-none group relative border ${
-                      isSelected
-                        ? isOnline
-                          ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-500/20 border-emerald-400'
-                          : isAway
-                          ? 'bg-gradient-to-r from-amber-600/90 to-yellow-700/90 text-white shadow-md shadow-amber-500/20 border-amber-400'
-                          : 'bg-gradient-to-r from-purple-700/90 to-indigo-800/90 text-white shadow-md shadow-purple-500/20 border-purple-400'
-                        : isOnline
-                        ? 'bg-[#122319]/60 hover:bg-[#152e20] text-gray-200 border-emerald-500/30'
-                        : isAway
-                        ? 'bg-[#242013]/60 hover:bg-[#332b17] text-gray-200 border-amber-500/30'
-                        : 'bg-[#1b1526]/60 hover:bg-[#251d36] text-gray-200 border-purple-500/30'
-                    }`}
-                  >
-                    {/* User Avatar with Initials & Dynamic Presence Color: Verde, Amarillo, Lila */}
-                    <div className="relative shrink-0">
-                      <div
-                        className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-xs shadow-inner uppercase border ${
-                          isSelected
-                            ? 'bg-black/30 text-white border-white/40'
-                            : isOnline
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.25)] group-hover:border-emerald-400'
-                            : isAway
-                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-[0_0_10px_rgba(245,158,11,0.25)] group-hover:border-amber-400'
-                            : 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-[0_0_10px_rgba(168,85,247,0.2)] group-hover:border-purple-400'
-                        }`}
-                      >
-                        {contact.name.substring(0, 2)}
-                      </div>
-
-                      {/* Presence Status Dot */}
-                      {isOnline ? (
-                        <span
-                          title="En línea (Activo)"
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse"
-                        />
-                      ) : isAway ? (
-                        <span
-                          title="Ausente (Inactivo)"
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(245,158,11,0.9)]"
-                        />
-                      ) : (
-                        <span
-                          title="Desconectado"
-                          className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-purple-400 border-2 border-[#111b21] shadow-[0_0_8px_rgba(168,85,247,0.7)]"
-                        />
-                      )}
-                    </div>
-
-                    {/* Contact Info */}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between gap-1">
-                        <h4
-                          className={`text-xs font-black truncate ${
-                            isSelected
-                              ? 'text-white'
-                              : isOnline
-                              ? 'text-emerald-100 group-hover:text-emerald-300'
-                              : isAway
-                              ? 'text-amber-100 group-hover:text-amber-300'
-                              : 'text-purple-100 group-hover:text-purple-300'
-                          }`}
-                        >
-                          {contact.name} {isMe && <span className="text-[10px] text-brand-gold font-normal">(Tú)</span>}
-                        </h4>
-                        
-                        {/* Time & Unread Badge */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          {contact.lastMessageAt && (
-                            <span className="text-[10px] text-gray-400 font-mono">
-                              {new Date(contact.lastMessageAt).toLocaleTimeString('es-BO', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                              })}
+                        {/* Información de Contacto */}
+                        <div className="text-left truncate min-w-0">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="truncate font-semibold text-white">
+                              {contact.name}
                             </span>
-                          )}
-                          {unread > 0 && (
-                            <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse">
-                              {unread}
-                            </span>
-                          )}
+                            {isMe && <span className="text-[10px] text-brand-gold font-normal shrink-0">(Tú)</span>}
+                          </div>
+                          <div className="text-[11px] text-slate-400 truncate">
+                            {contact.role?.replace('MODULO_', '') || `@${contact.username}`}
+                          </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center justify-between gap-1 mt-0.5">
-                        {contact.lastMessage ? (
-                          <p
-                            className={`text-[11px] truncate font-medium max-w-[145px] ${
-                              isSelected
-                                ? 'text-white/90'
-                                : isOnline
-                                ? 'text-emerald-200/70 group-hover:text-emerald-100'
-                                : isAway
-                                ? 'text-amber-200/70 group-hover:text-amber-100'
-                                : 'text-purple-200/70 group-hover:text-purple-100'
-                            }`}
-                          >
-                            <span
-                              className={`font-mono text-[10px] mr-1 ${
-                                isOnline ? 'text-emerald-400' : isAway ? 'text-amber-400' : 'text-purple-400'
-                              }`}
-                            >
-                              @{contact.username}:
-                            </span>
-                            <span>{contact.lastMessage}</span>
-                          </p>
-                        ) : (
-                          <span
-                            className={`text-[11px] font-mono truncate ${
-                              isSelected
-                                ? 'text-white/90'
-                                : isOnline
-                                ? 'text-emerald-400'
-                                : isAway
-                                ? 'text-amber-400'
-                                : 'text-purple-300/80'
-                            }`}
-                          >
-                            @{contact.username}
+                      {/* Lado Derecho: Contador y Flecha */}
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                        {unread > 0 ? (
+                          <span className="min-w-[19px] h-[19px] px-1.5 rounded-full bg-rose-600 text-white font-mono font-black text-[10px] flex items-center justify-center shadow-xs ring-2 ring-rose-600/30 animate-pulse">
+                            {unread}
                           </span>
-                        )}
-
-                        {/* Status Label Pill con Lila, Verde y Amarillo */}
-                        {isOnline ? (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 uppercase shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.25)]">
-                            En línea
-                          </span>
-                        ) : isAway ? (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/50 uppercase shrink-0 shadow-[0_0_8px_rgba(245,158,11,0.25)]">
-                            Ausente
-                          </span>
-                        ) : (
-                          <span className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 uppercase truncate max-w-[95px] shrink-0 shadow-[0_0_8px_rgba(168,85,247,0.15)]">
-                            {contact.role.replace('MODULO_', '') || 'Offline'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-
-            </div>
-          ) : (
-            /* SIDEBAR CONTENT: ORGANIGRAM CATEGORIES TREE */
-            <div className="flex-1 overflow-y-auto divide-y divide-white/5 scrollbar-thin scrollbar-thumb-emerald-500/40">
-              {ORGANIGRAM_CHAT_GROUPS.map((group) => {
-                const matchesSearch = group.channels.some(
-                  (c) =>
-                    !sidebarSearch.trim() ||
-                    c.label.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-                    c.manager.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-                    c.position.toLowerCase().includes(sidebarSearch.toLowerCase())
-                );
-
-                if (!matchesSearch) return null;
-
-                const isCollapsed = !!collapsedGroups[group.id];
-                const groupUnreadTotal = group.channels.reduce(
-                  (sum, c) => sum + (channelUnreadCounts[c.id] || 0),
-                  0
-                );
-
-                return (
-                  <div key={group.id} className="py-1">
-                    
-                    {/* Category Header Accordion */}
-                    <button
-                      type="button"
-                      onClick={() => toggleGroup(group.id)}
-                      className="w-full px-3.5 py-2 flex items-center justify-between text-left hover:bg-white/5 transition-colors cursor-pointer select-none"
-                    >
-                      <div className="flex items-center gap-2 text-xs font-black text-brand-gold uppercase tracking-wider">
-                        <span>{group.icon}</span>
-                        <span>{group.category}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {groupUnreadTotal > 0 && (
-                          <span className="px-2 py-0.5 text-[10px] font-black rounded-full bg-red-600 text-white shadow-md animate-bounce">
-                            {groupUnreadTotal}
-                          </span>
-                        )}
-                        <ChevronDown
-                          className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${
-                            isCollapsed ? '-rotate-90' : ''
+                        ) : null}
+                        <ChevronRight
+                          className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
+                            isSelected ? 'text-white' : 'text-slate-400 group-hover:text-white'
                           }`}
                         />
                       </div>
                     </button>
-
-                    {/* Channel Items in this Group */}
-                    {!isCollapsed && (
-                      <div className="space-y-0.5 px-2">
-                        {group.channels.map((ch) => {
-                          const isMatch =
-                            !sidebarSearch.trim() ||
-                            ch.label.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-                            ch.manager.toLowerCase().includes(sidebarSearch.toLowerCase()) ||
-                            ch.position.toLowerCase().includes(sidebarSearch.toLowerCase());
-
-                          if (!isMatch) return null;
-
-                          const isSelected = !selectedContact && activeChannel === ch.id;
-                          const unread = channelUnreadCounts[ch.id] || 0;
-
-                          return (
-                            <button
-                              key={ch.id}
-                              type="button"
-                              onClick={() => handleSelectGeneralOrChannel(ch.id)}
-                              className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-left transition-all cursor-pointer select-none group relative ${
-                                isSelected
-                                  ? 'bg-gradient-to-r from-emerald-600/90 to-teal-700/90 text-white shadow-md shadow-emerald-500/20 border border-emerald-400'
-                                  : 'hover:bg-[#202c33] text-gray-300 border border-transparent'
-                              }`}
-                            >
-                              {/* Department Avatar */}
-                              <div
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm shrink-0 shadow-inner ${
-                                  isSelected
-                                    ? 'bg-black/30 text-emerald-300 border border-emerald-400/40'
-                                    : 'bg-[#202c33] text-emerald-400 border border-white/10 group-hover:border-emerald-500/40'
-                                }`}
-                              >
-                                <span>{ch.icon}</span>
-                              </div>
-
-                              {/* Info */}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-center justify-between gap-1">
-                                  <h4
-                                    className={`text-xs font-black truncate ${
-                                      isSelected ? 'text-white' : 'text-gray-100 group-hover:text-emerald-300'
-                                    }`}
-                                  >
-                                    {ch.label}
-                                  </h4>
-                                  
-                                  {/* Unread Badge */}
-                                  {unread > 0 && (
-                                    <span className="px-1.5 py-0.5 text-[10px] font-black rounded-full bg-emerald-500 text-black shadow-[0_0_10px_rgba(16,185,129,0.8)] animate-pulse shrink-0">
-                                      {unread}
-                                    </span>
-                                  )}
-                                </div>
-
-                                <p
-                                  className={`text-[11px] truncate mt-0.5 font-medium ${
-                                    isSelected ? 'text-emerald-100' : 'text-gray-400'
-                                  }`}
-                                >
-                                  {ch.manager}
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* ========================================================================= */}
-        {/* RIGHT PANEL: CHAT CONVERSATION VIEW (Estilo WhatsApp Web)                 */}
+        {/* RIGHT PANEL: CHAT CONVERSATION VIEW                                       */}
         {/* ========================================================================= */}
-        <div className="flex-1 flex flex-col justify-between overflow-hidden bg-[#0b141a]">
+        <div className={`flex-1 flex flex-col justify-between overflow-hidden ${isLight ? 'bg-[#F0F2F5]' : 'bg-[#0b141a]'}`}>
           
           {/* Active Chat Top Header */}
-          <div className="px-6 py-3 border-b border-emerald-500/30 flex justify-between items-center bg-[#202c33] shrink-0">
+          <div className={`px-6 py-3 border-b flex justify-between items-center shrink-0 transition-colors ${
+            isLight ? 'bg-white border-slate-200 shadow-2xs' : 'bg-[#202c33] border-emerald-500/30'
+          }`}>
             <div className="flex items-center gap-3">
               <div className="relative">
                 {selectedContact ? (
@@ -1728,25 +1460,27 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 {/* Header Presence Dot */}
                 {selectedContact && targetPresence ? (
                   targetPresence.status === 'ONLINE' ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse" />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-emerald-400 border-2 shadow-[0_0_8px_rgba(16,185,129,0.9)] animate-pulse ${isLight ? 'border-white' : 'border-[#202c33]'}`} />
                   ) : targetPresence.status === 'AWAY' ? (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(245,158,11,0.9)]" />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-amber-400 border-2 shadow-[0_0_8px_rgba(245,158,11,0.9)] ${isLight ? 'border-white' : 'border-[#202c33]'}`} />
                   ) : (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-purple-400 border-2 border-[#202c33] shadow-[0_0_8px_rgba(168,85,247,0.7)]" />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-purple-400 border-2 shadow-[0_0_8px_rgba(168,85,247,0.7)] ${isLight ? 'border-white' : 'border-[#202c33]'}`} />
                   )
                 ) : (
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-[#202c33] animate-pulse" />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 animate-pulse ${isLight ? 'border-white' : 'border-[#202c33]'}`} />
                 )}
               </div>
 
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-base font-black text-white leading-tight truncate">
+                  <h2 className={`text-base font-black leading-tight truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {selectedContact ? selectedContact.name : activeChannelInfo.label}
                   </h2>
                   <span
                     className={`text-[9.5px] font-mono font-black uppercase px-2 py-0.5 rounded-full border shrink-0 ${
-                      !selectedContact
+                      isLight
+                        ? 'bg-slate-100 text-slate-700 border-slate-300'
+                        : !selectedContact
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
                         : targetPresence?.status === 'ONLINE'
                         ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
@@ -1761,24 +1495,24 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 <div className="text-xs font-medium truncate mt-0.5 flex items-center gap-2">
                   {selectedContact && targetPresence ? (
                     targetPresence.status === 'ONLINE' ? (
-                      <span className="text-emerald-400 flex items-center gap-1 font-bold">
-                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-emerald-600 flex items-center gap-1 font-bold">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                         <span>En línea • Activo en el sistema</span>
                       </span>
                     ) : targetPresence.status === 'AWAY' ? (
-                      <span className="text-amber-400 flex items-center gap-1 font-bold">
-                        <span className="w-2 h-2 rounded-full bg-amber-400" />
+                      <span className="text-amber-600 flex items-center gap-1 font-bold">
+                        <span className="w-2 h-2 rounded-full bg-amber-500" />
                         <span>Ausente • Sin actividad reciente</span>
                       </span>
                     ) : (
-                      <span className="text-purple-300 flex items-center gap-1 font-medium">
+                      <span className={`flex items-center gap-1 font-medium ${isLight ? 'text-slate-500' : 'text-purple-300'}`}>
                         <span className="w-2 h-2 rounded-full bg-purple-400" />
                         <span>Desconectado • Fuera de línea</span>
                       </span>
                     )
                   ) : (
-                    <span className="text-gray-300">
-                      Titular: <strong className="text-brand-gold">{activeChannelInfo.manager}</strong> • {activeChannelInfo.desc}
+                    <span className={isLight ? 'text-slate-600' : 'text-gray-300'}>
+                      Titular: <strong className={isLight ? 'text-emerald-800 font-bold' : 'text-brand-gold'}>{activeChannelInfo.manager}</strong> • {activeChannelInfo.desc}
                     </span>
                   )}
                 </div>
@@ -1792,8 +1526,8 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 title="Buscar en mensajes"
                 className={`p-2 rounded-xl border transition-all cursor-pointer ${
                   showSearch
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-400'
-                    : 'text-slate-400 hover:text-white hover:bg-white/10 border-transparent'
+                    ? isLight ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-emerald-500 text-slate-950 border-emerald-400'
+                    : isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100 border-transparent' : 'text-slate-400 hover:text-white hover:bg-white/10 border-transparent'
                 }`}
               >
                 <Search className="w-4.5 h-4.5" />
@@ -1801,39 +1535,43 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
               <button
                 type="button"
-                onClick={() => setIsExpanded(!isExpanded)}
-                title={isExpanded ? 'Contraer' : 'Expandir'}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors hidden sm:inline-flex cursor-pointer"
-              >
-                {isExpanded ? <Minimize2 className="w-4.5 h-4.5" /> : <Maximize2 className="w-4.5 h-4.5" />}
-              </button>
-
-              <button
                 onClick={onClose}
-                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                title="Cerrar chat y volver (Esc)"
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition-all font-bold text-xs shadow-xs cursor-pointer group ml-1 ${
+                  isLight
+                    ? 'bg-red-50 hover:bg-red-600 text-red-700 hover:text-white border border-red-200 hover:border-red-600'
+                    : 'bg-red-600/20 hover:bg-red-600 text-red-200 hover:text-white border border-red-500/40 hover:border-red-600'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4.5 h-4.5 group-hover:rotate-90 transition-transform" />
+                <span>Cerrar Chat</span>
               </button>
             </div>
           </div>
 
           {/* Search Bar (Collapsible) */}
           {showSearch && (
-            <div className="p-3 bg-[#111b21] border-b border-emerald-500/30 flex items-center gap-2 animate-fadeIn shrink-0">
-              <Search className="w-4 h-4 text-emerald-400 shrink-0 ml-2" />
+            <div className={`p-3 border-b flex items-center gap-2 animate-fadeIn shrink-0 ${
+              isLight ? 'bg-slate-100 border-slate-200' : 'bg-[#111b21] border-emerald-500/30'
+            }`}>
+              <Search className={`w-4 h-4 shrink-0 ml-2 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
               <input
                 type="text"
                 placeholder={`Buscar en la conversación (texto, remitente o Hoja de Ruta)...`}
                 value={searchFilter}
                 onChange={(e) => setSearchFilter(e.target.value)}
-                className="flex-1 bg-transparent text-xs text-white outline-none font-medium placeholder-gray-500"
+                className={`flex-1 bg-transparent text-xs outline-none font-medium ${
+                  isLight ? 'text-slate-900 placeholder-slate-400' : 'text-white placeholder-gray-500'
+                }`}
                 autoFocus
               />
               {searchFilter && (
                 <button
                   type="button"
                   onClick={() => setSearchFilter('')}
-                  className="text-xs font-bold text-slate-400 hover:text-red-400 mr-2 cursor-pointer"
+                  className={`text-xs font-bold mr-2 cursor-pointer ${
+                    isLight ? 'text-slate-500 hover:text-red-600' : 'text-slate-400 hover:text-red-400'
+                  }`}
                 >
                   Limpiar
                 </button>
@@ -1841,21 +1579,12 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
             </div>
           )}
 
-          {/* Messages Body with WhatsApp Wallpaper & Bubble Aesthetic */}
+          {/* Messages Body - Fondo Liso */}
           <div
-            className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 relative"
-            style={{
-              backgroundImage: `
-                radial-gradient(circle, rgba(16,185,129,0.06) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(11,20,26,0.98), rgba(11,20,26,0.98))
-              `,
-              backgroundSize: '20px 20px',
-            }}
+            className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-3.5 relative ${
+              isLight ? 'bg-[#F0F2F5]' : 'bg-[#0b141a]'
+            }`}
           >
-            {/* Elegant Background Club Watermark */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.035] overflow-hidden select-none">
-              <CrestLogo size="xl" className="w-80 h-96 scale-125 grayscale" />
-            </div>
 
             {isLoading ? (
               <div className="text-center py-12 text-slate-400 text-xs font-bold animate-pulse relative z-10">
@@ -1863,11 +1592,13 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
               </div>
             ) : filteredMessages.length === 0 ? (
               <div className="text-center py-16 space-y-4 relative z-10 animate-fadeIn">
-                <div className="w-20 h-24 p-2 rounded-2xl bg-black/40 border border-brand-gold/40 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(212,175,55,0.3)] animate-pulse">
+                <div className={`w-20 h-24 p-2 rounded-2xl flex items-center justify-center mx-auto shadow-md animate-pulse ${
+                  isLight ? 'bg-white border border-emerald-600/30' : 'bg-black/40 border border-brand-gold/40 shadow-[0_0_25px_rgba(212,175,55,0.3)]'
+                }`}>
                   <CrestLogo size="md" className="w-full h-full" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                  <h3 className={`text-sm font-black uppercase tracking-wider ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     {searchFilter
                       ? 'No se encontraron mensajes con ese criterio'
                       : selectedContact
@@ -1876,7 +1607,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                   </h3>
                   <p className="text-xs text-brand-gold font-bold">Club Hípico Los Sargentos</p>
                 </div>
-                <p className="text-xs text-gray-400 max-w-sm mx-auto">
+                <p className={`text-xs max-w-sm mx-auto ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                   {selectedContact
                     ? `Escribe un mensaje o adjunta expedientes y archivos para coordinar directamente con @${selectedContact.username}.`
                     : 'Inicia la conversación entre departamentos, transfiere archivos o coordina el despacho de Hojas de Ruta.'}
@@ -1902,7 +1633,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                             setReplyingTo(msg);
                             richInputRef.current?.focus();
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white transition-all shadow-md cursor-pointer text-xs shrink-0"
+                          className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all shadow-md cursor-pointer text-xs shrink-0 ${
+                            isLight
+                              ? 'bg-white hover:bg-emerald-600 text-slate-600 hover:text-white border border-slate-200'
+                              : 'bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white'
+                          }`}
                           title="Citar / Responder a este mensaje"
                         >
                           <Reply className="w-3.5 h-3.5" />
@@ -1911,20 +1646,30 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
                       {/* WhatsApp-styled Message Bubble */}
                       <div
-                        className={`p-3.5 space-y-2 shadow-lg relative ${
+                        className={`p-3.5 space-y-2 relative shadow-xs ${
                           isMe
-                            ? 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-xs border border-emerald-500/30 shadow-[0_2px_8px_rgba(0,92,75,0.4)]'
+                            ? isLight
+                              ? 'bg-[#d9fdd3] text-[#111b21] rounded-2xl rounded-tr-xs border border-[#b2ecc0] shadow-xs'
+                              : 'bg-[#005c4b] text-[#e9edef] rounded-2xl rounded-tr-xs border border-emerald-500/30 shadow-[0_2px_8px_rgba(0,92,75,0.4)]'
+                            : isLight
+                            ? 'bg-white text-[#111b21] rounded-2xl rounded-tl-xs border border-slate-200/90 shadow-xs'
                             : 'bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-xs border border-slate-700/60 shadow-[0_2px_8px_rgba(32,44,51,0.4)]'
                         }`}
                         style={{ maxWidth: '85vw', width: 'fit-content' }}
                       >
                         {/* Incoming Sender Name Header (WhatsApp Group Style) */}
                         {!isMe && (
-                          <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/10 text-[11px]">
-                            <span className={`font-black tracking-wide ${senderColor}`}>
+                          <div className={`flex items-center justify-between gap-2 pb-1 border-b text-[11px] ${
+                            isLight ? 'border-slate-100' : 'border-white/10'
+                          }`}>
+                            <span className={`font-black tracking-wide ${isLight ? 'text-emerald-800' : senderColor}`}>
                               {msg.senderName}
                             </span>
-                            <span className="text-[9.5px] font-bold text-brand-gold uppercase bg-black/30 px-1.5 py-0.5 rounded border border-white/5">
+                            <span className={`text-[9.5px] font-bold uppercase px-1.5 py-0.5 rounded border ${
+                              isLight
+                                ? 'bg-slate-100 text-emerald-800 border-slate-200'
+                                : 'bg-black/30 text-brand-gold border-white/5'
+                            }`}>
                               {msg.senderArea}
                             </span>
                           </div>
@@ -1943,13 +1688,21 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                                 }
                               }
                             }}
-                            className="p-2 rounded-xl bg-black/30 border-l-4 border-emerald-400 text-left mb-1.5 space-y-0.5 cursor-pointer hover:bg-black/40 transition-colors select-none"
+                            className={`p-2 rounded-xl border-l-4 text-left mb-1.5 space-y-0.5 cursor-pointer transition-colors select-none ${
+                              isLight
+                                ? 'bg-black/[0.04] border-emerald-600 text-slate-800 hover:bg-black/[0.07]'
+                                : 'bg-black/30 border-emerald-400 text-gray-300 hover:bg-black/40'
+                            }`}
                           >
-                            <span className="text-[10.5px] font-black text-emerald-300 flex items-center gap-1 leading-tight">
-                              <Reply className="w-3 h-3 text-emerald-400" />
+                            <span className={`text-[10.5px] font-black flex items-center gap-1 leading-tight ${
+                              isLight ? 'text-emerald-700' : 'text-emerald-300'
+                            }`}>
+                              <Reply className="w-3 h-3 text-emerald-500" />
                               <span>{msg.replyToSenderName || 'Mensaje citado'}</span>
                             </span>
-                            <span className="text-[11px] text-gray-300 line-clamp-2 leading-tight block">
+                            <span className={`text-[11px] line-clamp-2 leading-tight block ${
+                              isLight ? 'text-slate-700' : 'text-gray-300'
+                            }`}>
                               <WhatsAppEmojiText text={msg.replyToText} size="sm" />
                             </span>
                           </div>
@@ -1991,12 +1744,14 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all hover:scale-[1.02] ${
-                            isMe
+                            isLight
+                              ? 'bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100 hover:border-emerald-500'
+                              : isMe
                               ? 'bg-black/20 border-white/10 text-white hover:bg-black/30'
                               : 'bg-black/30 border-emerald-500/30 text-white hover:border-emerald-400'
                           }`}
                         >
-                          <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-300">
+                          <div className={`p-2 rounded-lg ${isLight ? 'bg-emerald-100 text-emerald-700' : 'bg-emerald-500/20 text-emerald-300'}`}>
                             {getFileIcon(msg.fileType, msg.fileName)}
                           </div>
                           <div className="min-w-0 flex-1">
@@ -2004,12 +1759,12 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                               {msg.fileName || 'Archivo adjunto'}
                             </span>
                             {msg.fileSize && (
-                              <span className="text-[10px] opacity-80 font-mono block">
+                              <span className={`text-[10px] font-mono block ${isLight ? 'text-slate-500' : 'opacity-80'}`}>
                                 {formatFileSize(msg.fileSize)}
                               </span>
                             )}
                           </div>
-                          <Download className="w-4 h-4 text-brand-gold shrink-0" />
+                          <Download className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-700' : 'text-brand-gold'}`} />
                         </a>
                       )}
 
@@ -2019,19 +1774,21 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                           type="button"
                           onClick={() => onSelectRouteSheetByCode && onSelectRouteSheetByCode(msg.routeSheetCode!)}
                           className={`inline-flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-black transition-all shadow-xs cursor-pointer ${
-                            isMe
+                            isLight
+                              ? 'bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100'
+                              : isMe
                               ? 'bg-black/30 border-emerald-400/40 text-emerald-200 hover:bg-black/50'
                               : 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200 hover:bg-emerald-500/30'
                           }`}
                         >
-                          <FileText className="w-3.5 h-3.5 text-brand-gold" />
+                          <FileText className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Expediente: <strong>{msg.routeSheetCode}</strong></span>
-                          <ChevronRight className="w-3.5 h-3.5 text-emerald-400" />
+                          <ChevronRight className="w-3.5 h-3.5 text-emerald-600" />
                         </button>
                       )}
 
                       {/* WhatsApp Timestamp & Delivery / Read Confirmation Ticks */}
-                      <div className="flex justify-end items-center gap-1 text-[10px] text-gray-400 font-mono pt-0.5 select-none">
+                      <div className={`flex justify-end items-center gap-1 text-[10px] font-mono pt-0.5 select-none ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                         <span>
                           {new Date(msg.createdAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}
                         </span>
@@ -2042,11 +1799,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                             </span>
                           ) : msg.status === 'DELIVERED' ? (
                             <span title="Entregado al destinatario (2 palomitas grises)">
-                              <CheckCheck className="w-3.5 h-3.5 text-gray-400 ml-0.5" />
+                              <CheckCheck className={`w-3.5 h-3.5 ml-0.5 ${isLight ? 'text-slate-400' : 'text-gray-400'}`} />
                             </span>
                           ) : (
                             <span title="Enviado al servidor (1 palomita gris)">
-                              <Check className="w-3.5 h-3.5 text-gray-400 ml-0.5" />
+                              <Check className={`w-3.5 h-3.5 ml-0.5 ${isLight ? 'text-slate-400' : 'text-gray-400'}`} />
                             </span>
                           )
                         )}
@@ -2061,7 +1818,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                           setReplyingTo(msg);
                           richInputRef.current?.focus();
                         }}
-                        className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white transition-all shadow-md cursor-pointer text-xs shrink-0"
+                        className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-all shadow-md cursor-pointer text-xs shrink-0 ${
+                          isLight
+                            ? 'bg-white hover:bg-emerald-600 text-slate-600 hover:text-white border border-slate-200'
+                            : 'bg-black/50 hover:bg-emerald-600 text-gray-300 hover:text-white'
+                        }`}
                         title="Citar / Responder a este mensaje"
                       >
                         <Reply className="w-3.5 h-3.5" />
@@ -2077,8 +1838,10 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
           {/* Quick Message Chips - Collapsible Centered 2-Row Responsive Layout */}
           {showQuickMessages && (
-            <div className="px-3 py-2.5 bg-[#111b21] border-t border-emerald-500/30 shrink-0 flex flex-col items-center justify-center w-full animate-fadeIn shadow-2xl">
-              <div className="w-full flex items-center justify-between pb-1.5 border-b border-white/10 mb-2">
+            <div className={`px-3 py-2.5 border-t shrink-0 flex flex-col items-center justify-center w-full animate-fadeIn shadow-xl ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#111b21] border-emerald-500/30 shadow-2xl'
+            }`}>
+              <div className={`w-full flex items-center justify-between pb-1.5 border-b mb-2 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
                 <div className="flex items-center gap-1.5 text-[11px] font-black uppercase text-brand-gold tracking-wider select-none">
                   <Sparkles className="w-3.5 h-3.5 text-brand-gold" />
                   <span>Respuestas Rápidas Institucionales</span>
@@ -2086,7 +1849,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 <button
                   type="button"
                   onClick={() => setShowQuickMessages(false)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 text-xs transition-colors cursor-pointer"
+                  className={`p-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                    isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
                   title="Cerrar respuestas rápidas"
                 >
                   <X className="w-4 h-4" />
@@ -2106,7 +1871,11 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       }
                       setShowQuickMessages(false);
                     }}
-                    className="w-full text-[11px] font-bold py-2 px-2.5 rounded-xl bg-[#202c33] border border-white/10 text-gray-300 hover:border-emerald-400 hover:text-white hover:bg-[#2a3942] text-center flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer select-none"
+                    className={`w-full text-[11px] font-bold py-2 px-2.5 rounded-xl border text-center flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer select-none ${
+                      isLight
+                        ? 'bg-slate-50 border-slate-200 text-slate-800 hover:border-emerald-500 hover:text-emerald-700 hover:bg-emerald-50'
+                        : 'bg-[#202c33] border-white/10 text-gray-300 hover:border-emerald-400 hover:text-white hover:bg-[#2a3942]'
+                    }`}
                     title={quick}
                   >
                     <span className="truncate">
@@ -2120,16 +1889,20 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
           {/* WhatsApp Web Official Full Emoji Picker */}
           {showEmojis && (
-            <div className="bg-[#111b21] border-t border-emerald-500/30 p-2 shrink-0 animate-fadeIn relative shadow-2xl flex flex-col items-center">
-              <div className="w-full flex justify-between items-center px-3 py-1 border-b border-white/10 mb-1.5">
-                <span className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
+            <div className={`border-t p-2 shrink-0 animate-fadeIn relative shadow-xl flex flex-col items-center ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#111b21] border-emerald-500/30 shadow-2xl'
+            }`}>
+              <div className={`w-full flex justify-between items-center px-3 py-1 border-b mb-1.5 ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+                <span className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                   <Smile className="w-4 h-4 text-brand-gold" />
                   <span>Emoticonos WhatsApp Web</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowEmojis(false)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 text-xs transition-colors cursor-pointer"
+                  className={`p-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                    isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100' : 'text-gray-400 hover:text-white hover:bg-white/10'
+                  }`}
                   title="Cerrar emoticonos"
                 >
                   <X className="w-4 h-4" />
@@ -2138,7 +1911,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
               <div className="w-full flex justify-center">
                 <EmojiPicker
-                  theme={Theme.DARK}
+                  theme={isLight ? Theme.LIGHT : Theme.DARK}
                   emojiStyle={EmojiStyle.APPLE}
                   onEmojiClick={(emojiData: EmojiClickData) => {
                     if (richInputRef.current) {
@@ -2164,18 +1937,22 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
           )}
 
           {/* Input Message, File Upload & Attached HR Footer */}
-          <div className="p-3.5 bg-[#202c33] border-t border-emerald-500/30 space-y-2.5 shrink-0">
+          <div className={`p-3.5 border-t space-y-2.5 shrink-0 ${
+            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-[#202c33] border-emerald-500/30'
+          }`}>
             
             {/* Replying To Quote Banner (WhatsApp Style) */}
             {replyingTo && (
-              <div className="flex items-center justify-between p-2.5 bg-[#111b21] border-l-4 border-emerald-400 rounded-xl border border-white/10 shadow-md animate-fadeIn">
+              <div className={`flex items-center justify-between p-2.5 border-l-4 border-emerald-500 rounded-xl border shadow-sm animate-fadeIn ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#111b21] border-white/10'
+              }`}>
                 <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                  <Reply className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <Reply className="w-4 h-4 text-emerald-500 shrink-0" />
                   <div className="min-w-0">
-                    <span className="text-xs font-black text-emerald-400 block truncate">
+                    <span className={`text-xs font-black block truncate ${isLight ? 'text-emerald-700' : 'text-emerald-400'}`}>
                       Respondiendo a {replyingTo.senderName}
                     </span>
-                    <span className="text-[11px] text-gray-300 truncate block font-medium">
+                    <span className={`text-[11px] truncate block font-medium ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
                       {replyingTo.message ? (
                         <WhatsAppEmojiText text={replyingTo.message} size="sm" />
                       ) : replyingTo.fileName ? (
@@ -2189,7 +1966,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 <button
                   type="button"
                   onClick={() => setReplyingTo(null)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-red-400 hover:bg-white/10 transition-colors ml-2 cursor-pointer shrink-0"
+                  className={`p-1 rounded-lg transition-colors ml-2 cursor-pointer shrink-0 ${
+                    isLight ? 'text-slate-500 hover:text-red-600 hover:bg-slate-200' : 'text-gray-400 hover:text-red-400 hover:bg-white/10'
+                  }`}
                   title="Cancelar respuesta"
                 >
                   <X className="w-4 h-4" />
@@ -2201,8 +1980,8 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
             <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
               {/* Reference HR input pill */}
               <div className="flex items-center gap-2">
-                <span className="font-bold text-gray-400 text-[11px] flex items-center gap-1">
-                  <FileText className="w-3.5 h-3.5 text-brand-gold" />
+                <span className={`font-bold text-[11px] flex items-center gap-1 ${isLight ? 'text-slate-700' : 'text-gray-400'}`}>
+                  <FileText className={`w-3.5 h-3.5 ${isLight ? 'text-emerald-700' : 'text-brand-gold'}`} />
                   <span>Hoja de Ruta (Opcional):</span>
                 </span>
                 <input
@@ -2210,7 +1989,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                   placeholder="Ej. 09-001"
                   value={attachedHrCode}
                   onChange={(e) => setAttachedHrCode(e.target.value)}
-                  className="px-2.5 py-1 bg-black/40 border border-emerald-500/30 rounded-xl text-xs font-mono font-bold text-white outline-none focus:ring-1 focus:ring-emerald-500 w-32 shadow-xs"
+                  className={`px-2.5 py-1 rounded-xl text-xs font-mono font-bold outline-none focus:ring-1 focus:ring-emerald-500 w-32 shadow-xs border ${
+                    isLight ? 'bg-slate-50 border-slate-300 text-slate-900' : 'bg-black/40 border-emerald-500/30 text-white'
+                  }`}
                 />
                 {attachedHrCode && (
                   <button
@@ -2225,10 +2006,12 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
               {/* Attached File Pill */}
               {attachedFile && (
-                <div className="flex items-center gap-2 bg-emerald-500/20 text-emerald-200 border border-emerald-500/40 px-3 py-1 rounded-xl text-xs font-bold shadow-xs animate-fadeIn">
+                <div className={`flex items-center gap-2 border px-3 py-1 rounded-xl text-xs font-bold shadow-xs animate-fadeIn ${
+                  isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/20 text-emerald-200 border-emerald-500/40'
+                }`}>
                   {getFileIcon(attachedFile.type, attachedFile.name)}
                   <span className="truncate max-w-[160px]">{attachedFile.name}</span>
-                  <span className="text-[10.5px] text-gray-400 font-mono">({formatFileSize(attachedFile.size)})</span>
+                  <span className={`text-[10.5px] font-mono ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>({formatFileSize(attachedFile.size)})</span>
                   <button
                     type="button"
                     onClick={() => {
@@ -2264,6 +2047,8 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                   showEmojis
                     ? 'bg-amber-400 text-slate-950 border-amber-500 scale-105'
+                    : isLight
+                    ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
                     : 'bg-[#111b21] border-white/10 text-gray-300 hover:border-emerald-500'
                 }`}
               >
@@ -2280,7 +2065,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 title="Respuestas Rápidas Institucionales"
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-center ${
                   showQuickMessages
-                    ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25 scale-105 font-bold'
+                    ? 'bg-amber-400 text-slate-950 border-amber-500 font-bold scale-105'
+                    : isLight
+                    ? 'bg-slate-100 border-slate-200 text-amber-600 hover:bg-slate-200'
                     : 'bg-[#111b21] border-white/10 text-brand-gold hover:border-brand-gold hover:text-white'
                 }`}
               >
@@ -2294,7 +2081,9 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                 title="Adjuntar Archivo / Documento (PDF, Imagen, Excel, etc.)"
                 className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
                   attachedFile
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md shadow-emerald-500/25 scale-105'
+                    ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-md scale-105'
+                    : isLight
+                    ? 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
                     : 'bg-[#111b21] border-white/10 text-gray-300 hover:border-emerald-500 hover:text-white'
                 }`}
               >
@@ -2312,14 +2101,19 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                     : `Mensaje para #${activeChannelInfo.label}... (Enter para enviar)`
                 }
                 disabled={isSending}
+                className={isLight ? '!bg-slate-50 !border-slate-300 !text-slate-900 !placeholder-slate-400 focus:!ring-emerald-500 focus:!border-emerald-500' : ''}
               />
 
               <button
                 type="submit"
                 disabled={isSending || (!inputText.trim() && !attachedFile)}
-                className="p-2.5 rounded-xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-slate-950 font-black shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer shrink-0"
+                className={`p-2.5 rounded-xl font-black transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer shrink-0 ${
+                  isLight
+                    ? 'bg-[#008744] hover:bg-emerald-600 text-white shadow-md'
+                    : 'bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-700 hover:from-emerald-400 hover:to-teal-600 text-slate-950 shadow-lg shadow-emerald-500/25'
+                }`}
               >
-                <Send className="w-5 h-5 text-slate-950" />
+                <Send className="w-5 h-5" />
               </button>
             </form>
 

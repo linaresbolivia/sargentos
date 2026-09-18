@@ -160,14 +160,16 @@ export const SmartCorrespondenceInput = forwardRef<HTMLInputElement, SmartInputP
           {/* Ghost Text Overlay para Predicción Inline */}
           {suggestion && (
             <div
-              onClick={acceptSuggestion}
-              className="absolute left-3.5 text-xs sm:text-sm pointer-events-auto cursor-pointer select-none font-medium flex items-center"
+              className="absolute left-3.5 text-xs sm:text-sm pointer-events-none select-none font-medium flex items-center"
               style={{ zIndex: 1 }}
             >
               {/* Texto transparente para alinear con el cursor */}
               <span className="opacity-0">{currentVal}</span>
               {/* Texto fantasma sugerido */}
-              <span className="text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-1.5 py-0.5 rounded shadow-xs font-semibold">
+              <span
+                onClick={acceptSuggestion}
+                className="pointer-events-auto cursor-pointer text-emerald-800 dark:text-emerald-300 bg-emerald-100/90 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-1.5 py-0.5 rounded shadow-xs font-semibold hover:scale-105 transition-transform"
+              >
                 {suggestion}
               </span>
             </div>

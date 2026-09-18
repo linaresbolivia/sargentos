@@ -26,6 +26,7 @@ export interface CreateCitePayload {
   status?: 'RESERVADO' | 'EMITIDO' | 'RADICADO_HR';
   routeSheetId?: string;
   officialDate?: string | Date;
+  customCiteCode?: string;
 }
 
 /**

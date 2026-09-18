@@ -467,11 +467,17 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
                           {/* CITE Code */}
                           <td className="px-4 py-3 font-mono font-black text-slate-950 dark:text-white whitespace-nowrap">
                             <div className="flex items-center gap-1.5">
-                              <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30 shadow-xs">
-                                {c.citeCode}
-                              </span>
+                              {c.docType === 'NE' ? (
+                                <span className="bg-sky-500/15 text-sky-800 dark:text-sky-300 px-2.5 py-1 rounded-lg border border-sky-500/30 shadow-xs">
+                                  {c.citeCode.startsWith('S/N') ? 'S/N' : c.citeCode}
+                                </span>
+                              ) : (
+                                <span className="bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 px-2.5 py-1 rounded-lg border border-emerald-500/30 shadow-xs">
+                                  {c.citeCode}
+                                </span>
+                              )}
                               <button
-                                onClick={() => handleCopy(c.citeCode)}
+                                onClick={() => handleCopy(c.docType === 'NE' && c.citeCode.startsWith('S/N') ? 'S/N' : c.citeCode)}
                                 title="Copiar CITE"
                                 className="p-1 rounded text-slate-400 hover:text-emerald-400 transition-colors"
                               >
@@ -829,7 +835,7 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
                     Correspondencia externa dirigida a instituciones y empresas:
                   </p>
                   <ul className="text-[11px] text-slate-600 dark:text-sky-300/80 list-disc list-inside space-y-0.5 mt-2">
-                    <li>Fórmula CITE GG: CHLS-GG N° 00X/2026</li>
+                    <li>Sin CITE institucional (Documento Externo S/N o ref. propia)</li>
                     <li>Vocativo: Señor(a) [Nombre], [Cargo], [Empresa], Presente.-</li>
                     <li>Saludo: «De mi mayor consideración:»</li>
                     <li>Despedida formal y respetuosa</li>

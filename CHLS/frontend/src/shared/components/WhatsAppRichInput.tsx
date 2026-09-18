@@ -154,13 +154,13 @@ export const WhatsAppRichInput = forwardRef<WhatsAppRichInputHandle, WhatsAppRic
           lang="es-BO"
           autoCorrect="on"
           autoCapitalize="sentences"
-          className={`w-full max-h-28 overflow-y-auto px-4 py-2.5 bg-black/40 border border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 placeholder-gray-500 leading-normal custom-scrollbar ${className}`}
+          className={`w-full max-h-28 overflow-y-auto px-4 py-2.5 bg-white dark:bg-black/40 border border-slate-300 dark:border-emerald-500/30 rounded-2xl text-xs sm:text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-400 placeholder-slate-400 dark:placeholder-gray-500 leading-normal custom-scrollbar ${className}`}
           style={{ minHeight: '38px', wordBreak: 'break-word' }}
         />
         {!value && (
           <div
             onClick={() => editorRef.current?.focus()}
-            className="absolute left-4 top-2.5 text-xs sm:text-sm text-gray-500 pointer-events-none select-none truncate"
+            className="absolute left-4 top-2.5 text-xs sm:text-sm text-slate-400 dark:text-gray-500 pointer-events-none select-none truncate"
           >
             {placeholder}
           </div>

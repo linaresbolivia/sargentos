@@ -52,6 +52,7 @@ export interface CreateOfficialCiteDto {
   status?: 'RESERVADO' | 'EMITIDO' | 'RADICADO_HR';
   routeSheetId?: string;
   officialDate?: string | Date;
+  customCiteCode?: string;
 }
 
 export class OfficialCiteService {
@@ -63,22 +64,17 @@ export class OfficialCiteService {
 
   /**
    * Genera el código normativo de CITE según el Instructivo JOFHR 022-2026:
-   * - Regla general: CHLS-[ÁREA]-[TIPO]-N° [000]/[AÑO]
-   * - Regla GG Carta Externa: CHLS-GG-N° [000]/[AÑO]
+   * - Modelos internos (INF, CI, INST, MEM): CHLS-[ÁREA]-[TIPO]-N° [000]/[AÑO]
+   * - Carta Externa (NE): Es correspondencia externa, NO genera CITE institucional de CHLS
    */
   public static formatCiteCode(areaKey: string, docType: string, correlative: number, year: number): string {
     const padded = String(correlative).padStart(3, '0');
     const cleanArea = areaKey.trim().toUpperCase();
     const cleanType = docType.trim().toUpperCase();
 
-    // Caso especial normativo: Carta Externa de Gerencia General (Pág. 8 del instructivo)
-    if (cleanArea === 'GG' && cleanType === 'NE') {
-      return `CHLS-GG-N° ${padded}/${year}`;
-    }
-
-    // Para cualquier otra carta externa de otra unidad autorizada
+    // Carta Externa NO genera CITE institucional porque es externa
     if (cleanType === 'NE') {
-      return `CHLS-${cleanArea}-NE-N° ${padded}/${year}`;
+      return 'S/N';
     }
 
     return `CHLS-${cleanArea}-${cleanType}-N° ${padded}/${year}`;
@@ -150,6 +146,23 @@ export class OfficialCiteService {
     const cleanArea = areaKey.trim().toUpperCase();
     const cleanType = docType.trim().toUpperCase();
 
+    const areaObj = CHLS_OFFICIAL_AREAS.find((a) => a.key === cleanArea);
+    const typeObj = CHLS_OFFICIAL_DOC_TYPES.find((t) => t.key === cleanType);
+
+    // Si es Carta Externa, no genera correlativo institucional CHLS
+    if (cleanType === 'NE') {
+      return {
+        areaKey: cleanArea,
+        areaName: areaObj?.name || cleanArea,
+        docType: 'NE',
+        docTypeName: 'CARTA EXTERNA',
+        year,
+        nextCorrelative: 0,
+        formattedCode: 'S/N',
+        isExternal: true,
+      };
+    }
+
     const lastCite = await this.prisma.officialCite.findFirst({
       where: {
         areaKey: cleanArea,
@@ -163,9 +176,6 @@ export class OfficialCiteService {
     const nextCorrelative = (lastCite?.correlative || 0) + 1;
     const citeCode = OfficialCiteService.formatCiteCode(cleanArea, cleanType, nextCorrelative, year);
 
-    const areaObj = CHLS_OFFICIAL_AREAS.find((a) => a.key === cleanArea);
-    const typeObj = CHLS_OFFICIAL_DOC_TYPES.find((t) => t.key === cleanType);
-
     return {
       areaKey: cleanArea,
       areaName: areaObj?.name || cleanArea,
@@ -174,6 +184,7 @@ export class OfficialCiteService {
       year,
       nextCorrelative,
       formattedCode: citeCode,
+      isExternal: false,
     };
   }
 
@@ -189,19 +200,45 @@ export class OfficialCiteService {
     const areaName = areaObj?.name || cleanArea;
 
     return await this.prisma.$transaction(async (tx) => {
-      // Buscar el correlativo más alto actual de manera segura dentro de la transacción
-      const highest = await tx.officialCite.findFirst({
-        where: {
-          areaKey: cleanArea,
-          docType: cleanType,
-          year,
-        },
-        orderBy: { correlative: 'desc' },
-        select: { correlative: true },
-      });
+      let citeCode: string;
+      let nextCorrelative = 0;
 
-      const nextCorrelative = (highest?.correlative || 0) + 1;
-      const citeCode = OfficialCiteService.formatCiteCode(cleanArea, cleanType, nextCorrelative, year);
+      if (cleanType === 'NE') {
+        // Carta Externa NO genera CITE institucional CHLS correlativo porque es externa
+        const highest = await tx.officialCite.findFirst({
+          where: {
+            areaKey: cleanArea,
+            docType: 'NE',
+            year,
+          },
+          orderBy: { correlative: 'desc' },
+          select: { correlative: true },
+        });
+        nextCorrelative = (highest?.correlative || 0) + 1;
+
+        const customExternal = dto.customCiteCode?.trim();
+        if (customExternal && customExternal !== 'S/N') {
+          const exists = await tx.officialCite.findUnique({ where: { citeCode: customExternal } });
+          citeCode = exists ? `${customExternal} (${nextCorrelative})` : customExternal;
+        } else {
+          // Identificador interno único para la BD con formato S/N
+          citeCode = `S/N (EXT-${year}-${String(nextCorrelative).padStart(3, '0')})`;
+        }
+      } else {
+        // Buscar el correlativo más alto actual de manera segura dentro de la transacción
+        const highest = await tx.officialCite.findFirst({
+          where: {
+            areaKey: cleanArea,
+            docType: cleanType,
+            year,
+          },
+          orderBy: { correlative: 'desc' },
+          select: { correlative: true },
+        });
+
+        nextCorrelative = (highest?.correlative || 0) + 1;
+        citeCode = OfficialCiteService.formatCiteCode(cleanArea, cleanType, nextCorrelative, year);
+      }
 
       let officialDate = new Date();
       if (dto.officialDate) {

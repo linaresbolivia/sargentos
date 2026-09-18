@@ -1,7 +1,13 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { createRouteSheet, uploadRouteSheetDocuments, fetchWorkflowSettings } from '@store/correspondenceSlice';
+import {
+  createRouteSheet,
+  uploadRouteSheetDocuments,
+  fetchWorkflowSettings,
+  fetchRouteSheets,
+  fetchCorrespondenceStats,
+} from '@store/correspondenceSlice';
 import {
   X,
   Sparkles,
@@ -28,12 +34,15 @@ import {
   Scan,
   Loader2,
   RotateCcw,
+  Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
 import GenerateCiteModal from './GenerateCiteModal';
+import DestinationSearchCombobox from './DestinationSearchCombobox';
+import InternalSenderSearchCombobox from './InternalSenderSearchCombobox';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
 import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet } from '../utils/organigramWorkflowService';
 import { countTotalPdfPages } from '../utils/pdfPageCounter';
@@ -153,18 +162,32 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       if (!senderArea || !allNodes.some(n => (n.areaKey || n.title).toUpperCase() === senderArea.toUpperCase())) {
         const preferredArea = defaultOriginArea || currentUser?.area || 'GERENCIA GENERAL';
         const matched = allNodes.find(n => (n.title || '').toUpperCase() === preferredArea.toUpperCase() || (n.areaKey || '').toUpperCase() === preferredArea.toUpperCase()) || allNodes[0];
-        setSenderArea(matched.areaKey || matched.title);
-        if (matched.manager && !senderName) {
-          setSenderName(matched.manager);
+        const newArea = matched.areaKey || matched.title;
+        setSenderArea(newArea);
+        const official = matched.manager || AREA_RESPONSIBLES[newArea]?.defaultPerson || AREA_RESPONSIBLES[matched.title]?.defaultPerson || '';
+        if (official && !senderName) {
+          setSenderName(official);
         }
       }
     }
   }, [isOpen, allNodes, defaultOriginArea, currentUser, senderArea, senderName]);
 
+  const handleSelectInternalSender = (area: string, official: string) => {
+    setSenderArea(area);
+    if (official) {
+      setSenderName(official);
+    }
+    toast.success(`Remitente: ${area}${official ? ` (${official})` : ''}`, {
+      icon: '🏛️',
+      duration: 2500,
+    });
+  };
+
   // Initial instruction & C.C.
   const [hasInitialInstruction, setHasInitialInstruction] = useState(true);
   const [initialTargetArea, setInitialTargetArea] = useState('');
   const [initialTargetPerson, setInitialTargetPerson] = useState('');
+  const [allowExtraordinaryDerivation, setAllowExtraordinaryDerivation] = useState(false);
   const [initialCcAreas, setInitialCcAreas] = useState<string[]>([]);
   const [initialCcPersons, setInitialCcPersons] = useState('');
   const [ccSearchQuery, setCcSearchQuery] = useState('');
@@ -322,8 +345,13 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       return;
     }
 
+    if (senderType === 'AREA_INTERNA' && !senderArea.trim()) {
+      toast.error('Por favor selecciona el Área o Departamento remitente');
+      return;
+    }
+
     if (!senderName.trim()) {
-      toast.error('Por favor ingresa el nombre de quien remite');
+      toast.error(senderType === 'AREA_INTERNA' ? 'Por favor selecciona el área o indica el funcionario remitente' : 'Por favor ingresa el nombre de quien remite');
       return;
     }
 
@@ -341,8 +369,8 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       senderType,
       senderName: senderName.trim(),
       senderArea: senderType === 'AREA_INTERNA' ? senderArea : null,
-      senderPhone: senderPhone.trim() || null,
-      senderEmail: senderEmail.trim() || null,
+      senderPhone: senderType === 'AREA_INTERNA' ? null : (senderPhone.trim() || null),
+      senderEmail: senderType === 'AREA_INTERNA' ? null : (senderEmail.trim() || null),
       senderDoc: senderDoc.trim() || null,
       cite: cite.trim() || null,
       pageCount: Number(pageCount) || 1,
@@ -350,7 +378,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
       attachmentDescription: attachmentDescription.trim() || null,
       priority,
       initialArea: initialTargetArea,
-      initialInstruction: hasInitialInstruction ? initialInstruction.trim() : null,
+      initialInstruction: hasInitialInstruction ? (initialInstruction.trim() || 'Favor su atención y trámite correspondiente.') : null,
       initialTargetPerson: hasInitialInstruction ? initialTargetPerson.trim() : null,
       initialQuickStamp: hasInitialInstruction && initialQuickStamp.trim() ? initialQuickStamp.trim() : null,
       initialCcAreas: hasInitialInstruction ? initialCcAreas : [],
@@ -380,6 +408,9 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
           setIsUploadingDocs(false);
         }
       }
+
+      await dispatch(fetchRouteSheets());
+      dispatch(fetchCorrespondenceStats());
 
       toast.success(
         `Hoja de Ruta ${createdItem.hrCode} creada y digitalizada (${selectedFiles.length} doc${selectedFiles.length === 1 ? '' : 's'}) 🎉`
@@ -464,8 +495,19 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       type="button"
                       onClick={() => {
                         setSenderType('AREA_INTERNA');
+                        setSenderPhone('');
+                        setSenderEmail('');
                         if (!senderArea) {
-                          setSenderArea(defaultOriginArea || (currentUser as any)?.area || 'GERENCIA GENERAL');
+                          const preferredArea = defaultOriginArea || (currentUser as any)?.area || 'GERENCIA GENERAL';
+                          const matched = allNodes.find(n => (n.title || '').toUpperCase() === preferredArea.toUpperCase() || (n.areaKey || '').toUpperCase() === preferredArea.toUpperCase()) || allNodes[0];
+                          const newArea = matched?.areaKey || matched?.title || 'GERENCIA GENERAL';
+                          setSenderArea(newArea);
+                          const official = matched?.manager || AREA_RESPONSIBLES[newArea]?.defaultPerson || AREA_RESPONSIBLES[matched?.title]?.defaultPerson || '';
+                          if (official) setSenderName(official);
+                        } else {
+                          const matched = allNodes.find(n => (n.areaKey || n.title).toUpperCase() === senderArea.toUpperCase());
+                          const official = matched?.manager || AREA_RESPONSIBLES[senderArea]?.defaultPerson || '';
+                          if (official && !senderName) setSenderName(official);
                         }
                       }}
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
@@ -480,7 +522,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                     <button
                       type="button"
-                      onClick={() => { setSenderType('SOCIO'); setSenderArea(''); }}
+                      onClick={() => {
+                        setSenderType('SOCIO');
+                        setSenderArea('');
+                        setSenderName('');
+                      }}
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'SOCIO'
                           ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-[#E2C785] shadow-xs border border-slate-300 dark:border-slate-600'
@@ -493,7 +539,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
 
                     <button
                       type="button"
-                      onClick={() => { setSenderType('EXTERNO'); setSenderArea(''); }}
+                      onClick={() => {
+                        setSenderType('EXTERNO');
+                        setSenderArea('');
+                        setSenderName('');
+                      }}
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm transition-all cursor-pointer ${
                         senderType === 'EXTERNO'
                           ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-300 dark:border-slate-600'
@@ -507,32 +557,104 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                 </div>
 
                 {/* Dynamic Remitente Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  {senderType === 'AREA_INTERNA' ? (
+                {senderType === 'AREA_INTERNA' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Área / Departamento Remitente</span>
+                          <span className="text-red-500">*</span>
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1">
+                          <Search className="w-2.5 h-2.5 text-emerald-500" />
+                          <span>Motor de Búsqueda 360°</span>
+                        </span>
+                      </label>
+                      <InternalSenderSearchCombobox
+                        selectedArea={senderArea}
+                        selectedOfficial={senderName}
+                        workflow={workflow}
+                        nodes={allNodes}
+                        onSelect={handleSelectInternalSender}
+                        getResponsibleForArea={(cargo) => {
+                          const matched = allNodes.find(
+                            (n) => (n.areaKey || n.title).toUpperCase() === cargo.toUpperCase()
+                          );
+                          if (matched && matched.manager) return matched.manager;
+                          if (AREA_RESPONSIBLES[cargo]) return AREA_RESPONSIBLES[cargo].defaultPerson;
+                          return '';
+                        }}
+                        placeholder="Buscar por área, departamento o funcionario remitente..."
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 flex items-center gap-1.5">
+                          <User className="w-3.5 h-3.5 text-[#C5A059]" />
+                          <span>Nombre del Funcionario Remitente</span>
+                          <span className="text-red-500">*</span>
+                        </label>
+                        {senderName && (
+                          <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/25 flex items-center gap-1">
+                            <Sparkles className="w-2.5 h-2.5 text-emerald-500" />
+                            <span>Autocompletado</span>
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="Nombre completo del funcionario remitente"
+                        value={senderName}
+                        onChange={(e) => setSenderName(e.target.value)}
+                        required
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                        Área / Departamento Remitente
+                        Prioridad del Trámite
                       </label>
-                      <select
-                        value={senderArea}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setSenderArea(val);
-                          const matched = allNodes.find(n => (n.areaKey || n.title).toUpperCase() === val.toUpperCase());
-                          if (matched && matched.manager && !senderName) {
-                            setSenderName(matched.manager);
-                          }
-                        }}
-                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-black text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm cursor-pointer"
-                      >
-                        {allNodes.map((a) => (
-                          <option key={a.id} value={a.areaKey || a.title}>
-                            {a.title}
-                          </option>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['NORMAL', 'ALTA', 'URGENTE'] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setPriority(p)}
+                            className={`py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border ${
+                              priority === p
+                                ? p === 'URGENTE'
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-xs'
+                                  : p === 'ALTA'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs'
+                                  : 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-950/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {p}
+                          </button>
                         ))}
-                      </select>
+                      </div>
                     </div>
-                  ) : (
+
+                    <div className="bg-emerald-500/5 dark:bg-emerald-950/20 border border-emerald-500/20 rounded-2xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/25">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="text-xs">
+                        <span className="font-bold text-slate-800 dark:text-slate-200 block">
+                          Procedencia Interna Institucional
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
+                          Trámite oficial interno. Circula directamente por despachos del organigrama sin requerir teléfono ni correo externo.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div>
                       <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
                         {senderType === 'SOCIO' ? 'N° de Acción / CI' : 'Empresa / Institución Externa'}
@@ -545,79 +667,79 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                         className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
                       />
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                      Nombre Completo del Remitente <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Carlos Mendoza o María del Pilar"
-                      value={senderName}
-                      onChange={(e) => setSenderName(e.target.value)}
-                      required
-                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                      Teléfono / WhatsApp de Contacto (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="Ej. 77218940"
-                      value={senderPhone}
-                      onChange={(e) => setSenderPhone(e.target.value)}
-                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
-                    />
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200">
-                        Correo Electrónico (Notificación)
+                    <div>
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
+                        Nombre Completo del Remitente <span className="text-red-500">*</span>
                       </label>
-                      <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold">
-                        Acuse Digital
-                      </span>
+                      <input
+                        type="text"
+                        placeholder="Ej. Carlos Mendoza o María del Pilar"
+                        value={senderName}
+                        onChange={(e) => setSenderName(e.target.value)}
+                        required
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      />
                     </div>
-                    <input
-                      type="email"
-                      placeholder="Ej. socio@gmail.com o empresa@proveedor.com"
-                      value={senderEmail}
-                      onChange={(e) => setSenderEmail(e.target.value)}
-                      className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
-                      Prioridad del Trámite
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['NORMAL', 'ALTA', 'URGENTE'] as const).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPriority(p)}
-                          className={`py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border ${
-                            priority === p
-                              ? p === 'URGENTE'
-                                ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-xs'
-                                : p === 'ALTA'
-                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs'
-                                : 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 shadow-xs'
-                              : 'bg-slate-100 dark:bg-slate-950/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                    <div>
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
+                        Teléfono / WhatsApp de Contacto (Opcional)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 77218940"
+                        value={senderPhone}
+                        onChange={(e) => setSenderPhone(e.target.value)}
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200">
+                          Correo Electrónico (Notificación)
+                        </label>
+                        <span className="text-[10px] text-emerald-700 dark:text-brand-gold font-bold">
+                          Acuse Digital
+                        </span>
+                      </div>
+                      <input
+                        type="email"
+                        placeholder="Ej. socio@gmail.com o empresa@proveedor.com"
+                        value={senderEmail}
+                        onChange={(e) => setSenderEmail(e.target.value)}
+                        className="w-full bg-white dark:bg-[#07110c] border-2 border-slate-300 dark:border-emerald-500/30 rounded-2xl px-4 py-3 text-slate-950 dark:text-white font-bold text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-gray-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-black uppercase text-slate-900 dark:text-gray-200 mb-1.5">
+                        Prioridad del Trámite
+                      </label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(['NORMAL', 'ALTA', 'URGENTE'] as const).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setPriority(p)}
+                            className={`py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer border ${
+                              priority === p
+                                ? p === 'URGENTE'
+                                  ? 'bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-xs'
+                                  : p === 'ALTA'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 shadow-xs'
+                                  : 'bg-slate-200 dark:bg-slate-800 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600 shadow-xs'
+                                : 'bg-slate-100 dark:bg-slate-950/60 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:bg-slate-200 dark:hover:bg-slate-800'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
               </div>
 
@@ -930,66 +1052,33 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       </div>
                     )}
 
-                    {/* Destino y Funcionario */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5">
-                          Área de Destino Principal <span className="text-rose-500">*</span>
-                        </label>
-                        <select
-                          value={initialTargetArea}
-                          onChange={(e) => {
-                            const newArea = e.target.value;
-                            setInitialTargetArea(newArea);
-                            const matchedNode = allNodes.find(
-                              (n) => (n.areaKey || n.title).toUpperCase() === newArea.toUpperCase()
-                            );
-                            if (matchedNode && matchedNode.manager) {
-                              setInitialTargetPerson(matchedNode.manager);
-                            } else if (AREA_RESPONSIBLES[newArea]) {
-                              setInitialTargetPerson(AREA_RESPONSIBLES[newArea].defaultPerson);
-                            }
-                          }}
-                          className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-semibold text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm cursor-pointer"
-                        >
-                          {recommendedNodes.length > 0 ? (
-                            <optgroup label="Destinos Conectados en el Organigrama">
-                              {recommendedNodes.map(({ node, edgeLabel }) => (
-                                <option key={node.id} value={node.areaKey || node.title}>
-                                  {node.title} {edgeLabel ? `(${edgeLabel})` : ''}
-                                </option>
-                              ))}
-                            </optgroup>
-                          ) : (
-                            <option value="" disabled>
-                              Sin conexiones autorizadas en el Organigrama
-                            </option>
-                          )}
-                        </select>
-                        {recommendedNodes.length === 0 && (
-                          <p className="text-[11px] text-rose-500 dark:text-rose-400 font-medium mt-1.5 flex items-center gap-1">
-                            <span>{effectiveSourceArea} no tiene conectores salientes en el Canvas 360°.</span>
-                          </p>
-                        )}
-                      </div>
-
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5">
-                          <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
-                            Responsable / Jefatura de Despacho
-                          </label>
-                          <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider">
-                            Titular
-                          </span>
-                        </div>
-                        <input
-                          type="text"
-                          placeholder="Ej. Ian Pinto / Laura Ríos"
-                          value={initialTargetPerson}
-                          onChange={(e) => setInitialTargetPerson(e.target.value)}
-                          className="w-full bg-white dark:bg-slate-950/80 border border-slate-300 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-slate-100 font-medium text-sm focus:border-[#C5A059] focus:ring-1 focus:ring-[#C5A059] outline-none shadow-sm placeholder:text-slate-400 dark:placeholder:text-slate-600"
-                        />
-                      </div>
+                    {/* Destino y Funcionario Principal */}
+                    <div>
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
+                        <Building2 className="w-3.5 h-3.5 text-[#C5A059]" />
+                        <span>Destino Principal (Cargo o Funcionario)</span>
+                        <span className="text-rose-500">*</span>
+                      </label>
+                      <DestinationSearchCombobox
+                        currentArea={effectiveSourceArea}
+                        selectedCargo={initialTargetArea}
+                        selectedPersonName={initialTargetPerson}
+                        workflow={workflow}
+                        onSelect={(cargo, personName) => {
+                          setInitialTargetArea(cargo);
+                          setInitialTargetPerson(personName);
+                        }}
+                        getResponsibleForCargo={(cargo) => {
+                          const matched = allNodes.find(
+                            (n) => (n.areaKey || n.title).toUpperCase() === cargo.toUpperCase()
+                          );
+                          if (matched && matched.manager) return matched.manager;
+                          if (AREA_RESPONSIBLES[cargo]) return AREA_RESPONSIBLES[cargo].defaultPerson;
+                          return '';
+                        }}
+                        accentColor="gold"
+                        placeholder="Buscar por cargo o funcionario de destino..."
+                      />
                     </div>
 
                     {/* CON COPIA A (C.C. INFORMATIVO INTELIGENTE) */}
@@ -1124,6 +1213,17 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {QUICK_STAMPS.map((stamp) => {
                           const isCurrent = initialQuickStamp === stamp;
+                          
+                          let activeStyles = 'bg-amber-500/15 dark:bg-amber-950/40 text-amber-600 dark:text-[#C5A059] border-[#C5A059] ring-2 ring-[#C5A059]/40 shadow-sm';
+
+                          if (stamp.includes('CONCLUIDO') || stamp.includes('ARCHIVAR')) {
+                            activeStyles = 'bg-emerald-500/15 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 border-emerald-500 ring-2 ring-emerald-500/40 shadow-sm';
+                          } else if (stamp.includes('OBSERVADO') || stamp.includes('SUBSANACIÓN')) {
+                            activeStyles = 'bg-rose-500/15 dark:bg-rose-950/40 text-rose-600 dark:text-rose-300 border-rose-500 ring-2 ring-rose-500/40 shadow-sm';
+                          } else if (stamp.includes('VISTO BUENO') || stamp.includes('FIRMA')) {
+                            activeStyles = 'bg-blue-500/15 dark:bg-blue-950/40 text-blue-600 dark:text-blue-300 border-blue-500 ring-2 ring-blue-500/40 shadow-sm';
+                          }
+
                           return (
                             <button
                               key={stamp}
@@ -1136,9 +1236,9 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({ isOpen, 
                                   setInitialInstruction(stamp + ': Favor proceder conforme a reglamento.');
                                 }
                               }}
-                              className={`text-xs font-semibold p-2.5 rounded-xl border transition-all text-center leading-snug cursor-pointer ${
+                              className={`text-xs font-bold p-2.5 rounded-xl border transition-all text-center leading-snug cursor-pointer ${
                                 isCurrent
-                                  ? 'bg-slate-800 dark:bg-slate-800 text-[#C5A059] border-[#C5A059]/60 shadow-sm ring-1 ring-[#C5A059]/40'
+                                  ? activeStyles
                                   : 'bg-slate-50 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-600'
                               }`}
                               title={isCurrent ? 'Haz clic para deseleccionar este sello' : 'Haz clic para aplicar este sello'}

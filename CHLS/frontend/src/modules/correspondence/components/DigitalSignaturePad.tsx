@@ -1,24 +1,22 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
-  PenTool,
-  RotateCcw,
-  Trash2,
-  CheckCircle2,
   ShieldCheck,
-  Sparkles,
   UploadCloud,
   Stamp,
   Check,
-  QrCode,
-  Calendar,
-  Lock,
+  Edit2,
+  RotateCcw,
+  User,
+  Briefcase,
+  Building2,
 } from 'lucide-react';
-import CrestLogo from '@shared/components/CrestLogo';
 
 interface DigitalSignaturePadProps {
   signerName: string;
   signerArea: string;
   signerPosition?: string;
+  userId?: string;
+  stampText?: string | null;
   onSignatureChange: (signatureDataUrl: string | null) => void;
   initialSignature?: string | null;
 }
@@ -27,44 +25,114 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
   signerName,
   signerArea,
   signerPosition,
+  userId,
+  stampText,
   onSignatureChange,
   initialSignature,
 }) => {
-  const [mode, setMode] = useState<'OFFICIAL_STAMP' | 'MANUAL_DRAW' | 'UPLOAD_IMAGE'>('OFFICIAL_STAMP');
-  const [penColor, setPenColor] = useState<string>('#1e3a8a'); // Azul notarial clásico
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [hasDrawn, setHasDrawn] = useState(false);
-  const [history, setHistory] = useState<ImageData[]>([]);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(initialSignature || null);
+  const storageKey = `chls_signature_config_${userId || 'default'}`;
+  const imageStorageKey = `chls_signature_image_${userId || 'default'}`;
 
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const savedConfig = (() => {
+    try {
+      const item = localStorage.getItem(storageKey);
+      return item ? JSON.parse(item) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  const savedImage = (() => {
+    try {
+      return localStorage.getItem(imageStorageKey);
+    } catch {
+      return null;
+    }
+  })();
+
+  const [mode, setMode] = useState<'OFFICIAL_STAMP' | 'UPLOAD_IMAGE'>(savedConfig?.mode || 'OFFICIAL_STAMP');
+  const [penColor, setPenColor] = useState<string>(savedConfig?.penColor || '#1e3a8a'); // Azul notarial clásico
+  const [customName, setCustomName] = useState<string>(savedConfig?.name || signerName);
+  const [customPosition, setCustomPosition] = useState<string>(savedConfig?.position || signerPosition || '');
+  const [customArea, setCustomArea] = useState<string>(savedConfig?.area || signerArea);
+  const [isEditingInfo, setIsEditingInfo] = useState<boolean>(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    (savedConfig?.mode === 'UPLOAD_IMAGE' && savedImage) ? savedImage : (initialSignature || null)
+  );
+
+  const isFirstMount = useRef(true);
+
+  // Sincronizar si cambian los datos base del usuario autenticado y no hay personalización manual guardada
+  useEffect(() => {
+    if (!savedConfig) {
+      setCustomName(signerName);
+      setCustomPosition(signerPosition || '');
+      setCustomArea(signerArea);
+    }
+  }, [signerName, signerPosition, signerArea, savedConfig]);
+
+  const saveConfig = (overrides: {
+    name?: string;
+    position?: string;
+    area?: string;
+    penColor?: string;
+    mode?: 'OFFICIAL_STAMP' | 'UPLOAD_IMAGE';
+  } = {}) => {
+    try {
+      const cfg = {
+        name: overrides.name !== undefined ? overrides.name : customName,
+        position: overrides.position !== undefined ? overrides.position : customPosition,
+        area: overrides.area !== undefined ? overrides.area : customArea,
+        penColor: overrides.penColor !== undefined ? overrides.penColor : penColor,
+        mode: overrides.mode !== undefined ? overrides.mode : mode,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(cfg));
+    } catch (e) {
+      console.warn('Error guardando configuración de firma en localStorage:', e);
+    }
+  };
 
   // Genera automáticamente el Sello Digital Institucional Oficial en Canvas
-  const generateOfficialStamp = () => {
+  const generateOfficialStamp = (
+    colorToUse?: string,
+    stampTextOverride?: string | null,
+    nameToUse?: string,
+    positionToUse?: string,
+    areaToUse?: string
+  ) => {
+    const activeColor = colorToUse || penColor;
+    const activeStampText = stampTextOverride !== undefined ? stampTextOverride : stampText;
+    const activeName = (nameToUse !== undefined ? nameToUse : customName) || 'RESPONSABLE DE ÁREA';
+    const activePosition = (positionToUse !== undefined ? positionToUse : customPosition) || 'TITULAR DE DESPACHO';
+    const activeArea = (areaToUse !== undefined ? areaToUse : customArea) || 'CLUB HÍPICO LOS SARGENTOS';
+
     const canvas = document.createElement('canvas');
-    canvas.width = 420;
-    canvas.height = 160;
+    canvas.width = 440;
+    canvas.height = 165;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Fondo limpio semi-transparente
+    // Fondo limpio transparente
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Borde doble notarial institucional
-    ctx.strokeStyle = penColor;
+    // Borde doble notarial institucional con el color seleccionado
+    ctx.strokeStyle = activeColor;
     ctx.lineWidth = 2.5;
     ctx.strokeRect(6, 6, canvas.width - 12, canvas.height - 12);
     ctx.lineWidth = 1;
     ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
     // Cabecera Institucional
-    ctx.fillStyle = penColor;
+    ctx.fillStyle = activeColor;
     ctx.font = 'bold 11px Arial, sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('CLUB HÍPICO LOS SARGENTOS', canvas.width / 2, 28);
+    ctx.fillText('CLUB HÍPICO LOS SARGENTOS', canvas.width / 2, 27);
 
-    ctx.font = 'italic bold 9px Arial, sans-serif';
-    ctx.fillText('VALIDACIÓN Y REGISTRO DIGITAL DE PROVEÍDO', canvas.width / 2, 42);
+    ctx.font = 'italic bold 9.5px Arial, sans-serif';
+    const headerSub = activeStampText
+      ? `SELLO: ${activeStampText.toUpperCase()}`
+      : 'VALIDACIÓN Y REGISTRO DIGITAL DE PROVEÍDO';
+    ctx.fillText(headerSub, canvas.width / 2, 42);
 
     // Línea separadora
     ctx.beginPath();
@@ -72,15 +140,17 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
     ctx.lineTo(canvas.width - 30, 48);
     ctx.stroke();
 
-    // Datos del Firmante
-    ctx.font = 'bold 12.5px Arial, sans-serif';
-    ctx.fillText((signerName || 'RESPONSABLE DE ÁREA').toUpperCase(), canvas.width / 2, 70);
+    // 1. Nombre del Funcionario / Firmante individual
+    ctx.font = 'bold 12px Arial, sans-serif';
+    ctx.fillText(activeName.toUpperCase(), canvas.width / 2, 68);
 
+    // 2. Cargo Oficial específico del funcionario
     ctx.font = 'bold 10px Arial, sans-serif';
-    ctx.fillText((signerPosition || signerArea || 'GERENCIA / SECRETARÍA').toUpperCase(), canvas.width / 2, 86);
+    ctx.fillText(activePosition.toUpperCase(), canvas.width / 2, 85);
 
+    // 3. Área / Despacho
     ctx.font = '9px Arial, sans-serif';
-    ctx.fillText(`ÁREA: ${signerArea.toUpperCase()}`, canvas.width / 2, 102);
+    ctx.fillText(`ÁREA: ${activeArea.toUpperCase()}`, canvas.width / 2, 101);
 
     // Fecha, hora y hash criptográfico
     const now = new Date();
@@ -93,109 +163,30 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
 
     // Sello de seguridad inferior
     ctx.font = 'bold 8px Arial, sans-serif';
-    ctx.fillText('🔒 FIRMA ELECTRÓNICA Y SELLO CERTIFICADO CHLS', canvas.width / 2, 142);
+    ctx.fillText('🔒 FIRMA ELECTRÓNICA Y SELLO CERTIFICADO CHLS', canvas.width / 2, 143);
 
     const dataUrl = canvas.toDataURL('image/png');
     setPreviewUrl(dataUrl);
     onSignatureChange(dataUrl);
   };
 
-  useEffect(() => {
-    if (mode === 'OFFICIAL_STAMP' && !previewUrl) {
-      generateOfficialStamp();
+  const handleColorChange = (newColor: string) => {
+    setPenColor(newColor);
+    saveConfig({ penColor: newColor });
+    if (mode === 'OFFICIAL_STAMP') {
+      generateOfficialStamp(newColor, stampText);
     }
-  }, [mode, penColor, signerName, signerArea, signerPosition]);
+  };
 
-  // Inicializar Canvas de dibujo manual
   useEffect(() => {
-    if (mode === 'MANUAL_DRAW' && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.strokeStyle = penColor;
-        ctx.lineWidth = 2.5;
+    if (mode === 'OFFICIAL_STAMP') {
+      if (isFirstMount.current) {
+        isFirstMount.current = false;
+        if (initialSignature) return;
       }
+      generateOfficialStamp(penColor, stampText, customName, customPosition, customArea);
     }
-  }, [mode, penColor]);
-
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Guardar estado en historial para Deshacer
-    setHistory((prev) => [...prev, ctx.getImageData(0, 0, canvas.width, canvas.height)]);
-
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
-    setHasDrawn(true);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    if (!isDrawing) return;
-    setIsDrawing(false);
-    if (canvasRef.current) {
-      const dataUrl = canvasRef.current.toDataURL('image/png');
-      setPreviewUrl(dataUrl);
-      onSignatureChange(dataUrl);
-    }
-  };
-
-  const clearCanvas = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    setHasDrawn(false);
-    setHistory([]);
-    setPreviewUrl(null);
-    onSignatureChange(null);
-  };
-
-  const undoLastStroke = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || history.length === 0) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const lastState = history[history.length - 1];
-    ctx.putImageData(lastState, 0, 0);
-    setHistory((prev) => prev.slice(0, prev.length - 1));
-
-    const dataUrl = canvas.toDataURL('image/png');
-    setPreviewUrl(dataUrl);
-    onSignatureChange(dataUrl);
-  };
+  }, [mode, penColor, customName, customPosition, customArea, stampText]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -205,205 +196,250 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
         const dataUrl = event.target?.result as string;
         setPreviewUrl(dataUrl);
         onSignatureChange(dataUrl);
+        try {
+          localStorage.setItem(imageStorageKey, dataUrl);
+          saveConfig({ mode: 'UPLOAD_IMAGE' });
+        } catch {}
       };
       reader.readAsDataURL(file);
     }
   };
 
+  const handleResetToSystem = () => {
+    setCustomName(signerName);
+    setCustomPosition(signerPosition || '');
+    setCustomArea(signerArea);
+    saveConfig({
+      name: signerName,
+      position: signerPosition || '',
+      area: signerArea,
+    });
+    generateOfficialStamp(penColor, stampText, signerName, signerPosition || '', signerArea);
+    setIsEditingInfo(false);
+  };
+
   return (
-    <div className="space-y-3 bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-emerald-500/30 rounded-2xl p-4">
-      {/* Header & Modes */}
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="bg-slate-50/80 dark:bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
+      {/* Header Bar: Titulo 7, Modos & Paleta */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-brand-gold" />
-          <span className="text-xs font-black uppercase text-slate-800 dark:text-gray-200 tracking-wider">
-            Firma Digital & Sello Institucional de Proveído
+          <ShieldCheck className="w-4 h-4 text-[#C5A059]" />
+          <span className="text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">
+            7. Firma Digital & Sello Personalizado
           </span>
         </div>
 
-        {/* Mode Selector Tabs */}
-        <div className="flex items-center bg-slate-200 dark:bg-white/10 p-0.5 rounded-xl text-[11px] font-bold">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('OFFICIAL_STAMP');
-              generateOfficialStamp();
-            }}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              mode === 'OFFICIAL_STAMP'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <Stamp className="w-3.5 h-3.5" />
-            <span>Sello Oficial CHLS</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMode('MANUAL_DRAW');
-              setPreviewUrl(null);
-            }}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              mode === 'MANUAL_DRAW'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <PenTool className="w-3.5 h-3.5" />
-            <span>Firma Manuscrita</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              setMode('UPLOAD_IMAGE');
-              setPreviewUrl(null);
-            }}
-            className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-              mode === 'UPLOAD_IMAGE'
-                ? 'bg-emerald-600 text-white shadow-xs'
-                : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <UploadCloud className="w-3.5 h-3.5" />
-            <span>Subir Sello</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Color Palette Selector */}
-      <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-200 dark:border-white/5">
-        <span className="text-[11px] text-slate-500 font-medium">Tinta Notarial:</span>
-        <div className="flex items-center gap-2">
-          {[
-            { color: '#1e3a8a', label: 'Azul Notarial' },
-            { color: '#064e3b', label: 'Verde CHLS' },
-            { color: '#0f172a', label: 'Negro Formal' },
-          ].map((c) => (
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Selector de modo */}
+          <div className="flex items-center bg-slate-200/80 dark:bg-white/10 p-0.5 rounded-xl text-[11px] font-bold">
             <button
-              key={c.color}
               type="button"
               onClick={() => {
-                setPenColor(c.color);
-                if (mode === 'OFFICIAL_STAMP') generateOfficialStamp();
+                setMode('OFFICIAL_STAMP');
+                saveConfig({ mode: 'OFFICIAL_STAMP' });
+                generateOfficialStamp(penColor, stampText, customName, customPosition, customArea);
               }}
-              title={c.label}
-              className={`w-5 h-5 rounded-full border-2 transition-transform ${
-                penColor === c.color ? 'scale-125 border-brand-gold shadow-xs' : 'border-transparent opacity-70 hover:opacity-100'
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                mode === 'OFFICIAL_STAMP'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              style={{ backgroundColor: c.color }}
-            />
-          ))}
+            >
+              <Stamp className="w-3.5 h-3.5" />
+              <span>Sello Oficial CHLS</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMode('UPLOAD_IMAGE');
+                saveConfig({ mode: 'UPLOAD_IMAGE' });
+                if (savedImage) {
+                  setPreviewUrl(savedImage);
+                  onSignatureChange(savedImage);
+                } else {
+                  setPreviewUrl(null);
+                  onSignatureChange(null);
+                }
+              }}
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                mode === 'UPLOAD_IMAGE'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <UploadCloud className="w-3.5 h-3.5" />
+              <span>Subir Sello Personal</span>
+            </button>
+          </div>
+
+          {/* Selector de Tinta Notarial */}
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] text-slate-500 font-medium">Tinta:</span>
+            <div className="flex items-center gap-1.5">
+              {[
+                { color: '#1e3a8a', label: 'Azul Notarial' },
+                { color: '#064e3b', label: 'Verde CHLS' },
+                { color: '#0f172a', label: 'Negro Formal' },
+                { color: '#b91c1c', label: 'Rojo Urgente' },
+                { color: '#581c87', label: 'Púrpura Notarial' },
+              ].map((c) => {
+                const isSelected = penColor === c.color;
+                return (
+                  <button
+                    key={c.color}
+                    type="button"
+                    onClick={() => handleColorChange(c.color)}
+                    title={`${c.label} (${c.color})`}
+                    className={`relative w-5 h-5 rounded-full border-2 transition-all flex items-center justify-center cursor-pointer ${
+                      isSelected
+                        ? 'scale-125 border-[#C5A059] shadow-md ring-2 ring-emerald-500/50'
+                        : 'border-transparent opacity-70 hover:opacity-100 hover:scale-110'
+                    }`}
+                    style={{ backgroundColor: c.color }}
+                  >
+                    {isSelected && <Check className="w-3 h-3 text-white drop-shadow-md" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Mode 1: Sello Oficial CHLS */}
-      {mode === 'OFFICIAL_STAMP' && (
-        <div className="space-y-2">
-          {previewUrl && (
-            <div className="flex justify-center p-3 bg-white dark:bg-black/50 border border-slate-200 dark:border-emerald-500/30 rounded-xl shadow-inner">
-              <img src={previewUrl} alt="Sello Oficial CHLS" className="max-h-28 object-contain" />
+      {/* Sub-barra informativa de identidad del usuario */}
+      <div className="flex items-center justify-between bg-white dark:bg-black/30 px-3 py-1.5 rounded-xl text-[11px] border border-slate-200/80 dark:border-slate-800 flex-wrap gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1">
+            <User className="w-3.5 h-3.5 text-emerald-600" />
+            {customName || 'Sin nombre asignado'}
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="text-slate-600 dark:text-slate-400 font-medium flex items-center gap-1">
+            <Briefcase className="w-3.5 h-3.5 text-[#C5A059]" />
+            {customPosition || 'Sin cargo definido'}
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="text-slate-500 text-[10px] flex items-center gap-1">
+            <Building2 className="w-3 h-3 text-slate-400" />
+            {customArea}
+          </span>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsEditingInfo(!isEditingInfo)}
+          className="text-xs text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer flex items-center gap-1"
+        >
+          <Edit2 className="w-3 h-3" />
+          <span>{isEditingInfo ? 'Cerrar Edición' : 'Editar Nombre / Cargo'}</span>
+        </button>
+      </div>
+
+      {/* Formulario desplegable para ajustar nombre y cargo específico */}
+      {isEditingInfo && (
+        <div className="p-3 bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-3 animate-in fade-in duration-200">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Nombre y Título del Firmante:
+              </label>
+              <input
+                type="text"
+                value={customName}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomName(val);
+                  saveConfig({ name: val });
+                  generateOfficialStamp(penColor, stampText, val, customPosition, customArea);
+                }}
+                placeholder="Ej: Lic. Monica Iñiguez Duran"
+                className="w-full text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-black/60 text-slate-900 dark:text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              />
             </div>
-          )}
-          <div className="flex items-center justify-between text-[11px] text-emerald-700 dark:text-emerald-400">
-            <span className="flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              Sello electrónico oficial generado con validez institucional
+
+            <div>
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Cargo Oficial del Firmante:
+              </label>
+              <input
+                type="text"
+                value={customPosition}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setCustomPosition(val);
+                  saveConfig({ position: val });
+                  generateOfficialStamp(penColor, stampText, customName, val, customArea);
+                }}
+                placeholder="Ej: Secretaria de Gerencia General"
+                className="w-full text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-black/60 text-slate-900 dark:text-white focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] pt-1">
+            <span className="text-slate-500 italic">
+              ℹ️ Tu nombre y cargo se guardan automáticamente de forma independiente para tu usuario.
             </span>
             <button
               type="button"
-              onClick={generateOfficialStamp}
-              className="text-brand-gold hover:underline font-bold"
+              onClick={handleResetToSystem}
+              className="text-xs text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 font-bold flex items-center gap-1 cursor-pointer"
             >
-              🔄 Regenerar Token
+              <RotateCcw className="w-3 h-3" />
+              <span>Restablecer datos del sistema</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Mode 2: Firma Manuscrita en Canvas */}
-      {mode === 'MANUAL_DRAW' && (
-        <div className="space-y-2">
-          <div className="relative border-2 border-dashed border-slate-300 dark:border-white/20 rounded-2xl overflow-hidden bg-white dark:bg-black/40 touch-none">
-            <canvas
-              ref={canvasRef}
-              width={460}
-              height={140}
-              onMouseDown={startDrawing}
-              onMouseMove={draw}
-              onMouseUp={stopDrawing}
-              onMouseLeave={stopDrawing}
-              onTouchStart={startDrawing}
-              onTouchMove={draw}
-              onTouchEnd={stopDrawing}
-              className="w-full h-32 cursor-crosshair"
-            />
-            {!hasDrawn && (
-              <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center text-slate-400 text-xs gap-1">
-                <PenTool className="w-5 h-5 text-slate-300 dark:text-slate-600 animate-bounce" />
-                <span>Dibuja tu firma aquí con mouse o pantalla táctil</span>
-              </div>
-            )}
+      {/* Main Content Area - Formato Horizontal Ejecutivo */}
+      {mode === 'OFFICIAL_STAMP' && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white dark:bg-black/40 border border-slate-200 dark:border-slate-800/80 rounded-xl p-2.5 px-4">
+          <div className="flex items-center gap-2 text-xs text-emerald-700 dark:text-emerald-400 font-medium">
+            <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>Sello digital individualizado para este usuario</span>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={undoLastStroke}
-                disabled={history.length === 0}
-                className="px-2.5 py-1 rounded-lg text-xs bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300 hover:bg-slate-300 disabled:opacity-40 cursor-pointer flex items-center gap-1"
-              >
-                <RotateCcw className="w-3 h-3" />
-                <span>Deshacer</span>
-              </button>
-              <button
-                type="button"
-                onClick={clearCanvas}
-                disabled={!hasDrawn}
-                className="px-2.5 py-1 rounded-lg text-xs bg-red-500/15 text-red-600 hover:bg-red-500/25 disabled:opacity-40 cursor-pointer flex items-center gap-1"
-              >
-                <Trash2 className="w-3 h-3" />
-                <span>Limpiar</span>
-              </button>
+          {previewUrl && (
+            <div className="flex justify-center py-1">
+              <img src={previewUrl} alt="Sello Oficial CHLS" className="h-16 sm:h-20 object-contain drop-shadow-sm" />
             </div>
+          )}
 
-            {hasDrawn && (
-              <span className="text-[11px] font-bold text-emerald-600 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Firma capturada
-              </span>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => generateOfficialStamp(penColor, stampText, customName, customPosition, customArea)}
+            className="text-xs text-[#C5A059] hover:underline font-bold cursor-pointer shrink-0"
+          >
+            🔄 Regenerar Token
+          </button>
         </div>
       )}
 
-      {/* Mode 3: Subir Sello / Imagen */}
       {mode === 'UPLOAD_IMAGE' && (
-        <div className="space-y-2">
+        <div className="bg-white dark:bg-black/40 border border-slate-200 dark:border-slate-800/80 rounded-xl p-3">
           {previewUrl ? (
-            <div className="flex flex-col items-center p-3 bg-white dark:bg-black/50 border border-slate-200 dark:border-emerald-500/30 rounded-xl">
-              <img src={previewUrl} alt="Sello Subido" className="max-h-24 object-contain mb-2" />
+            <div className="flex items-center justify-between gap-4">
+              <img src={previewUrl} alt="Sello Personal Subido" className="h-16 object-contain" />
               <button
                 type="button"
                 onClick={() => {
                   setPreviewUrl(null);
                   onSignatureChange(null);
+                  try {
+                    localStorage.removeItem(imageStorageKey);
+                  } catch {}
                 }}
-                className="text-xs text-red-500 hover:underline font-bold"
+                className="text-xs text-red-500 hover:underline font-bold cursor-pointer"
               >
                 Eliminar y subir otra imagen
               </button>
             </div>
           ) : (
-            <label className="flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-300 dark:border-white/20 rounded-2xl bg-white/50 dark:bg-black/30 hover:border-emerald-500 transition-colors cursor-pointer">
-              <UploadCloud className="w-7 h-7 text-brand-gold mb-1.5" />
-              <span className="text-xs font-bold text-slate-800 dark:text-white">
-                Subir foto o escaneo de tu sello / firma
-              </span>
-              <span className="text-[10px] text-slate-400 mt-0.5">PNG, JPG o WEBP (recomendado fondo transparente)</span>
+            <label className="flex items-center justify-center gap-3 p-4 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl hover:border-emerald-500 transition-colors cursor-pointer text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <UploadCloud className="w-5 h-5 text-[#C5A059]" />
+              <span>Subir imagen o escaneo de tu sello personal (PNG, JPG o WEBP)</span>
               <input type="file" accept="image/*" onChange={handleFileUpload} className="hidden" />
             </label>
           )}
@@ -412,4 +448,5 @@ export const DigitalSignaturePad: React.FC<DigitalSignaturePadProps> = ({
     </div>
   );
 };
+
 export default DigitalSignaturePad;

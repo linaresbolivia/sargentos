@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
-import { uploadRouteSheetDocuments, fetchRouteSheetById, receiveRouteSheet, undoRouteSheetDerivation } from '@store/correspondenceSlice';
+import {
+  uploadRouteSheetDocuments,
+  fetchRouteSheetById,
+  receiveRouteSheet,
+  undoRouteSheetDerivation,
+  fetchCorrespondenceStats,
+  fetchRouteSheets,
+} from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet, PrintPageMode } from './PrintableRouteSheet';
 import { PrintableTimelineReportModal } from './PrintableTimelineReportModal';
@@ -74,6 +81,8 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
     try {
       setIsReceiving(true);
       await dispatch(receiveRouteSheet(currentItem.id)).unwrap();
+      await dispatch(fetchRouteSheets());
+      dispatch(fetchCorrespondenceStats());
       toast.success(`Trámite ${currentItem.hrCode} recepcionado formalmente en ${userArea} 📥`);
     } catch (err: any) {
       toast.error(typeof err === 'string' ? err : 'Error al recepcionar trámite');
@@ -129,7 +138,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   const isPendingReception =
     Boolean(currentItem &&
     isSameArea(currentItem.currentArea, userArea) &&
-    (currentItem.status === 'DERIVADO' || !currentItem.movements?.[currentItem.movements.length - 1]?.receivedAt) &&
+    (currentItem.status === 'DERIVADO' || isLatestMovementUnreceived) &&
     currentItem.status !== 'CONCLUIDO' &&
     currentItem.status !== 'ANULADO');
 
@@ -202,8 +211,8 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
   return (
     <>
-      <div className="fixed inset-0 z-40 overflow-y-auto bg-black/80 backdrop-blur-md flex justify-center items-center p-3 sm:p-6 lg:p-8 animate-fadeIn">
-        <div className="bg-white dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/40 w-full max-w-6xl xl:max-w-7xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
+      <div className="fixed inset-0 z-40 overflow-y-auto bg-black/80 backdrop-blur-md flex justify-center items-center p-3 sm:p-6 lg:p-8 animate-fadeIn print:hidden">
+        <div className="bg-white dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/40 w-full max-w-[96vw] 2xl:max-w-[1800px] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]">
           
           {/* Top Header */}
           <div className="px-6 sm:px-8 py-4 border-b border-slate-200 dark:border-emerald-800/40 bg-slate-50/80 dark:bg-[#07130E] flex flex-col gap-3.5">

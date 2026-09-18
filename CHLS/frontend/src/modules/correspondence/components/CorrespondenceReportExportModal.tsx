@@ -18,6 +18,7 @@ import {
   Layers,
   ShieldCheck,
   Check,
+  Send,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { jsPDF } from 'jspdf';
@@ -33,6 +34,7 @@ import {
   getOrganigramNodeForUser,
   canUserAccess360,
   DEFAULT_ORGANIGRAM_NODES,
+  isSameArea,
 } from '../utils/organigramWorkflowService';
 
 interface CorrespondenceReportExportModalProps {
@@ -53,13 +55,255 @@ const formatBookDate = (dateStr?: string | null): string => {
   return `${day} ${month} ${year}`;
 };
 
-// Formateador de sello oficial de recepción
+// Formateador de sello oficial con FECHA Y HORA exacta (e.g. "16/09/26 16:45")
+const formatStampDateTime = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return format(d, 'dd/MM/yy HH:mm');
+};
+
 const formatStampDate = (dateStr?: string | null): string => {
   if (!dateStr) return '';
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
   return format(d, 'dd/MM/yy');
 };
+
+export interface UserRouteSheetAudit {
+  reception: {
+    isRadication: boolean;
+    title: string;
+    responsible: string;
+    area: string;
+    dateFormatted: string;
+    timeFormatted: string;
+    fullDateTime: string;
+    isReceived: boolean;
+    sourceInfo?: string;
+    instruction?: string;
+  };
+  derivation: {
+    hasDerivation: boolean;
+    targetPerson: string;
+    targetArea: string;
+    dateFormatted: string;
+    timeFormatted: string;
+    fullDateTime: string;
+    instruction?: string;
+    destinationReceivedAt?: string | null;
+    isDestinationReceived: boolean;
+    statusLabel: string;
+    isCustodyOrConcluded: boolean;
+  };
+}
+
+export function getUserRouteSheetAudit(
+  item: RouteSheetItem,
+  currentUser: any,
+  userArea: string,
+  scopeFilter: 'MY_ACTIONS' | 'ALL_INSTITUTION'
+): UserRouteSheetAudit {
+  const uId = currentUser?.id || currentUser?.userId;
+  const userFullName = `${currentUser?.firstName || ''} ${currentUser?.lastName || ''}`.trim();
+  const uArea = (userArea || (currentUser as any)?.area || '').trim();
+
+  // Modo Supervisión 360° Institucional
+  if (scopeFilter === 'ALL_INSTITUTION') {
+    const mov1 = item.movements && item.movements.length > 0 ? item.movements[0] : null;
+    const movLast = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+
+    const radDate = item.createdAt ? new Date(item.createdAt) : null;
+    const radDateStr = radDate ? formatBookDate(item.createdAt) : '—';
+    const radTimeStr = radDate ? format(radDate, 'HH:mm') : '';
+
+    const recDate = mov1?.receivedAt ? new Date(mov1.receivedAt) : null;
+    const recFull = recDate
+      ? format(recDate, 'dd/MM/yyyy HH:mm')
+      : (mov1?.createdAt ? `${format(new Date(mov1.createdAt), 'dd/MM/yyyy HH:mm')} [Enviado]` : '—');
+
+    const lastDerivDate = movLast?.createdAt ? new Date(movLast.createdAt) : null;
+    const lastDerivFull = lastDerivDate ? format(lastDerivDate, 'dd/MM/yyyy HH:mm') : '—';
+    const lastRecDate = movLast?.receivedAt ? new Date(movLast.receivedAt) : null;
+    const isLastReceived = Boolean(lastRecDate);
+
+    return {
+      reception: {
+        isRadication: true,
+        title: 'Radicación Inicial',
+        responsible: item.senderName,
+        area: item.senderArea || 'Mesa de Entrada',
+        dateFormatted: radDateStr,
+        timeFormatted: radTimeStr,
+        fullDateTime: radDate ? format(radDate, 'dd/MM/yyyy HH:mm') : '—',
+        isReceived: true,
+        sourceInfo: item.senderName,
+        instruction: item.reference,
+      },
+      derivation: {
+        hasDerivation: Boolean(movLast),
+        targetPerson: movLast?.targetPersonName || movLast?.targetArea || item.currentArea,
+        targetArea: movLast?.targetArea || item.currentArea,
+        dateFormatted: lastDerivDate ? formatBookDate(movLast!.createdAt) : '—',
+        timeFormatted: lastDerivDate ? format(lastDerivDate, 'HH:mm') : '',
+        fullDateTime: lastDerivFull,
+        instruction: movLast?.instruction || 'Atención de trámite',
+        destinationReceivedAt: movLast?.receivedAt,
+        isDestinationReceived: isLastReceived,
+        statusLabel: isLastReceived ? 'Recepcionado en destino' : 'Por recepcionar',
+        isCustodyOrConcluded: false,
+      },
+    };
+  }
+
+  // Modo Personal ('MY_ACTIONS'): Control de auditoría de este usuario/despacho
+  const movements = item.movements || [];
+
+  // A. ¿Fue originado/radicado por este usuario/despacho?
+  const isCreator = Boolean(
+    (uId && item.createdById === uId) ||
+    (uArea && isSameArea(item.senderArea, uArea)) ||
+    (userArea.toUpperCase().includes('GERENCIA') && item.createdBy?.email?.toLowerCase().includes('gerencia')) ||
+    (uArea && isSameArea(item.currentArea, uArea) && movements.length === 0)
+  );
+
+  // B. Movimientos entrantes hacia este usuario/despacho
+  const inboundMovs = movements.filter((m) => {
+    if (uArea && isSameArea(m.targetArea, uArea)) return true;
+    if (m.targetPersonName && userFullName && (
+      m.targetPersonName.toLowerCase().includes(userFullName.toLowerCase()) ||
+      userFullName.toLowerCase().includes(m.targetPersonName.toLowerCase())
+    )) return true;
+    return false;
+  });
+
+  // C. Movimientos salientes derivados por este usuario/despacho
+  const outboundMovs = movements.filter((m) => {
+    if (uArea && isSameArea(m.sourceArea, uArea)) return true;
+    if (uId && m.sourceUserId === uId) return true;
+    return false;
+  });
+
+  const latestInbound = inboundMovs.length > 0 ? inboundMovs[inboundMovs.length - 1] : null;
+  const latestOutbound = outboundMovs.length > 0 ? outboundMovs[outboundMovs.length - 1] : null;
+
+  // 1. RECEPCIÓN EN EL DESPACHO
+  let reception: UserRouteSheetAudit['reception'];
+  if (isCreator && !latestInbound) {
+    const radDate = item.createdAt ? new Date(item.createdAt) : new Date();
+    reception = {
+      isRadication: true,
+      title: 'Radicado Oficialmente',
+      responsible: userFullName || 'Funcionario CHLS',
+      area: uArea || 'Despacho Institucional',
+      dateFormatted: formatBookDate(item.createdAt),
+      timeFormatted: format(radDate, 'HH:mm'),
+      fullDateTime: format(radDate, 'dd/MM/yyyy HH:mm'),
+      isReceived: true,
+      sourceInfo: `${item.senderName} (${item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo')})`,
+      instruction: 'Apertura y radicación de Hoja de Ruta en este despacho',
+    };
+  } else if (latestInbound) {
+    const isRec = Boolean(latestInbound.receivedAt);
+    const dateObj = isRec ? new Date(latestInbound.receivedAt!) : new Date(latestInbound.createdAt);
+    reception = {
+      isRadication: false,
+      title: isRec ? 'Recepcionado en Despacho' : 'Pendiente de Recepción',
+      responsible: latestInbound.targetPersonName || userFullName,
+      area: latestInbound.targetArea || uArea,
+      dateFormatted: formatBookDate(isRec ? latestInbound.receivedAt : latestInbound.createdAt),
+      timeFormatted: format(dateObj, 'HH:mm'),
+      fullDateTime: isRec
+        ? format(new Date(latestInbound.receivedAt!), 'dd/MM/yyyy HH:mm')
+        : `${format(new Date(latestInbound.createdAt), 'dd/MM/yyyy HH:mm')} [Enviado]`,
+      isReceived: isRec,
+      sourceInfo: latestInbound.sourceArea ? `${latestInbound.sourceArea}` : 'Derivación previa',
+      instruction: latestInbound.instruction,
+    };
+  } else {
+    const createdDate = item.createdAt ? new Date(item.createdAt) : new Date();
+    reception = {
+      isRadication: isCreator,
+      title: isSameArea(item.currentArea, uArea) ? 'En Custodia de Despacho' : 'Asignado a Despacho',
+      responsible: userFullName,
+      area: uArea || item.currentArea,
+      dateFormatted: formatBookDate(item.createdAt),
+      timeFormatted: format(createdDate, 'HH:mm'),
+      fullDateTime: format(createdDate, 'dd/MM/yyyy HH:mm'),
+      isReceived: true,
+      sourceInfo: item.senderName,
+      instruction: item.reference,
+    };
+  }
+
+  // 2. DERIVACIÓN (DIRIGIDA A)
+  let derivation: UserRouteSheetAudit['derivation'];
+  if (latestOutbound) {
+    const derivDate = latestOutbound.createdAt ? new Date(latestOutbound.createdAt) : new Date();
+    const isRec = Boolean(latestOutbound.receivedAt);
+    const destRecDate = isRec ? new Date(latestOutbound.receivedAt!) : null;
+
+    derivation = {
+      hasDerivation: true,
+      targetPerson: latestOutbound.targetPersonName || latestOutbound.targetArea,
+      targetArea: latestOutbound.targetArea,
+      dateFormatted: formatBookDate(latestOutbound.createdAt),
+      timeFormatted: format(derivDate, 'HH:mm'),
+      fullDateTime: format(derivDate, 'dd/MM/yyyy HH:mm'),
+      instruction: latestOutbound.instruction,
+      destinationReceivedAt: latestOutbound.receivedAt,
+      isDestinationReceived: isRec,
+      statusLabel: isRec
+        ? `Recepcionado en destino el ${format(destRecDate!, 'dd/MM/yyyy HH:mm')}`
+        : 'Por recepcionar en destino (En tránsito)',
+      isCustodyOrConcluded: false,
+    };
+  } else if (item.status === 'CONCLUIDO' && (item.archivedById === uId || isSameArea(item.currentArea, uArea))) {
+    const arcDate = item.archivedAt ? new Date(item.archivedAt) : new Date();
+    derivation = {
+      hasDerivation: true,
+      targetPerson: 'Archivo Institucional',
+      targetArea: item.archiveLocation || 'Archivo Central',
+      dateFormatted: item.archivedAt ? formatBookDate(item.archivedAt) : 'Concluido',
+      timeFormatted: format(arcDate, 'HH:mm'),
+      fullDateTime: format(arcDate, 'dd/MM/yyyy HH:mm'),
+      instruction: item.archiveNotes || 'Concluido y archivado oficialmente',
+      destinationReceivedAt: item.archivedAt,
+      isDestinationReceived: true,
+      statusLabel: 'Concluido y archivado',
+      isCustodyOrConcluded: true,
+    };
+  } else if (isSameArea(item.currentArea, uArea)) {
+    derivation = {
+      hasDerivation: false,
+      targetPerson: userFullName,
+      targetArea: uArea,
+      dateFormatted: 'En Proceso',
+      timeFormatted: item.status,
+      fullDateTime: `En atención en ${uArea}`,
+      instruction: 'Trámite activo en custodia de este despacho',
+      destinationReceivedAt: null,
+      isDestinationReceived: false,
+      statusLabel: 'En custodia activa (Sin derivar aún)',
+      isCustodyOrConcluded: true,
+    };
+  } else {
+    derivation = {
+      hasDerivation: false,
+      targetPerson: '—',
+      targetArea: '—',
+      dateFormatted: '—',
+      timeFormatted: '—',
+      fullDateTime: '—',
+      destinationReceivedAt: null,
+      isDestinationReceived: false,
+      statusLabel: '—',
+      isCustodyOrConcluded: false,
+    };
+  }
+
+  return { reception, derivation };
+}
 
 export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExportModalProps> = ({
   items,
@@ -174,21 +418,32 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
     const toastId = toast.loading('Generando Libro de Registro oficial en Excel...');
     try {
       const rows = filteredData.map((item) => {
-        const mov1 = item.movements && item.movements.length > 0 ? item.movements[0] : null;
-        const mov2 = item.movements && item.movements.length > 1 ? item.movements[1] : null;
+        const audit = getUserRouteSheetAudit(item, currentUser, userArea, scopeFilter);
 
         const remiteFull = item.senderArea
           ? `${item.senderName} (${item.senderArea})`
           : item.senderName;
 
-        const formatDestinoText = (mov: any) => {
-          if (!mov) return '';
-          const target = mov.targetPersonName ? `${mov.targetPersonName} - ${mov.targetArea}` : mov.targetArea;
-          if (mov.receivedAt) {
-            return `${target} [Recepcionado: ${format(new Date(mov.receivedAt), 'dd/MM/yyyy')}]`;
-          }
-          return `${target} [Por recepcionar]`;
-        };
+        let recepcionExcel = '';
+        if (audit.reception.isRadication) {
+          recepcionExcel = `RADICADO EN DESPACHO [${audit.reception.fullDateTime}]`;
+        } else if (audit.reception.isReceived) {
+          recepcionExcel = `RECEPCIONADO: ${audit.reception.area} de ${audit.reception.sourceInfo || 'Origen'} [${audit.reception.fullDateTime}]`;
+        } else {
+          recepcionExcel = `POR RECEPCIONAR: En ${audit.reception.area} [Enviado: ${audit.reception.fullDateTime}]`;
+        }
+
+        let derivacionExcel = '';
+        if (audit.derivation.hasDerivation) {
+          const recText = audit.derivation.isDestinationReceived
+            ? `Recepcionado: ${audit.derivation.destinationReceivedAt ? format(new Date(audit.derivation.destinationReceivedAt), 'dd/MM/yyyy HH:mm') : 'Sí'}`
+            : 'Por recepcionar en destino';
+          derivacionExcel = `${audit.derivation.targetPerson} (${audit.derivation.targetArea}) [Derivado: ${audit.derivation.fullDateTime} | ${recText}]`;
+        } else if (audit.derivation.isCustodyOrConcluded) {
+          derivacionExcel = `${audit.derivation.statusLabel} [${audit.derivation.fullDateTime}]`;
+        } else {
+          derivacionExcel = '—';
+        }
 
         return {
           'N° HOJA DE RUTA': item.hrCode,
@@ -196,8 +451,8 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
           'CITE': item.cite || 'S/N',
           'REMITE': remiteFull,
           'REFERENCIA': item.reference,
-          'DIRIGIDA A (1)': formatDestinoText(mov1),
-          'DIRIGIDA A (2)': formatDestinoText(mov2),
+          'RECEPCIÓN EN DESPACHO (FECHA Y HORA)': recepcionExcel,
+          'DIRIGIDA A: DERIVACIÓN (FECHA Y HORA)': derivacionExcel,
         };
       });
 
@@ -210,8 +465,8 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
         { wch: 22 }, // CITE
         { wch: 30 }, // REMITE
         { wch: 55 }, // REFERENCIA
-        { wch: 38 }, // DIRIGIDA A (1)
-        { wch: 38 }, // DIRIGIDA A (2)
+        { wch: 45 }, // RECEPCIÓN EN DESPACHO (FECHA Y HORA)
+        { wch: 45 }, // DIRIGIDA A: DERIVACIÓN (FECHA Y HORA)
       ];
 
       const wb = XLSX.utils.book_new();
@@ -262,26 +517,33 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
 
       // Preparar Filas
       const tableData = filteredData.map((item) => {
-        const mov1 = item.movements && item.movements.length > 0 ? item.movements[0] : null;
-        const mov2 = item.movements && item.movements.length > 1 ? item.movements[1] : null;
+        const audit = getUserRouteSheetAudit(item, currentUser, userArea, scopeFilter);
 
         const remiteLines = [
           item.senderName,
           item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo'),
         ].filter(Boolean).join('\n');
 
-        const formatDestinoCell = (mov: any) => {
-          if (!mov) return '';
-          const person = mov.targetPersonName || '';
-          const area = mov.targetArea || '';
-          const isRec = Boolean(mov.receivedAt);
-          const date = isRec ? formatStampDate(mov.receivedAt) : '';
+        let recPdf = '';
+        if (audit.reception.isRadication) {
+          recPdf = `RADICADO EN DESPACHO\n${audit.reception.area}\n[✓ ${audit.reception.fullDateTime}]`;
+        } else if (audit.reception.isReceived) {
+          recPdf = `RECEPCIONADO\n${audit.reception.area}\nDe: ${audit.reception.sourceInfo || 'Origen'}\n[✓ ${audit.reception.fullDateTime}]`;
+        } else {
+          recPdf = `POR RECEPCIONAR\n${audit.reception.area}\n[Enviado: ${audit.reception.fullDateTime}]`;
+        }
 
-          if (isRec) {
-            return `${person ? `${person}\n` : ''}${area}\nCLUB HÍPICO LOS SARGENTOS\n[Rec: ${date}]`;
-          }
-          return `${person ? `${person}\n` : ''}${area}\n[Por recepcionar]`;
-        };
+        let derivPdf = '';
+        if (audit.derivation.hasDerivation) {
+          const recText = audit.derivation.isDestinationReceived
+            ? `[✓ Rec: ${audit.derivation.destinationReceivedAt ? format(new Date(audit.derivation.destinationReceivedAt), 'dd/MM/yy HH:mm') : 'Sí'}]`
+            : '[⏰ Por recepcionar]';
+          derivPdf = `${audit.derivation.targetPerson}\n${audit.derivation.targetArea}\nDerivado: ${audit.derivation.fullDateTime}\n${recText}`;
+        } else if (audit.derivation.isCustodyOrConcluded) {
+          derivPdf = `${audit.derivation.statusLabel}\n${audit.derivation.fullDateTime}`;
+        } else {
+          derivPdf = '—';
+        }
 
         return [
           item.hrCode,
@@ -289,8 +551,8 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
           item.cite || 'S/N',
           remiteLines,
           item.reference,
-          formatDestinoCell(mov1),
-          formatDestinoCell(mov2),
+          recPdf,
+          derivPdf,
         ];
       });
 
@@ -303,8 +565,8 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
             'Cite',
             'Remite',
             'Referencia',
-            'Dirigida a:',
-            'Dirigida a:',
+            'Recepción Despacho\n(Fecha y Hora)',
+            'Dirigida a: (Derivación)\n(Fecha y Hora Destino)',
           ],
         ],
         body: tableData,
@@ -333,9 +595,9 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
           1: { cellWidth: 22, halign: 'center', fontSize: 7 },
           2: { cellWidth: 27, fontSize: 7 },
           3: { cellWidth: 38 },
-          4: { cellWidth: 70 },
-          5: { cellWidth: 44, fontSize: 6.8 },
-          6: { cellWidth: 44, fontSize: 6.8 },
+          4: { cellWidth: 68 },
+          5: { cellWidth: 45, fontSize: 6.8 },
+          6: { cellWidth: 45, fontSize: 6.8 },
         },
         styles: {
           overflow: 'linebreak',
@@ -648,11 +910,17 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
                     <th className="border-2 border-slate-900 py-2.5 px-3 text-center min-w-[220px]">
                       Referencia
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[210px]">
-                      Dirigida a:
+                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[230px]">
+                      <div className="flex flex-col items-center justify-center leading-tight">
+                        <span>RECEPCIONADO EN DESPACHO</span>
+                        <span className="text-[9.5px] font-bold text-blue-700 normal-case">(Fecha y Hora de Entrada)</span>
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[210px]">
-                      Dirigida a:
+                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[230px]">
+                      <div className="flex flex-col items-center justify-center leading-tight">
+                        <span>DIRIGIDA A:</span>
+                        <span className="text-[9.5px] font-bold text-emerald-700 normal-case">(Derivación, Fecha y Hora)</span>
+                      </div>
                     </th>
                   </tr>
                 </thead>
@@ -674,8 +942,7 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
                     </tr>
                   ) : (
                     filteredData.map((item) => {
-                      const mov1 = item.movements && item.movements.length > 0 ? item.movements[0] : null;
-                      const mov2 = item.movements && item.movements.length > 1 ? item.movements[1] : null;
+                      const audit = getUserRouteSheetAudit(item, currentUser, userArea, scopeFilter);
 
                       return (
                         <tr key={item.id} className="hover:bg-emerald-50/20 transition-colors">
@@ -712,80 +979,126 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
                             {item.reference}
                           </td>
 
-                          {/* 6. Dirigida a: (Primer Proveído / Destino) */}
-                          <td className="border-2 border-slate-900 p-2.5 text-xs">
-                            {mov1 ? (
-                              <div className="space-y-1">
-                                <div className="font-bold text-slate-900 text-xs">
-                                  {mov1.targetPersonName || mov1.targetArea}
+                          {/* 6. RECEPCIONADO EN DESPACHO (FECHA Y HORA) */}
+                          <td className="border-2 border-slate-900 p-2.5 text-xs align-top">
+                            {audit.reception.isReceived ? (
+                              <div className="border border-blue-600/70 bg-blue-50/70 p-2 rounded text-[10px] text-blue-950 font-sans leading-tight shadow-xs select-none space-y-1">
+                                <div className="flex items-center justify-between gap-1 border-b border-blue-400/40 pb-0.5">
+                                  <span className="font-black uppercase text-[8.5px] text-blue-900 tracking-wider">
+                                    {audit.reception.isRadication ? '🏛️ RADICACIÓN' : '📥 RECEPCIONADO'}
+                                  </span>
+                                  <span className="font-mono font-bold text-blue-800 text-[9px] bg-blue-200/60 px-1 py-0.2 rounded">
+                                    {audit.reception.timeFormatted}
+                                  </span>
                                 </div>
-                                {mov1.receivedAt ? (
-                                  <div className="border border-blue-600/70 bg-blue-50/70 p-1.5 rounded text-[9.5px] text-blue-950 font-sans leading-tight shadow-xs select-none">
-                                    <div className="font-bold uppercase tracking-tight text-[10px] text-blue-950">
-                                      {mov1.targetPersonName || mov1.targetArea}
-                                    </div>
-                                    <div className="text-[8.5px] uppercase font-semibold text-blue-800">
-                                      {mov1.targetArea}
-                                    </div>
-                                    <div className="text-[8px] font-black uppercase text-blue-900 tracking-wider mt-0.5">
-                                      CLUB HÍPICO LOS SARGENTOS
-                                    </div>
-                                    <div className="text-[9px] font-mono font-bold text-right text-blue-900 mt-0.5 border-t border-blue-400/40 pt-0.5">
-                                      ✓ {formatStampDate(mov1.receivedAt)}
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div className="border border-dashed border-red-500/60 bg-red-50/60 p-1.5 rounded text-[9.5px] text-red-900 font-medium">
-                                    <span className="text-[9px] text-slate-600 block">{mov1.targetArea}</span>
-                                    <span className="font-bold text-red-600 flex items-center gap-1">
-                                      <Clock className="w-2.5 h-2.5" />
-                                      Por recepcionar
-                                    </span>
+                                <div className="font-bold uppercase text-[10.5px] text-blue-950 truncate" title={audit.reception.responsible}>
+                                  {audit.reception.responsible}
+                                </div>
+                                <div className="text-[9px] uppercase font-semibold text-blue-800 truncate" title={audit.reception.area}>
+                                  {audit.reception.area}
+                                </div>
+                                <div className="text-[8px] font-black uppercase text-blue-900/80 tracking-wider">
+                                  CLUB HÍPICO LOS SARGENTOS
+                                </div>
+                                {!audit.reception.isRadication && audit.reception.sourceInfo && (
+                                  <div className="text-[8.5px] text-slate-600 truncate" title={`De: ${audit.reception.sourceInfo}`}>
+                                    De: {audit.reception.sourceInfo}
                                   </div>
                                 )}
+                                <div className="text-[9px] font-mono font-bold text-right text-blue-900 pt-1 border-t border-blue-400/40 flex items-center justify-between">
+                                  <span className="text-[8px] text-blue-700 font-sans font-medium">FECHA/HORA:</span>
+                                  <span>✓ {audit.reception.fullDateTime}</span>
+                                </div>
                               </div>
                             ) : (
-                              <span className="text-slate-300 font-mono text-center block text-xs">—</span>
+                              <div className="border border-dashed border-red-500/70 bg-red-50/70 p-2 rounded text-[10px] text-red-950 font-sans leading-tight space-y-1">
+                                <div className="flex items-center justify-between gap-1 border-b border-red-300 pb-0.5">
+                                  <span className="font-black uppercase text-[8.5px] text-red-700 tracking-wider flex items-center gap-1">
+                                    <Clock className="w-2.5 h-2.5 text-red-600" />
+                                    <span>POR RECEPCIONAR</span>
+                                  </span>
+                                  <span className="font-mono font-bold text-red-700 text-[9px]">
+                                    {audit.reception.timeFormatted}
+                                  </span>
+                                </div>
+                                <div className="font-bold uppercase text-[10px] text-red-900 truncate">
+                                  {audit.reception.area}
+                                </div>
+                                <div className="text-[8.5px] text-slate-600 truncate">
+                                  Enviado por: {audit.reception.sourceInfo}
+                                </div>
+                                <div className="text-[9px] font-mono font-bold text-red-700 pt-1 border-t border-red-300 text-right">
+                                  {audit.reception.fullDateTime}
+                                </div>
+                              </div>
                             )}
                           </td>
 
-                          {/* 7. Dirigida a: (Segundo Proveído / Re-derivación) */}
-                          <td className="border-2 border-slate-900 p-2.5 text-xs">
-                            {mov2 ? (
-                              <div className="space-y-1">
-                                <div className="font-bold text-slate-900 text-xs">
-                                  {mov2.targetPersonName || mov2.targetArea}
+                          {/* 7. DIRIGIDA A: (DERIVACIÓN DE ESTE DESPACHO - FECHA Y HORA) */}
+                          <td className="border-2 border-slate-900 p-2.5 text-xs align-top">
+                            {audit.derivation.hasDerivation ? (
+                              <div className="space-y-1.5">
+                                <div className="bg-slate-50 border border-slate-300 p-1.5 rounded text-[10px] text-slate-900 leading-tight">
+                                  <div className="flex items-center justify-between gap-1 text-[8.5px] font-bold text-slate-600 border-b border-slate-200 pb-0.5 mb-1">
+                                    <span className="uppercase tracking-wider">📤 Derivado a:</span>
+                                    <span className="font-mono font-bold text-slate-800">{audit.derivation.timeFormatted}</span>
+                                  </div>
+                                  <div className="font-bold text-[10.5px] text-slate-950 truncate" title={audit.derivation.targetPerson}>
+                                    {audit.derivation.targetPerson}
+                                  </div>
+                                  <div className="text-[9px] text-slate-600 font-medium truncate" title={audit.derivation.targetArea}>
+                                    {audit.derivation.targetArea}
+                                  </div>
+                                  <div className="text-[8.5px] font-mono text-slate-500 mt-0.5">
+                                    Envío: {audit.derivation.fullDateTime}
+                                  </div>
                                 </div>
-                                {mov2.receivedAt ? (
+
+                                {audit.derivation.isDestinationReceived ? (
                                   <div className="border border-blue-600/70 bg-blue-50/70 p-1.5 rounded text-[9.5px] text-blue-950 font-sans leading-tight shadow-xs select-none">
-                                    <div className="font-bold uppercase tracking-tight text-[10px] text-blue-950">
-                                      {mov2.targetPersonName || mov2.targetArea}
+                                    <div className="font-bold uppercase tracking-tight text-[10px] text-blue-950 truncate">
+                                      {audit.derivation.targetPerson}
                                     </div>
-                                    <div className="text-[8.5px] uppercase font-semibold text-blue-800">
-                                      {mov2.targetArea}
+                                    <div className="text-[8.5px] uppercase font-semibold text-blue-800 truncate">
+                                      {audit.derivation.targetArea}
                                     </div>
-                                    <div className="text-[8px] font-black uppercase text-blue-900 tracking-wider mt-0.5">
+                                    <div className="text-[8px] font-black uppercase text-blue-900 tracking-wider">
                                       CLUB HÍPICO LOS SARGENTOS
                                     </div>
-                                    <div className="text-[9px] font-mono font-bold text-right text-blue-900 mt-0.5 border-t border-blue-400/40 pt-0.5">
-                                      ✓ {formatStampDate(mov2.receivedAt)}
+                                    <div className="text-[9px] font-mono font-bold text-right text-blue-900 mt-0.5 border-t border-blue-400/40 pt-0.5 flex items-center justify-between">
+                                      <span className="text-[8px] text-blue-700 font-sans font-medium">RECEPCIÓN:</span>
+                                      <span>✓ {formatStampDateTime(audit.derivation.destinationReceivedAt)}</span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <div className="border border-dashed border-red-500/60 bg-red-50/60 p-1.5 rounded text-[9.5px] text-red-900 font-medium">
-                                    <span className="text-[9px] text-slate-600 block">{mov2.targetArea}</span>
-                                    <span className="font-bold text-red-600 flex items-center gap-1">
-                                      <Clock className="w-2.5 h-2.5" />
-                                      Por recepcionar
-                                    </span>
+                                  <div className="border border-dashed border-red-500/60 bg-red-50/60 p-1.5 rounded text-[9.5px] text-red-900 font-medium leading-tight">
+                                    <div className="text-[9px] text-slate-600 truncate">{audit.derivation.targetArea}</div>
+                                    <div className="font-bold text-red-600 flex items-center justify-between gap-1 mt-0.5 border-t border-red-200 pt-0.5">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        <span>Por recepcionar en destino</span>
+                                      </span>
+                                      <span className="text-[8.5px] font-mono font-bold text-red-500">En tránsito</span>
+                                    </div>
                                   </div>
                                 )}
                               </div>
+                            ) : audit.derivation.isCustodyOrConcluded ? (
+                              <div className="border border-emerald-600/60 bg-emerald-50/70 p-2 rounded text-[10px] text-emerald-950 font-sans leading-tight shadow-xs">
+                                <span className="font-black text-emerald-900 block text-[9.5px] uppercase">
+                                  📁 En Custodia Activa
+                                </span>
+                                <span className="text-[9px] text-emerald-800 font-semibold block mt-0.5 truncate">
+                                  {userArea || 'Este Despacho'}
+                                </span>
+                                <span className="text-[8.5px] text-slate-600 block mt-1">
+                                  Trámite en proceso de atención interna (Sin derivar aún)
+                                </span>
+                              </div>
                             ) : (
-                              <span className="text-slate-300 font-mono text-center block text-xs">—</span>
+                              <span className="text-slate-300 font-mono text-center block text-xs py-4">—</span>
                             )}
                           </td>
-
                         </tr>
                       );
                     })

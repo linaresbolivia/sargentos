@@ -1612,6 +1612,7 @@ export class CorrespondenceController {
         status,
         routeSheetId,
         officialDate,
+        customCiteCode,
       } = req.body;
 
       // REGLA: Responsable solo puede generar CITEs de su propia área
@@ -1657,6 +1658,7 @@ export class CorrespondenceController {
           status,
           routeSheetId,
           officialDate,
+          customCiteCode,
         },
         user?.userId || user?.id
       );
