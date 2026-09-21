@@ -701,48 +701,21 @@ export const CorrespondenceHub: React.FC = () => {
       {/* Top Header: Limpio, conciso y elegante a pantalla completa */}
       <header className="sticky top-0 z-30 w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4 border-b border-slate-200 dark:border-emerald-900/30 bg-white/95 dark:bg-[#07130E]/95 backdrop-blur-md shadow-2xs">
         {/* Izquierda: BackButton, CrestLogo y Título */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4">
           <BackButton />
-          <CrestLogo size="md" className="w-10 h-10 shrink-0 filter drop-shadow-[0_0_12px_rgba(0,166,82,0.25)]" />
+          <CrestLogo size="sm" />
           <div>
-            <h1 className="text-lg sm:text-xl font-bold text-[#0B1320] dark:text-white tracking-tight">
+            <span className="text-[10px] font-black uppercase text-brand-gold tracking-widest leading-none block mb-1">
+              Club Inteligente
+            </span>
+            <h1 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white serif-brand leading-tight tracking-tight">
               Correspondencia
             </h1>
-            <p className="text-[11px] text-[#1A4331]/70 dark:text-emerald-400/60 font-semibold">
-              Club Inteligente
-            </p>
           </div>
         </div>
 
-        {/* Derecha: Despacho + Gestión + Theme + Chat + Usuario */}
+        {/* Derecha: Gestión + Theme + Chat + Usuario */}
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Selector de Despacho / Perspectiva */}
-          <div className="flex items-center gap-1.5 bg-white dark:bg-[#091913] border border-[#1A4331]/20 dark:border-emerald-800/40 rounded-xl px-2.5 py-1.5 shadow-xs hover:border-[#00A652]/50 transition-colors">
-            <Building2 className="w-3.5 h-3.5 text-[#00A652] shrink-0" />
-            <span className="text-[11px] font-bold text-[#1A4331] dark:text-slate-400 hidden sm:inline">Despacho:</span>
-            {canAccess360 ? (
-              <select
-                value={currentPerspective}
-                onChange={(e) => setCurrentPerspective(e.target.value)}
-                className="bg-transparent text-xs font-bold text-[#0B1320] dark:text-slate-200 outline-none cursor-pointer max-w-[170px]"
-              >
-                {officialDepartments.map((dept) => (
-                  <option key={dept.id} value={dept.id} className="bg-slate-900 text-white">
-                    {dept.label}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <div className="flex items-center gap-1">
-                <span className="text-xs font-bold text-[#0B1320] dark:text-slate-200 truncate max-w-[150px]">
-                  {currentPerspective}
-                </span>
-                <span className="text-[9px] font-bold px-1 py-0.5 rounded bg-[#F1F4F8] dark:bg-emerald-950/60 text-[#1A4331] dark:text-emerald-400/80 border border-[#1A4331]/20 flex items-center gap-0.5">
-                  <Lock className="w-2.5 h-2.5" />
-                </span>
-              </div>
-            )}
-          </div>
 
           {/* Selector de Gestión Anual */}
           <div className="flex items-center gap-1.5 bg-white dark:bg-[#091913] border border-[#1A4331]/20 dark:border-emerald-800/40 rounded-xl px-2.5 py-1.5 shadow-xs hover:border-[#00A652]/50 transition-colors">
@@ -1840,6 +1813,10 @@ export const CorrespondenceHub: React.FC = () => {
           isOpen={isNewModalOpen}
           onClose={() => setIsNewModalOpen(false)}
           defaultOriginArea={currentPerspective}
+          onCreated={(createdItem) => {
+            setIsNewModalOpen(false);
+            setPrintableItem(createdItem);
+          }}
         />
       )}
 

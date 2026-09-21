@@ -263,6 +263,15 @@ export class PqrsController {
         surveyMsg += `\n\nDel *1 al 5*, ¿qué tan satisfecho(a) se encuentra con la atención brindada en la resolución de su solicitud?\n_(Por favor responda únicamente con un número del 1 al 5)_\n\n*Atención al Socio - Club Hípico Los Sargentos*`;
         const formattedPhone = ticket.phone.startsWith('591') ? ticket.phone : `591${ticket.phone}`;
         await whatsappService.sendMessage(formattedPhone, surveyMsg, mediaBase64);
+
+        await prisma.pqrsHistory.create({
+          data: {
+            ticketId: id,
+            action: 'WHATSAPP_ENVIADO',
+            description: `Mensaje de WhatsApp de resolución y encuesta enviado al ${ticket.phone}:\n"${surveyMsg}"${mediaBase64 ? ' (con imagen de respaldo)' : ''}`,
+            performedBy: 'Sistema Bot',
+          }
+        });
       }
 
       let desc = `El estado del ticket cambió a ${status}.`;

@@ -481,8 +481,16 @@ export class WhatsappClientInstance {
           const match = item.mediaBase64.match(/^data:([a-zA-Z0-9-]+\/[a-zA-Z0-9-+.]+);base64,(.+)$/);
           if (match) mediaToSend = new MessageMedia(match[1], match[2]);
         }
-        if (mediaToSend) await this.client.sendMessage(chatId, mediaToSend, { caption: finalContent });
-        else await this.client.sendMessage(chatId, finalContent);
+        if (mediaToSend) {
+          try {
+            await this.client.sendMessage(chatId, mediaToSend, { caption: finalContent });
+          } catch (mediaErr: any) {
+            console.warn(`[${this.clientId}] Fallo al enviar con imagen adjunta (${mediaErr?.message}). Reintentando envío de texto...`);
+            await this.client.sendMessage(chatId, finalContent);
+          }
+        } else {
+          await this.client.sendMessage(chatId, finalContent);
+        }
 
         let cleanPhone = chatId.replace(/@.*$/, '').replace(/[^0-9]/g, '');
         if (cleanPhone.length === 8) cleanPhone = `591${cleanPhone}`;
