@@ -540,22 +540,52 @@ export const CourtBooking: React.FC = () => {
     addDays(today, 2)
   ], [today]);
 
-  const savedCode = localStorage.getItem('chls_member_code') || user?.documentId || '';
-  const savedPhone = localStorage.getItem('chls_member_phone') || user?.phone || '';
-  const savedName = localStorage.getItem('chls_member_name') || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '');
+  const userFullName = user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '';
+  const rawSavedName = localStorage.getItem('chls_member_name');
+  const isLorenaName = rawSavedName && /lorena|mamami|mamani/i.test(rawSavedName);
+  const cleanSavedName = isLorenaName ? '' : rawSavedName;
+  const savedName = userFullName || cleanSavedName || 'Jorge Espinoza';
+
+  const rawSavedCode = localStorage.getItem('chls_member_code');
+  const cleanSavedCode = (rawSavedCode === '987' || isLorenaName) ? '' : rawSavedCode;
+  const savedCode = user?.documentId || cleanSavedCode || '21';
+
+  const savedPhone = user?.phone || localStorage.getItem('chls_member_phone') || '60551507';
+
+  // Sanitize localStorage immediately if it contains outdated test data
+  if (isLorenaName || rawSavedCode === '987') {
+    localStorage.setItem('chls_member_name', savedName);
+    localStorage.setItem('chls_member_code', savedCode);
+    localStorage.setItem('chls_member_phone', savedPhone);
+  }
 
   const [formData, setFormData] = useState({
-    memberCode: savedCode || 'CHLS-SOCIO',
-    memberName: savedName || 'Socio Titular',
-    memberPhone: savedPhone || ''
+    memberCode: savedCode || '21',
+    memberName: savedName || 'Jorge Espinoza',
+    memberPhone: savedPhone || '60551507'
   });
 
   const [myReservationsQuery, setMyReservationsQuery] = useState(savedCode || savedPhone || '');
 
-  const currentMemberCode = formData.memberCode || savedCode || user?.documentId || 'CHLS-SOCIO';
-  const currentMemberName = formData.memberName || savedName || 'Socio Titular';
+  const currentMemberCode = formData.memberCode || savedCode || user?.documentId || '21';
+  const currentMemberName = formData.memberName || savedName || 'Jorge Espinoza';
 
   const [bookingPaymentMethod, setBookingPaymentMethod] = useState<'QR' | 'EFECTIVO' | 'TARJETA'>('QR');
+
+  useEffect(() => {
+    if (user?.firstName) {
+      const uName = `${user.firstName} ${user.lastName || ''}`.trim();
+      const uCode = user.documentId || '21';
+      const uPhone = user.phone || '60551507';
+      setFormData(prev => ({
+        ...prev,
+        memberName: uName,
+        memberCode: prev.memberCode && prev.memberCode !== '987' && prev.memberCode !== 'CHLS-SOCIO' ? prev.memberCode : uCode,
+        memberPhone: prev.memberPhone || uPhone
+      }));
+      localStorage.setItem('chls_member_name', uName);
+    }
+  }, [user]);
 
   useEffect(() => {
     fetchCourts();
@@ -955,15 +985,26 @@ export const CourtBooking: React.FC = () => {
   };
 
   const handleCancelMyReservation = async (reservationId: string) => {
-    if (!confirm('¿Deseas cancelar esta reserva? El turno quedará libre inmediatamente.')) return;
+    if (!confirm('¿Deseas cancelar esta reserva? El turno quedará libre de inmediato para otros socios.')) return;
     try {
-      await api.delete(`/reservations/${reservationId}`);
-      toast.success('Reserva cancelada correctamente');
+      const res = await api.post(`/reservations/${reservationId}/cancel`, {
+        memberCode: currentMemberCode,
+        isAdmin: Boolean(user?.roles?.includes('ADMIN') || user?.roles?.includes('SUPERADMIN'))
+      });
+      toast.success(res.data?.message || 'Reserva cancelada correctamente. La cancha ha sido liberada.');
       fetchReservations();
       fetchMyReservations();
     } catch (err: any) {
-      const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error al cancelar la reserva';
-      toast.error(errorMsg);
+      // Fallback a DELETE en caso de contingencia
+      try {
+        await api.delete(`/reservations/${reservationId}`);
+        toast.success('Reserva cancelada y turno liberado');
+        fetchReservations();
+        fetchMyReservations();
+      } catch (delErr: any) {
+        const errorMsg = err.response?.data?.error || err.response?.data?.message || 'Error al cancelar la reserva';
+        toast.error(errorMsg);
+      }
     }
   };
 
@@ -1267,6 +1308,14 @@ export const CourtBooking: React.FC = () => {
                     >
                       <Pencil className="w-3.5 h-3.5" />
                       <span>Editar</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCancelMyReservation(res.id)}
+                      className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold border border-rose-500/30 transition-colors"
+                      title="Liberar turno inmediatamente"
+                    >
+                      Liberar
                     </button>
                   </div>
                 </div>
@@ -2035,6 +2084,51 @@ export const CourtBooking: React.FC = () => {
                 />
               </div>
             )}
+
+            {/* Datos del Socio Titular que Reserva */}
+            <div className="p-4 bg-gradient-to-b from-[#0b1f14] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-3 shadow-lg">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5" />
+                  Socio Titular que Reserva:
+                </label>
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
+                  Acción #{currentMemberCode}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Nombre Completo:</span>
+                  <input
+                    type="text"
+                    required
+                    value={formData.memberName}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(prev => ({ ...prev, memberName: val }));
+                      localStorage.setItem('chls_member_name', val);
+                    }}
+                    placeholder="Nombre del Socio Titular"
+                    className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] transition-all"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">N° Carnet / Acción:</span>
+                  <input
+                    type="text"
+                    required
+                    value={formData.memberCode}
+                    onChange={e => {
+                      const val = e.target.value;
+                      setFormData(prev => ({ ...prev, memberCode: val }));
+                      localStorage.setItem('chls_member_code', val);
+                    }}
+                    placeholder="N° de Acción (ej. 21)"
+                    className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] transition-all"
+                  />
+                </div>
+              </div>
+            </div>
 
             {/* Teléfono WhatsApp */}
             <div className="p-4 bg-gradient-to-b from-[#0b1f14] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-2 shadow-lg">

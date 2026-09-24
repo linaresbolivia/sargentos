@@ -23,9 +23,9 @@ export class MemberController {
 
   private initializeRoutes() {
     this.router.get('/me', authenticate, this.getMyProfile.bind(this));
-    this.router.get('/user/:userId', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN']), this.getMemberProfile.bind(this));
-    this.router.put('/user/:userId', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN']), this.updateMember.bind(this));
-    this.router.post('/massive', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN']), this.createMassive.bind(this));
+    this.router.get('/user/:userId', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN', 'MODULO_SOCIOS']), this.getMemberProfile.bind(this));
+    this.router.put('/user/:userId', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN', 'MODULO_SOCIOS']), this.updateMember.bind(this));
+    this.router.post('/massive', authenticate, authorize(['SUPER_ADMIN', 'STAFF', 'ADMIN', 'MODULO_SOCIOS']), this.createMassive.bind(this));
   }
 
   private async getMyProfile(req: Request, res: Response) {
@@ -37,7 +37,7 @@ export class MemberController {
       }
 
       const profile = await this.getMyProfileUseCase.execute(userId);
-      
+
       if (!profile) {
         res.status(404).json({ success: false, message: 'No se encontró un perfil de socio activo' });
         return;
@@ -54,7 +54,7 @@ export class MemberController {
     try {
       const { userId } = req.params;
       const profile = await this.getMemberProfileByUserIdUseCase.execute(userId);
-      
+
       if (!profile) {
         res.status(404).json({ success: false, message: 'Perfil de socio no encontrado' });
         return;
@@ -74,8 +74,8 @@ export class MemberController {
     } catch (error: any) {
       console.error('Error updating member:', error);
       if (error.code === 'P2002') {
-         res.status(400).json({ success: false, message: 'El correo, documento o número de membresía ya está en uso' });
-         return;
+        res.status(400).json({ success: false, message: 'El correo, documento o número de membresía ya está en uso' });
+        return;
       }
       res.status(500).json({ success: false, message: 'Error interno al actualizar socio' });
     }
@@ -88,8 +88,8 @@ export class MemberController {
     } catch (error: any) {
       console.error('Error in createMassive:', error);
       if (error.code === 'P2002') {
-         res.status(400).json({ success: false, message: 'El correo, CI o número de membresía ya existe' });
-         return;
+        res.status(400).json({ success: false, message: 'El correo, CI o número de membresía ya existe' });
+        return;
       }
       res.status(500).json({ success: false, message: 'Error interno del servidor al crear socio' });
     }

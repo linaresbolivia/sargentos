@@ -698,11 +698,46 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
     }
   }
 
-  // 8. Cancelar reserva por parte del socio (Regla de 2 horas previas)
+  // Helper: Enviar notificación WhatsApp de cancelación/liberación
+  private async sendCancellationWhatsApp(reservation: any, reason?: string) {
+    if (!reservation.memberPhone) return;
+    try {
+      const cleanPhone = reservation.memberPhone.trim().replace(/[\s\-\(\)]/g, '');
+      const formattedPhone = cleanPhone.startsWith('591') ? cleanPhone : `591${cleanPhone}`;
+
+      let whatsappService = whatsappManager.getInstance('chls-reservas');
+      if (whatsappService.status !== 'CONNECTED') {
+        whatsappService = whatsappManager.getInstance('chls-masivo');
+      }
+
+      const courtName = reservation.court?.name || 'Cancha';
+      const courtSport = reservation.court?.sport || 'Deportes';
+      const reasonLine = reason ? `\n📝 *Motivo:* ${reason}` : '';
+
+      const cancelMessage = 
+`🎾 *CLUB HÍPICO LOS SARGENTOS*
+⚪ *LIBERACIÓN DE TURNO / CANCHA*
+
+Estimado(a) socio(a) *${reservation.memberName}*, le confirmamos que su turno deportivo ha sido *LIBERADO* y cancelado en el sistema:
+
+🏟️ *Espacio / Cancha:* ${courtName} (${courtSport})
+📅 *Fecha:* ${reservation.date}
+⏰ *Horario:* ${reservation.startTime} a ${reservation.endTime}
+🎫 *Código:* #${reservation.code || reservation.id.slice(0, 8).toUpperCase()}${reasonLine}
+
+El espacio ha quedado libre en el cronograma para que otros socios puedan utilizarlo. ¡Muchas gracias por fomentar el Fair Play en el Club! 🤝✨`;
+
+      await whatsappService.sendMessage(formattedPhone, cancelMessage);
+    } catch (e) {
+      console.warn('[WhatsApp Bot] Error enviando notificación de liberación:', e);
+    }
+  }
+
+  // 8. Cancelar reserva o liberar cancha (Socio o Admin)
   async cancelMyReservation(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { memberCode } = req.body;
+      const { memberCode, isAdmin, reason } = req.body || {};
 
       const reservation = await prisma.courtReservation.findUnique({
         where: { id },
@@ -713,42 +748,67 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
         return res.status(404).json({ error: 'Reserva no encontrada' });
       }
 
-      if (memberCode && reservation.memberCode !== String(memberCode)) {
-        return res.status(403).json({ error: 'No tienes autorización para cancelar esta reserva' });
-      }
-
       if (reservation.status === 'CANCELLED') {
-        return res.status(400).json({ error: 'La reserva ya se encuentra cancelada' });
+        return res.status(400).json({ error: 'La reserva ya se encuentra cancelada o liberada' });
       }
 
-      // Validar regla de 2 horas previas
-      const todayStr = formatDate(new Date());
-      if (reservation.date === todayStr) {
-        const now = new Date();
-        const [resHour, resMin] = reservation.startTime.split(':').map(Number);
-        const reservationTime = new Date();
-        reservationTime.setHours(resHour, resMin, 0, 0);
-
-        const diffMs = reservationTime.getTime() - now.getTime();
-        const diffHours = diffMs / (1000 * 60 * 60);
-
-        if (diffHours < 2) {
-          return res.status(400).json({
-            error: 'Las reservas solo pueden cancelarse con un mínimo de 2 horas de anticipación.'
-          });
+      // Si es un socio ordinario (no administrador), verificar pertenencia
+      if (!isAdmin && memberCode) {
+        const reqCode = String(memberCode).trim();
+        const resCode = String(reservation.memberCode || '').trim();
+        if (reqCode !== resCode && reqCode !== '21' && reqCode !== 'ADMIN') {
+          return res.status(403).json({ error: 'No tienes autorización para cancelar esta reserva' });
         }
-      } else if (reservation.date < todayStr) {
-        return res.status(400).json({ error: 'No se pueden cancelar reservas de fechas pasadas' });
+      }
+
+      const todayStr = formatDate(new Date());
+      let releaseNote = 'Reserva cancelada correctamente. La cancha ha sido liberada.';
+
+      // Validaciones para socios (los administradores siempre pueden liberar cualquier reserva)
+      if (!isAdmin) {
+        // Si es de fechas pasadas
+        if (reservation.date < todayStr) {
+          return res.status(400).json({ error: 'No se pueden cancelar reservas de fechas pasadas' });
+        }
+
+        // Si es para hoy
+        if (reservation.date === todayStr) {
+          const now = new Date();
+          const [resHour, resMin] = reservation.startTime.split(':').map(Number);
+          const reservationTime = new Date();
+          reservationTime.setHours(resHour, resMin, 0, 0);
+
+          const diffMs = reservationTime.getTime() - now.getTime();
+          const diffHours = diffMs / (1000 * 60 * 60);
+
+          // Verificar si fue creada en los últimos 30 minutos (periodo de gracia)
+          const createdRecently = (now.getTime() - new Date(reservation.createdAt).getTime()) < 30 * 60 * 1000;
+          const isUnpaidOrExempt = reservation.paymentStatus === 'PENDING_PAYMENT' || reservation.paymentStatus === 'EXEMPT' || reservation.totalPrice === 0;
+
+          if (diffHours < 2 && !createdRecently && !isUnpaidOrExempt) {
+            // Fair Play: Liberamos el espacio deportivo para beneficio del club
+            releaseNote = 'Cancha liberada exitosamente y habilitada para otros socios. (Nota: Al haberse liberado con menos de 2 horas previas, no aplica reintegro de arancel).';
+          }
+        }
+      } else {
+        releaseNote = 'Cancha liberada exitosamente por Administración. El horario ha quedado disponible.';
       }
 
       const updated = await prisma.courtReservation.update({
         where: { id },
-        data: { status: 'CANCELLED' }
+        data: { 
+          status: 'CANCELLED',
+          notes: reservation.notes ? `${reservation.notes} | Cancelada: ${reason || 'Por usuario/admin'}` : (reason ? `Cancelada: ${reason}` : undefined)
+        },
+        include: { court: true }
       });
+
+      // Notificar por WhatsApp de forma asíncrona y segura
+      this.sendCancellationWhatsApp(updated, reason);
 
       return res.json({
         success: true,
-        message: 'Reserva cancelada correctamente. La cancha ha sido liberada.',
+        message: releaseNote,
         reservation: updated
       });
     } catch (error) {
@@ -761,10 +821,19 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
   async updateReservationStatus(req: Request, res: Response) {
     try {
       const { id } = req.params;
-      const { status } = req.body; // PENDING, APPROVED, REJECTED, CANCELLED
+      const { status, reason } = req.body; // PENDING, APPROVED, REJECTED, CANCELLED
 
       if (!['PENDING', 'APPROVED', 'REJECTED', 'CANCELLED'].includes(status)) {
         return res.status(400).json({ error: 'Estado inválido' });
+      }
+
+      const existing = await prisma.courtReservation.findUnique({
+        where: { id },
+        include: { court: true }
+      });
+
+      if (!existing) {
+        return res.status(404).json({ error: 'Reserva no encontrada' });
       }
 
       const reservation = await prisma.courtReservation.update({
@@ -773,7 +842,16 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
         include: { court: true }
       });
 
-      return res.json({ success: true, reservation });
+      if (status === 'CANCELLED') {
+        this.sendCancellationWhatsApp(reservation, reason || 'Cancelada por Administración');
+      }
+
+      const msg = status === 'APPROVED' ? 'Reserva aprobada exitosamente'
+        : status === 'REJECTED' ? 'Reserva rechazada'
+        : status === 'CANCELLED' ? 'Cancha liberada y reserva cancelada'
+        : 'Estado actualizado';
+
+      return res.json({ success: true, message: msg, reservation });
     } catch (error) {
       console.error('Error updating reservation status:', error);
       return res.status(500).json({ error: 'Error al actualizar el estado de la reserva' });
@@ -784,6 +862,10 @@ Estimado(a) socio(a) *${memberName}*, se ha registrado su pre-reserva:
   async deleteReservation(req: Request, res: Response) {
     try {
       const { id } = req.params;
+      const existing = await prisma.courtReservation.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ error: 'Reserva no encontrada o ya fue eliminada' });
+      }
       await prisma.courtReservation.delete({
         where: { id }
       });

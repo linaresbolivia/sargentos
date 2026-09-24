@@ -1110,6 +1110,9 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                         selectedCargo={initialTargetArea}
                         selectedPersonName={initialTargetPerson}
                         workflow={workflow}
+                        allowExtraordinary={allowExtraordinaryDerivation}
+                        onToggleExtraordinary={canAccess360 ? setAllowExtraordinaryDerivation : undefined}
+                        canAccess360={canAccess360}
                         onSelect={(cargo, personName) => {
                           setInitialTargetArea(cargo);
                           setInitialTargetPerson(personName);

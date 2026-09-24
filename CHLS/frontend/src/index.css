@@ -46,6 +46,17 @@
     caret-color: #38bdf8;
   }
 
+  /* Inputs inside white paper documents, reports, or explicit light containers */
+  #printable-official-ledger input,
+  .light-paper-input,
+  .dark #printable-official-ledger input,
+  .dark .light-paper-input,
+  .dark input.light-paper-input {
+    color: #0f172a !important;
+    caret-color: #0f172a !important;
+    background-color: #ffffff !important;
+  }
+
   /* Placeholder contrast */
   input::placeholder,
   textarea::placeholder {
@@ -97,20 +108,55 @@
     border-bottom: 2px solid #00a884 !important;
   }
 
-  /* Custom Premium Scrollbar */
+  /* Custom Premium Scrollbar - Más ancha y ergonómica para fácil arrastre */
   ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 10px;
+    height: 12px;
   }
   ::-webkit-scrollbar-track {
-    background: rgba(5, 14, 9, 0.5);
+    background: rgba(5, 14, 9, 0.65);
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(204, 161, 75, 0.2);
-    border-radius: 99px;
+    background: rgba(204, 161, 75, 0.5);
+    border-radius: 9999px;
+    border: 2px solid rgba(5, 14, 9, 0.7);
+    transition: background 0.2s ease, border-color 0.2s ease;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(204, 161, 75, 0.5);
+    background: rgba(204, 161, 75, 0.85);
+    border-color: rgba(5, 14, 9, 0.9);
+  }
+  ::-webkit-scrollbar-thumb:active {
+    background: #e2c785;
+  }
+
+  /* Custom Scrollbar específica para barras de alta interacción (Línea de tiempo, tablas, etc.) */
+  .custom-scrollbar {
+    scrollbar-width: auto;
+    scrollbar-color: rgba(204, 161, 75, 0.6) rgba(5, 14, 9, 0.7);
+  }
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 13px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(4, 12, 8, 0.85);
+    border-radius: 9999px;
+    border: 1px solid rgba(204, 161, 75, 0.15);
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(90deg, rgba(204, 161, 75, 0.6), rgba(226, 199, 133, 0.8));
+    border-radius: 9999px;
+    border: 2px solid rgba(4, 12, 8, 0.9);
+    cursor: grab;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(90deg, #c5a059, #f7e6c4);
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:active {
+    background: #f7e6c4;
+    cursor: grabbing;
   }
 }
 

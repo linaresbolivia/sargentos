@@ -79,6 +79,9 @@ export interface RouteSheetItem {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  openedAt?: string | null;
+  openedByName?: string | null;
+  openedByArea?: string | null;
   person?: {
     id: string;
     firstName: string;

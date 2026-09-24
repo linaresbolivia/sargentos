@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import {
@@ -8,6 +8,7 @@ import {
   undoRouteSheetDerivation,
   fetchCorrespondenceStats,
   fetchRouteSheets,
+  markRouteSheetOpened,
 } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet, PrintPageMode } from './PrintableRouteSheet';
@@ -58,6 +59,13 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
   // Usar la versión más reciente en Redux si coincide el ID para actualización reactiva en vivo
   const rawItem = (selectedReduxItem && (selectedReduxItem.id === item?.id || (selectedReduxItem as any).routeSheet?.id === item?.id)) ? selectedReduxItem : item;
   const currentItem: RouteSheetItem | null = (rawItem as any)?.routeSheet || rawItem;
+
+  // Registrar automáticamente que el usuario/despacho ha abierto y visto la correspondencia
+  useEffect(() => {
+    if (isOpen && currentItem?.id) {
+      dispatch(markRouteSheetOpened(currentItem.id));
+    }
+  }, [isOpen, currentItem?.id, dispatch]);
 
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [printInitialMode, setPrintInitialMode] = useState<PrintPageMode | undefined>(undefined);

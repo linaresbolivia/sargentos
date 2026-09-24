@@ -139,7 +139,7 @@ export class ElectionController {
       let targetId = req.body.electionId;
       if (!targetId) {
         const activeElection = await this.electionService.getActiveElection();
-        targetId = activeElection?.id;
+        targetId = activeElection?.election?.id;
       }
       if (!targetId) {
         res.status(400).json({ success: false, message: 'No hay ninguna elección activa para reiniciar.' });

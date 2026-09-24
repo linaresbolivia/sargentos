@@ -6,6 +6,7 @@ import {
   getOrganigramNodeForUser,
   DEFAULT_ORGANIGRAM_NODES,
 } from '@modules/correspondence/utils/organigramWorkflowService';
+import { WorkflowNode } from '@modules/correspondence/types/correspondence.types';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -43,11 +44,13 @@ import {
   Check,
   X,
   AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AppDispatch } from '@store/store';
 import { MassiveMemberForm } from '../components/MassiveMemberForm';
 import { EditMemberForm } from '../components/EditMemberForm';
+import { OrganigramPositionSearchCombobox } from '../components/OrganigramPositionSearchCombobox';
 import * as XLSX from 'xlsx';
 
 interface Role {
@@ -101,6 +104,34 @@ export const PROFILE_PRESETS = [
     description: 'Acceso Total a todos los módulos y seguridad',
     baseRole: 'SUPER_ADMIN',
     modules: SYSTEM_MODULES.map(m => m.key),
+  },
+  {
+    id: 'SOCIO_ESTANDAR',
+    name: '👑 Socio Titular Estándar',
+    description: 'Portal del Socio, Credencial Digital y Reservas',
+    baseRole: 'USER',
+    modules: [],
+  },
+  {
+    id: 'SOCIO_CANCHAS',
+    name: '🎾 Socio Gestor de Canchas',
+    description: 'Socio con acceso a administración deportiva y reservas',
+    baseRole: 'USER',
+    modules: ['MODULO_CANCHAS'],
+  },
+  {
+    id: 'SOCIO_DIRECTORIO',
+    name: '🏛️ Socio Directorio / Comisiones',
+    description: 'Socio con acceso a Correspondencia, Hojas de Ruta y Directorio',
+    baseRole: 'USER',
+    modules: ['MODULO_DIRECTORIO', 'MODULO_CORRESPONDENCIA'],
+  },
+  {
+    id: 'SOCIO_COMERCIAL',
+    name: '🎫 Socio Comisión Comercial',
+    description: 'Socio con acceso a Pases VIP, CRM y Revista 3D',
+    baseRole: 'USER',
+    modules: ['MODULO_COMERCIAL'],
   },
   {
     id: 'DIRECTORIO_GERENCIA',
@@ -196,12 +227,18 @@ export const SuperAdminDashboard = () => {
   const [isActive, setIsActive] = useState<boolean>(true);
   const [selectedOrganigramNodeId, setSelectedOrganigramNodeId] = useState<string>('');
   const [userPosition, setUserPosition] = useState<string>('');
+  const [organigramNodes, setOrganigramNodes] = useState<WorkflowNode[]>(DEFAULT_ORGANIGRAM_NODES);
 
   // Quick Password Reset Modal
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
   const [resetTargetUser, setResetTargetUser] = useState<User | null>(null);
   const [newResetPassword, setNewResetPassword] = useState('');
   const [isResetting, setIsResetting] = useState(false);
+
+  // Delete User Confirmation Modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteTargetUser, setDeleteTargetUser] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Search & Filter
   const [searchTerm, setSearchTerm] = useState('');
@@ -216,6 +253,14 @@ export const SuperAdminDashboard = () => {
 
   useEffect(() => {
     fetchUsers();
+    api.get('/correspondence/settings')
+      .then((res) => {
+        const customNodes = res.data?.data?.workflow?.nodes;
+        if (Array.isArray(customNodes) && customNodes.length > 0) {
+          setOrganigramNodes(customNodes);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Listen to searchParams (e.g. ?tab=INSTITUTIONAL&create=staff from correspondence config)
@@ -269,16 +314,23 @@ export const SuperAdminDashboard = () => {
     setSelectedOrganigramNodeId(nodeId);
     if (!nodeId) return;
 
-    const node = DEFAULT_ORGANIGRAM_NODES.find((n) => n.id === nodeId);
+    const node = organigramNodes.find((n) => n.id === nodeId) || DEFAULT_ORGANIGRAM_NODES.find((n) => n.id === nodeId);
     if (node) {
-      if (!userPosition || DEFAULT_ORGANIGRAM_NODES.some((n) => n.title === userPosition || n.manager === userPosition)) {
+      if (!userPosition || organigramNodes.some((n) => n.title === userPosition || n.manager === userPosition)) {
         setUserPosition(node.title || node.manager || '');
       }
 
-      if (node.email) {
-        setNewUserEmail(node.email);
-        const prefix = node.email.split('@')[0];
-        setNewUsername(prefix);
+      // CRITICAL: Al editar un usuario, NUNCA sobrescribir su correo/usuario personal.
+      // Al crear un usuario, solo proponerlo si el campo está vacío y el correo no está ocupado por otro usuario.
+      if (modalMode === 'create' && !newUserEmail && !newUsername && node.email) {
+        const isEmailTaken = users.some(
+          (u) => u.email.toLowerCase().trim() === node.email!.toLowerCase().trim()
+        );
+        if (!isEmailTaken) {
+          setNewUserEmail(node.email);
+          const prefix = node.email.split('@')[0];
+          setNewUsername(prefix);
+        }
       }
 
       // Auto-assign roles for this area in correspondence
@@ -354,51 +406,50 @@ export const SuperAdminDashboard = () => {
     setIsModalOpen(true);
   };
 
-  const handleOpenEdit = (user: User) => {
+  const handleOpenEditUser = (user: User) => {
     resetForm();
-    const isMember = user.roles.some((r) => r.name === 'USER');
+    setModalMode('edit');
+    setEditingUserId(user.id);
 
-    if (isMember) {
-      setSelectedMemberId(user.id);
-      setIsEditMemberFormOpen(true);
+    const loginPrefix = user.email.includes('@') ? user.email.split('@')[0] : user.email;
+    setNewUsername(loginPrefix);
+    setNewUserEmail(user.email);
+    setNewUserFirstName(user.firstName);
+    setNewUserLastName(user.lastName);
+    setNewUserDocumentId(user.documentId || '');
+    setNewUserPhone(user.phone || '');
+    setIsActive(user.isActive);
+
+    const matchedNode = getOrganigramNodeForUser(user, { nodes: organigramNodes, edges: [] });
+    if (matchedNode) {
+      setSelectedOrganigramNodeId(matchedNode.id);
+      setUserPosition(matchedNode.title || matchedNode.manager || '');
     } else {
-      setModalMode('edit');
-      setEditingUserId(user.id);
-
-      const loginPrefix = user.email.includes('@') ? user.email.split('@')[0] : user.email;
-      setNewUsername(loginPrefix);
-      setNewUserEmail(user.email);
-      setNewUserFirstName(user.firstName);
-      setNewUserLastName(user.lastName);
-      setNewUserDocumentId(user.documentId || '');
-      setNewUserPhone(user.phone || '');
-      setIsActive(user.isActive);
-
-      const matchedNode = getOrganigramNodeForUser(user);
-      if (matchedNode) {
-        setSelectedOrganigramNodeId(matchedNode.id);
-        setUserPosition(matchedNode.title || matchedNode.manager || '');
-      } else {
-        setSelectedOrganigramNodeId('');
-        setUserPosition('');
-      }
-
-      const baseRoles = ['USER', 'STAFF', 'ADMIN', 'SUPER_ADMIN'];
-      const userBaseRole = user.roles.find((r) => baseRoles.includes(r.name))?.name || 'STAFF';
-      setBaseRole(userBaseRole);
-
-      const moduleRoles = user.roles.map((r) => r.name).filter((name) => !baseRoles.includes(name));
-      setSelectedRoles(moduleRoles);
-
-      setIsModalOpen(true);
+      setSelectedOrganigramNodeId('');
+      setUserPosition('');
     }
+
+    const baseRoles = ['USER', 'SOCIO', 'STAFF', 'ADMIN', 'SUPER_ADMIN'];
+    const matchedBase = user.roles.find((r) => baseRoles.includes(r.name))?.name;
+    const userBaseRole = (matchedBase === 'SOCIO' || matchedBase === 'USER') ? 'USER' : (matchedBase || 'STAFF');
+    setBaseRole(userBaseRole);
+
+    const moduleRoles = user.roles.map((r) => r.name).filter((name) => !baseRoles.includes(name));
+    setSelectedRoles(moduleRoles);
+
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditMember = (user: User) => {
+    setSelectedMemberId(user.id);
+    setIsEditMemberFormOpen(true);
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const finalRoles = new Set([...selectedRoles, baseRole]);
-      if (baseRole !== 'USER') {
+      if (baseRole !== 'USER' && selectedOrganigramNodeId) {
         finalRoles.add('MODULO_CORRESPONDENCIA');
       }
 
@@ -411,6 +462,19 @@ export const SuperAdminDashboard = () => {
 
       if (!finalEmail) {
         toast.error('Por favor ingresa el Nombre de Usuario o Correo');
+        return;
+      }
+
+      // Validar colisión de correo/usuario con otro usuario antes de guardar
+      const normalizedFinalEmail = finalEmail.toLowerCase().trim();
+      const duplicateUser = users.find(
+        (u) => u.email.toLowerCase().trim() === normalizedFinalEmail && u.id !== editingUserId
+      );
+
+      if (duplicateUser) {
+        toast.error(
+          `El correo o usuario "${finalEmail}" ya está registrado para ${duplicateUser.firstName} ${duplicateUser.lastName}. Por favor utiliza un usuario diferente.`
+        );
         return;
       }
 
@@ -434,6 +498,34 @@ export const SuperAdminDashboard = () => {
       } else if (modalMode === 'edit' && editingUserId) {
         await api.put(`/users/${editingUserId}`, payload);
         toast.success(`Perfil de ${payload.firstName} actualizado correctamente ⚙️`);
+      }
+
+      // Sincronizar el nombre y cargo en el organigrama oficial si se seleccionó un puesto
+      if (selectedOrganigramNodeId && (newUserFirstName || newUserLastName)) {
+        try {
+          const fullName = `${newUserFirstName.trim()} ${newUserLastName.trim()}`.trim();
+          const settingsRes = await api.get('/correspondence/settings');
+          const settings = settingsRes.data?.data;
+          if (settings && settings.workflow && Array.isArray(settings.workflow.nodes)) {
+            let updated = false;
+            settings.workflow.nodes = settings.workflow.nodes.map((node: any) => {
+              if (node.id === selectedOrganigramNodeId) {
+                updated = true;
+                return {
+                  ...node,
+                  manager: fullName || node.manager,
+                  subtitle: userPosition ? `${userPosition} (1)` : node.subtitle,
+                };
+              }
+              return node;
+            });
+            if (updated) {
+              await api.post('/correspondence/settings', settings);
+            }
+          }
+        } catch (orgErr) {
+          console.warn('Could not sync organigram node:', orgErr);
+        }
       }
 
       setIsModalOpen(false);
@@ -492,6 +584,30 @@ export const SuperAdminDashboard = () => {
     const msg = `*CLUB HÍPICO LOS SARGENTOS — CREDENCIALES DE ACCESO*\n\nEstimado(a) ${resetTargetUser.firstName} ${resetTargetUser.lastName},\nSe han generado tus credenciales institucionales para el ingreso a la Suite CHLS:\n\n👤 *Usuario / Login:* ${resetTargetUser.email}\n🔑 *Contraseña:* ${newResetPassword}\n🌐 *Enlace de Acceso:* ${window.location.origin}/login\n\n_Por favor guarda este mensaje en un lugar seguro._`;
     navigator.clipboard.writeText(msg);
     toast.success('¡Credenciales copiadas al portapapeles! Listas para enviar por WhatsApp o correo 📋');
+  };
+
+  // Open Delete User Confirmation Modal
+  const handleOpenDeleteUser = (user: User) => {
+    setDeleteTargetUser(user);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Submit Delete User
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteTargetUser) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/users/${deleteTargetUser.id}`);
+      setUsers((prev) => prev.filter((u) => u.id !== deleteTargetUser.id));
+      toast.success(`Usuario ${deleteTargetUser.firstName} ${deleteTargetUser.lastName} eliminado correctamente 🗑️`);
+      setIsDeleteModalOpen(false);
+      setDeleteTargetUser(null);
+    } catch (error: any) {
+      console.error('Error deleting user:', error);
+      toast.error(error?.response?.data?.error || error?.message || 'Error al eliminar el usuario');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // Export to Excel
@@ -890,12 +1006,17 @@ export const SuperAdminDashboard = () => {
                             <span className="text-[10px] font-black text-brand-gold bg-brand-gold/10 px-2.5 py-1 rounded-md border border-brand-gold/30 uppercase tracking-wider">
                               ✨ ACCESO GLOBAL (15 Módulos)
                             </span>
-                          ) : isMember ? (
-                            <span className="text-[11px] text-slate-400 italic">Portal del Socio CHLS</span>
                           ) : userModules.length === 0 ? (
-                            <span className="text-[11px] text-slate-500 italic">Sin módulos específicos</span>
+                            <span className="text-[11px] text-slate-500 italic">
+                              {isMember ? 'Solo Portal del Socio (Sin módulos extra)' : 'Sin módulos específicos'}
+                            </span>
                           ) : (
                             <div className="flex flex-wrap gap-1.5 max-w-xs">
+                              {isMember && (
+                                <span className="text-[9px] font-black px-2 py-0.5 rounded border uppercase tracking-wider text-amber-400 bg-amber-500/10 border-amber-500/30">
+                                  Socio
+                                </span>
+                              )}
                               {userModules.slice(0, 3).map((r) => {
                                 const mod = SYSTEM_MODULES.find((m) => m.key === r.name);
                                 return (
@@ -950,11 +1071,29 @@ export const SuperAdminDashboard = () => {
                             </button>
 
                             <button
-                              onClick={() => handleOpenEdit(user)}
+                              onClick={() => handleOpenEditUser(user)}
                               className="p-2 rounded-xl bg-white/5 hover:bg-emerald-500/20 text-slate-400 hover:text-emerald-400 border border-white/10 transition-colors cursor-pointer"
-                              title="Editar Perfil & Módulos"
+                              title="Gestionar Roles & Módulos del Sistema"
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
+                              <ShieldCheck className="w-3.5 h-3.5" />
+                            </button>
+
+                            {isMember && (
+                              <button
+                                onClick={() => handleOpenEditMember(user)}
+                                className="p-2 rounded-xl bg-white/5 hover:bg-yellow-500/20 text-slate-400 hover:text-brand-gold border border-white/10 transition-colors cursor-pointer"
+                                title="Editar Ficha de Socio (Datos Personales y Membresía)"
+                              >
+                                <User className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            <button
+                              onClick={() => handleOpenDeleteUser(user)}
+                              className="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 border border-white/10 transition-colors cursor-pointer"
+                              title="Eliminar Usuario Permanentemente"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -982,7 +1121,7 @@ export const SuperAdminDashboard = () => {
                 <div>
                   <h2 className="text-lg font-black text-white flex items-center gap-2">
                     <span>
-                      {modalMode === 'create' ? 'Alta de Funcionario / Usuario Institucional' : 'Editar Perfil & Permisos'}
+                      {modalMode === 'create' ? 'Alta de Usuario / Socio del Club' : 'Editar Perfil & Permisos de Módulos'}
                     </span>
                   </h2>
                   <p className="text-xs text-slate-400">
@@ -1045,29 +1184,24 @@ export const SuperAdminDashboard = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                      Área / Despacho Oficial (Organigrama) <span className="text-emerald-400">*</span>
+                      Área / Despacho Oficial (Organigrama) {baseRole === 'USER' ? <span className="text-slate-400 font-normal">(Opcional para Socios)</span> : <span className="text-emerald-400">*</span>}
                     </label>
-                    <select
-                      value={selectedOrganigramNodeId}
-                      onChange={(e) => handleSelectOrganigramNode(e.target.value)}
-                      className="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500 cursor-pointer"
-                    >
-                      <option value="">-- Seleccionar Área del Organigrama --</option>
-                      {DEFAULT_ORGANIGRAM_NODES.map((node) => (
-                        <option key={node.id} value={node.id}>
-                          {node.title} — ({node.subtitle || node.manager})
-                        </option>
-                      ))}
-                    </select>
+                    <OrganigramPositionSearchCombobox
+                      nodes={organigramNodes}
+                      selectedNodeId={selectedOrganigramNodeId}
+                      onSelectNode={handleSelectOrganigramNode}
+                      baseRole={baseRole}
+                      placeholder="Buscar puesto por cargo, funciones o departamento..."
+                    />
                   </div>
 
                   <div>
                     <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                      Cargo / Puesto Formal en el Organigrama <span className="text-emerald-400">*</span>
+                      Cargo / Puesto Formal en el Organigrama {baseRole === 'USER' ? <span className="text-slate-400 font-normal">(Opcional para Socios)</span> : <span className="text-emerald-400">*</span>}
                     </label>
                     <input
                       type="text"
-                      placeholder="Ej. Responsable de Archivo Central, Jefe de Mantenimiento..."
+                      placeholder={baseRole === 'USER' ? 'Ej. Socio Titular, Socio Propietario...' : 'Ej. Responsable de Archivo Central, Jefe de Mantenimiento...'}
                       value={userPosition}
                       onChange={(e) => setUserPosition(e.target.value)}
                       className="w-full bg-slate-900 border border-emerald-500/40 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-emerald-500"
@@ -1271,6 +1405,7 @@ export const SuperAdminDashboard = () => {
                     onChange={(e) => setBaseRole(e.target.value)}
                     className="w-full bg-slate-900 border border-white/15 rounded-xl px-3.5 py-2.5 text-xs text-white font-bold outline-none focus:ring-2 focus:ring-brand-gold cursor-pointer"
                   >
+                    <option value="USER">Socio del Club / Usuario Socio (USER)</option>
                     <option value="STAFF">Personal Administrativo / Jefatura (STAFF)</option>
                     <option value="ADMIN">Administrador de Operaciones / Portería (ADMIN)</option>
                     <option value="SUPER_ADMIN">Super Administrador Maestro TI (SUPER_ADMIN)</option>
@@ -1379,7 +1514,7 @@ export const SuperAdminDashboard = () => {
                   type="submit"
                   className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-black px-6 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/25 transition-transform active:scale-95 cursor-pointer"
                 >
-                  {modalMode === 'create' ? 'Crear Usuario Institucional' : 'Guardar Cambios'}
+                  {modalMode === 'create' ? (baseRole === 'USER' ? 'Crear Usuario Socio y Asignar Módulos' : 'Crear Usuario Institucional') : 'Guardar Cambios'}
                 </button>
               </div>
 
@@ -1485,6 +1620,124 @@ export const SuperAdminDashboard = () => {
             fetchUsers();
           }}
         />
+      )}
+
+      {/* MODAL 5: CONFIRMACIÓN DE ELIMINACIÓN DE USUARIO */}
+      {isDeleteModalOpen && deleteTargetUser && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex justify-center items-center p-4 animate-fadeIn">
+          <div className="bg-slate-950 border border-rose-500/40 w-full max-w-lg rounded-3xl shadow-2xl shadow-rose-950/40 overflow-hidden flex flex-col text-slate-100">
+            
+            {/* Header de Alerta */}
+            <div className="p-6 border-b border-white/10 flex items-center justify-between bg-rose-500/10">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/30 text-rose-400">
+                  <Trash2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-white tracking-tight">
+                    Eliminar Usuario del Sistema
+                  </h3>
+                  <p className="text-[11px] text-rose-300 font-medium">
+                    Esta acción es irreversible y removerá el acceso de forma definitiva
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteTargetUser(null);
+                }}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Ficha del Usuario a Eliminar */}
+            <div className="p-6 space-y-4">
+              <div className="bg-slate-900/90 border border-white/10 rounded-2xl p-4 space-y-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/15 flex items-center justify-center font-bold text-sm text-slate-200 uppercase">
+                    {deleteTargetUser.firstName?.[0] || 'U'}{deleteTargetUser.lastName?.[0] || ''}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-black text-white truncate">
+                      {deleteTargetUser.firstName} {deleteTargetUser.lastName}
+                    </div>
+                    <div className="text-xs text-brand-gold font-mono truncate">
+                      {deleteTargetUser.email}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold uppercase">Documento / CI</span>
+                    <span className="font-mono font-bold text-slate-200">{deleteTargetUser.documentId || '—'}</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 block font-semibold uppercase">Estado Actual</span>
+                    <span className={`inline-flex items-center gap-1 font-bold text-[10px] uppercase ${deleteTargetUser.isActive ? 'text-emerald-400' : 'text-red-400'}`}>
+                      <span className={`w-1.5 h-1.5 rounded-full ${deleteTargetUser.isActive ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                      {deleteTargetUser.isActive ? 'Activo' : 'Suspendido'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Advertencia Contextual */}
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-amber-200/90">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <p className="font-bold text-amber-300">
+                    Confirmación de seguridad
+                  </p>
+                  <p className="text-[11.5px] leading-relaxed text-amber-200/80">
+                    {deleteTargetUser.roles.some((r) => r.name === 'USER')
+                      ? 'Este usuario está vinculado a un Socio del Club. Al eliminarlo se borrará su cuenta y credenciales de acceso al portal, pero su ficha y membresía en el padrón se preservarán intactas.'
+                      : 'Se desvincularán todos los roles y accesos asignados a este funcionario dentro de la Suite CHLS.'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer de Acciones */}
+            <div className="p-6 border-t border-white/10 bg-white/[0.01] flex items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsDeleteModalOpen(false);
+                  setDeleteTargetUser(null);
+                }}
+                disabled={isDeleting}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmDeleteUser}
+                disabled={isDeleting}
+                className="bg-rose-600 hover:bg-rose-500 active:bg-rose-700 text-white font-black px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-rose-900/40 transition-all cursor-pointer disabled:opacity-50"
+              >
+                {isDeleting ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Eliminando...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Sí, Eliminar Usuario</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        </div>
       )}
 
     </div>

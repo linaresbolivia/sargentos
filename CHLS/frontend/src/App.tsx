@@ -37,7 +37,8 @@ import { GlobalPresenceTracker } from '@shared/components/GlobalPresenceTracker'
 const DashboardRedirect: React.FC = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   
-  if (user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF', 'MODULO_WHATSAPP', 'MODULO_PQRS', 'MODULO_USUARIO_PQRS'].includes(r))) {
+  // Si el usuario tiene rol de administración, staff, o cualquier módulo asignado (MODULO_...), entra a MainPortal
+  if (user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r) || r.startsWith('MODULO_'))) {
     return <MainPortal />;
   }
   return <Navigate to="/member" replace />;
@@ -96,19 +97,18 @@ export const App: React.FC = () => {
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/pqrs" element={<PqrsPublicForm />} />
 
-          {/* Protected routes */}
+          {/* Protected routes: Portal General & Socios */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<DashboardRedirect />} />
+            <Route path="/portal" element={<MainPortal />} />
             <Route path="/member" element={<MemberDashboard />} />
             <Route path="/member/reservations" element={<CourtBooking />} />
             <Route path="/member/occupancy" element={<LiveClubOccupancy />} />
             <Route path="/live-occupancy" element={<LiveClubOccupancy />} />
-            <Route path="/elecciones" element={<ElectoralHub />} />
-            <Route path="/elecciones/resultados" element={<ElectoralHub />} />
           </Route>
 
-          {/* Admin and Staff Access Control routes */}
-          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'STAFF']} />}>
+          {/* 1. Control de Acceso & Portería */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_CONTROL_ACCESO', 'MODULO_PORTERIA']} />}>
             <Route path="/access-selection" element={<AccessPointSelection />} />
             <Route path="/gatehouse" element={<GatehouseDashboard />} />
             <Route path="/access/piscina" element={<AreaAccessDashboard areaProp="PISCINA" />} />
@@ -118,31 +118,53 @@ export const App: React.FC = () => {
             <Route path="/access/gimnasio/reports" element={<AreaReports defaultArea="GIMNASIO" />} />
             <Route path="/access/analytics" element={<AreaManagementAnalytics />} />
             <Route path="/admin/access" element={<AccessControl />} />
+          </Route>
+
+          {/* 2. Gestión de Socios & Cobranzas */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_SOCIOS', 'MODULO_FACTURACION']} />}>
             <Route path="/admin/members" element={<MemberAdminHub />} />
             <Route path="/admin/socios" element={<MemberAdminHub />} />
+          </Route>
+
+          {/* 3. Gestión de Canchas & Deportes (Admin) */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_CANCHAS', 'MODULO_RESERVAS']} />}>
             <Route path="/admin/reservations" element={<CourtAdminDashboard />} />
+          </Route>
+
+          {/* 4. Módulo Comercial & Pases VIP */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_COMERCIAL']} />}>
             <Route path="/admin/comercial" element={<CommercialHub />} />
+          </Route>
+
+          {/* 5. Correspondencia & Hojas de Ruta */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_CORRESPONDENCIA', 'MODULO_DIRECTORIO']} />}>
             <Route path="/admin/correspondence" element={<CorrespondenceHub />} />
             <Route path="/admin/correspondencia" element={<CorrespondenceHub />} />
             <Route path="/correspondencia" element={<CorrespondenceHub />} />
-            <Route path="/admin/elecciones" element={<ElectoralHub />} />
           </Route>
 
-          {/* PQRS Module routes */}
+          {/* 6. Elecciones de Directorio (Admin & Escrutinio) */}
+          <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_DIRECTORIO']} />}>
+            <Route path="/admin/elecciones" element={<ElectoralHub />} />
+            <Route path="/elecciones" element={<ElectoralHub />} />
+            <Route path="/elecciones/resultados" element={<ElectoralHub />} />
+          </Route>
+
+          {/* 7. PQRS Module routes */}
           <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_PQRS', 'MODULO_USUARIO_PQRS']} />}>
             <Route path="/admin/pqrs" element={<PqrsDashboard />} />
             <Route path="/admin/pqrs/analytics" element={<PqrsAnalytics />} />
             <Route path="/admin/pqrs/reports" element={<PqrsReports />} />
           </Route>
 
-          {/* Super Admin only protected routes */}
+          {/* 8. Super Admin only protected routes */}
           <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN']} />}>
             <Route path="/superadmin" element={<SuperAdminDashboard />} />
             <Route path="/admin/super" element={<SuperAdminDashboard />} />
           </Route>
 
-          {/* Whatsapp Module protected routes */}
-          <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'MODULO_WHATSAPP']} />}>
+          {/* 9. Whatsapp Module protected routes */}
+          <Route element={<ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ADMIN', 'MODULO_WHATSAPP']} />}>
             <Route path="/admin/whatsapp" element={<WhatsAppDashboard />} />
             <Route path="/admin/whatsapp-masivo" element={<MassiveMessagingDashboard />} />
           </Route>

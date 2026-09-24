@@ -18,7 +18,8 @@ import {
   Dumbbell,
   Wrench,
   Trophy,
-  MessageSquare
+  MessageSquare,
+  Ban
 } from 'lucide-react';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -182,6 +183,17 @@ export const CourtAdminDashboard: React.FC = () => {
       }
     } catch (err) {
       toast.error('Error al actualizar el estado de pago');
+    }
+  };
+
+  const handleReleaseReservation = async (id: string) => {
+    if (!window.confirm('¿Deseas liberar este turno? La cancha quedará disponible de inmediato para otros socios en el cronograma.')) return;
+    try {
+      const res = await api.post(`/reservations/${id}/cancel`, { isAdmin: true, reason: 'Liberada por Administración' });
+      toast.success(res.data?.message || 'Cancha liberada exitosamente. Turno disponible.');
+      fetchReservations();
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Error al liberar la cancha');
     }
   };
 
@@ -471,6 +483,7 @@ export const CourtAdminDashboard: React.FC = () => {
             selectedDate={selectedTimelineDate}
             onChangeDate={setSelectedTimelineDate}
             onUpdateStatus={handleUpdateStatus}
+            onReleaseReservation={handleReleaseReservation}
             onDeleteReservation={handleDeleteReservation}
             onDeleteRecurringGroup={handleDeleteRecurringGroup}
             onEditReservation={(res: any) => setEditingReservation(res)}
@@ -828,6 +841,17 @@ export const CourtAdminDashboard: React.FC = () => {
                               >
                                 <Pencil size={16} />
                               </button>
+
+                              {/* Liberar Cancha Button */}
+                              {res.status !== 'CANCELLED' && (
+                                <button
+                                  onClick={() => handleReleaseReservation(res.id)}
+                                  className="p-1.5 hover:bg-amber-500/20 text-gray-400 hover:text-amber-400 rounded-lg transition-colors"
+                                  title="Liberar Cancha / Cancelar Turno"
+                                >
+                                  <Ban size={16} />
+                                </button>
+                              )}
 
                               <button
                                 onClick={() => {

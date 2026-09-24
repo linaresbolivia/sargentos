@@ -16,7 +16,6 @@ export class UpdateUserUseCase {
     }
 
     const updateData: any = {
-      email: data.email,
       firstName: data.firstName,
       lastName: data.lastName,
       documentId: data.documentId === '' ? null : data.documentId,
@@ -24,13 +23,35 @@ export class UpdateUserUseCase {
       isActive: data.isActive,
     };
 
+    if (data.email) {
+      const normalizedEmail = data.email.toLowerCase().trim();
+      if (normalizedEmail !== existingUser.email.toLowerCase().trim()) {
+        const emailConflict = await this.prisma.user.findUnique({
+          where: { email: normalizedEmail },
+        });
+        if (emailConflict && emailConflict.id !== id) {
+          throw new Error(
+            `El correo o nombre de usuario "${data.email}" ya está registrado para otro usuario (${emailConflict.firstName} ${emailConflict.lastName}).`
+          );
+        }
+        updateData.email = normalizedEmail;
+      }
+    }
+
     if (data.password && data.password.trim() !== '') {
       updateData.passwordHash = await argon2.hash(data.password);
     }
 
     if (data.roles) {
+      const expandedRoles = [...data.roles];
+      if (expandedRoles.includes('USER') && !expandedRoles.includes('SOCIO')) {
+        expandedRoles.push('SOCIO');
+      } else if (expandedRoles.includes('SOCIO') && !expandedRoles.includes('USER')) {
+        expandedRoles.push('USER');
+      }
+
       const rolesToConnect = await this.prisma.role.findMany({
-        where: { name: { in: data.roles } },
+        where: { name: { in: expandedRoles } },
       });
 
       updateData.roles = {

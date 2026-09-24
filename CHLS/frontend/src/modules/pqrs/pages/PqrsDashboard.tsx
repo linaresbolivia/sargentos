@@ -67,7 +67,7 @@ const getLastNote = (ticket: PqrsTicket) => {
 };
 
 // Verifica si un ticket derivado ya cuenta con respuesta/acciones del usuario asignado
-const hasAssignedUserResponded = (ticket: PqrsTicket) => {
+const hasAssignedUserResponded = (ticket: PqrsTicket, currentUserName?: string) => {
   if (!ticket.assignedToId) return false;
   if (!ticket.history || ticket.history.length === 0) return false;
 
@@ -75,17 +75,56 @@ const hasAssignedUserResponded = (ticket: PqrsTicket) => {
   const lastDerivationIndex = ticket.history.findIndex(h => h.action === 'DERIVACION');
 
   if (lastDerivationIndex === -1) {
-    return ticket.history.some(h => ['COMENTARIO_INTERNO', 'RESPUESTA_USUARIO', 'ESTADO_ACTUALIZADO'].includes(h.action));
+    return false;
   }
 
-  // Cualquier acción ocurrida después de la última derivación (índice menor a lastDerivationIndex)
+  const derivationEvent = ticket.history[lastDerivationIndex];
+  const deriver = (derivationEvent.performedBy || '').trim().toLowerCase();
+  const currentAdmin = (currentUserName || '').trim().toLowerCase();
+  const assignedName = ticket.assignedTo 
+    ? `${ticket.assignedTo.firstName} ${ticket.assignedTo.lastName}`.trim().toLowerCase() 
+    : '';
+
+  // Cualquier acción ocurrida después de la última derivación (índices menores a lastDerivationIndex)
   const eventsAfterDerivation = ticket.history.slice(0, lastDerivationIndex);
-  return eventsAfterDerivation.some(h => 
-    ['COMENTARIO_INTERNO', 'RESPUESTA_USUARIO', 'ESTADO_ACTUALIZADO'].includes(h.action)
-  );
+
+  return eventsAfterDerivation.some(h => {
+    // La simple recepción o acuse de recibo NO cuenta como responder a la instrucción
+    if (h.action === 'RECIBIDO') return false;
+
+    // Mensajes automáticos del bot o creación no son respuestas del encargado
+    if (['WHATSAPP_ENVIADO', 'CREADO', 'INFO_ACTUALIZADA'].includes(h.action)) return false;
+
+    const performer = (h.performedBy || '').trim().toLowerCase();
+
+    // Si la acción la realizó la misma persona que hizo la derivación, no es respuesta del asignado
+    if (deriver && performer === deriver) return false;
+
+    // Si la acción fue ejecutada por el admin actual o por el sistema bot/administrador genérico
+    if (currentAdmin && performer === currentAdmin) return false;
+    if (['administrador', 'sistema', 'sistema bot'].includes(performer)) return false;
+
+    // Si coincide con el nombre del usuario asignado, es una respuesta válida
+    if (assignedName && (performer === assignedName || performer.includes(assignedName))) {
+      return true;
+    }
+
+    // Respuestas válidas de otros usuarios (comentarios internos, respuestas de usuario, o cambios de estado)
+    return ['COMENTARIO_INTERNO', 'RESPUESTA_USUARIO', 'ESTADO_ACTUALIZADO', 'DERIVACION'].includes(h.action);
+  });
 };
 
-const KanbanCard = ({ ticket, onOpen, activeTab }: { ticket: PqrsTicket, onOpen: () => void, activeTab?: string }) => {
+const KanbanCard = ({ 
+  ticket, 
+  onOpen, 
+  activeTab, 
+  currentUserName 
+}: { 
+  ticket: PqrsTicket, 
+  onOpen: () => void, 
+  activeTab?: string, 
+  currentUserName?: string 
+}) => {
   const lastActionDate = ticket.history && ticket.history.length > 0 ? new Date(ticket.history[0].createdAt) : new Date(ticket.createdAt);
   const daysOpen = differenceInDays(new Date(), lastActionDate);
   const isStuck = daysOpen >= 3 && ticket.status !== 'CERRADO';
@@ -113,7 +152,7 @@ const KanbanCard = ({ ticket, onOpen, activeTab }: { ticket: PqrsTicket, onOpen:
           </span>
         )}
         {ticket.isRead === false && ticket.status !== 'CERRADO' && activeTab !== 'DERIVADOS' && (
-          hasAssignedUserResponded(ticket) ? (
+          hasAssignedUserResponded(ticket, currentUserName) ? (
             <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.6)]">
               RESPUESTA
             </span>
@@ -123,7 +162,7 @@ const KanbanCard = ({ ticket, onOpen, activeTab }: { ticket: PqrsTicket, onOpen:
             </span>
           )
         )}
-        {ticket.isRead === false && ticket.status !== 'CERRADO' && activeTab === 'DERIVADOS' && (
+        {ticket.status !== 'CERRADO' && activeTab === 'DERIVADOS' && (
           <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
             Esperando Respuesta
           </span>
@@ -212,6 +251,7 @@ export const PqrsDashboard: React.FC = () => {
   
   const { user } = useSelector((state: any) => state.auth);
   const isMainAdmin = user?.roles?.some((r: string) => ['SUPER_ADMIN', 'MODULO_PQRS'].includes(r));
+  const currentUserName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
   
   // Filtering & Tabs
   const [activeTab, setActiveTab] = useState<'ENTRADA' | 'PROCESO' | 'DERIVADOS' | 'ARCHIVO'>(isMainAdmin ? 'ENTRADA' : 'PROCESO');
@@ -482,9 +522,11 @@ export const PqrsDashboard: React.FC = () => {
       let madeChanges = false;
       let noteSent = false;
       
-      // Auto-change status to EN_PROGRESO if they took action on an ABIERTO ticket
+      // Si se está derivando a otra persona, el ticket no debe pasar automáticamente a EN_PROGRESO
+      // Debe mantenerse en su estado y permanecer en "Bandeja de Salida" hasta que el asignado responda
       let finalStatus = newStatus;
-      if (selectedTicket.status === 'ABIERTO' && (newAssignedTo !== (selectedTicket.assignedToId || '') || internalNote.trim())) {
+      const isDerivingToOther = Boolean(newAssignedTo && newAssignedTo !== user?.id && newAssignedTo !== (selectedTicket.assignedToId || ''));
+      if (!isDerivingToOther && selectedTicket.status === 'ABIERTO' && internalNote.trim()) {
         finalStatus = 'EN_PROGRESO';
       }
 
@@ -499,8 +541,9 @@ export const PqrsDashboard: React.FC = () => {
         if (internalNote.trim()) noteSent = true;
         madeChanges = true;
       }
-      // 2. Status or Resolution changes
-      const hasStatusChanges = finalStatus !== selectedTicket.status || (!noteSent && internalNote.trim()) || closingImage;
+      // 2. Status or Resolution changes (solo si hubo cambio explícito de estado, imagen de cierre, o nota pendiente)
+      const hasExplicitStatusChange = finalStatus !== selectedTicket.status;
+      const hasStatusChanges = hasExplicitStatusChange || (!noteSent && Boolean(internalNote.trim())) || Boolean(closingImage);
       if (hasStatusChanges) {
         await api.put(`/pqrs/${selectedTicket.id}/status`, {
           status: finalStatus,
@@ -657,7 +700,7 @@ export const PqrsDashboard: React.FC = () => {
         }
         if (tab === 'PROCESO') {
           const isMineInProgress = (!t.assignedToId || t.assignedToId === user?.id) && t.status === 'EN_PROGRESO';
-          const isDerivedResponded = (!!t.assignedToId && t.assignedToId !== user?.id) && hasAssignedUserResponded(t) && t.status !== 'CERRADO';
+          const isDerivedResponded = (!!t.assignedToId && t.assignedToId !== user?.id) && hasAssignedUserResponded(t, currentUserName) && t.status !== 'CERRADO';
           return isMineInProgress || isDerivedResponded;
         }
         if (tab === 'ARCHIVO') return t.status === 'CERRADO';
@@ -670,6 +713,14 @@ export const PqrsDashboard: React.FC = () => {
       }
     }).length;
   };
+
+  const derivedPendingCount = tickets.filter(t => {
+    const isDerivedToOthers = !!t.assignedToId && t.assignedToId !== user?.id;
+    if (isMainAdmin) {
+      return isDerivedToOthers && !hasAssignedUserResponded(t, currentUserName) && t.status !== 'CERRADO';
+    }
+    return isDerivedToOthers && t.status !== 'CERRADO';
+  }).length;
 
   const filteredTickets = tickets.filter(t => {
     let matchTab = false;
@@ -686,11 +737,11 @@ export const PqrsDashboard: React.FC = () => {
         // 1. Míos o sin asignar en estado EN_PROGRESO
         // 2. Tickets derivados a usuarios PQRS que YA HAN RESPONDIDO (no cerrados)
         const isMineInProgress = (!t.assignedToId || t.assignedToId === user?.id) && t.status === 'EN_PROGRESO';
-        const isDerivedResponded = isDerivedToOthers && hasAssignedUserResponded(t) && t.status !== 'CERRADO';
+        const isDerivedResponded = isDerivedToOthers && hasAssignedUserResponded(t, currentUserName) && t.status !== 'CERRADO';
         matchTab = isMineInProgress || isDerivedResponded;
       } else if (activeTab === 'DERIVADOS') {
         // Bandeja de Salida (Derivados): Asignados a otra persona y esperando respuesta
-        matchTab = isDerivedToOthers && !hasAssignedUserResponded(t) && t.status !== 'CERRADO';
+        matchTab = isDerivedToOthers && !hasAssignedUserResponded(t, currentUserName) && t.status !== 'CERRADO';
       }
     } else {
       // Usuario PQRS regular
@@ -902,9 +953,9 @@ export const PqrsDashboard: React.FC = () => {
             className={`flex-1 relative py-3 text-sm font-semibold border-b-2 transition-colors flex items-center justify-center gap-2 ${activeTab === 'DERIVADOS' ? 'border-emerald-500 text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/10' : 'border-transparent text-slate-700 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}
           >
             Bandeja de Salida
-            {getUnreadCount('DERIVADOS') > 0 && (
-              <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-[0_0_8px_rgba(239,68,68,0.6)]">
-                {getUnreadCount('DERIVADOS')}
+            {derivedPendingCount > 0 && (
+              <span className="bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300 text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center border border-amber-300 dark:border-amber-700">
+                {derivedPendingCount}
               </span>
             )}
           </button>
@@ -1005,7 +1056,7 @@ export const PqrsDashboard: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <div className="font-semibold text-brand-green dark:text-emerald-400">{ticket.code}</div>
                         {ticket.isRead === false && ticket.status !== 'CERRADO' && activeTab !== 'DERIVADOS' && (
-                          hasAssignedUserResponded(ticket) ? (
+                          hasAssignedUserResponded(ticket, currentUserName) ? (
                             <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse shadow-[0_0_8px_rgba(37,99,235,0.6)]">
                               RESPUESTA
                             </span>
@@ -1015,7 +1066,7 @@ export const PqrsDashboard: React.FC = () => {
                             </span>
                           )
                         )}
-                        {ticket.isRead === false && ticket.status !== 'CERRADO' && activeTab === 'DERIVADOS' && (
+                        {ticket.status !== 'CERRADO' && activeTab === 'DERIVADOS' && (
                           <span className="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-700">
                             Esperando Respuesta
                           </span>
@@ -1075,9 +1126,9 @@ export const PqrsDashboard: React.FC = () => {
                           <button 
                             onClick={(e) => handleReceiveTicketId(ticket.id, e)}
                             className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-2 py-1.5 rounded border border-blue-500/20 shadow-sm transition-colors flex justify-center items-center gap-1"
-                            title={hasAssignedUserResponded(ticket) ? "Marcar Respuesta como Revisada" : "Acusar Recibo (Recibir Ticket)"}
+                            title={hasAssignedUserResponded(ticket, currentUserName) ? "Marcar Respuesta como Revisada" : "Acusar Recibo (Recibir Ticket)"}
                           >
-                            <CheckCircle size={14} /> {hasAssignedUserResponded(ticket) ? 'Revisar' : 'Recibir'}
+                            <CheckCircle size={14} /> {hasAssignedUserResponded(ticket, currentUserName) ? 'Revisar' : 'Recibir'}
                           </button>
                         )}
                       </div>
@@ -1143,7 +1194,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'ABIERTO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} activeTab={activeTab} currentUserName={currentUserName} />
               ))}
             </div>
           </div>
@@ -1154,7 +1205,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'EN_PROGRESO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} activeTab={activeTab} currentUserName={currentUserName} />
               ))}
             </div>
           </div>
@@ -1166,7 +1217,7 @@ export const PqrsDashboard: React.FC = () => {
             </h3>
             <div className="flex-1 overflow-y-auto custom-scrollbar space-y-4 pr-2 pb-4">
               {filteredTickets.filter(t => t.status === 'CERRADO').map(ticket => (
-                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} />
+                <KanbanCard key={ticket.id} ticket={ticket} onOpen={() => openTicket(ticket)} activeTab={activeTab} currentUserName={currentUserName} />
               ))}
             </div>
           </div>
@@ -1189,13 +1240,15 @@ export const PqrsDashboard: React.FC = () => {
               </div>
               <div className="flex items-center gap-4">
                 {selectedTicket.isRead === false && selectedTicket.status !== 'CERRADO' && (
-                  <button 
-                    onClick={handleReceiveTicket}
-                    disabled={isSending}
-                    className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg text-sm"
-                  >
-                    <CheckCircle size={16} /> {hasAssignedUserResponded(selectedTicket) ? 'Marcar como Revisado' : 'Recepcionar Ticket'}
-                  </button>
+                  !(Boolean(selectedTicket.assignedToId && selectedTicket.assignedToId !== user?.id) && !hasAssignedUserResponded(selectedTicket, currentUserName)) && (
+                    <button 
+                      onClick={handleReceiveTicket}
+                      disabled={isSending}
+                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg text-sm"
+                    >
+                      <CheckCircle size={16} /> {hasAssignedUserResponded(selectedTicket, currentUserName) ? 'Marcar como Revisado' : 'Recepcionar Ticket'}
+                    </button>
+                  )
                 )}
                 <button 
                   onClick={() => setSelectedTicket(null)}
@@ -1223,23 +1276,37 @@ export const PqrsDashboard: React.FC = () => {
             )}
 
             {selectedTicket.isRead === false && selectedTicket.status !== 'CERRADO' && (
-              <div className="mx-6 mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                <div className="flex items-center gap-3 text-blue-700 dark:text-blue-300">
-                  <AlertTriangle className="w-5 h-5" />
-                  <span className="font-medium">
-                    {hasAssignedUserResponded(selectedTicket) 
-                      ? `Nueva respuesta registrada por ${selectedTicket.assignedTo ? `${selectedTicket.assignedTo.firstName} ${selectedTicket.assignedTo.lastName}` : 'el usuario asignado'} (Pendiente de revisión)`
-                      : 'Correspondencia Pendiente de Recepción'}
+              (Boolean(selectedTicket.assignedToId && selectedTicket.assignedToId !== user?.id) && !hasAssignedUserResponded(selectedTicket, currentUserName)) ? (
+                <div className="mx-6 mt-6 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-amber-700 dark:text-amber-300">
+                    <Clock className="w-5 h-5 animate-spin" />
+                    <span className="font-medium text-sm">
+                      Ticket derivado a <strong className="font-semibold">{selectedTicket.assignedTo ? `${selectedTicket.assignedTo.firstName} ${selectedTicket.assignedTo.lastName}` : 'otro usuario'}</strong>. Esperando que el encargado recepcione y responda a la primera instrucción.
+                    </span>
+                  </div>
+                  <span className="text-xs px-2.5 py-1 bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full font-bold uppercase tracking-wider">
+                    En Bandeja de Salida
                   </span>
                 </div>
-                <button
-                  onClick={handleReceiveTicket}
-                  disabled={isSending}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors w-full sm:w-auto flex items-center justify-center gap-2"
-                >
-                  <CheckCircle size={16} /> {hasAssignedUserResponded(selectedTicket) ? 'Marcar como Revisado' : 'Recibir Correspondencia'}
-                </button>
-              </div>
+              ) : (
+                <div className="mx-6 mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 text-blue-700 dark:text-blue-300">
+                    <AlertTriangle className="w-5 h-5" />
+                    <span className="font-medium">
+                      {hasAssignedUserResponded(selectedTicket, currentUserName) 
+                        ? `Nueva respuesta registrada por ${selectedTicket.assignedTo ? `${selectedTicket.assignedTo.firstName} ${selectedTicket.assignedTo.lastName}` : 'el usuario asignado'} (Pendiente de revisión)`
+                        : 'Correspondencia Pendiente de Recepción'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleReceiveTicket}
+                    disabled={isSending}
+                    className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg shadow-sm transition-colors w-full sm:w-auto flex items-center justify-center gap-2"
+                  >
+                    <CheckCircle size={16} /> {hasAssignedUserResponded(selectedTicket, currentUserName) ? 'Marcar como Revisado' : 'Recibir Correspondencia'}
+                  </button>
+                </div>
+              )
             )}
 
             <div className="p-6 flex flex-col gap-6">

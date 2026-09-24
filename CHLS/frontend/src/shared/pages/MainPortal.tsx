@@ -49,17 +49,36 @@ export const MainPortal: React.FC = () => {
   const isSuperAdmin = user.roles.includes('SUPER_ADMIN');
   const isAdmin = user.roles.includes('ADMIN') || isSuperAdmin;
   const isStaff = user.roles.includes('STAFF') || isSuperAdmin;
-  const isMember = user.roles.includes('USER');
+  const isMember = user.roles.includes('USER') || user.roles.includes('SOCIO');
 
   // Specific Module Access Flags
   const canAccessUsers = isSuperAdmin || isAdmin;
-  const canAccessCorrespondence = isAdmin || user.roles.includes('MODULO_CORRESPONDENCIA');
+  const canAccessCorrespondence = isAdmin || user.roles.includes('MODULO_CORRESPONDENCIA') || user.roles.includes('MODULO_DIRECTORIO');
   const canAccessCommercial = isAdmin || user.roles.includes('MODULO_COMERCIAL');
   const canAccessMembers = isAdmin || user.roles.includes('MODULO_SOCIOS');
-  const canAccessAccessControl = isAdmin || user.roles.includes('MODULO_CONTROL_ACCESO');
+  const canAccessAccessControl = isAdmin || user.roles.includes('MODULO_CONTROL_ACCESO') || user.roles.includes('MODULO_PORTERIA');
   const isWhatsappUser = user.roles.includes('MODULO_WHATSAPP') || isAdmin || isSuperAdmin;
   const isPqrsUser = user.roles.includes('MODULO_PQRS') || user.roles.includes('MODULO_USUARIO_PQRS') || isAdmin;
-  const canAccessCourtsAdmin = isAdmin || user.roles.includes('MODULO_CANCHAS');
+  const canAccessCourtsAdmin = isAdmin || user.roles.includes('MODULO_CANCHAS') || user.roles.includes('MODULO_RESERVAS');
+  const canAccessCourtBooking = isMember || canAccessCourtsAdmin || isAdmin;
+  const canAccessOccupancy = isMember || canAccessAccessControl || canAccessCourtsAdmin || isAdmin;
+  const canAccessMemberDashboard = isMember || isAdmin;
+  const canAccessElections = isAdmin || isSuperAdmin || user.roles.includes('MODULO_DIRECTORIO');
+
+  const totalAccessibleModules = [
+    canAccessUsers,
+    canAccessCorrespondence,
+    canAccessCommercial,
+    canAccessMembers,
+    canAccessAccessControl,
+    isWhatsappUser,
+    isPqrsUser,
+    canAccessCourtsAdmin,
+    canAccessCourtBooking,
+    canAccessOccupancy,
+    canAccessMemberDashboard,
+    canAccessElections,
+  ].filter(Boolean).length;
 
   useEffect(() => {
     if (canAccessCorrespondence && correspondenceItems.length === 0) {
@@ -198,10 +217,15 @@ export const MainPortal: React.FC = () => {
                 <span>
                   {isSuperAdmin ? 'SUPER ADMIN • ACCESO MAESTRO'
                     : isAdmin ? 'ADMINISTRADOR GENERAL'
-                    : user.roles.includes('MODULO_CORRESPONDENCIA') ? 'SECRETARÍA DE GERENCIA'
-                    : user.roles.includes('MODULO_COMERCIAL') ? 'GERENCIA COMERCIAL'
-                    : user.roles.includes('MODULO_SOCIOS') ? 'ADMINISTRACIÓN & CAJA'
+                    : (user as any)?.position ? (user as any).position.toUpperCase()
+                    : (user as any)?.area ? (user as any).area.toUpperCase()
+                    : (user as any)?.department ? (user as any).department.toUpperCase()
+                    : user.roles.includes('MODULO_DIRECTORIO') && !isMember ? 'DIRECTORIO / GERENCIA'
+                    : user.roles.includes('MODULO_CORRESPONDENCIA') && !isMember ? 'CORRESPONDENCIA & DESPACHO'
+                    : user.roles.includes('MODULO_COMERCIAL') && !isMember ? 'GERENCIA COMERCIAL'
+                    : user.roles.includes('MODULO_SOCIOS') && !isMember ? 'ADMINISTRACIÓN & CAJA'
                     : isStaff ? 'FUNCIONARIO STAFF'
+                    : (isMember && user.roles.some(r => r.startsWith('MODULO_'))) ? 'SOCIO (ACCESO A SISTEMAS)'
                     : 'SOCIO TITULAR'}
                 </span>
               </div>
@@ -562,104 +586,123 @@ export const MainPortal: React.FC = () => {
             )}
 
             {/* 10. RESERVA DE CANCHAS (SOCIO) */}
-            <Link 
-              to="/member/reservations"
-              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
-            >
-              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
-                <CalendarCheck className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
-                    10. Reserva Canchas
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    En Vivo
-                  </span>
+            {canAccessCourtBooking && (
+              <Link 
+                to="/member/reservations"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <CalendarCheck className="w-6 h-6" />
                 </div>
-                <p className="text-xs text-gray-300 line-clamp-1">
-                  Reserva en vivo (Tenis, Pádel, Frontón, Fútbol).
-                </p>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
-            </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      10. Reserva Canchas
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      En Vivo
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Reserva en vivo (Tenis, Pádel, Frontón, Fútbol).
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
 
             {/* 11. SEMÁFORO: PISCINA Y GIMNASIO */}
-            <Link 
-              to="/member/occupancy"
-              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
-            >
-              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center gap-1 text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
-                <Waves className="w-4 h-4" />
-                <Dumbbell className="w-4 h-4" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
-                    11. Semáforo Piscina/Gym
-                  </h3>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    En Vivo
-                  </span>
+            {canAccessOccupancy && (
+              <Link 
+                to="/member/occupancy"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center gap-1 text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Waves className="w-4 h-4" />
+                  <Dumbbell className="w-4 h-4" />
                 </div>
-                <p className="text-xs text-gray-300 line-clamp-1">
-                  Aforo en tiempo real y temperaturas antes de asistir.
-                </p>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
-            </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      11. Semáforo Piscina/Gym
+                    </h3>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      En Vivo
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Aforo en tiempo real y temperaturas antes de asistir.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
 
             {/* 12. PORTAL DEL SOCIO */}
-            <Link 
-              to="/member"
-              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
-            >
-              <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
-                <Settings className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
-                    12. Portal del Socio
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
-                    AUTOGESTIÓN
-                  </span>
+            {canAccessMemberDashboard && (
+              <Link 
+                to="/member"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-emerald-500/40 hover:border-emerald-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(16,185,129,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500/50 flex items-center justify-center text-emerald-400 shrink-0 group-hover:scale-110 group-hover:bg-emerald-400 group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(16,185,129,0.25)]">
+                  <Settings className="w-6 h-6" />
                 </div>
-                <p className="text-xs text-gray-300 line-clamp-1">
-                  Membresía, credencial digital QR y estados de cuenta.
-                </p>
-              </div>
-              <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
-            </Link>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-emerald-400 transition-colors truncate">
+                      12. Portal del Socio
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shrink-0">
+                      AUTOGESTIÓN
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Membresía, credencial digital QR y estados de cuenta.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-emerald-400 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
 
             {/* 13. ELECCIONES DE DIRECTORIO */}
-            <Link 
-              to="/elecciones"
-              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-[#142615] via-[#091a10] to-[#040f09] dark:bg-[#06140c] border-2 border-brand-gold/60 hover:border-brand-gold rounded-2xl transition-all duration-300 shadow-md shadow-brand-gold/10 hover:shadow-[0_0_35px_rgba(212,175,55,0.35)] hover:-translate-y-1 overflow-hidden"
-            >
-              <div className="w-13 h-13 rounded-2xl bg-brand-gold/20 border-2 border-brand-gold/60 flex items-center justify-center text-brand-gold shrink-0 group-hover:scale-110 group-hover:bg-brand-gold group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)]">
-                <Vote className="w-6 h-6" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="text-sm font-black text-white group-hover:text-brand-gold transition-colors truncate">
-                    13. Elecciones de Directorio
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-brand-gold/20 text-amber-300 border border-brand-gold/50 flex items-center gap-1 shrink-0">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    ESCRUTINIO EN VIVO
-                  </span>
+            {canAccessElections && (
+              <Link 
+                to="/elecciones"
+                className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-[#142615] via-[#091a10] to-[#040f09] dark:bg-[#06140c] border-2 border-brand-gold/60 hover:border-brand-gold rounded-2xl transition-all duration-300 shadow-md shadow-brand-gold/10 hover:shadow-[0_0_35px_rgba(212,175,55,0.35)] hover:-translate-y-1 overflow-hidden"
+              >
+                <div className="w-13 h-13 rounded-2xl bg-brand-gold/20 border-2 border-brand-gold/60 flex items-center justify-center text-brand-gold shrink-0 group-hover:scale-110 group-hover:bg-brand-gold group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.3)]">
+                  <Vote className="w-6 h-6" />
                 </div>
-                <p className="text-xs text-gray-300 line-clamp-1">
-                  Cargado de boletas de ánfora y proyección 3D / TV HD.
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-sm font-black text-white group-hover:text-brand-gold transition-colors truncate">
+                      13. Elecciones de Directorio
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-brand-gold/20 text-amber-300 border border-brand-gold/50 flex items-center gap-1 shrink-0">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      ESCRUTINIO EN VIVO
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-300 line-clamp-1">
+                    Cargado de boletas de ánfora y proyección 3D / TV HD.
+                  </p>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+              </Link>
+            )}
+
+            {/* Aviso cuando el usuario no tiene módulos activos asignados */}
+            {totalAccessibleModules === 0 && (
+              <div className="col-span-1 md:col-span-2 p-8 rounded-3xl bg-slate-900/60 border border-emerald-500/20 text-center space-y-3">
+                <ShieldCheck className="w-12 h-12 text-amber-400 mx-auto" />
+                <h3 className="text-base font-bold text-white">Sin Módulos Operativos Asignados</h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Tu cuenta institucional está activa pero actualmente no cuentas con módulos autorizados en la Matriz de Permisos. Contacta al Administrador de TI para habilitar tus módulos de trabajo.
                 </p>
               </div>
-              <ArrowUpRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
-            </Link>
+            )}
 
           </div>
 

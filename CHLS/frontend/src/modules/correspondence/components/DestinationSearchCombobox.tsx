@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Search, X, Check, User, ChevronDown } from 'lucide-react';
+import { Search, X, Check, User, ChevronDown, GitBranch, ShieldAlert } from 'lucide-react';
 import { WorkflowNode, CorrespondenceWorkflow } from '../types/correspondence.types';
 import { getOrganigramDestinations, isSameArea } from '../utils/organigramWorkflowService';
 
@@ -8,6 +8,9 @@ export interface DestinationOption {
   cargo: string;
   funcionario: string;
   node?: WorkflowNode;
+  edgeLabel?: string;
+  direction?: 'UP' | 'DOWN' | 'LATERAL';
+  isOrganigramConnection?: boolean;
 }
 
 interface DestinationSearchComboboxProps {
@@ -17,6 +20,7 @@ interface DestinationSearchComboboxProps {
   workflow?: CorrespondenceWorkflow | null;
   allowExtraordinary?: boolean;
   onToggleExtraordinary?: (allow: boolean) => void;
+  canAccess360?: boolean;
   onSelect: (cargo: string, personName: string, node?: WorkflowNode) => void;
   getResponsibleForCargo: (cargoOrArea: string) => string;
   accentColor?: 'emerald' | 'gold';
@@ -72,6 +76,9 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
   selectedCargo,
   selectedPersonName,
   workflow = null,
+  allowExtraordinary = false,
+  onToggleExtraordinary,
+  canAccess360 = false,
   onSelect,
   getResponsibleForCargo,
   accentColor = 'emerald',
@@ -88,12 +95,21 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
     return getOrganigramDestinations(currentArea, workflow);
   }, [currentArea, workflow]);
 
-  // Lista unificada y limpia de todos los cargos y funcionarios disponibles
+  const hasOrganigramConnections = (organigramInfo.recommendedNodes || []).length > 0;
+
+  // Lista unificada y limpia de los cargos autorizados según las conexiones del Organigrama
   const allDestinations = useMemo<DestinationOption[]>(() => {
     const list: DestinationOption[] = [];
     const addedCargos = new Set<string>();
 
-    const addCargo = (cargo: string, explicitManager?: string, node?: WorkflowNode) => {
+    const addCargo = (
+      cargo: string,
+      explicitManager?: string,
+      node?: WorkflowNode,
+      edgeLabel?: string,
+      direction?: 'UP' | 'DOWN' | 'LATERAL',
+      isOrganigramConnection: boolean = false
+    ) => {
       const trimmedCargo = cargo.trim();
       if (!trimmedCargo || addedCargos.has(trimmedCargo.toUpperCase())) return;
       // Omitir derivar a la misma área actual si existe
@@ -105,22 +121,27 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
         cargo: trimmedCargo,
         funcionario: funcionario || 'Titular de Despacho',
         node,
+        edgeLabel,
+        direction,
+        isOrganigramConnection,
       });
       addedCargos.add(trimmedCargo.toUpperCase());
     };
 
     // 1. Nodos recomendados/conectados del organigrama primero
-    (organigramInfo.recommendedNodes || []).forEach(({ node }) => {
-      addCargo(node.title, node.manager, node);
+    (organigramInfo.recommendedNodes || []).forEach(({ node, edgeLabel, direction }) => {
+      addCargo(node.title, node.manager, node, edgeLabel, direction, true);
     });
 
-    // 2. Todos los demás nodos del organigrama para búsqueda universal
-    (organigramInfo.allNodes || []).forEach((node) => {
-      addCargo(node.title, node.manager, node);
-    });
+    // 2. Solo si NO existen conexiones parametrizadas en el organigrama para esta área O si se habilitó explícitamente derivación extraordinaria
+    if (!hasOrganigramConnections || allowExtraordinary) {
+      (organigramInfo.allNodes || []).forEach((node) => {
+        addCargo(node.title, node.manager, node, undefined, undefined, false);
+      });
+    }
 
     return list;
-  }, [organigramInfo, currentArea, getResponsibleForCargo]);
+  }, [organigramInfo, currentArea, getResponsibleForCargo, hasOrganigramConnections, allowExtraordinary]);
 
   // Filtrado minimalista y rápido
   const filteredDestinations = useMemo(() => {
@@ -238,6 +259,49 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
       {/* Lista desplegable limpia de resultados */}
       {isOpen && (
         <div className="absolute left-0 right-0 top-full mt-1.5 z-50 max-h-60 overflow-y-auto bg-white dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/60 rounded-xl shadow-xl p-1.5 space-y-0.5 animate-fadeIn backdrop-blur-md">
+          {/* Header de estatus del Organigrama */}
+          {hasOrganigramConnections && !allowExtraordinary && (
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 dark:bg-emerald-950/40 border-b border-emerald-500/20 rounded-t-lg flex items-center justify-between">
+              <span className="flex items-center gap-1.5 truncate">
+                <GitBranch className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Conexiones del Organigrama ({filteredDestinations.length})</span>
+              </span>
+              {canAccess360 && onToggleExtraordinary && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExtraordinary(true);
+                  }}
+                  className="text-[10px] text-amber-600 dark:text-amber-400 hover:underline cursor-pointer ml-2 shrink-0 font-bold"
+                >
+                  Ver todos (360°)
+                </button>
+              )}
+            </div>
+          )}
+
+          {allowExtraordinary && canAccess360 && (
+            <div className="px-3 py-1.5 text-[11px] font-semibold text-amber-700 dark:text-amber-400 bg-amber-500/10 dark:bg-amber-950/40 border-b border-amber-500/20 rounded-t-lg flex items-center justify-between">
+              <span className="flex items-center gap-1.5 truncate">
+                <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Derivación Extraordinaria (360°)</span>
+              </span>
+              {onToggleExtraordinary && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleExtraordinary(false);
+                  }}
+                  className="text-[10px] text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer ml-2 shrink-0 font-bold"
+                >
+                  Solo Organigrama
+                </button>
+              )}
+            </div>
+          )}
+
           {filteredDestinations.length > 0 ? (
             filteredDestinations.map((item) => {
               const isSelected = selectedCargo && selectedCargo.toUpperCase() === item.cargo.toUpperCase();
@@ -249,13 +313,22 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
                   onClick={() => handleSelectItem(item)}
                   className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors flex items-center justify-between gap-2 cursor-pointer ${
                     isSelected
-                      ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-bold'
+                      ? isEmerald
+                        ? 'bg-emerald-500/15 text-emerald-800 dark:text-emerald-200 font-bold'
+                        : 'bg-[#C5A059]/15 text-[#C5A059] font-bold'
                       : 'hover:bg-slate-100 dark:hover:bg-emerald-950/50 text-slate-800 dark:text-slate-200'
                   }`}
                 >
                   <div className="min-w-0 flex-1">
-                    <div className="font-bold uppercase truncate">
-                      <HighlightedText text={item.cargo} query={searchTerm} />
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold uppercase truncate">
+                        <HighlightedText text={item.cargo} query={searchTerm} />
+                      </span>
+                      {item.edgeLabel && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                          {item.edgeLabel}
+                        </span>
+                      )}
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5 truncate">
                       <User className="w-3 h-3 text-emerald-500 shrink-0" />
@@ -265,7 +338,7 @@ export const DestinationSearchCombobox: React.FC<DestinationSearchComboboxProps>
                     </div>
                   </div>
 
-                  {isSelected && <Check className="w-4 h-4 text-emerald-500 shrink-0" />}
+                  {isSelected && <Check className={`w-4 h-4 shrink-0 ${isEmerald ? 'text-emerald-500' : 'text-[#C5A059]'}`} />}
                 </button>
               );
             })

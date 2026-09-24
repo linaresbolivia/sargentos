@@ -850,7 +850,7 @@ export class ElectionService {
     const stats = await this.getLiveStats(election.id);
 
     // Mapeo de IDs de candidatos a nombres para enriquecer cada boleta
-    const candidateMap = new Map<string, { fullName: string; orderIndex: number; position: string }>();
+    const candidateMap = new Map<string, { fullName: string; orderIndex: number; position: string | null }>();
     election.candidates.forEach((c) => {
       candidateMap.set(c.id, {
         fullName: c.fullName,

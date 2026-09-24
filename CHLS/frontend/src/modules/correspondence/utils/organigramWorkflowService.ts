@@ -718,8 +718,9 @@ export function getOrganigramDestinations(
   const sourceIds = incomingEdges.map((e) => e.source);
 
   // Combinar destinos parametrizados con su titular, cargo y etiqueta de flujo
-  const recommendedTargetNodes: OrganigramDestination[] = activeNodes
-    .filter((n) => targetIds.includes(n.id))
+  const recommendedTargetNodes: OrganigramDestination[] = targetIds
+    .map((id) => activeNodes.find((n) => n.id === id))
+    .filter((n): n is WorkflowNode => Boolean(n))
     .map((node) => {
       const edge = outgoingEdges.find((e) => e.target === node.id);
       const isHierarchical = edge?.style === 'HIERARCHICAL';
@@ -732,8 +733,9 @@ export function getOrganigramDestinations(
       };
     });
 
-  const recommendedSourceNodes: OrganigramDestination[] = activeNodes
-    .filter((n) => sourceIds.includes(n.id) && !targetIds.includes(n.id))
+  const recommendedSourceNodes: OrganigramDestination[] = sourceIds
+    .map((id) => activeNodes.find((n) => n.id === id))
+    .filter((n): n is WorkflowNode => Boolean(n) && !targetIds.includes(n!.id))
     .map((node) => {
       const edge = incomingEdges.find((e) => e.source === node.id);
       return {
@@ -744,7 +746,7 @@ export function getOrganigramDestinations(
       };
     });
 
-  const recommendedNodes: OrganigramDestination[] = [...recommendedSourceNodes, ...recommendedTargetNodes];
+  const recommendedNodes: OrganigramDestination[] = [...recommendedTargetNodes, ...recommendedSourceNodes];
 
   return {
     currentNode: sourceNode,

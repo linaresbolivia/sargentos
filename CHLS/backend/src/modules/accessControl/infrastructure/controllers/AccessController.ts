@@ -36,10 +36,10 @@ export class AccessController {
     this.router.use(authenticate);
 
     // Live occupancy can be checked by members, socio, staff, and admins
-    this.router.get('/live-occupancy', authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN', 'MEMBER', 'SOCIO']), this.getLiveOccupancy.bind(this));
+    this.router.get('/live-occupancy', authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN', 'MEMBER', 'SOCIO', 'USER']), this.getLiveOccupancy.bind(this));
 
-    // Admin, Staff, and SuperAdmin gatehouse and area management endpoints
-    this.router.use(authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN']));
+    // Admin, Staff, SuperAdmin, and Access Control / Porteria module authorized users
+    this.router.use(authorize(['ADMIN', 'STAFF', 'SUPER_ADMIN', 'MODULO_CONTROL_ACCESO', 'MODULO_PORTERIA']));
 
     this.router.get('/search', this.search.bind(this));
     this.router.post('/log', this.registerLog.bind(this));

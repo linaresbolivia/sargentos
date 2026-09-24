@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@store/store';
 import { RouteSheetItem, CorrDocument } from '../types/correspondence.types';
@@ -39,6 +39,8 @@ import {
   Printer,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
@@ -131,8 +133,19 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   const [milestoneDocsPopup, setMilestoneDocsPopup] = useState<CorrDocument[] | null>(null);
   const [showLocalTimelinePrintModal, setShowLocalTimelinePrintModal] = useState(false);
   const [isInitialDocsExpanded, setIsInitialDocsExpanded] = useState(false);
-
   const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
+
+  const timelineScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollTimeline = (direction: 'left' | 'right') => {
+    if (timelineScrollRef.current) {
+      const scrollAmount = 450;
+      timelineScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   const handleGenerateDossierPdf = async () => {
     try {
@@ -677,12 +690,59 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               <span className="text-[11px] font-mono font-semibold text-slate-400">
                 {N} Hitos • CHLS
               </span>
+
+              {/* Botones de navegación horizontal en la cabecera */}
+              <div className="flex items-center gap-1 bg-slate-950/80 border border-slate-800 rounded-xl p-1 shadow-inner">
+                <button
+                  type="button"
+                  title="Desplazar hito anterior (Izquierda)"
+                  onClick={() => scrollTimeline('left')}
+                  className="p-1 rounded-lg bg-slate-900 hover:bg-[#C5A059] text-slate-300 hover:text-slate-950 transition-all cursor-pointer shadow active:scale-95 flex items-center justify-center"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[10px] font-mono font-bold text-slate-400 px-1 select-none">
+                  Navegar
+                </span>
+                <button
+                  type="button"
+                  title="Desplazar hito siguiente (Derecha)"
+                  onClick={() => scrollTimeline('right')}
+                  className="p-1 rounded-lg bg-slate-900 hover:bg-[#C5A059] text-slate-300 hover:text-slate-950 transition-all cursor-pointer shadow active:scale-95 flex items-center justify-center"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
 
           {/* Track Horizontal de Trazabilidad 360° (Ocupa todo el ancho, fluido y responsive) */}
-          <div className="overflow-x-auto custom-scrollbar py-4 px-1">
-            <div className="flex items-stretch gap-3 sm:gap-4 min-w-full">
+          <div className="relative group/timeline">
+            {/* Flecha flotante izquierda */}
+            <button
+              type="button"
+              onClick={() => scrollTimeline('left')}
+              className="hidden sm:flex absolute left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-slate-950/90 hover:bg-[#C5A059] text-slate-200 hover:text-slate-950 border-2 border-[#C5A059]/40 hover:border-[#C5A059] shadow-2xl items-center justify-center transition-all cursor-pointer active:scale-90 backdrop-blur-md opacity-85 hover:opacity-100 hover:scale-105"
+              title="Desplazar a la izquierda"
+            >
+              <ChevronLeft className="w-5 h-5 stroke-[2.5]" />
+            </button>
+
+            {/* Flecha flotante derecha */}
+            <button
+              type="button"
+              onClick={() => scrollTimeline('right')}
+              className="hidden sm:flex absolute right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 rounded-full bg-slate-950/90 hover:bg-[#C5A059] text-slate-200 hover:text-slate-950 border-2 border-[#C5A059]/40 hover:border-[#C5A059] shadow-2xl items-center justify-center transition-all cursor-pointer active:scale-90 backdrop-blur-md opacity-85 hover:opacity-100 hover:scale-105"
+              title="Desplazar a la derecha"
+            >
+              <ChevronRight className="w-5 h-5 stroke-[2.5]" />
+            </button>
+
+            <div
+              ref={timelineScrollRef}
+              className="overflow-x-auto custom-scrollbar scroll-smooth py-4 px-1 sm:px-6"
+            >
+              <div className="flex items-stretch gap-3 sm:gap-4 min-w-full">
               {milestones.map((m, idx) => {
                 const isLast = idx === milestones.length - 1;
 
@@ -835,10 +895,35 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
               })}
             </div>
           </div>
+        </div>
 
-          <p className="text-center text-xs text-slate-500 font-mono mt-1">
-            💡 Línea de trazabilidad CHLS. Haz clic en cualquier hito o tarjeta para ver el proveído completo.
+        {/* Barra inferior con controles de navegación rápida y ayuda */}
+        <div className="flex items-center justify-between gap-4 mt-2 px-3 py-2.5 rounded-2xl bg-slate-950/70 border border-slate-800/80 flex-wrap">
+          <p className="text-xs text-slate-400 font-mono flex items-center gap-2">
+            <span className="text-amber-400">💡</span> Línea de trazabilidad CHLS. Arrastra la barra o usa las flechas para explorar los hitos.
           </p>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => scrollTimeline('left')}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-[#C5A059] text-slate-200 hover:text-slate-950 border border-slate-700 hover:border-[#C5A059] transition-all flex items-center gap-1.5 text-xs font-bold shadow-md cursor-pointer active:scale-95 group/btn"
+              title="Mover al hito anterior"
+            >
+              <ChevronLeft className="w-4 h-4 text-[#C5A059] group-hover/btn:text-slate-950 transition-colors" />
+              <span>Anterior</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTimeline('right')}
+              className="px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-[#C5A059] text-slate-200 hover:text-slate-950 border border-slate-700 hover:border-[#C5A059] transition-all flex items-center gap-1.5 text-xs font-bold shadow-md cursor-pointer active:scale-95 group/btn"
+              title="Mover al hito siguiente"
+            >
+              <span>Siguiente</span>
+              <ChevronRight className="w-4 h-4 text-[#C5A059] group-hover/btn:text-slate-950 transition-colors" />
+            </button>
+          </div>
+        </div>
         </div>
       ) : (
         /* ========================================================================= */

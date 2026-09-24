@@ -41,6 +41,90 @@ export class RouteSheetService {
   }
 
   /**
+   * Obtiene el mapa de confirmaciones de apertura / lectura de Hojas de Ruta
+   */
+  public getReadReceipts(): Record<string, { openedAt: string; openedById?: string; openedByName?: string; openedByArea?: string }> {
+    try {
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const receiptsFilePath = path.join(dataDir, 'correspondence_read_receipts.json');
+      if (fs.existsSync(receiptsFilePath)) {
+        return JSON.parse(fs.readFileSync(receiptsFilePath, 'utf8'));
+      }
+    } catch (err) {
+      logger.warn('[RouteSheetService] Error al leer confirmaciones de lectura:', err);
+    }
+    return {};
+  }
+
+  /**
+   * Registra que un usuario abrió y visualizó la correspondencia
+   */
+  public async recordReadReceipt(idOrHrCode: string, user?: any): Promise<any> {
+    const routeSheet = await this.prisma.routeSheet.findFirst({
+      where: {
+        OR: [
+          { id: idOrHrCode },
+          { hrCode: { equals: idOrHrCode, mode: 'insensitive' } },
+        ],
+      },
+      include: { movements: true },
+    });
+
+    if (!routeSheet) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    const receipts = this.getReadReceipts();
+    const nowIso = new Date().toISOString();
+    const userName = user
+      ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || user.email || 'Funcionario'
+      : 'Funcionario';
+    const userArea = user?.area || user?.role || '';
+
+    // Si ya fue abierto previamente, conservamos la primera fecha de apertura
+    const existing = receipts[routeSheet.id] || receipts[routeSheet.hrCode];
+    const receiptData = {
+      openedAt: existing?.openedAt || nowIso,
+      openedById: existing?.openedById || user?.id,
+      openedByName: existing?.openedByName || userName,
+      openedByArea: existing?.openedByArea || userArea,
+    };
+
+    receipts[routeSheet.id] = receiptData;
+    receipts[routeSheet.hrCode] = receiptData;
+
+    try {
+      const dataDir = path.join(process.cwd(), 'data');
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const receiptsFilePath = path.join(dataDir, 'correspondence_read_receipts.json');
+      fs.writeFileSync(receiptsFilePath, JSON.stringify(receipts, null, 2), 'utf8');
+    } catch (err) {
+      logger.error('[RouteSheetService] Error al guardar confirmación de lectura:', err);
+    }
+
+    // Broadcast en tiempo real vía Socket.IO
+    try {
+      socketService.getIo()?.emit('correspondence:opened', {
+        id: routeSheet.id,
+        hrCode: routeSheet.hrCode,
+        ...receiptData,
+      });
+
+      const enriched = await this.getByIdOrCode(routeSheet.id);
+      socketService.getIo()?.emit('correspondence:updated', enriched);
+    } catch (sockErr) {
+      logger.warn('[RouteSheetService] Socket broadcast error for read receipt', sockErr);
+    }
+
+    return receiptData;
+  }
+
+  /**
    * Calcula el estado SLA y métricas de cumplimiento de una Hoja de Ruta
    */
   public calculateSla(routeSheet: any, defaultDays: number = 5): SlaDetails {
@@ -166,8 +250,14 @@ export class RouteSheetService {
       };
     });
 
+    const receipts = this.getReadReceipts();
+    const receipt = receipts[item.id] || (item.hrCode ? receipts[item.hrCode] : null);
+
     return {
       ...item,
+      openedAt: receipt?.openedAt || null,
+      openedByName: receipt?.openedByName || null,
+      openedByArea: receipt?.openedByArea || null,
       movements: enrichedMovements,
       ...sla,
     };

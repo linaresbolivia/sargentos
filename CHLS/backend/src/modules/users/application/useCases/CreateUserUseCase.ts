@@ -8,16 +8,32 @@ export class CreateUserUseCase {
   async execute(data: CreateUserDTO): Promise<UserDTO> {
     const passwordHash = await argon2.hash(data.password || 'password123');
 
+    // Expand role aliases (ensure USER and SOCIO are both included if either is requested)
+    const expandedRoles = [...data.roles];
+    if (expandedRoles.includes('USER') && !expandedRoles.includes('SOCIO')) {
+      expandedRoles.push('SOCIO');
+    } else if (expandedRoles.includes('SOCIO') && !expandedRoles.includes('USER')) {
+      expandedRoles.push('USER');
+    }
+
     // Find the roles to connect
     const rolesToConnect = await this.prisma.role.findMany({
       where: {
-        name: { in: data.roles },
+        name: { in: expandedRoles },
       },
     });
 
+    const normalizedEmail = data.email.toLowerCase().trim();
+    const existing = await this.prisma.user.findUnique({
+      where: { email: normalizedEmail },
+    });
+    if (existing) {
+      throw new Error(`El correo o nombre de usuario "${data.email}" ya está registrado para ${existing.firstName} ${existing.lastName}.`);
+    }
+
     const user = await this.prisma.user.create({
       data: {
-        email: data.email,
+        email: normalizedEmail,
         passwordHash,
         firstName: data.firstName,
         lastName: data.lastName,

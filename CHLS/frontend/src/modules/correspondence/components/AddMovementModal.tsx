@@ -37,7 +37,14 @@ import { RouteSheetItem } from '../types/correspondence.types';
 import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
 import SmartCorrespondenceTextarea from './SmartCorrespondenceTextarea';
-import { getOrganigramDestinations, WorkflowNode, DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser } from '../utils/organigramWorkflowService';
+import {
+  getOrganigramDestinations,
+  WorkflowNode,
+  DEFAULT_ORGANIGRAM_NODES,
+  isSameArea,
+  getOrganigramNodeForUser,
+  canUserAccess360,
+} from '../utils/organigramWorkflowService';
 import { countPdfPages } from '../utils/pdfPageCounter';
 import DestinationSearchCombobox from './DestinationSearchCombobox';
 
@@ -123,6 +130,11 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   const userNode = useMemo(() => {
     return getOrganigramNodeForUser(currentUser, workflow);
   }, [currentUser, workflow]);
+
+  // Permisos 360° del usuario actual (solo SuperAdmin, Gerente General, TI, Secretaría)
+  const canAccess360 = useMemo(() => {
+    return canUserAccess360(currentUser, userNode);
+  }, [currentUser, userNode]);
 
   // Nombre oficial del firmante individualizado según el usuario autenticado
   const effectiveSignerName = useMemo(() => {
@@ -272,7 +284,8 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
   // Auto-seleccionar el primer destino conectado del organigrama o primer despacho oficial y su responsable
   useEffect(() => {
     let initialCargo = '';
-    if (organigramInfo.recommendedNodes && organigramInfo.recommendedNodes.length > 0) {
+    const hasConns = Boolean(organigramInfo.recommendedNodes && organigramInfo.recommendedNodes.length > 0);
+    if (hasConns) {
       initialCargo = organigramInfo.recommendedNodes[0].node.title;
     } else if (allowExtraordinaryDerivation && organigramInfo.allNodes && organigramInfo.allNodes.length > 0) {
       const firstNonCurrent = organigramInfo.allNodes.find(n => !isSameArea(n.title, item.currentArea)) || organigramInfo.allNodes[0];
@@ -280,11 +293,19 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     }
 
     if (initialCargo) {
-      setTargetArea(initialCargo);
-      const autoResp = getResponsibleForCargo(initialCargo);
-      setTargetPersonName(autoResp);
+      const isTargetValid = hasConns
+        ? organigramInfo.recommendedNodes.some(
+            (r) => isSameArea(r.node.title, targetArea) || isSameArea(r.node.areaKey, targetArea)
+          )
+        : true;
+
+      if (!targetArea || (!allowExtraordinaryDerivation && hasConns && !isTargetValid)) {
+        setTargetArea(initialCargo);
+        const autoResp = getResponsibleForCargo(initialCargo);
+        setTargetPersonName(autoResp);
+      }
     }
-  }, [organigramInfo, item.currentArea, allowExtraordinaryDerivation]);
+  }, [organigramInfo, item.currentArea, allowExtraordinaryDerivation, targetArea]);
 
   if (!isOpen) return null;
 
@@ -389,6 +410,17 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     if (!targetArea.trim()) {
       toast.error('Por favor selecciona el cargo o despacho de destino para la derivación.');
       return;
+    }
+
+    // Validar que el despacho de destino esté autorizado según las conexiones del Organigrama
+    if (!allowExtraordinaryDerivation && hasConnectedDestinations) {
+      const isAllowed = organigramInfo.recommendedNodes.some(
+        (r) => isSameArea(r.node.title, targetArea) || isSameArea(r.node.areaKey, targetArea)
+      );
+      if (!isAllowed) {
+        toast.error(`El despacho destino '${targetArea}' no está autorizado en las conexiones del Organigrama para ${item.currentArea}.`);
+        return;
+      }
     }
 
     const nonPdfFiles = movementFiles.filter(
@@ -505,6 +537,17 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   <span>1. Destino</span>
                   <span className="text-rose-500">*</span>
                 </span>
+                {canAccess360 && hasConnectedDestinations && (
+                  <label className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 cursor-pointer hover:text-emerald-500 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={allowExtraordinaryDerivation}
+                      onChange={(e) => setAllowExtraordinaryDerivation(e.target.checked)}
+                      className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5"
+                    />
+                    <span>Extraordinaria (Todos)</span>
+                  </label>
+                )}
               </div>
 
               <DestinationSearchCombobox
@@ -512,6 +555,9 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                 selectedCargo={targetArea}
                 selectedPersonName={targetPersonName}
                 workflow={workflow}
+                allowExtraordinary={allowExtraordinaryDerivation}
+                onToggleExtraordinary={canAccess360 ? setAllowExtraordinaryDerivation : undefined}
+                canAccess360={canAccess360}
                 onSelect={(cargo, personName) => {
                   setTargetArea(cargo);
                   setTargetPersonName(personName || getResponsibleForCargo(cargo));

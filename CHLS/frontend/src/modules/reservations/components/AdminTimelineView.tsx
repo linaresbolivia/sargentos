@@ -14,7 +14,8 @@ import {
   Sparkles,
   Layers,
   Pencil,
-  QrCode
+  QrCode,
+  Ban
 } from 'lucide-react';
 import { format, addDays, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -57,6 +58,7 @@ interface AdminTimelineViewProps {
   selectedDate: Date;
   onChangeDate: (date: Date) => void;
   onUpdateStatus: (id: string, status: string) => void;
+  onReleaseReservation?: (id: string) => void;
   onDeleteReservation: (id: string) => void;
   onDeleteRecurringGroup?: (groupId: string) => void;
   onEditReservation?: (reservation: Reservation) => void;
@@ -79,6 +81,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
   selectedDate,
   onChangeDate,
   onUpdateStatus,
+  onReleaseReservation,
   onDeleteReservation,
   onDeleteRecurringGroup,
   onEditReservation,
@@ -578,6 +581,21 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     <XCircle className="w-4 h-4" /> Rechazar
                   </button>
                 </div>
+              )}
+
+              {selectedSlotDetails.status === 'APPROVED' && onReleaseReservation && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const id = selectedSlotDetails.id;
+                    setSelectedSlotDetails(null);
+                    onReleaseReservation(id);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                >
+                  <Ban className="w-4 h-4 text-amber-400" />
+                  <span>Liberar Cancha (Habilitar Turno Inmediatamente)</span>
+                </button>
               )}
 
               <div className="flex justify-between items-center gap-2 pt-2 border-t border-white/10">

@@ -93,6 +93,7 @@ export class CorrespondenceController {
     this.router.post('/route-sheets/merge', this.mergeRouteSheets.bind(this));
     this.router.post('/route-sheets/:id/movements', this.addMovement.bind(this));
     this.router.post('/route-sheets/:id/receive', this.receiveRouteSheet.bind(this));
+    this.router.post('/route-sheets/:id/open', this.markRouteSheetOpened.bind(this));
     this.router.post('/route-sheets/:id/undo-derivation', this.undoDerivation.bind(this));
     this.router.post('/route-sheets/:id/movements/undo', this.undoDerivation.bind(this));
     this.router.post('/route-sheets/:id/notify-sla', this.notifySlaAlert.bind(this));
@@ -446,6 +447,26 @@ export class CorrespondenceController {
       return res.status(400).json({
         success: false,
         message: error.message || 'Error al deshacer la derivación',
+      });
+    }
+  }
+
+  // 4.1 Mark Route Sheet as Opened / Read
+  public async markRouteSheetOpened(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+      const receipt = await this.routeSheetService.recordReadReceipt(id, user);
+      return res.status(200).json({
+        success: true,
+        message: 'Hoja de Ruta marcada como abierta / leída',
+        data: receipt,
+      });
+    } catch (error: any) {
+      logger.error('Error marking route sheet as opened:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al registrar apertura de correspondencia',
       });
     }
   }

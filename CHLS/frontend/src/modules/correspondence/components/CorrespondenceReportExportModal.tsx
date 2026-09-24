@@ -305,6 +305,26 @@ export function getUserRouteSheetAudit(
   return { reception, derivation };
 }
 
+export interface ColumnFilters {
+  hrCode: string;
+  date: string;
+  cite: string;
+  sender: string;
+  reference: string;
+  reception: string;
+  derivation: string;
+}
+
+const initialColumnFilters: ColumnFilters = {
+  hrCode: '',
+  date: '',
+  cite: '',
+  sender: '',
+  reference: '',
+  reception: '',
+  derivation: '',
+};
+
 export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExportModalProps> = ({
   items,
   isOpen,
@@ -325,7 +345,25 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
   const [startDate, setStartDate] = useState(`${currentYear}-01-01`);
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [searchFilter, setSearchFilter] = useState('');
+  const [searchField, setSearchField] = useState<'ALL' | keyof ColumnFilters>('ALL');
+  const [columnFilters, setColumnFilters] = useState<ColumnFilters>(initialColumnFilters);
+  const [showColumnFilterRow, setShowColumnFilterRow] = useState<boolean>(true);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Cantidad de filtros activos por columna
+  const activeColumnFilterCount = useMemo(() => {
+    return Object.values(columnFilters).filter((v) => v.trim() !== '').length;
+  }, [columnFilters]);
+
+  const hasAnyFilterActive = useMemo(() => {
+    return activeColumnFilterCount > 0 || searchFilter.trim() !== '';
+  }, [activeColumnFilterCount, searchFilter]);
+
+  const handleResetAllFilters = () => {
+    setColumnFilters(initialColumnFilters);
+    setSearchFilter('');
+    setSearchField('ALL');
+  };
 
   // Gestión / Año detectado
   const selectedGestionYear = useMemo(() => {
@@ -356,10 +394,22 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
     }
   };
 
-  // Conjunto de datos filtrados
+  // Total de expedientes que cumplen el alcance base del usuario
+  const baseScopeData = useMemo(() => {
+    return items.filter((item) => {
+      if (scopeFilter === 'MY_ACTIONS') {
+        if (!didUserParticipateInRouteSheet(item, currentUser, userArea)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [items, scopeFilter, currentUser, userArea]);
+
+  // Conjunto de datos filtrados por cualquiera de los 7 campos del reporte
   const filteredData = useMemo(() => {
     return items.filter((item) => {
-      // 0. Filtro de Alcance de Usuario (Obligatorio por defecto: Solo trámites que pasaron, enviaron o tuvieron alguna acción con el usuario logueado)
+      // 0. Filtro de Alcance de Usuario (Obligatorio por defecto)
       if (scopeFilter === 'MY_ACTIONS') {
         if (!didUserParticipateInRouteSheet(item, currentUser, userArea)) {
           return false;
@@ -381,29 +431,117 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
         }
       }
 
-      // 2. Filtro de Búsqueda Libre
+      // Precalcular auditoría de recepción y derivación si es necesaria
+      let auditCache: UserRouteSheetAudit | null = null;
+      const getAudit = () => {
+        if (!auditCache) {
+          auditCache = getUserRouteSheetAudit(item, currentUser, userArea, scopeFilter);
+        }
+        return auditCache;
+      };
+
+      // 2. Filtro de Búsqueda de la barra superior (Universal o por campo específico)
       if (searchFilter.trim()) {
         const q = searchFilter.toLowerCase().trim();
-        const matchCode = item.hrCode?.toLowerCase().includes(q);
-        const matchRef = item.reference?.toLowerCase().includes(q);
-        const matchSender = item.senderName?.toLowerCase().includes(q);
-        const matchCite = item.cite?.toLowerCase().includes(q);
-        const matchArea = item.currentArea?.toLowerCase().includes(q) || item.senderArea?.toLowerCase().includes(q);
-        const matchMovements = item.movements?.some(
-          (m) =>
-            m.sourceArea?.toLowerCase().includes(q) ||
-            m.targetArea?.toLowerCase().includes(q) ||
-            m.targetPersonName?.toLowerCase().includes(q)
-        );
+        const codeText = item.hrCode?.toLowerCase() || '';
+        const refText = item.reference?.toLowerCase() || '';
+        const senderText = `${item.senderName || ''} ${item.senderArea || ''} ${item.senderType || ''}`.toLowerCase();
+        const citeText = (item.cite || 's/n').toLowerCase();
+        const dateText = `${formatBookDate(item.createdAt)} ${item.createdAt || ''}`.toLowerCase();
 
-        if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchMovements) {
-          return false;
+        if (searchField === 'hrCode') {
+          if (!codeText.includes(q)) return false;
+        } else if (searchField === 'date') {
+          if (!dateText.includes(q)) return false;
+        } else if (searchField === 'cite') {
+          if (!citeText.includes(q)) return false;
+        } else if (searchField === 'sender') {
+          if (!senderText.includes(q)) return false;
+        } else if (searchField === 'reference') {
+          if (!refText.includes(q)) return false;
+        } else if (searchField === 'reception') {
+          const audit = getAudit();
+          const recText = `${audit.reception.responsible} ${audit.reception.area} ${audit.reception.title} ${audit.reception.sourceInfo || ''} ${audit.reception.fullDateTime} ${audit.reception.isRadication ? 'radicacion radicado' : ''} ${audit.reception.isReceived ? 'recepcionado' : 'por recepcionar'}`.toLowerCase();
+          if (!recText.includes(q)) return false;
+        } else if (searchField === 'derivation') {
+          const audit = getAudit();
+          const derivText = `${audit.derivation.targetPerson} ${audit.derivation.targetArea} ${audit.derivation.instruction || ''} ${audit.derivation.statusLabel} ${audit.derivation.fullDateTime} ${audit.derivation.isDestinationReceived ? 'recepcionado' : 'por recepcionar'}`.toLowerCase();
+          if (!derivText.includes(q)) return false;
+        } else {
+          // Búsqueda global en todos los campos
+          const matchCode = codeText.includes(q);
+          const matchRef = refText.includes(q);
+          const matchSender = senderText.includes(q);
+          const matchCite = citeText.includes(q);
+          const matchDate = dateText.includes(q);
+          const matchMovements = item.movements?.some(
+            (m) =>
+              m.sourceArea?.toLowerCase().includes(q) ||
+              m.targetArea?.toLowerCase().includes(q) ||
+              m.targetPersonName?.toLowerCase().includes(q) ||
+              m.instruction?.toLowerCase().includes(q)
+          );
+
+          if (!matchCode && !matchRef && !matchSender && !matchCite && !matchDate && !matchMovements) {
+            return false;
+          }
         }
+      }
+
+      // 3. Filtros Interactivos por Columna
+      // 3.1 N° HOJA DE RUTA
+      if (columnFilters.hrCode.trim()) {
+        const q = columnFilters.hrCode.toLowerCase().trim();
+        if (!item.hrCode?.toLowerCase().includes(q)) return false;
+      }
+
+      // 3.2 FECHA
+      if (columnFilters.date.trim()) {
+        const q = columnFilters.date.toLowerCase().trim();
+        const dateBook = formatBookDate(item.createdAt).toLowerCase();
+        const rawDate = (item.createdAt || '').toLowerCase();
+        if (!dateBook.includes(q) && !rawDate.includes(q)) return false;
+      }
+
+      // 3.3 CITE
+      if (columnFilters.cite.trim()) {
+        const q = columnFilters.cite.toLowerCase().trim();
+        const citeVal = (item.cite || 's/n').toLowerCase();
+        if (!citeVal.includes(q)) return false;
+      }
+
+      // 3.4 REMITE
+      if (columnFilters.sender.trim()) {
+        const q = columnFilters.sender.toLowerCase().trim();
+        const senderFull = `${item.senderName || ''} ${item.senderArea || ''} ${item.senderType || ''}`.toLowerCase();
+        if (!senderFull.includes(q)) return false;
+      }
+
+      // 3.5 REFERENCIA
+      if (columnFilters.reference.trim()) {
+        const q = columnFilters.reference.toLowerCase().trim();
+        if (!item.reference?.toLowerCase().includes(q)) return false;
+      }
+
+      // 3.6 RECEPCIONADO EN DESPACHO
+      if (columnFilters.reception.trim()) {
+        const q = columnFilters.reception.toLowerCase().trim();
+        const audit = getAudit();
+        const recFull = `${audit.reception.responsible} ${audit.reception.area} ${audit.reception.title} ${audit.reception.sourceInfo || ''} ${audit.reception.fullDateTime} ${audit.reception.isRadication ? 'radicacion radicado' : ''} ${audit.reception.isReceived ? 'recepcionado' : 'por recepcionar'}`.toLowerCase();
+        if (!recFull.includes(q)) return false;
+      }
+
+      // 3.7 DIRIGIDA A (DERIVACIÓN)
+      if (columnFilters.derivation.trim()) {
+        const q = columnFilters.derivation.toLowerCase().trim();
+        const audit = getAudit();
+        const derivFull = `${audit.derivation.targetPerson} ${audit.derivation.targetArea} ${audit.derivation.instruction || ''} ${audit.derivation.statusLabel} ${audit.derivation.fullDateTime} ${audit.derivation.isDestinationReceived ? 'recepcionado' : 'por recepcionar'}`.toLowerCase();
+        if (!derivFull.includes(q)) return false;
       }
 
       return true;
     });
-  }, [items, scopeFilter, currentUser, userArea, startDate, endDate, searchFilter]);
+  }, [items, scopeFilter, currentUser, userArea, startDate, endDate, searchFilter, searchField, columnFilters]);
 
   if (!isOpen) return null;
 
@@ -672,6 +810,9 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
             }
+            .no-print {
+              display: none !important;
+            }
             table {
               width: 100%;
               border-collapse: collapse;
@@ -844,22 +985,88 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
               </button>
             </div>
 
-            {/* Search Input */}
-            <div className="relative min-w-[200px] flex-1 max-w-[340px]">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar en el libro (código, remitente, CITE...)"
-                value={searchFilter}
-                onChange={(e) => setSearchFilter(e.target.value)}
-                className="w-full pl-8 pr-3 py-1 bg-slate-800/90 border border-slate-700 rounded-lg text-xs text-white placeholder-slate-400 outline-none focus:border-emerald-500"
-              />
+            {/* Search Input with Column Selector */}
+            <div className="flex items-center bg-slate-800/90 border border-slate-700 rounded-lg overflow-hidden focus-within:border-emerald-500 shadow-xs">
+              <select
+                value={searchField}
+                onChange={(e) => setSearchField(e.target.value as any)}
+                className="bg-slate-900/90 text-slate-300 text-[11px] font-bold px-2 py-1 outline-none border-r border-slate-700 cursor-pointer hover:text-white"
+                title="Seleccione por cuál de las columnas desea filtrar"
+              >
+                <option value="ALL">🔍 Cualquier Campo</option>
+                <option value="hrCode">N° Hoja de Ruta</option>
+                <option value="date">Fecha</option>
+                <option value="cite">CITE Oficial</option>
+                <option value="sender">Remite</option>
+                <option value="reference">Referencia</option>
+                <option value="reception">Recepción en Despacho</option>
+                <option value="derivation">Dirigida A</option>
+              </select>
+              <div className="relative flex-1 min-w-[170px] max-w-[280px]">
+                <input
+                  type="text"
+                  placeholder={
+                    searchField === 'ALL'
+                      ? 'Buscar en el libro...'
+                      : `Filtrar por ${searchField === 'hrCode' ? 'N° HR' : searchField}...`
+                  }
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="w-full pl-3 pr-6 py-1 bg-transparent text-xs text-white placeholder-slate-400 outline-none"
+                />
+                {searchFilter && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchFilter('')}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* Toggle Table Header Column Filter Row */}
+            <button
+              type="button"
+              onClick={() => setShowColumnFilterRow((prev) => !prev)}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                showColumnFilterRow
+                  ? 'bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                  : 'bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700'
+              }`}
+              title="Mostrar / ocultar casillas de filtro directamente en las columnas del reporte"
+            >
+              <Filter className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Filtros en Tabla</span>
+              {activeColumnFilterCount > 0 && (
+                <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 font-black text-[10px] flex items-center justify-center">
+                  {activeColumnFilterCount}
+                </span>
+              )}
+            </button>
+
+            {/* Limpiar Filtros Button if any active */}
+            {hasAnyFilterActive && (
+              <button
+                type="button"
+                onClick={handleResetAllFilters}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/40 text-xs font-bold transition-all cursor-pointer animate-fadeIn"
+                title="Limpiar todos los filtros y búsquedas aplicadas"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Restablecer ({activeColumnFilterCount + (searchFilter.trim() ? 1 : 0)})</span>
+              </button>
+            )}
           </div>
 
           <div className="text-right">
             <span className="text-[11.5px] text-slate-300 font-medium">
-              Total en el libro: <strong className="text-emerald-400 font-mono font-bold">{filteredData.length}</strong> expedientes
+              Total en el libro:{' '}
+              <strong className="text-emerald-400 font-mono font-bold">
+                {filteredData.length}
+              </strong>{' '}
+              {hasAnyFilterActive ? `de ${baseScopeData.length}` : ''} expedientes
             </span>
           </div>
         </div>
@@ -868,6 +1075,72 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
         <div className="p-4 sm:p-6 overflow-y-auto flex-1 bg-slate-950/40">
           
           <div className="max-w-[1550px] mx-auto">
+            
+            {/* Active Filter Indicators Bar */}
+            {hasAnyFilterActive && (
+              <div className="mb-3 px-3.5 py-2 bg-emerald-950/50 border border-emerald-500/30 rounded-xl text-xs flex items-center gap-2 flex-wrap text-emerald-200 no-print animate-fadeIn">
+                <span className="font-bold flex items-center gap-1 text-emerald-400 shrink-0">
+                  <Filter className="w-3.5 h-3.5" />
+                  Filtros activos:
+                </span>
+                {columnFilters.hrCode && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 font-mono text-[11px]">
+                    N° HR: <strong className="text-white">"{columnFilters.hrCode}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, hrCode: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.date && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px]">
+                    Fecha: <strong className="text-white">"{columnFilters.date}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, date: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.cite && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 font-mono text-[11px]">
+                    CITE: <strong className="text-white">"{columnFilters.cite}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, cite: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.sender && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px]">
+                    Remite: <strong className="text-white">"{columnFilters.sender}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, sender: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.reference && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px]">
+                    Referencia: <strong className="text-white">"{columnFilters.reference}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, reference: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.reception && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px]">
+                    Recepción: <strong className="text-white">"{columnFilters.reception}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, reception: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {columnFilters.derivation && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/20 border border-emerald-500/40 text-[11px]">
+                    Dirigida a: <strong className="text-white">"{columnFilters.derivation}"</strong>
+                    <button type="button" onClick={() => setColumnFilters((p) => ({ ...p, derivation: '' }))} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                {searchFilter && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/40 text-[11px] text-amber-200">
+                    Búsqueda {searchField !== 'ALL' ? `(${searchField})` : 'Global'}: <strong className="text-white">"{searchFilter}"</strong>
+                    <button type="button" onClick={() => setSearchFilter('')} className="hover:text-rose-400 ml-0.5 cursor-pointer"><X className="w-3 h-3" /></button>
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={handleResetAllFilters}
+                  className="ml-auto text-xs font-bold text-rose-400 hover:text-rose-300 underline cursor-pointer"
+                >
+                  Restablecer todos
+                </button>
+              </div>
+            )}
+
             {/* The Authentic Physical Book Paper Container */}
             <div
               id="printable-official-ledger"
@@ -895,34 +1168,221 @@ export const CorrespondenceReportExportModal: React.FC<CorrespondenceReportExpor
               <table className="w-full border-collapse border-2 border-slate-900 text-xs">
                 <thead>
                   <tr className="bg-slate-100 text-slate-900 font-black text-[11px] uppercase tracking-wider">
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[120px]">
-                      N°HOJA DE RUTA
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[120px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>N° HOJA DE RUTA</span>
+                        {columnFilters.hrCode && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[105px]">
-                      Fecha
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[105px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Fecha</span>
+                        {columnFilters.date && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[130px]">
-                      Cite
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[130px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Cite</span>
+                        {columnFilters.cite && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[180px]">
-                      Remite
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[180px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Remite</span>
+                        {columnFilters.sender && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center min-w-[220px]">
-                      Referencia
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center min-w-[220px]">
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Referencia</span>
+                        {columnFilters.reference && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                      </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[230px]">
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[230px]">
                       <div className="flex flex-col items-center justify-center leading-tight">
-                        <span>RECEPCIONADO EN DESPACHO</span>
+                        <div className="flex items-center justify-center gap-1">
+                          <span>RECEPCIONADO EN DESPACHO</span>
+                          {columnFilters.reception && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                        </div>
                         <span className="text-[9.5px] font-bold text-blue-700 normal-case">(Fecha y Hora de Entrada)</span>
                       </div>
                     </th>
-                    <th className="border-2 border-slate-900 py-2.5 px-3 text-center w-[230px]">
+                    <th className="border-2 border-slate-900 py-2 px-2 text-center w-[230px]">
                       <div className="flex flex-col items-center justify-center leading-tight">
-                        <span>DIRIGIDA A:</span>
+                        <div className="flex items-center justify-center gap-1">
+                          <span>DIRIGIDA A:</span>
+                          {columnFilters.derivation && <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />}
+                        </div>
                         <span className="text-[9.5px] font-bold text-emerald-700 normal-case">(Derivación, Fecha y Hora)</span>
                       </div>
                     </th>
                   </tr>
+
+                  {/* Fila de Filtros Interactivos por Columna (Excluida de Impresión Física) */}
+                  {showColumnFilterRow && (
+                    <tr className="bg-emerald-50/70 border-2 border-slate-900 no-print select-none">
+                      {/* 1. N° HR */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.hrCode}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, hrCode: e.target.value }))}
+                            placeholder="Filtrar N° HR..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-semibold placeholder-slate-400 outline-none focus:border-emerald-600 font-mono shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.hrCode && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, hrCode: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 2. Fecha */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.date}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, date: e.target.value }))}
+                            placeholder="Día/Mes/Año..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-semibold placeholder-slate-400 outline-none focus:border-emerald-600 font-mono shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.date && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, date: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 3. CITE */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.cite}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, cite: e.target.value }))}
+                            placeholder="Filtrar CITE..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-semibold placeholder-slate-400 outline-none focus:border-emerald-600 font-mono shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.cite && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, cite: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 4. Remite */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.sender}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, sender: e.target.value }))}
+                            placeholder="Nombre / Despacho..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-medium placeholder-slate-400 outline-none focus:border-emerald-600 shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.sender && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, sender: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 5. Referencia */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.reference}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, reference: e.target.value }))}
+                            placeholder="Asunto / Referencia..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-medium placeholder-slate-400 outline-none focus:border-emerald-600 shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.reference && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, reference: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 6. Recepcionado en Despacho */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.reception}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, reception: e.target.value }))}
+                            placeholder="Área, Radicación..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-medium placeholder-slate-400 outline-none focus:border-emerald-600 shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.reception && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, reception: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+
+                      {/* 7. Dirigida A */}
+                      <th className="border-2 border-slate-900 p-1 font-normal">
+                        <div className="relative">
+                          <input
+                            type="text"
+                            value={columnFilters.derivation}
+                            onChange={(e) => setColumnFilters((prev) => ({ ...prev, derivation: e.target.value }))}
+                            placeholder="Destino, Derivado..."
+                            style={{ color: '#090d16', backgroundColor: '#ffffff', caretColor: '#090d16' }}
+                            className="w-full !bg-white border border-slate-300 rounded pl-1.5 pr-5 py-1 text-[11px] !text-slate-950 dark:!text-slate-950 font-medium placeholder-slate-400 outline-none focus:border-emerald-600 shadow-2xs light-paper-input"
+                          />
+                          {columnFilters.derivation && (
+                            <button
+                              type="button"
+                              onClick={() => setColumnFilters((prev) => ({ ...prev, derivation: '' }))}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    </tr>
+                  )}
                 </thead>
 
                 <tbody className="divide-y divide-slate-800 text-slate-900">

@@ -118,6 +118,18 @@ export const fetchRouteSheetById = createAsyncThunk(
   }
 );
 
+export const markRouteSheetOpened = createAsyncThunk(
+  'correspondence/markOpened',
+  async (routeSheetId: string, { rejectWithValue }) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${routeSheetId}/open`);
+      return { id: routeSheetId, ...response.data.data };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al registrar apertura');
+    }
+  }
+);
+
 export const fetchCorrespondenceStats = createAsyncThunk(
   'correspondence/fetchStats',
   async (_, { rejectWithValue }) => {
@@ -522,6 +534,30 @@ export const correspondenceSlice = createSlice({
         const index = state.items.findIndex((i) => i.id === action.payload.id);
         if (index !== -1) {
           state.items[index] = action.payload;
+        }
+      });
+
+    // markRouteSheetOpened
+    builder
+      .addCase(markRouteSheetOpened.fulfilled, (state, action) => {
+        const payload = action.payload;
+        if (!payload || !payload.id) return;
+        const index = state.items.findIndex((i) => i.id === payload.id);
+        if (index !== -1) {
+          state.items[index] = {
+            ...state.items[index],
+            openedAt: payload.openedAt || new Date().toISOString(),
+            openedByName: payload.openedByName || state.items[index].openedByName,
+            openedByArea: payload.openedByArea || state.items[index].openedByArea,
+          };
+        }
+        if (state.selectedItem && state.selectedItem.id === payload.id) {
+          state.selectedItem = {
+            ...state.selectedItem,
+            openedAt: payload.openedAt || new Date().toISOString(),
+            openedByName: payload.openedByName || state.selectedItem.openedByName,
+            openedByArea: payload.openedByArea || state.selectedItem.openedByArea,
+          };
         }
       });
   },

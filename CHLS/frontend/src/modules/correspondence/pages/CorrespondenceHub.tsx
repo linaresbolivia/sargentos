@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useMemo } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
@@ -16,6 +16,7 @@ import {
   undoRouteSheetDerivation,
   handleRealtimeCreated,
   handleRealtimeUpdated,
+  markRouteSheetOpened,
 } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { NewRouteSheetModal } from '../components/NewRouteSheetModal';
@@ -133,6 +134,39 @@ export const CorrespondenceHub: React.FC = () => {
     return canUserCreateRouteSheet(currentUser, userNode);
   }, [currentUser, userNode]);
 
+  // Permiso para Recibir Factura (Caseta): solo caseta/portería, usuarios con control de acceso o administradores
+  const canAccessInvoiceGatehouse = useMemo(() => {
+    return (
+      canAccess360 ||
+      Boolean(currentUser?.roles?.includes('ADMIN')) ||
+      Boolean(currentUser?.roles?.includes('SUPER_ADMIN')) ||
+      Boolean(currentUser?.roles?.includes('MODULO_CONTROL_ACCESO')) ||
+      Boolean(currentUser?.roles?.includes('MODULO_PORTERIA')) ||
+      userNode?.id === 'node-recepcionistas' ||
+      userNode?.title?.toLowerCase().includes('recepcion') ||
+      userNode?.title?.toLowerCase().includes('caseta')
+    );
+  }, [canAccess360, currentUser, userNode]);
+
+  // Permiso para Organigrama & Flujos: reservado para directores, gerencia y MAE/tecnología
+  const canAccessWorkflow = useMemo(() => {
+    return (
+      canAccess360 ||
+      Boolean(currentUser?.roles?.includes('ADMIN')) ||
+      Boolean(currentUser?.roles?.includes('SUPER_ADMIN')) ||
+      Boolean(currentUser?.roles?.includes('MODULO_DIRECTORIO'))
+    );
+  }, [canAccess360, currentUser]);
+
+  // Permiso para Configuración: reservado exclusivamente para Administradores y 360
+  const canAccessSettings = useMemo(() => {
+    return (
+      canAccess360 ||
+      Boolean(currentUser?.roles?.includes('ADMIN')) ||
+      Boolean(currentUser?.roles?.includes('SUPER_ADMIN'))
+    );
+  }, [canAccess360, currentUser]);
+
   const defaultPerspective = useMemo(() => {
     return userNode?.title || officialDepartments[0]?.id || 'GERENCIA GENERAL';
   }, [userNode, officialDepartments]);
@@ -185,7 +219,19 @@ export const CorrespondenceHub: React.FC = () => {
     }
   });
 
-  const markItemAsRead = (item: RouteSheetItem) => {
+  // Mantener sincronizado el mapa de lectura cuando el usuario autenticado cargue o cambie
+  useEffect(() => {
+    if (storageUserKey) {
+      try {
+        const saved = localStorage.getItem(`chls_corr_read_${storageUserKey}`);
+        setReadItemsMap(saved ? JSON.parse(saved) : {});
+      } catch {
+        setReadItemsMap({});
+      }
+    }
+  }, [storageUserKey]);
+
+  const markItemAsRead = useCallback((item: RouteSheetItem) => {
     const nowIso = new Date().toISOString();
     setReadItemsMap((prev) => {
       const updated = { ...prev, [item.id]: nowIso, [item.hrCode]: nowIso };
@@ -194,29 +240,61 @@ export const CorrespondenceHub: React.FC = () => {
       } catch {}
       return updated;
     });
-  };
 
-  const toggleItemReadStatus = (item: RouteSheetItem, e?: React.MouseEvent) => {
-    e?.stopPropagation();
-    setReadItemsMap((prev) => {
-      const isCurrentlyRead = !!(prev[item.id] || prev[item.hrCode]);
-      const updated = { ...prev };
-      if (isCurrentlyRead) {
-        delete updated[item.id];
-        delete updated[item.hrCode];
-        toast('Marcado como no leído 📩', { icon: '✉️' });
-      } else {
-        const nowIso = new Date().toISOString();
-        updated[item.id] = nowIso;
-        updated[item.hrCode] = nowIso;
-        toast.success('Marcado como visto / abierto 👁️');
-      }
-      try {
-        localStorage.setItem(STORAGE_KEY_READ_ITEMS, JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-  };
+    // Registrar en el backend y emitir evento Socket.IO a todos los usuarios/despachos
+    if (item.id) {
+      dispatch(markRouteSheetOpened(item.id));
+    }
+  }, [STORAGE_KEY_READ_ITEMS, dispatch]);
+
+  // Indicador reactivo: determina si un trámite ya fue abierto/visto por el despacho o concluido
+  const isItemRead = useCallback((item: RouteSheetItem): boolean => {
+    // 1. Concluidos o archivados siempre se consideran resueltos y vistos
+    if (item.status === 'CONCLUIDO' || item.status === 'ANULADO') return true;
+
+    // 2. Si el movimiento más reciente ya fue recepcionado formalmente
+    const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+    if (latestMov?.receivedAt) return true;
+
+    // 3. Si el backend registró recibo de lectura oficial del destinatario
+    if (item.openedAt) return true;
+
+    // 4. Si fue abierto en esta sesión de navegador
+    if (readItemsMap[item.id] || readItemsMap[item.hrCode]) return true;
+
+    return false;
+  }, [readItemsMap]);
+
+  // Detalle descriptivo enriquecido para tooltip del indicador de lectura
+  const getItemReadDetails = useCallback((item: RouteSheetItem): string => {
+    if (item.status === 'CONCLUIDO') {
+      return 'Trámite Concluido y Archivado (Visto y resuelto)';
+    }
+    if (item.status === 'ANULADO') {
+      return 'Trámite Anulado';
+    }
+    if (item.openedByName) {
+      const areaPart = item.openedByArea ? ` (${item.openedByArea})` : '';
+      const timePart = item.openedAt
+        ? ` — ${new Date(item.openedAt).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit' })} ${new Date(item.openedAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}`
+        : '';
+      return `Abierto / Visto por: ${item.openedByName}${areaPart}${timePart}`;
+    }
+    const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+    if (latestMov?.receivedAt) {
+      const target = latestMov.targetArea ? ` por ${latestMov.targetArea}` : '';
+      const timePart = ` — ${new Date(latestMov.receivedAt).toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit' })} ${new Date(latestMov.receivedAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}`;
+      return `Recepcionado formalmente${target}${timePart}`;
+    }
+    const localTime = readItemsMap[item.id] || readItemsMap[item.hrCode];
+    if (localTime) {
+      return `Abierto en este equipo — ${new Date(localTime).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    if (item.openedAt) {
+      return `Abierto / Visto — ${new Date(item.openedAt).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' })}`;
+    }
+    return 'Visto';
+  }, [readItemsMap]);
 
   const handleOpenItemDetail = (item: RouteSheetItem) => {
     markItemAsRead(item);
@@ -274,6 +352,13 @@ export const CorrespondenceHub: React.FC = () => {
 
     socket.on('correspondence:updated', (data: any) => {
       dispatch(handleRealtimeUpdated(data));
+      dispatch(fetchCorrespondenceStats());
+    });
+
+    socket.on('correspondence:opened', (data: any) => {
+      if (data?.item) {
+        dispatch(handleRealtimeUpdated(data.item));
+      }
       dispatch(fetchCorrespondenceStats());
     });
 
@@ -549,83 +634,107 @@ export const CorrespondenceHub: React.FC = () => {
 
   const isSearching = Boolean(searchQuery.trim());
 
-  // Client-side Filter by Active Mailbox or Global Search within user scope
-  const filteredItems = items.filter((item) => {
-    // 0. Seguridad institucional: Si el usuario no tiene acceso a la Vista Global 360°,
-    // sólo puede acceder y encontrar trámites que pasaron por su usuario/despacho (generados, enviados, recibidos)
-    if (!canAccess360 && !isItemInUserHistory(item)) {
-      return false;
-    }
+  // Reiniciar filtros secundarios de SLA y lectura al cambiar de bandeja activa
+  useEffect(() => {
+    setSlaFilter('ALL');
+    setReadFilter('ALL');
+  }, [activeMailbox]);
 
-    // Si el usuario escribe una búsqueda por texto:
-    // Permite encontrar las Hojas de Ruta que pasaron por su usuario (generadas, enviadas a otros despachos, o recibidas)
-    if (isSearching) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchCode = item.hrCode.toLowerCase().includes(q);
-      const matchRef = item.reference.toLowerCase().includes(q);
-      const matchSender = item.senderName.toLowerCase().includes(q);
-      const matchCite = item.cite?.toLowerCase().includes(q);
-      const matchArea = item.senderArea?.toLowerCase().includes(q) || item.currentArea?.toLowerCase().includes(q);
-      const matchArchive = item.archiveLocation?.toLowerCase().includes(q) || item.archiveBox?.toLowerCase().includes(q);
-      const matchMovements = item.movements?.some(
-        (m) =>
-          m.sourceArea?.toLowerCase().includes(q) ||
-          m.targetArea?.toLowerCase().includes(q) ||
-          (m.targetPersonName && m.targetPersonName.toLowerCase().includes(q)) ||
-          (m.instruction && m.instruction.toLowerCase().includes(q))
-      );
-
-      if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchArchive && !matchMovements) {
+  // Base de expedientes pertenecientes a la bandeja activa (o búsqueda activa) y gestión seleccionada
+  const currentTrayItems = useMemo(() => {
+    return items.filter((item) => {
+      // 0. Seguridad institucional: Si el usuario no tiene acceso a la Vista Global 360°,
+      // sólo puede acceder y encontrar trámites que pasaron por su usuario/despacho (generados, enviados, recibidos)
+      if (!canAccess360 && !isItemInUserHistory(item)) {
         return false;
       }
+
+      // Si el usuario escribe una búsqueda por texto:
+      // Permite encontrar las Hojas de Ruta que pasaron por su usuario (generadas, enviadas a otros despachos, o recibidas)
+      if (isSearching) {
+        const q = searchQuery.toLowerCase().trim();
+        const matchCode = item.hrCode.toLowerCase().includes(q);
+        const matchRef = item.reference.toLowerCase().includes(q);
+        const matchSender = item.senderName.toLowerCase().includes(q);
+        const matchCite = item.cite?.toLowerCase().includes(q);
+        const matchArea = item.senderArea?.toLowerCase().includes(q) || item.currentArea?.toLowerCase().includes(q);
+        const matchArchive = item.archiveLocation?.toLowerCase().includes(q) || item.archiveBox?.toLowerCase().includes(q);
+        const matchMovements = item.movements?.some(
+          (m) =>
+            m.sourceArea?.toLowerCase().includes(q) ||
+            m.targetArea?.toLowerCase().includes(q) ||
+            (m.targetPersonName && m.targetPersonName.toLowerCase().includes(q)) ||
+            (m.instruction && m.instruction.toLowerCase().includes(q))
+        );
+
+        if (!matchCode && !matchRef && !matchSender && !matchCite && !matchArea && !matchArchive && !matchMovements) {
+          return false;
+        }
+      } else {
+        // 1. Mailbox Filter (cuando no hay búsqueda activa)
+        if (activeMailbox === 'INBOX' || (!canAccess360 && activeMailbox === 'ALL')) {
+          if (!isItemInInbox(item)) {
+            return false;
+          }
+        } else if (activeMailbox === 'OUTBOX') {
+          if (!isItemInOutbox(item)) {
+            return false;
+          }
+        } else if (activeMailbox === 'COPIES') {
+          const hasCopy = item.movements?.some(
+            (m) =>
+              m.instruction?.includes('[C.C.') &&
+              isSameArea(m.instruction, currentPerspective)
+          );
+          if (!hasCopy) return false;
+        } else if (activeMailbox === 'PERSONAL_ARCHIVE') {
+          if (!isItemInPersonalArchive(item)) return false;
+        } else if (activeMailbox === 'ARCHIVED') {
+          if (!isItemInCentralArchive(item)) return false;
+        }
+      }
+
+      // 2. Filter by Annual Management (Gestión)
+      if (selectedGestion !== 'ALL') {
+        if (item.year && Number(item.year) !== Number(selectedGestion)) {
+          return false;
+        }
+      }
+
       return true;
-    }
+    });
+  }, [
+    items,
+    canAccess360,
+    isSearching,
+    searchQuery,
+    activeMailbox,
+    currentPerspective,
+    selectedGestion,
+    currentUser,
+    userNode,
+  ]);
 
-    // 1. Mailbox Filter (cuando no hay búsqueda activa)
-    if (activeMailbox === 'INBOX' || (!canAccess360 && activeMailbox === 'ALL')) {
-      if (!isItemInInbox(item)) {
-        return false;
+  // Aplicación de los filtros de SLA y Lectura (Sin Abrir / Vistos) sobre los trámites de la bandeja actual
+  const filteredItems = useMemo(() => {
+    return currentTrayItems.filter((item) => {
+      // Filtro SLA
+      if (slaFilter !== 'ALL') {
+        if (slaFilter === 'OVERDUE' && item.slaStatus !== 'OVERDUE' && !item.isOverdue) return false;
+        if (slaFilter === 'WARNING' && item.slaStatus !== 'WARNING') return false;
+        if (slaFilter === 'ON_TIME' && item.slaStatus !== 'ON_TIME') return false;
       }
-    } else if (activeMailbox === 'OUTBOX') {
-      if (!isItemInOutbox(item)) {
-        return false;
+
+      // Filtro de Lectura / Sin Abrir
+      if (readFilter !== 'ALL') {
+        const isRead = isItemRead(item);
+        if (readFilter === 'UNREAD' && isRead) return false;
+        if (readFilter === 'READ' && !isRead) return false;
       }
-    } else if (activeMailbox === 'COPIES') {
-      const hasCopy = item.movements?.some(
-        (m) =>
-          m.instruction?.includes('[C.C.') &&
-          isSameArea(m.instruction, currentPerspective)
-      );
-      if (!hasCopy) return false;
-    } else if (activeMailbox === 'PERSONAL_ARCHIVE') {
-      if (!isItemInPersonalArchive(item)) return false;
-    } else if (activeMailbox === 'ARCHIVED') {
-      if (!isItemInCentralArchive(item)) return false;
-    }
 
-    // 2. SLA Filter
-    if (slaFilter !== 'ALL') {
-      if (slaFilter === 'OVERDUE' && item.slaStatus !== 'OVERDUE' && !item.isOverdue) return false;
-      if (slaFilter === 'WARNING' && item.slaStatus !== 'WARNING') return false;
-      if (slaFilter === 'ON_TIME' && item.slaStatus !== 'ON_TIME') return false;
-    }
-
-    // 3. Filter by Annual Management (Gestión)
-    if (selectedGestion !== 'ALL') {
-      if (item.year && Number(item.year) !== Number(selectedGestion)) {
-        return false;
-      }
-    }
-
-    // 4. Read / Opened Status Filter
-    if (readFilter !== 'ALL') {
-      const isRead = !!(readItemsMap[item.id] || readItemsMap[item.hrCode]);
-      if (readFilter === 'UNREAD' && isRead) return false;
-      if (readFilter === 'READ' && !isRead) return false;
-    }
-
-    return true;
-  });
+      return true;
+    });
+  }, [currentTrayItems, slaFilter, readFilter, isItemRead]);
 
   // Sort by Chronological Arrival Date / Time
   const sortedAndFilteredItems = useMemo(() => {
@@ -930,41 +1039,47 @@ export const CorrespondenceHub: React.FC = () => {
                   <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setIsInvoiceModalOpen(true)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium border-b border-white/[0.04]"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 truncate">
-                    <Receipt className="w-5 h-5 text-slate-300 group-hover:text-white shrink-0" />
-                    <span className="truncate">Recibir Factura (Caseta)</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
-                </button>
+                {canAccessInvoiceGatehouse && (
+                  <button
+                    type="button"
+                    onClick={() => setIsInvoiceModalOpen(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium border-b border-white/[0.04]"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 truncate">
+                      <Receipt className="w-5 h-5 text-slate-300 group-hover:text-white shrink-0" />
+                      <span className="truncate">Recibir Factura (Caseta)</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsWorkflowModalOpen(true)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium border-b border-white/[0.04]"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 truncate">
-                    <GitBranch className="w-5 h-5 text-emerald-400 shrink-0" />
-                    <span className="truncate">Organigrama & Flujos</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
-                </button>
+                {canAccessWorkflow && (
+                  <button
+                    type="button"
+                    onClick={() => setIsWorkflowModalOpen(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium border-b border-white/[0.04]"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 truncate">
+                      <GitBranch className="w-5 h-5 text-emerald-400 shrink-0" />
+                      <span className="truncate">Organigrama & Flujos</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
+                  </button>
+                )}
 
-                <button
-                  type="button"
-                  onClick={() => setIsConfigModalOpen(true)}
-                  className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium"
-                >
-                  <div className="flex items-center gap-3.5 min-w-0 truncate">
-                    <Settings className="w-5 h-5 text-slate-400 shrink-0" />
-                    <span className="truncate">Configuración</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
-                </button>
+                {canAccessSettings && (
+                  <button
+                    type="button"
+                    onClick={() => setIsConfigModalOpen(true)}
+                    className="w-full flex items-center justify-between px-4 py-3 text-[13px] sm:text-sm text-slate-200 hover:text-white hover:bg-white/[0.05] transition-colors cursor-pointer group font-medium"
+                  >
+                    <div className="flex items-center gap-3.5 min-w-0 truncate">
+                      <Settings className="w-5 h-5 text-slate-400 shrink-0" />
+                      <span className="truncate">Configuración</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-white group-hover:translate-x-0.5 transition-transform ml-2 shrink-0" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -1051,7 +1166,7 @@ export const CorrespondenceHub: React.FC = () => {
                       : 'bg-white dark:bg-[#071510] text-[#1A4331] dark:text-emerald-400/80 hover:bg-[#00A652]/10 border border-[#1A4331]/20'
                   }`}
                 >
-                  Todos ({items.length})
+                  Todos ({currentTrayItems.length})
                 </button>
 
                 <button
@@ -1064,7 +1179,7 @@ export const CorrespondenceHub: React.FC = () => {
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                  <span>Vencidos ({items.filter((i) => i.slaStatus === 'OVERDUE' || i.isOverdue).length})</span>
+                  <span>Vencidos ({currentTrayItems.filter((i) => i.slaStatus === 'OVERDUE' || i.isOverdue).length})</span>
                 </button>
 
                 <button
@@ -1077,7 +1192,7 @@ export const CorrespondenceHub: React.FC = () => {
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#D3A373]" />
-                  <span>Por Vencer ({items.filter((i) => i.slaStatus === 'WARNING').length})</span>
+                  <span>Por Vencer ({currentTrayItems.filter((i) => i.slaStatus === 'WARNING').length})</span>
                 </button>
 
                 <button
@@ -1090,7 +1205,7 @@ export const CorrespondenceHub: React.FC = () => {
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00A652]" />
-                  <span>En Plazo ({items.filter((i) => i.slaStatus === 'ON_TIME').length})</span>
+                  <span>En Plazo ({currentTrayItems.filter((i) => i.slaStatus === 'ON_TIME').length})</span>
                 </button>
 
                 <div className="h-4 w-px bg-[#1A4331]/20 dark:border-emerald-800/40 mx-1 hidden md:block" />
@@ -1118,7 +1233,7 @@ export const CorrespondenceHub: React.FC = () => {
                     }`}
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
-                    <span>Sin Abrir ({items.filter((i) => !readItemsMap[i.id] && !readItemsMap[i.hrCode]).length})</span>
+                    <span>Sin Abrir ({currentTrayItems.filter((i) => !isItemRead(i)).length})</span>
                   </button>
                   <button
                     type="button"
@@ -1130,7 +1245,7 @@ export const CorrespondenceHub: React.FC = () => {
                     }`}
                   >
                     <CheckCheck className="w-3 h-3 text-[#00A652]" />
-                    <span>Vistos ({items.filter((i) => !!(readItemsMap[i.id] || readItemsMap[i.hrCode])).length})</span>
+                    <span>Vistos ({currentTrayItems.filter((i) => isItemRead(i)).length})</span>
                   </button>
                 </div>
               </div>
@@ -1249,8 +1364,7 @@ export const CorrespondenceHub: React.FC = () => {
                       ? sortedAndFilteredItems.length - index 
                       : index + 1;
 
-                    const isRead = !!(readItemsMap[item.id] || readItemsMap[item.hrCode]);
-                    const readTimestamp = readItemsMap[item.id] || readItemsMap[item.hrCode];
+                    const isRead = isItemRead(item);
 
                     return (
                       <tr
@@ -1273,20 +1387,20 @@ export const CorrespondenceHub: React.FC = () => {
                           </span>
                         </td>
 
-                        {/* 2. Estado de Lectura / Visto */}
-                        <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => toggleItemReadStatus(item, e)}>
+                        {/* 2. Indicador Oficial de Lectura (Visto / Sin Abrir) */}
+                        <td className="py-3.5 px-3 text-center whitespace-nowrap">
                           {!isRead ? (
                             <span
-                              title="Trámite nuevo sin abrir - Clic para marcar como visto"
-                              className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-[#00A652]/15 text-[#1A4331] dark:text-emerald-300 border border-[#00A652]/30 cursor-pointer"
+                              title="Trámite nuevo sin abrir por el destinatario"
+                              className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md bg-[#00A652]/15 text-[#1A4331] dark:text-emerald-300 border border-[#00A652]/30 select-none"
                             >
                               <Mail className="w-3 h-3 text-[#00A652]" />
                               <span>SIN ABRIR</span>
                             </span>
                           ) : (
                             <span
-                              title={`Abierto/Visto: ${readTimestamp ? new Date(readTimestamp).toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : 'Registrado'} - Clic para marcar como no leído`}
-                              className="inline-flex items-center gap-1 text-[10px] font-medium text-[#1A4331]/75 dark:text-slate-400 bg-[#F1F4F8] dark:bg-slate-800/50 hover:bg-[#E2E8F0] px-2 py-0.5 rounded-md border border-[#1A4331]/20 dark:border-slate-700/50 cursor-pointer"
+                              title={getItemReadDetails(item)}
+                              className="inline-flex items-center gap-1 text-[10px] font-medium text-[#1A4331]/85 dark:text-emerald-300/90 bg-[#F1F4F8] dark:bg-emerald-950/40 px-2 py-0.5 rounded-md border border-[#1A4331]/20 dark:border-emerald-800/40 select-none"
                             >
                               <CheckCheck className="w-3.5 h-3.5 text-[#00A652]" />
                               <span>VISTO</span>
@@ -1525,14 +1639,6 @@ export const CorrespondenceHub: React.FC = () => {
                             })()}
                             <button
                               type="button"
-                              onClick={(e) => toggleItemReadStatus(item, e)}
-                              title={isRead ? "Marcar como Sin Abrir / No Leído" : "Marcar como Visto"}
-                              className="p-1.5 rounded-lg bg-[#F1F4F8] hover:bg-[#0B1320] text-[#1A4331] hover:text-white dark:bg-slate-800/70 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-white border border-[#1A4331]/20 dark:border-slate-700/60 transition-all cursor-pointer shadow-2xs"
-                            >
-                              {isRead ? <Mail className="w-3.5 h-3.5" /> : <CheckCheck className="w-3.5 h-3.5 text-[#00A652]" />}
-                            </button>
-                            <button
-                              type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setPrintableItem(item);
@@ -1563,153 +1669,201 @@ export const CorrespondenceHub: React.FC = () => {
           </div>
         ) : (
           /* Cards View */
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5">
-            {sortedAndFilteredItems.map((item) => {
-              const isRead = !!(readItemsMap[item.id] || readItemsMap[item.hrCode]);
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-3 gap-5 sm:gap-6 items-stretch">
+            {sortedAndFilteredItems.map((item, index) => {
+              const arrivalDate = item.createdAt ? new Date(item.createdAt) : null;
+              const dateStr = arrivalDate ? arrivalDate.toLocaleDateString('es-BO', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '—';
+              const timeStr = arrivalDate ? arrivalDate.toLocaleTimeString('es-BO', { hour: '2-digit', minute: '2-digit' }) : '';
+              
+              const arrivalOrderNumber = sortOrder === 'NEWEST' 
+                ? sortedAndFilteredItems.length - index 
+                : index + 1;
+
+              const isRead = isItemRead(item);
+
               return (
                 <div
                   key={item.id}
                   onClick={() => handleOpenItemDetail(item)}
-                  className={`group bg-white dark:bg-slate-900/80 border ${
+                  className={`group bg-white dark:bg-[#071610] border ${
                     !isRead
                       ? 'border-[#00A652] shadow-sm'
-                      : 'border-[#1A4331]/20 dark:border-slate-800 hover:border-[#00A652] dark:hover:border-slate-700'
-                  } p-4.5 rounded-2xl shadow-2xs hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden backdrop-blur-md`}
+                      : 'border-[#1A4331]/20 dark:border-emerald-800/40 hover:border-[#00A652] dark:hover:border-emerald-600/60'
+                  } p-5 rounded-2xl shadow-xs hover:shadow-lg transition-all duration-200 cursor-pointer flex flex-col justify-between relative overflow-hidden backdrop-blur-md h-full min-h-[340px]`}
                 >
                   {/* Priority Color Stripe */}
                   <div
-                    className={`absolute top-0 left-0 right-0 h-1 ${
+                    className={`absolute top-0 left-0 right-0 h-1.5 ${
                       item.priority === 'URGENTE'
                         ? 'bg-rose-500'
                         : item.priority === 'ALTA'
                         ? 'bg-[#D3A373]'
-                        : 'bg-[#1A4331]/20 dark:bg-slate-700'
+                        : 'bg-[#00A652]'
                     }`}
                   />
 
-                  <div className="space-y-3 pt-1">
-                    {/* Top Line: Code, Read Status & Status */}
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-semibold text-[#1A4331] dark:text-slate-200 bg-[#00A652]/10 dark:bg-slate-800 px-2.5 py-1 rounded-lg border border-[#00A652]/30 tracking-wider">
-                          {item.hrCode}
+                  <div className="space-y-3.5 pt-1 flex-1 flex flex-col justify-between">
+                    <div>
+                      {/* Top Line: Correlativo, Code, Read Status & Estado */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="inline-flex items-center justify-center w-5 h-5 rounded font-mono font-bold text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 shrink-0">
+                            #{arrivalOrderNumber}
+                          </span>
+                          <span className="font-mono text-xs font-bold text-[#1A4331] dark:text-emerald-300 bg-[#00A652]/10 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-[#00A652]/30 tracking-wider shrink-0">
+                            {item.hrCode}
+                          </span>
+                          {/* Globo WhatsApp si el expediente está pendiente de recepción (entrante o saliente) */}
+                          {((isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item)) ||
+                            (activeMailbox === 'OUTBOX' && Boolean(item.movements && item.movements.length > 0 && !item.movements[item.movements.length - 1].receivedAt))) && (
+                            <span
+                              className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_rgba(239,68,68,0.95)] ring-2 ring-[#E8EBF0] dark:ring-[#07130E] animate-pulse shrink-0"
+                              title={activeMailbox === 'OUTBOX' ? 'En tránsito: Aún no recepcionado en destino' : 'Pendiente de recepción en su despacho'}
+                            />
+                          )}
+                          {!isRead ? (
+                            <span
+                              title="Trámite nuevo sin abrir por el destinatario"
+                              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#00A652] dark:text-emerald-400 bg-[#00A652]/15 px-2 py-0.5 rounded-md border border-[#00A652]/30 shrink-0 select-none"
+                            >
+                              <Mail className="w-3 h-3 text-[#00A652]" />
+                              <span>SIN ABRIR</span>
+                            </span>
+                          ) : (
+                            <span
+                              title={getItemReadDetails(item)}
+                              className="inline-flex items-center gap-1 text-[9.5px] font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700/60 shrink-0 select-none"
+                            >
+                              <CheckCheck className="w-3.5 h-3.5 text-[#00A652]" />
+                              <span>VISTO</span>
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border shrink-0 ${getStatusBadge(item.status)}`}>
+                          {item.status}
                         </span>
-                        {/* Globo WhatsApp si el expediente está pendiente de recepción (entrante o saliente) */}
-                        {((isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item)) ||
-                          (activeMailbox === 'OUTBOX' && Boolean(item.movements && item.movements.length > 0 && !item.movements[item.movements.length - 1].receivedAt))) && (
-                          <span
-                            className="w-2.5 h-2.5 rounded-full bg-red-600 shadow-[0_0_8px_rgba(239,68,68,0.95)] ring-2 ring-[#E8EBF0] dark:ring-[#07130E] animate-pulse shrink-0"
-                            title={activeMailbox === 'OUTBOX' ? 'En tránsito: Aún no recepcionado en destino' : 'Pendiente de recepción en su despacho'}
-                          />
-                        )}
-                        {!isRead && (
-                          <span className="w-2 h-2 rounded-full bg-[#00A652]" title="Sin Abrir" />
-                        )}
                       </div>
-                      <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${getStatusBadge(item.status)}`}>
-                        {item.status}
-                      </span>
-                    </div>
 
-                    {/* SLA Indicator & Reception Status */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div>{getSlaBadge(item)}</div>
-                      {activeMailbox === 'OUTBOX' && (() => {
-                        const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
-                        const isReceived = Boolean(latestMov?.receivedAt);
-                        return !isReceived ? (
+                      {/* SLA Indicator & Reception Status */}
+                      <div className="flex items-center justify-between gap-2.5 mt-2.5 flex-nowrap">
+                        <div className="shrink-0">{getSlaBadge(item)}</div>
+                        {activeMailbox === 'OUTBOX' && (() => {
+                          const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
+                          const isReceived = Boolean(latestMov?.receivedAt);
+                          return !isReceived ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 text-[10px] font-black text-white bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse shrink-0 whitespace-nowrap"
+                              title={`En tránsito: Aún no recepcionado por ${latestMov?.targetArea || item.currentArea}`}
+                            >
+                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                              <span>Por Recepcionar</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#00A652] dark:text-emerald-300 bg-[#00A652]/15 px-2 py-0.5 rounded-md border border-[#00A652]/30 shrink-0 whitespace-nowrap" title={`Recepcionado por ${latestMov?.targetArea || item.currentArea}`}>
+                              <CheckCircle2 className="w-3 h-3 text-[#00A652]" />
+                              <span>Recepcionado</span>
+                            </span>
+                          );
+                        })()}
+                        {activeMailbox === 'INBOX' && isItemPendingInboxReception(item) && (
                           <span
-                            className="inline-flex items-center gap-1 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
-                            title={`En tránsito: Aún no recepcionado por ${latestMov?.targetArea || item.currentArea}`}
+                            className="inline-flex items-center gap-1.5 text-[10px] font-black text-white bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse shrink-0 whitespace-nowrap"
+                            title="Expediente entrante pendiente de recepción formal en su despacho"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
                             <span>Por Recepcionar</span>
                           </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-[9.5px] font-bold text-[#00A652] dark:text-emerald-300 bg-[#00A652]/15 px-1.5 py-0.5 rounded border border-[#00A652]/30" title={`Recepcionado por ${latestMov?.targetArea || item.currentArea} el ${new Date(latestMov!.receivedAt!).toLocaleDateString('es-BO')}`}>
-                            <CheckCircle2 className="w-2.5 h-2.5 text-[#00A652]" />
-                            <span>Recepcionado</span>
-                          </span>
-                        );
-                      })()}
-                      {activeMailbox === 'INBOX' && isItemPendingInboxReception(item) && (
-                        <span
-                          className="inline-flex items-center gap-1 text-[9.5px] font-black text-white bg-red-600 dark:bg-red-600 px-2.5 py-0.5 rounded-full shadow-[0_0_10px_rgba(239,68,68,0.85)] animate-pulse"
-                          title="Expediente entrante pendiente de recepción formal en su despacho"
-                        >
-                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-                          <span>Por Recepcionar</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Reference / Asunto */}
-                    <div>
-                      <h4 className="text-xs sm:text-sm font-bold text-[#0B1320] dark:text-slate-100 line-clamp-2 uppercase leading-snug group-hover:text-[#00A652] transition-colors">
-                        {item.reference}
-                      </h4>
-                      {item.cite && (
-                        <span className="text-[11px] text-[#1A4331]/80 dark:text-slate-400 font-mono font-medium block mt-1">
-                          CITE: {item.cite} • {item.pageCount || 1} fojas
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Sender & Area Info */}
-                    <div className="space-y-1.5 pt-2 border-t border-[#1A4331]/10 dark:border-slate-800 text-xs">
-                      <div className="flex items-center gap-1.5 text-[#0B1320] dark:text-slate-200">
-                        <User className="w-3.5 h-3.5 text-[#D3A373] shrink-0" />
-                        <span className="font-semibold truncate">{item.senderName}</span>
+                        )}
                       </div>
 
-                      <div className="flex items-center gap-1.5 text-[#1A4331]/75 dark:text-slate-400">
-                        <Building2 className="w-3.5 h-3.5 text-[#00A652] shrink-0" />
-                        <span className="text-[11px] truncate">
+                      {/* Reference / Asunto & CITE */}
+                      <div className="mt-3 space-y-1.5">
+                        <h4 className="text-xs sm:text-sm font-bold text-[#0B1320] dark:text-slate-100 line-clamp-2 uppercase leading-snug group-hover:text-[#00A652] transition-colors min-h-[2.5rem]">
+                          {item.reference}
+                        </h4>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 font-mono flex-wrap">
+                          {item.cite ? (
+                            <span className="font-semibold text-[#1A4331] dark:text-emerald-300 bg-[#00A652]/10 dark:bg-emerald-950/40 px-2 py-0.5 rounded border border-[#00A652]/25 shrink-0">
+                              CITE: {item.cite}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic text-[10.5px]">Sin CITE oficial</span>
+                          )}
+                          <span>•</span>
+                          <span>{item.pageCount || 1} {item.pageCount === 1 ? 'foja' : 'fojas'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Metadata Box: Remitente & Custodia Actual (Symmetric & Spacious) */}
+                    <div className="bg-slate-50/90 dark:bg-[#06140F]/80 border border-[#1A4331]/10 dark:border-emerald-800/30 rounded-xl p-3 space-y-2.5 text-xs">
+                      {/* Remitente */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <User className="w-3.5 h-3.5 text-[#D3A373] shrink-0" />
+                          <div className="min-w-0">
+                            <span className="text-[9.5px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">Remitente</span>
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block text-xs">{item.senderName}</span>
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-[#1A4331] dark:text-emerald-300 font-semibold bg-[#1A4331]/5 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-[#1A4331]/15 dark:border-emerald-800/40 shrink-0 truncate max-w-[140px]">
                           {item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo')}
                         </span>
                       </div>
-                    </div>
 
-                    {/* Archive Location Pill if Archived */}
-                    {item.archiveLocation && (
-                      <div className={`p-2 rounded-lg border text-[11px] font-medium flex items-center gap-1.5 ${
-                        item.currentArea === 'ARCHIVO_PERSONAL' || item.archiveLocation.toUpperCase().includes('PERSONAL')
-                          ? 'bg-teal-500/10 border-teal-500/25 text-teal-700 dark:text-teal-300'
-                          : 'bg-[#D3A373]/15 border-[#D3A373]/30 text-[#0B1320] dark:text-amber-400'
-                      }`}>
-                        {item.currentArea === 'ARCHIVO_PERSONAL' || item.archiveLocation.toUpperCase().includes('PERSONAL') ? (
-                          <FolderCheck className="w-3.5 h-3.5 text-teal-500 shrink-0" />
-                        ) : (
-                          <FolderArchive className="w-3.5 h-3.5 text-[#D3A373] shrink-0" />
-                        )}
-                        <span className="truncate">
-                          {item.currentArea === 'ARCHIVO_PERSONAL' || item.archiveLocation.toUpperCase().includes('PERSONAL') ? 'Mi Archivo: ' : 'Archivo Central: '}
-                          <strong>{item.archiveLocation}</strong>
+                      {/* Custodia Actual */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#1A4331]/10 dark:border-emerald-900/30">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLocatorInitialArea(item.currentArea);
+                            setIsLocatorModalOpen(true);
+                          }}
+                          title={`Ubicar hojas de ruta en ${item.currentArea}`}
+                          className="flex items-center gap-2 min-w-0 text-left hover:opacity-85 transition-opacity cursor-pointer group/loc flex-1"
+                        >
+                          <MapPin className="w-3.5 h-3.5 text-[#00A652] shrink-0 group-hover/loc:scale-110 transition-transform" />
+                          <div className="min-w-0">
+                            <span className="text-[9.5px] uppercase font-bold text-slate-400 dark:text-slate-500 block leading-tight">Custodia Actual</span>
+                            <span className="font-bold text-[#0B1320] dark:text-white uppercase truncate block text-xs group-hover/loc:text-[#00A652]">
+                              {item.currentArea}
+                            </span>
+                          </div>
+                        </button>
+                        <span className="text-[9.5px] font-mono text-slate-400 dark:text-slate-500 bg-white dark:bg-slate-800/80 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700/80 shrink-0">
+                          Radar 📍
                         </span>
                       </div>
-                    )}
+
+                      {/* Archivo si aplica */}
+                      {item.archiveLocation && (
+                        <div className={`pt-2 border-t border-[#1A4331]/10 dark:border-emerald-900/30 flex items-center gap-1.5 text-[11px] font-medium ${
+                          item.currentArea === 'ARCHIVO_PERSONAL' || item.archiveLocation.toUpperCase().includes('PERSONAL')
+                            ? 'text-teal-700 dark:text-teal-300'
+                            : 'text-[#0B1320] dark:text-amber-400'
+                        }`}>
+                          <FolderCheck className="w-3.5 h-3.5 text-[#D3A373] shrink-0" />
+                          <span className="truncate">
+                            {item.currentArea === 'ARCHIVO_PERSONAL' || item.archiveLocation.toUpperCase().includes('PERSONAL') ? 'Mi Archivo: ' : 'Archivo Central: '}
+                            <strong>{item.archiveLocation}</strong>
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Bottom Bar: Custody Location, Read Status & Quick Print */}
-                  <div className="mt-4 pt-2.5 border-t border-[#1A4331]/10 dark:border-slate-800 flex items-center justify-between text-xs">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setLocatorInitialArea(item.currentArea);
-                        setIsLocatorModalOpen(true);
-                      }}
-                      title={`Ubicar hojas de ruta en ${item.currentArea}`}
-                      className="flex items-center gap-1 text-[#1A4331] dark:text-slate-400 hover:text-[#0B1320] dark:hover:text-white cursor-pointer transition-colors text-left"
-                    >
-                      <MapPin className="w-3 h-3 text-[#D3A373] shrink-0" />
-                      <span className="text-[#1A4331]/60">Custodia:</span>
-                      <span className="text-[#0B1320] dark:text-slate-200 uppercase truncate max-w-[120px] font-semibold">
-                        {item.currentArea}
-                      </span>
-                    </button>
+                  {/* Bottom Bar: Fecha de Llegada & Barra de Acciones */}
+                  <div className="mt-4 pt-3 border-t border-[#1A4331]/10 dark:border-slate-800 flex items-center justify-between gap-2 text-xs">
+                    {/* Fecha de Llegada */}
+                    <div className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 font-mono text-[11px] shrink-0">
+                      <Calendar className="w-3.5 h-3.5 text-[#D3A373] shrink-0" />
+                      <span className="font-semibold text-slate-700 dark:text-slate-300">{dateStr}</span>
+                      {timeStr && <span className="text-[10px] opacity-75">{timeStr}</span>}
+                    </div>
 
-                    <div className="flex items-center gap-1">
+                    {/* Acciones Toolbar */}
+                    <div className="flex items-center gap-1.5 shrink-0">
                       {/* Botón directo de Recepción en Tarjeta */}
                       {isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item) && (
                         <button
@@ -1726,9 +1880,9 @@ export const CorrespondenceHub: React.FC = () => {
                             }
                           }}
                           title={`Recepcionar oficialmente en ${currentPerspective}`}
-                          className="px-2 py-1 rounded-lg bg-[#00A652] hover:bg-[#009247] text-white font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-[#00A652] hover:bg-[#009247] text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
                         >
-                          <CheckCircle2 className="w-3 h-3" />
+                          <CheckCircle2 className="w-3.5 h-3.5" />
                           <span>Recepcionar</span>
                         </button>
                       )}
@@ -1739,9 +1893,9 @@ export const CorrespondenceHub: React.FC = () => {
                           type="button"
                           onClick={(e) => handleUndoDerivation(item, e)}
                           title={`Deshacer derivación a ${item.currentArea}. El trámite retornará a la custodia de su despacho`}
-                          className="px-2 py-1 rounded-lg bg-[#D3A373]/20 hover:bg-[#D3A373]/30 text-[#0B1320] dark:text-amber-300 border border-[#D3A373]/40 font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                          className="px-2.5 py-1 rounded-lg bg-[#D3A373]/20 hover:bg-[#D3A373]/30 text-[#0B1320] dark:text-amber-300 border border-[#D3A373]/40 font-bold text-[11px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
                         >
-                          <RotateCcw className="w-3 h-3 text-[#1A4331] dark:text-amber-400" />
+                          <RotateCcw className="w-3.5 h-3.5 text-[#1A4331] dark:text-amber-400" />
                           <span>Deshacer</span>
                         </button>
                       )}
@@ -1764,7 +1918,7 @@ export const CorrespondenceHub: React.FC = () => {
                             className={`relative p-1.5 rounded-lg transition-all cursor-pointer shadow-2xs ${
                               hasDocs
                                 ? 'bg-[#D3A373]/20 hover:bg-[#D3A373]/35 text-[#0B1320] dark:text-amber-400 border border-[#D3A373]/40'
-                                : 'bg-[#F1F4F8] hover:bg-[#0B1320] text-[#1A4331] hover:text-white border border-[#1A4331]/20 dark:hover:bg-slate-800'
+                                : 'bg-slate-100 hover:bg-[#0B1320] text-[#1A4331] hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/80'
                             }`}
                           >
                             <Paperclip className="w-3.5 h-3.5" />
@@ -1779,20 +1933,12 @@ export const CorrespondenceHub: React.FC = () => {
 
                       <button
                         type="button"
-                        onClick={(e) => toggleItemReadStatus(item, e)}
-                        title={isRead ? "Marcar como Sin Abrir" : "Marcar como Visto"}
-                        className="p-1.5 rounded-lg bg-[#F1F4F8] hover:bg-[#0B1320] text-[#1A4331] hover:text-white dark:hover:bg-slate-800 dark:hover:text-slate-200 border border-[#1A4331]/20 transition-all cursor-pointer shadow-2xs"
-                      >
-                        {isRead ? <Mail className="w-3.5 h-3.5" /> : <CheckCheck className="w-3.5 h-3.5 text-[#00A652]" />}
-                      </button>
-                      <button
-                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setPrintableItem(item);
                         }}
-                        title="Impresión rápida"
-                        className="p-1.5 rounded-lg bg-[#F1F4F8] hover:bg-[#0B1320] text-[#1A4331] hover:text-[#D3A373] dark:hover:bg-slate-800 transition-all border border-[#1A4331]/20 cursor-pointer shadow-2xs"
+                        title="Impresión rápida de Carátula Oficial"
+                        className="p-1.5 rounded-lg bg-slate-100 hover:bg-[#0B1320] text-[#1A4331] hover:text-[#D3A373] dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700/80 transition-all cursor-pointer shadow-2xs"
                       >
                         <Printer className="w-3.5 h-3.5 text-[#D3A373]" />
                       </button>

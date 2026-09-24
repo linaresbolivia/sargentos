@@ -33,7 +33,7 @@ export class MemberAdminController {
   }
 
   private initializeRoutes() {
-    const adminRoles = authorize(['SUPER_ADMIN', 'ADMIN', 'STAFF', 'MODULO_PQRS', 'MODULO_USUARIO_PQRS']);
+    const adminRoles = authorize(['SUPER_ADMIN', 'ADMIN', 'STAFF', 'MODULO_SOCIOS', 'MODULO_PQRS', 'MODULO_USUARIO_PQRS']);
 
     // 1. Directory & Member 360
     this.router.get('/admin/search', authenticate, adminRoles, this.searchMembers.bind(this));

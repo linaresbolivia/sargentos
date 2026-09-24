@@ -4,6 +4,7 @@ import { GetUsersUseCase } from '../application/useCases/GetUsersUseCase';
 import { CreateUserUseCase } from '../application/useCases/CreateUserUseCase';
 import { UpdateUserRolesUseCase } from '../application/useCases/UpdateUserRolesUseCase';
 import { UpdateUserUseCase } from '../application/useCases/UpdateUserUseCase';
+import { DeleteUserUseCase } from '../application/useCases/DeleteUserUseCase';
 import { authenticate, authorize } from '@modules/auth/infrastructure/middlewares/auth.middleware';
 
 export class UserController {
@@ -12,6 +13,7 @@ export class UserController {
   private createUserUseCase: CreateUserUseCase;
   private updateUserRolesUseCase: UpdateUserRolesUseCase;
   private updateUserUseCase: UpdateUserUseCase;
+  private deleteUserUseCase: DeleteUserUseCase;
   private prisma: PrismaClient;
 
   constructor(prisma: PrismaClient) {
@@ -20,6 +22,7 @@ export class UserController {
     this.createUserUseCase = new CreateUserUseCase(prisma);
     this.updateUserRolesUseCase = new UpdateUserRolesUseCase(prisma);
     this.updateUserUseCase = new UpdateUserUseCase(prisma);
+    this.deleteUserUseCase = new DeleteUserUseCase(prisma);
 
     this.initializeRoutes();
   }
@@ -33,6 +36,7 @@ export class UserController {
     this.router.post('/', authenticate, authorize(['SUPER_ADMIN']), this.createUser.bind(this));
     this.router.put('/:id', authenticate, authorize(['SUPER_ADMIN']), this.updateUser.bind(this));
     this.router.put('/:id/roles', authenticate, authorize(['SUPER_ADMIN']), this.updateUserRoles.bind(this));
+    this.router.delete('/:id', authenticate, authorize(['SUPER_ADMIN']), this.deleteUser.bind(this));
   }
 
   private async getUsers(req: Request, res: Response) {
@@ -77,9 +81,12 @@ export class UserController {
   private async createUser(req: Request, res: Response) {
     try {
       const user = await this.createUserUseCase.execute(req.body);
-      res.status(201).json(user);
+      return res.status(201).json(user);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      if (error?.code === 'P2002' || error?.message?.includes('Unique constraint failed')) {
+        return res.status(400).json({ error: 'El correo electrónico o nombre de usuario ya está registrado para otro usuario en el sistema.' });
+      }
+      return res.status(400).json({ error: error.message });
     }
   }
 
@@ -87,9 +94,12 @@ export class UserController {
     try {
       const { id } = req.params;
       const user = await this.updateUserUseCase.execute(id, req.body);
-      res.json(user);
+      return res.json(user);
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      if (error?.code === 'P2002' || error?.message?.includes('Unique constraint failed')) {
+        return res.status(400).json({ error: 'El correo electrónico o nombre de usuario ya está registrado para otro usuario en el sistema.' });
+      }
+      return res.status(400).json({ error: error.message });
     }
   }
 
@@ -98,6 +108,17 @@ export class UserController {
       const { id } = req.params;
       const user = await this.updateUserRolesUseCase.execute(id, req.body);
       res.json(user);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  }
+
+  private async deleteUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const actingUserId = (req as any).user?.id || (req as any).user?.userId;
+      const result = await this.deleteUserUseCase.execute(id, actingUserId);
+      res.json(result);
     } catch (error: any) {
       res.status(400).json({ error: error.message });
     }
