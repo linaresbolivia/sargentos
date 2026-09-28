@@ -320,6 +320,7 @@ export class OfficialCiteService {
     status?: string;
     search?: string;
     userId?: string;
+    unlinkedOnly?: boolean;
     limit?: number;
     offset?: number;
   }) {
@@ -337,7 +338,14 @@ export class OfficialCiteService {
       where.docType = filters.docType.trim().toUpperCase();
     }
 
-    if (filters.status && filters.status !== 'ALL') {
+    if (filters.unlinkedOnly) {
+      where.routeSheetId = null;
+      if (!filters.status || filters.status === 'ALL') {
+        where.status = { in: ['EMITIDO', 'RESERVADO'] };
+      } else {
+        where.status = filters.status.trim().toUpperCase();
+      }
+    } else if (filters.status && filters.status !== 'ALL') {
       where.status = filters.status.trim().toUpperCase();
     }
 

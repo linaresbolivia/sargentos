@@ -1578,8 +1578,7 @@ export class CorrespondenceController {
       const user = (req as any).user;
       const canAccessAll = await this.canAccessGlobal360(user);
       const userAreaKey = await this.getUserAssignedAreaKey(user);
-
-      const { year, areaKey, docType, status, search, limit, offset } = req.query;
+      const { year, areaKey, docType, status, search, limit, offset, unlinkedOnly } = req.query;
 
       // REGLA: Responsable solo puede ver los CITEs de su propia área
       const effectiveAreaKey = canAccessAll
@@ -1592,6 +1591,7 @@ export class CorrespondenceController {
         docType: docType && docType !== 'ALL' ? String(docType) : undefined,
         status: status && status !== 'ALL' ? String(status) : undefined,
         search: search ? String(search) : undefined,
+        unlinkedOnly: String(unlinkedOnly) === 'true',
         limit: limit ? Number(limit) : 100,
         offset: offset ? Number(offset) : 0,
       });
@@ -1651,7 +1651,7 @@ export class CorrespondenceController {
 
       // Validar tipos de documentos permitidos para el área según el Instructivo JOFHR 022-2026
       const areaCfg = OfficialCiteService.getAreaConfig(areaKey);
-      if (areaCfg && !areaCfg.allowedTypes.includes(docType)) {
+      if (!canAccessAll && areaCfg && !areaCfg.allowedTypes.includes(docType)) {
         return res.status(403).json({
           error: `El tipo de documento '${docType}' no está permitido para el área '${areaCfg.name}' según el Instructivo JOFHR 022-2026. Tipos permitidos: ${areaCfg.allowedTypes.join(', ')}`,
         });

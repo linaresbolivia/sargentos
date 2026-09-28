@@ -10,6 +10,7 @@ export const CreateRouteSheetSchema = z.object({
   senderDoc: z.string().optional().nullable(),
   
   cite: z.string().optional().nullable(),
+  citeId: z.string().optional().nullable(),
   pageCount: z.number().int().min(1).default(1),
   reference: z.string().min(3, 'La referencia debe tener al menos 3 caracteres'),
   attachmentDescription: z.string().optional().nullable(),

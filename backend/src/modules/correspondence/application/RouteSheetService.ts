@@ -367,7 +367,26 @@ export class RouteSheetService {
 
     const initialStatus: RouteSheetStatus = isOutgoingDerivation ? 'DERIVADO' : 'RECIBIDO';
 
+    let linkedCiteId: string | null = null;
+
     const routeSheet = await this.prisma.$transaction(async (tx) => {
+      // Identificar si se vincula a un CITE oficial existente
+      let matchedCite: any = null;
+      if ((data as any).citeId) {
+        matchedCite = await tx.officialCite.findUnique({
+          where: { id: (data as any).citeId },
+        });
+      } else if (data.cite && data.cite.trim()) {
+        matchedCite = await tx.officialCite.findFirst({
+          where: {
+            citeCode: { equals: data.cite.trim(), mode: 'insensitive' },
+            status: { not: 'ANULADO' },
+          },
+        });
+      }
+
+      const effectiveCiteCode = matchedCite ? matchedCite.citeCode : (data.cite?.trim() || null);
+
       const created = await tx.routeSheet.create({
         data: {
           hrCode,
@@ -380,7 +399,7 @@ export class RouteSheetService {
           senderPhone: data.senderPhone?.trim() || null,
           senderEmail: data.senderEmail?.trim() || null,
           senderDoc: data.senderDoc?.trim() || null,
-          cite: data.cite?.trim() || null,
+          cite: effectiveCiteCode,
           pageCount: data.pageCount || 1,
           reference: data.reference.trim(),
           attachmentDescription: data.attachmentDescription?.trim() || null,
@@ -398,6 +417,18 @@ export class RouteSheetService {
           },
         },
       });
+
+      // Si se encontró el CITE oficial, enlazarlo formalmente
+      if (matchedCite) {
+        linkedCiteId = matchedCite.id;
+        await tx.officialCite.update({
+          where: { id: matchedCite.id },
+          data: {
+            routeSheetId: created.id,
+            status: 'RADICADO_HR',
+          },
+        });
+      }
 
       // Si es una derivación inicial saliente hacia destino
       if (isOutgoingDerivation) {
@@ -432,6 +463,27 @@ export class RouteSheetService {
 
       return created;
     });
+
+    if (linkedCiteId) {
+      try {
+        const updatedCite = await this.prisma.officialCite.findUnique({
+          where: { id: linkedCiteId },
+          include: {
+            createdBy: {
+              select: { id: true, firstName: true, lastName: true, email: true },
+            },
+            routeSheet: {
+              select: { id: true, hrCode: true, reference: true, status: true, currentArea: true },
+            },
+          },
+        });
+        if (updatedCite) {
+          socketService.getIo()?.emit('correspondence:cite:updated', updatedCite);
+        }
+      } catch (citeErr) {
+        logger.warn('[RouteSheetService] Error emitiendo socket de CITE enlazado', citeErr);
+      }
+    }
 
     const fullCreated = await this.prisma.routeSheet.findUnique({
       where: { id: routeSheet.id },

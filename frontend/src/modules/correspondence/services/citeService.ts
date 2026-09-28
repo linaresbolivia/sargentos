@@ -7,6 +7,7 @@ export interface CiteFilters {
   docType?: string;
   status?: string;
   search?: string;
+  unlinkedOnly?: boolean;
   limit?: number;
   offset?: number;
 }

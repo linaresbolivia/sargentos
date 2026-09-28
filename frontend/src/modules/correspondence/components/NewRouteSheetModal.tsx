@@ -36,6 +36,8 @@ import {
   Loader2,
   RotateCcw,
   Search,
+  BookOpen,
+  CheckCircle2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -45,6 +47,10 @@ import GenerateCiteModal from './GenerateCiteModal';
 import DestinationSearchCombobox from './DestinationSearchCombobox';
 import InternalSenderSearchCombobox from './InternalSenderSearchCombobox';
 import CcSearchCombobox from './CcSearchCombobox';
+import CiteSearchCombobox from './CiteSearchCombobox';
+import SelectCiteModal from './SelectCiteModal';
+import { OfficialCiteItem } from '../types/cite.types';
+import { citeService } from '../services/citeService';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
 import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet } from '../utils/organigramWorkflowService';
 import { countTotalPdfPages } from '../utils/pdfPageCounter';
@@ -129,6 +135,19 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploadingDocs, setIsUploadingDocs] = useState(false);
   const [isGenerateCiteOpen, setIsGenerateCiteOpen] = useState(false);
+  const [selectedCite, setSelectedCite] = useState<OfficialCiteItem | null>(null);
+  const [isSelectCiteModalOpen, setIsSelectCiteModalOpen] = useState(false);
+  const [pendingCitesCount, setPendingCitesCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (isOpen) {
+      citeService.listCites({ unlinkedOnly: true, limit: 1 }).then((res) => {
+        setPendingCitesCount(res.total || 0);
+      }).catch(() => {});
+    } else {
+      setSelectedCite(null);
+    }
+  }, [isOpen]);
 
   const rawNodes = useMemo(() => {
     return (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
@@ -190,6 +209,51 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
       icon: '🏛️',
       duration: 2500,
     });
+  };
+
+  const handleSelectCite = (citeItem: OfficialCiteItem) => {
+    setSelectedCite(citeItem);
+    setCite(citeItem.citeCode);
+
+    // 1. Asunto / Referencia
+    if (citeItem.subject) {
+      setReference(citeItem.subject.toUpperCase());
+    }
+
+    // 2. Procedencia y Remitente (Paso 1)
+    setSenderType('AREA_INTERNA');
+
+    // Buscar coincidencia en nodos del organigrama institucional
+    if (allNodes && allNodes.length > 0) {
+      const matchedNode = allNodes.find((n) => {
+        const t = (n.title || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const a = (n.areaKey || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const targetKey = (citeItem.areaKey || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const targetName = (citeItem.areaName || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        return a === targetKey || t.includes(targetName) || targetName.includes(t) || t.includes(targetKey);
+      });
+
+      if (matchedNode) {
+        setSenderArea(matchedNode.areaKey || matchedNode.title);
+        setSenderName(citeItem.senderName || matchedNode.manager || '');
+      } else {
+        setSenderArea(citeItem.areaName);
+        setSenderName(citeItem.senderName);
+      }
+    } else {
+      setSenderArea(citeItem.areaName);
+      setSenderName(citeItem.senderName);
+    }
+
+    toast.success(
+      `CITE ${citeItem.citeCode} vinculado: Área "${citeItem.areaName}" y asunto autocompletados.`,
+      { icon: '📋', duration: 4000 }
+    );
+  };
+
+  const handleClearCite = () => {
+    setSelectedCite(null);
+    setCite('');
   };
 
   // Initial instruction & C.C. (derivaciones siempre inmediatas)
@@ -378,6 +442,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
       senderEmail: senderType === 'AREA_INTERNA' ? null : (senderEmail.trim() || null),
       senderDoc: senderDoc.trim() || null,
       cite: cite.trim() || null,
+      citeId: selectedCite?.id || null,
       pageCount: Number(pageCount) || 1,
       reference: reference.trim(),
       attachmentDescription: attachmentDescription.trim() || null,
@@ -830,27 +895,88 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                 {/* CITE y Fojas */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <div className="sm:col-span-2">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300">
-                        CITE / N° Nota
+                    <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-500" />
+                        <span>CITE / N° Nota</span>
                       </label>
-                      <button
-                        type="button"
-                        onClick={() => setIsGenerateCiteOpen(true)}
-                        className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/20 transition-all cursor-pointer"
-                        title="Generar CITE correlativo oficial según los 5 Modelos del Instructivo"
-                      >
-                        <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
-                        <span>Generar CITE</span>
-                      </button>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setIsSelectCiteModalOpen(true)}
+                          className="text-[10px] font-bold text-sky-700 dark:text-sky-300 hover:text-sky-600 flex items-center gap-1 bg-sky-500/10 px-2 py-0.5 rounded-lg border border-sky-500/30 hover:bg-sky-500/20 transition-all cursor-pointer shadow-xs"
+                          title="Explorar y seleccionar CITEs creados por los usuarios en el sistema"
+                        >
+                          <BookOpen className="w-2.5 h-2.5 text-sky-400" />
+                          <span>CITEs de Usuarios</span>
+                          {pendingCitesCount > 0 && (
+                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded-full bg-emerald-500 text-white font-extrabold animate-pulse">
+                              {pendingCitesCount}
+                            </span>
+                          )}
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setIsGenerateCiteOpen(true)}
+                          className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 flex items-center gap-1 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/30 hover:bg-emerald-500/20 transition-all cursor-pointer"
+                          title="Generar CITE correlativo oficial según los 5 Modelos del Instructivo"
+                        >
+                          <Sparkles className="w-2.5 h-2.5 text-emerald-400" />
+                          <span>Generar CITE</span>
+                        </button>
+                      </div>
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Ej. CHLS-MANT-INF-N° 001/2026"
+
+                    <CiteSearchCombobox
                       value={cite}
-                      onChange={(e) => setCite(e.target.value)}
-                      className="w-full bg-white dark:bg-slate-950/60 border border-slate-300 dark:border-slate-700 rounded-2xl px-3.5 py-2.5 text-slate-900 dark:text-white font-mono font-bold text-xs sm:text-sm focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none shadow-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                      onChange={(val) => {
+                        setCite(val);
+                        if (selectedCite && val !== selectedCite.citeCode) {
+                          setSelectedCite(null);
+                        }
+                      }}
+                      selectedCite={selectedCite}
+                      onSelectCite={handleSelectCite}
+                      onClearCite={handleClearCite}
+                      onOpenBrowserModal={() => setIsSelectCiteModalOpen(true)}
+                      placeholder="Ej. CHLS-MANT-INF-N° 001/2026 (o escribe para buscar)"
                     />
+
+                    {/* Banner de CITE Oficial Vinculado */}
+                    {selectedCite && (
+                      <div className="mt-2 p-2.5 bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/30 rounded-2xl flex items-start justify-between gap-2 animate-fadeIn shadow-xs">
+                        <div className="flex items-start gap-2 text-xs">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <div>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-bold text-slate-900 dark:text-white">CITE Oficial Vinculado:</span>
+                              <span className="font-mono font-black text-emerald-700 dark:text-emerald-300 bg-emerald-500/15 px-2 py-0.5 rounded-lg border border-emerald-500/30">
+                                {selectedCite.citeCode}
+                              </span>
+                              <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                {selectedCite.areaName}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-300 mt-1 line-clamp-1">
+                              <strong>Remitente:</strong> {selectedCite.senderName} ({selectedCite.senderRole}) &bull; <strong>Para:</strong> {selectedCite.recipient}
+                            </p>
+                            <p className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">
+                              ✓ El usuario verá en su Libro de Cites la Hoja de Ruta oficial asignada.
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={handleClearCite}
+                          className="text-slate-400 hover:text-rose-500 p-1 rounded-lg transition-colors cursor-pointer"
+                          title="Desvincular CITE y escribir manual"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -1320,6 +1446,19 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
               setSenderName(citeData.senderName);
             }
             setIsGenerateCiteOpen(false);
+          }}
+        />
+      )}
+
+      {/* Modal Selector y Explorador de CITEs de Usuarios */}
+      {isSelectCiteModalOpen && (
+        <SelectCiteModal
+          isOpen={isSelectCiteModalOpen}
+          onClose={() => setIsSelectCiteModalOpen(false)}
+          selectedCiteId={selectedCite?.id}
+          onSelectCite={(citeItem) => {
+            handleSelectCite(citeItem);
+            setIsSelectCiteModalOpen(false);
           }}
         />
       )}

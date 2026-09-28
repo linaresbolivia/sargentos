@@ -24,6 +24,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import io from 'socket.io-client';
 import { citeService, resolveDepartmentToCiteAreaKey } from '../services/citeService';
 import { OfficialCiteItem, OfficialArea, OfficialDocType } from '../types/cite.types';
 import GenerateCiteModal from './GenerateCiteModal';
@@ -146,6 +147,28 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
     }
   }, [isOpen, selectedYear, selectedArea, selectedType, selectedStatus, searchQuery, effectiveCanAccessAll, assignedAreaKey]);
 
+  // Escuchar actualizaciones en tiempo real vía Socket.IO (cuando Gerencia radica un CITE en Hoja de Ruta)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+
+    socket.on('correspondence:cite:updated', (updatedCite: OfficialCiteItem) => {
+      setCites((prev) =>
+        prev.map((c) => (c.id === updatedCite.id ? { ...c, ...updatedCite } : c))
+      );
+    });
+
+    socket.on('correspondence:cite:created', () => {
+      loadData();
+    });
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleCopy = (code: string) => {
@@ -248,28 +271,10 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
           </div>
 
           <div className="flex items-center gap-2.5">
-            {/* Pestañas Libro vs Modelos */}
-            <div className="flex items-center bg-slate-200/80 dark:bg-black/50 p-1 rounded-xl border border-slate-300 dark:border-emerald-800/40 text-xs font-bold">
-              <button
-                onClick={() => setActiveTab('LEDGER')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'LEDGER'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
-                }`}
-              >
-                Libro de CITEs ({total})
-              </button>
-              <button
-                onClick={() => setActiveTab('MODELS')}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                  activeTab === 'MODELS'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-950 dark:hover:text-white'
-                }`}
-              >
-                Los 5 Modelos Oficiales
-              </button>
+            {/* Indicador de CITEs del Libro */}
+            <div className="hidden sm:flex items-center px-3 py-2 rounded-xl bg-slate-200/80 dark:bg-black/50 border border-slate-300 dark:border-emerald-800/40 text-xs font-bold text-slate-700 dark:text-emerald-300">
+              <BookOpen className="w-3.5 h-3.5 mr-1.5 text-emerald-500" />
+              <span>Libro de CITEs ({total})</span>
             </div>
 
             {/* Botón Principal Generar */}
@@ -547,21 +552,42 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
 
                           {/* Estado & HR */}
                           <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <span className={`inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${getStatusBadge(c.status)}`}>
-                              {c.status}
-                            </span>
-                            {c.routeSheet && (
-                              <button
-                                onClick={() => onOpenRouteSheet && onOpenRouteSheet(c.routeSheet!.hrCode)}
-                                className="mt-1 flex items-center gap-1 mx-auto text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer"
-                              >
-                                <span>HR {c.routeSheet.hrCode}</span>
-                                <ExternalLink className="w-2.5 h-2.5" />
-                              </button>
-                            )}
-                            {c.status === 'ANULADO' && c.cancellationReason && (
-                              <div className="text-[9px] text-rose-500 line-clamp-1 max-w-[120px] mx-auto mt-0.5" title={c.cancellationReason}>
-                                Motivo: {c.cancellationReason}
+                            {c.routeSheet ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 shadow-xs">
+                                  <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                                  <span>Radicado en HR</span>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => onOpenRouteSheet && onOpenRouteSheet(c.routeSheet!.hrCode)}
+                                  className="group flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-emerald-600/10 hover:bg-emerald-600 text-emerald-900 dark:text-emerald-200 hover:text-white border border-emerald-500/30 transition-all cursor-pointer font-mono font-black text-xs shadow-xs"
+                                  title={`Abrir Hoja de Ruta Oficial asignada: ${c.routeSheet.hrCode}`}
+                                >
+                                  <FileText className="w-3.5 h-3.5 text-emerald-500 group-hover:text-white transition-colors" />
+                                  <span>HR {c.routeSheet.hrCode}</span>
+                                  <ExternalLink className="w-2.5 h-2.5 opacity-70 group-hover:opacity-100" />
+                                </button>
+                              </div>
+                            ) : c.status === 'ANULADO' ? (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-700 dark:text-rose-400 border border-rose-500/30 line-through">
+                                  Anulado
+                                </span>
+                                {c.cancellationReason && (
+                                  <div className="text-[9px] text-rose-500 line-clamp-1 max-w-[120px] mx-auto mt-0.5" title={c.cancellationReason}>
+                                    Motivo: {c.cancellationReason}
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col items-center gap-0.5">
+                                <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-700 dark:text-blue-400 border border-blue-500/30">
+                                  {c.status === 'RESERVADO' ? 'Reservado' : 'Emitido'}
+                                </span>
+                                <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                                  Pendiente de Radicación
+                                </span>
                               </div>
                             )}
                           </td>
