@@ -822,11 +822,15 @@ export function getDocumentFullUrl(fileUrl?: string | null): string {
   if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://') || fileUrl.startsWith('blob:') || fileUrl.startsWith('data:')) {
     return fileUrl;
   }
-  const baseUrl = import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '')
-    : `http://${window.location.hostname}:5000`;
   const cleanPath = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-  return `${baseUrl}${cleanPath}`;
+  if (import.meta.env.VITE_API_URL) {
+    const baseUrl = import.meta.env.VITE_API_URL.replace(/\/api\/?$/, '');
+    return `${baseUrl}${cleanPath}`;
+  }
+  if (typeof window !== 'undefined' && window.location.port === '5173') {
+    return `http://${window.location.hostname}:5000${cleanPath}`;
+  }
+  return cleanPath;
 }
 
 /**

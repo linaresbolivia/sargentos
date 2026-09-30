@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@store/store';
-import { api } from '@config/api';
+import { api, getSocketUrl } from '@config/api';
 import { io, Socket } from 'socket.io-client';
 import EmojiPicker, { Theme, EmojiStyle, EmojiClickData } from 'emoji-picker-react';
 import { CrestLogo } from '@shared/components/CrestLogo';
@@ -707,7 +707,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
 
   // Realtime Socket listener & Presence Heartbeat
   useEffect(() => {
-    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
@@ -1719,13 +1719,13 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       {msg.fileUrl && isImageFile(msg.fileType, msg.fileName) && (
                         <div className="rounded-xl overflow-hidden border border-black/20 shadow-sm max-w-sm mt-1">
                           <a
-                            href={msg.fileUrl.startsWith('http') ? msg.fileUrl : `http://localhost:5000${msg.fileUrl}`}
+                            href={msg.fileUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="block relative group"
                           >
                             <img
-                              src={msg.fileUrl.startsWith('http') ? msg.fileUrl : `http://localhost:5000${msg.fileUrl}`}
+                              src={msg.fileUrl}
                               alt={msg.fileName || 'Imagen adjunta'}
                               className="w-full max-h-60 object-cover group-hover:scale-105 transition-transform duration-200"
                             />
@@ -1740,7 +1740,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
                       {/* Attached Document File Card (PDF, Excel, etc.) */}
                       {msg.fileUrl && !isImageFile(msg.fileType, msg.fileName) && (
                         <a
-                          href={msg.fileUrl.startsWith('http') ? msg.fileUrl : `http://localhost:5000${msg.fileUrl}`}
+                          href={msg.fileUrl}
                           target="_blank"
                           rel="noopener noreferrer"
                           className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all hover:scale-[1.02] ${

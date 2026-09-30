@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import io from 'socket.io-client';
+import { getSocketUrl } from '@config/api';
 import { citeService, resolveDepartmentToCiteAreaKey } from '../services/citeService';
 import { OfficialCiteItem, OfficialArea, OfficialDocType } from '../types/cite.types';
 import GenerateCiteModal from './GenerateCiteModal';
@@ -151,7 +152,7 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
   useEffect(() => {
     if (!isOpen) return;
 
-    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socketUrl = getSocketUrl();
     const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
 
     socket.on('correspondence:cite:updated', (updatedCite: OfficialCiteItem) => {

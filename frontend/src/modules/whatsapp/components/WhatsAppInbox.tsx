@@ -6,7 +6,7 @@ import {
   PauseCircle, PlayCircle, Sparkles, CreditCard, Clock, Phone, 
   ChevronRight, Shield, AlertCircle, RotateCw
 } from 'lucide-react';
-import { api } from '../../../config/api';
+import { api, getSocketUrl } from '../../../config/api';
 
 interface MemberInfo {
   id: string;
@@ -77,7 +77,7 @@ export const WhatsAppInbox: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const socket = io(import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`, { 
+    const socket = io(getSocketUrl(), { 
       withCredentials: true 
     });
 

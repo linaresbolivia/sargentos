@@ -1,7 +1,32 @@
 import axios from 'axios';
 
+// Detectar entorno: si corre en puerto de desarrollo local Vite (5173), apunta directo a :5000
+// En producción (detrás de Nginx con SSL o dominio sargentos.com.bo), usa la ruta relativa '/api'
+const isDevServer = typeof window !== 'undefined' && window.location.port === '5173';
+
+export const getApiBaseUrl = (): string => {
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+  if (isDevServer) {
+    return `http://${window.location.hostname}:5000/api`;
+  }
+  return '/api';
+};
+
+export const getSocketUrl = (): string => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  if (isDevServer) {
+    return `http://${window.location.hostname}:5000`;
+  }
+  // En producción, usa el origen actual (window.location.origin), lo que usa wss:// sobre https:// automáticamente
+  return typeof window !== 'undefined' ? window.location.origin : '';
+};
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`,
+  baseURL: getApiBaseUrl(),
   withCredentials: true, // Crucial for sending/receiving HttpOnly cookies
   headers: {
     'Content-Type': 'application/json',

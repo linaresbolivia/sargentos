@@ -18,6 +18,7 @@ import { ElectionController } from '@modules/elections/infrastructure/ElectionCo
 import path from 'path';
 
 const app = express();
+app.set('trust proxy', 1);
 const accessController = new AccessController();
 const commercialController = new CommercialController();
 const correspondenceController = new CorrespondenceController();

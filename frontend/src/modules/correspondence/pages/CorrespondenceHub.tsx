@@ -90,6 +90,7 @@ import { ThemeToggle } from '@shared/components/ThemeToggle';
 import BackButton from '@shared/components/BackButton';
 import { GatehouseInvoiceReceiptModal } from '../../gatehouse/components/GatehouseInvoiceReceiptModal';
 import io from 'socket.io-client';
+import { getSocketUrl } from '@config/api';
 
 import { DEFAULT_ORGANIGRAM_NODES, isSameArea, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet, didUserParticipateInRouteSheet } from '../utils/organigramWorkflowService';
 
@@ -340,7 +341,7 @@ export const CorrespondenceHub: React.FC = () => {
     dispatch(fetchWorkflowSettings());
 
     // Socket.io Realtime Listener
-    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],

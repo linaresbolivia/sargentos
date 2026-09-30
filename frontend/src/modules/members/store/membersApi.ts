@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { RootState } from '@store/store';
+import { getApiBaseUrl } from '@config/api';
 
 export interface MemberProfile {
   id: string;
@@ -28,7 +29,7 @@ export interface AccessLog {
 export const membersApi = createApi({
   reducerPath: 'membersApi',
   baseQuery: fetchBaseQuery({
-    baseUrl: import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/members` : `http://${window.location.hostname}:5000/api/members`,
+    baseUrl: `${getApiBaseUrl()}/members`,
     prepareHeaders: (headers, { getState }) => {
       const token = (getState() as RootState).auth.accessToken;
       if (token) {

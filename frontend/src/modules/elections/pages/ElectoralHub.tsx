@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import { io, Socket } from 'socket.io-client';
+import { getSocketUrl } from '@config/api';
 import toast from 'react-hot-toast';
 import {
   Vote,
@@ -244,11 +245,7 @@ export const ElectoralHub: React.FC = () => {
   useEffect(() => {
     let socket: Socket | null = null;
     try {
-      const socketUrl =
-        import.meta.env.VITE_WS_URL ||
-        (window.location.port === '5173'
-          ? `http://${window.location.hostname}:5000`
-          : window.location.origin);
+      const socketUrl = getSocketUrl();
 
       socket = io(socketUrl, {
         withCredentials: true,

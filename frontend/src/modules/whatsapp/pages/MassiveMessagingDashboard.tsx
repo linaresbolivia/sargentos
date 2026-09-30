@@ -3,7 +3,7 @@ import { RefreshCw, MessageSquare, LogOut, Send, QrCode, Radio, CheckCircle2 } f
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
-import { api } from '../../../config/api';
+import { api, getSocketUrl } from '../../../config/api';
 import MassiveWhatsAppForm from '../components/MassiveWhatsAppForm';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
@@ -33,7 +33,7 @@ export default function MassiveMessagingDashboard() {
   useEffect(() => {
     fetchStatus();
 
-    const socket = io(import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`, { 
+    const socket = io(getSocketUrl(), { 
       withCredentials: true 
     });
 

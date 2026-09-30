@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '@store/store';
 import { io, Socket } from 'socket.io-client';
+import { getSocketUrl } from '@config/api';
 
 export const GlobalPresenceTracker: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
@@ -16,7 +17,7 @@ export const GlobalPresenceTracker: React.FC = () => {
       return;
     }
 
-    const socketUrl = import.meta.env.VITE_WS_URL || `http://${window.location.hostname}:5000`;
+    const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
