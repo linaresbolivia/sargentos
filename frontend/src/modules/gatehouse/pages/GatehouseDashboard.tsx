@@ -23,7 +23,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { AccessLogHistory } from '../components/AccessLogHistory';
-import { AccessSearchResult } from '../../../../../backend/src/modules/accessControl/application/useCases/SearchMemberForAccessUseCase';
+import type { AccessSearchResult } from '../types/gatehouse.types';
 import { useDispatch } from 'react-redux';
 import { logout } from '@store/authSlice';
 import { AppDispatch } from '@store/store';

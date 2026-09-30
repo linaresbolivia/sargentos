@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { api } from '@config/api';
 import toast from 'react-hot-toast';
 import { X, UserPlus, Save } from 'lucide-react';
-import { AccessSearchResult } from '../../../../../backend/src/modules/accessControl/application/useCases/SearchMemberForAccessUseCase';
+import type { AccessSearchResult } from '../types/gatehouse.types';
 
 interface RegisterStandalonePersonModalProps {
   isOpen: boolean;
