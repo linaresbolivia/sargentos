@@ -1,0 +1,32 @@
+{
+  "name": "CLUB HIPICO LOS SARGENTOS",
+  "short_name": "Los Sargentos",
+  "description": "Club inteligente al servicio de los socios",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0b0c10",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/club_logo_shield.png",
+      "sizes": "207x260",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/club_logo_192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/club_logo_512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
