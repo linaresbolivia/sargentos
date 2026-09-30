@@ -15,10 +15,6 @@ out/
 *.txt
 *.docx
 *.xlsx
-*.jpg
-*.jpeg
-*.png
-*.webp
 *.SNAG
 *.ini
 /*.pdf
