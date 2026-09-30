@@ -153,7 +153,7 @@ export const OfficialCitesLedgerModal: React.FC<OfficialCitesLedgerModalProps> =
     if (!isOpen) return;
 
     const socketUrl = getSocketUrl();
-    const socket = io(socketUrl, { transports: ['websocket', 'polling'] });
+    const socket = io(socketUrl, { transports: ['polling', 'websocket'] });
 
     socket.on('correspondence:cite:updated', (updatedCite: OfficialCiteItem) => {
       setCites((prev) =>

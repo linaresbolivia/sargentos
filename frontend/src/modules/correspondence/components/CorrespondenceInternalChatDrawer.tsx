@@ -710,7 +710,7 @@ export const CorrespondenceInternalChatDrawer: React.FC<CorrespondenceInternalCh
     const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
     });
     socketRef.current = socket;
 

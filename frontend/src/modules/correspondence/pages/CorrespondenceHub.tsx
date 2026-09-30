@@ -344,7 +344,7 @@ export const CorrespondenceHub: React.FC = () => {
     const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       withCredentials: true,
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
     });
     socket.on('correspondence:created', (data: RouteSheetItem) => {
       dispatch(handleRealtimeCreated(data));

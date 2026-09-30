@@ -249,7 +249,7 @@ export const ElectoralHub: React.FC = () => {
 
       socket = io(socketUrl, {
         withCredentials: true,
-        transports: ['websocket', 'polling'],
+        transports: ['polling', 'websocket'],
         reconnectionAttempts: 30,
         reconnectionDelay: 1000,
       });
