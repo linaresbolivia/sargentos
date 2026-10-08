@@ -102,7 +102,7 @@ export class WhatsappClientInstance {
 
   private initializeEvents() {
     this.client.on('qr', async (qr) => {
-      console.log(`[${this.clientId}] QR Code received, scan it!`);
+      console.log(`[${this.clientId}] QR Code generado para vinculacion`);
       this.clearWatchdog();
       this.status = 'QR_READY';
       this.isInitializing = false;
