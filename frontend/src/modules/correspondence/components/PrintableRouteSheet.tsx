@@ -22,6 +22,7 @@ import {
   Target,
 } from 'lucide-react';
 import logoUrl from '../../../assets/logo.png';
+import { formatCargoAndEmployee } from '../utils/organigramWorkflowService';
 
 interface PrintableRouteSheetProps {
   item: RouteSheetItem;
@@ -38,21 +39,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
   initialMode,
   initialSlotNumber,
 }) => {
-  const movements = (item.movements && item.movements.length > 0)
-    ? item.movements
-    : [{
-        id: 'initial-radicacion',
-        sequenceNumber: 1,
-        sourceArea: (item as any).originArea || 'SECRETARÍA GENERAL',
-        sourceUser: item.senderName ? { firstName: item.senderName, lastName: '' } : undefined,
-        targetArea: item.currentArea || 'GERENCIA GENERAL',
-        targetPersonName: item.currentArea === 'GERENCIA GENERAL' ? 'Gerente General' : '',
-        instruction: (item as any).initialInstruction || 'Radicación e ingreso formal de documentación al sistema institucional.',
-        quickStamp: 'RADICADO',
-        createdAt: item.createdAt,
-        signatureUrl: (item as any).initialSignatureUrl || null,
-        documents: item.documents || [],
-      } as any];
+  const movements = item.movements || [];
   const documents = item.documents || [];
 
   // Próxima casilla sugerida automáticamente
@@ -161,7 +148,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
       <style>{`
         @page {
           size: letter portrait;
-          margin: 8mm 10mm 10mm 10mm;
+          margin: 6mm 8mm 6mm 8mm;
         }
         *, *::before, *::after {
           -webkit-print-color-adjust: exact !important;
@@ -203,20 +190,36 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
           }
           .printable-sheet-page {
             width: 100% !important;
-            max-width: 196mm !important;
-            height: auto !important;
-            min-height: auto !important;
-            max-height: 258mm !important;
+            max-width: 198mm !important;
+            height: 266mm !important;
+            min-height: 266mm !important;
+            max-height: 266mm !important;
             margin: 0 auto !important;
             padding: 0 !important;
             background: #ffffff !important;
             color: #000000 !important;
             box-shadow: none !important;
             border: none !important;
-            overflow: visible !important;
+            overflow: hidden !important;
             box-sizing: border-box !important;
             page-break-inside: avoid !important;
             break-inside: avoid !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+          }
+          .printable-slots-container {
+            flex: 1 1 auto !important;
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: 0 !important;
+          }
+          .printable-slot-item {
+            flex: 1 1 0 !important;
+            min-height: 0 !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
           }
           .page-break-after {
             page-break-after: always !important;
@@ -287,6 +290,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
           <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-brand-gold/40 text-brand-gold text-xs font-black tracking-wide">
             <span>📄 Formato: Papel Bond Tamaño Carta (21.59 × 27.94 cm)</span>
           </div>
+
+          {movements.length === 0 && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-300 text-xs font-bold tracking-wide">
+              <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>⏳ Proveído N° 1 Pendiente (Casilla 1 lista en blanco)</span>
+            </div>
+          )}
 
           {/* Selector de Modos de Impresión */}
           <div className="flex items-center bg-black/60 p-1 rounded-xl border border-white/10 text-xs font-black gap-1 flex-wrap justify-center">
@@ -488,7 +498,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                 >
                   {movements.map((m, idx) => (
                     <option key={m.id || idx} value={idx}>
-                      Proveído N° {idx + 1} — A: {m.targetPersonName ? `${m.targetPersonName} (${m.targetArea})` : m.targetArea} ({formatChlsDate(m.createdAt)})
+                      Proveído N° {idx + 1} — A: {formatCargoAndEmployee(m.targetArea, m.targetPersonName)} ({formatChlsDate(m.createdAt)})
                     </option>
                   ))}
                   {movements.length === 0 && (
@@ -519,12 +529,12 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
         {/* PÁGINA 1: ANVERSO DE LA HOJA DE RUTA (CARÁTULA OFICIAL)                   */}
         {/* ========================================================================= */}
         {(pageMode === 'FRONT_ONLY' || pageMode === 'DUPLEX_FULL' || (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot <= 4)) && (
-          <div className={`printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:max-w-[196mm] print:min-h-0 print:rounded-none ${
+          <div className={`printable-sheet-page bg-white text-black w-full min-h-[275mm] h-[275mm] max-w-[215.9mm] p-5 sm:p-6 shadow-2xl rounded-sm font-sans text-xs flex flex-col justify-between print:shadow-none print:p-0 print:m-0 print:w-full print:max-w-[198mm] print:h-[266mm] print:min-h-[266mm] print:max-h-[266mm] print:rounded-none ${
             pageMode === 'DUPLEX_FULL' ? 'page-break-after' : ''
           }`}>
             
             {/* Header Oficial con Membrete y QR de Validación */}
-            <div className={`flex items-center justify-between pb-2 mb-1 border-b-2 border-black relative transition-all ${
+            <div className={`flex items-center justify-between pb-2 mb-1 border-b-2 border-black relative shrink-0 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
             }`}>
               <div className="flex items-center gap-3">
@@ -566,7 +576,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
             </div>
 
             {/* Cuadrícula de Datos de Radicación del Documento */}
-            <div className={`border-2 border-black mb-1.5 divide-y-2 border-collapse divide-black text-[11px] transition-all ${
+            <div className={`border-2 border-black mb-1 divide-y-2 border-collapse divide-black text-[11px] shrink-0 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
             }`}>
               
@@ -574,9 +584,21 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
               <div className="grid grid-cols-12 divide-x-2 divide-black min-h-[38px]">
                 <div className="col-span-5 p-1.5 flex flex-col justify-center bg-slate-50">
                   <span className="text-[8.5px] font-black text-slate-700 uppercase">N° de Hoja de Ruta</span>
-                  <span className="font-mono font-black text-base text-emerald-950 tracking-wider">
-                    {item.hrCode}
-                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono font-black text-base text-emerald-950 tracking-wider">
+                      {item.hrCode}
+                    </span>
+                    {item.parentRouteSheetId && (
+                      <span className="text-[7.5px] font-mono font-black bg-teal-100 text-teal-950 border border-teal-600 px-1 py-0.5 rounded leading-none uppercase">
+                        ACUMULADA EN {item.parentRouteSheet?.hrCode || 'MATRIZ'}
+                      </span>
+                    )}
+                    {item.fusedRouteSheets && item.fusedRouteSheets.length > 0 && (
+                      <span className="text-[7.5px] font-mono font-black bg-emerald-100 text-emerald-950 border border-emerald-600 px-1 py-0.5 rounded leading-none uppercase">
+                        MATRIZ ({item.fusedRouteSheets.length} ACUM.)
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="col-span-3 p-1.5 flex flex-col justify-center">
                   <span className="text-[8.5px] font-black text-slate-700 uppercase">Fecha de Ingreso</span>
@@ -602,20 +624,27 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
               <div className="grid grid-cols-12 divide-x-2 divide-black min-h-[42px]">
                 <div className="col-span-7 p-1.5 flex flex-col justify-center">
                   <span className="text-[8.5px] font-black text-slate-700 uppercase">Remitente</span>
-                  <span className="font-black text-xs uppercase leading-tight">
-                    {item.senderName}
-                  </span>
-                  {item.senderDoc && (
-                    <span className="text-[9px] text-slate-600 font-mono">
-                      C.I. / NIT: {item.senderDoc}
-                    </span>
-                  )}
+                  <div className="text-xs uppercase font-black leading-tight text-black">
+                    <span>{item.senderName}</span>
+                    {item.senderDoc && (
+                      <span className="font-bold">
+                        {' '}— C.I. / NIT: {item.senderDoc}
+                      </span>
+                    )}
+                    {item.senderPhone && (
+                      <span className="font-bold">
+                        {' '}— TEL: {item.senderPhone}
+                      </span>
+                    )}
+                  </div>
                 </div>
+
                 <div className="col-span-5 p-1.5 flex flex-col justify-center">
                   <span className="text-[8.5px] font-black text-slate-700 uppercase">Procedencia / Área</span>
                   <span className="font-bold text-xs uppercase leading-tight">
-                    {item.senderArea || (item.senderType === 'SOCIO' ? 'SOCIO TITULAR CHLS' : 'EXTERNO')}
+                    {item.senderArea || (item.senderType === 'SOCIO' ? 'SOCIO TITULAR CHLS' : item.senderType === 'AREA_INTERNA' ? 'INTERNA' : 'EXTERNA')}
                   </span>
+
                 </div>
               </div>
 
@@ -642,7 +671,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
               </div>
 
               {/* Fila 4: Referencia / Asunto */}
-              <div className="p-2 min-h-[46px] flex flex-col justify-center bg-slate-50/50">
+              <div className="p-2 min-h-[44px] flex flex-col justify-center bg-slate-50/50">
                 <span className="text-[8.5px] font-black text-slate-700 uppercase">Referencia / Asunto</span>
                 <span className="font-black text-xs uppercase leading-snug text-slate-950">
                   {item.reference}
@@ -659,7 +688,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
             </div>
 
             {/* PROVEÍDOS Y DERIVACIONES DEL ANVERSO (Proveídos 1 al 4) */}
-            <div className={`transition-all ${
+            <div className={`printable-slots-container flex-1 min-h-0 flex flex-col my-1 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT'
                 ? 'border-2 border-dashed border-slate-300 divide-y divide-dashed divide-slate-300 overprint-slot-container'
                 : 'border-2 border-black divide-y-2 divide-black'
@@ -678,7 +707,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         handleSelectSlot(proveidoNum);
                       }
                     }}
-                    className={`min-h-[125px] print:min-h-[105px] p-2 print:p-1.5 flex flex-col justify-between relative transition-all ${
+                    className={`printable-slot-item flex-1 min-h-0 p-2 print:p-1.5 flex flex-col justify-between relative transition-all ${
                       isOverprintHidden
                         ? 'overprint-hidden opacity-20 grayscale border-dashed cursor-pointer hover:opacity-40'
                         : isSelected
@@ -697,13 +726,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                       </div>
                     )}
 
-                    {/* Encabezado del Proveído */}
-                    <div className={`grid grid-cols-12 pb-1 mb-1 text-[10px] items-center ${
+                    {/* Encabezado del Proveído: N° | A: CARGO — EMPLEADO | Fecha | Hora */}
+                    <div className={`flex items-center justify-between pb-1 mb-1 text-[10px] gap-2 shrink-0 ${
                       isPureOverprint
                         ? 'border-b border-transparent overprint-static-template'
                         : 'border-b border-slate-400'
                     }`}>
-                      <div className="col-span-1">
+                      <div className="shrink-0 w-8">
                         {isPureOverprint ? (
                           <div className="overprint-static-template text-center select-none invisible">
                             N° {proveidoNum}
@@ -715,25 +744,25 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         )}
                       </div>
 
-                      <div className="col-span-6 pl-2 font-black uppercase truncate">
+                      <div className="flex-1 min-w-0 font-black uppercase text-[10.5px] leading-tight">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           A:{' '}
                         </span>
                         <span className={isPureOverprint ? 'font-black tracking-tight text-slate-950 no-underline' : 'underline decoration-1 underline-offset-2'}>
-                          {mov?.targetPersonName
-                            ? `${mov.targetPersonName} (${mov.targetArea})`
-                            : (isPureOverprint ? '' : mov?.targetArea || '__________________________________')}
+                          {isPureOverprint
+                            ? (mov ? formatCargoAndEmployee(mov.targetArea, mov.targetPersonName) : '')
+                            : formatCargoAndEmployee(mov?.targetArea, mov?.targetPersonName)}
                         </span>
                       </div>
 
-                      <div className="col-span-3 text-center text-[9.5px]">
+                      <div className="shrink-0 text-center text-[9.5px] whitespace-nowrap">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           Fecha:{' '}
                         </span>
                         <span className="font-mono font-bold text-slate-900">{formatChlsDate(mov?.createdAt)}</span>
                       </div>
 
-                      <div className="col-span-2 text-right text-[9.5px]">
+                      <div className="shrink-0 text-right text-[9.5px] whitespace-nowrap">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           Hora:{' '}
                         </span>
@@ -743,14 +772,14 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
 
                     {/* Cuerpo de Instrucción / Proveído */}
                     {mov ? (
-                      <div className="flex-1 flex justify-between gap-3">
-                        <div className="flex-1">
+                      <div className="flex-1 min-h-0 flex justify-between gap-3 pt-0.5">
+                        <div className="flex-1 flex flex-col justify-start">
                           {mov.quickStamp && (
-                            <div className="inline-block px-2 py-0.5 mb-1 border-2 border-emerald-700 text-emerald-800 font-black text-[10px] rounded uppercase">
+                            <div className="inline-block self-start px-2 py-0.5 mb-1.5 border-2 border-emerald-700 text-emerald-800 font-black text-[10px] rounded uppercase">
                               {mov.quickStamp}
                             </div>
                           )}
-                          <p className="text-[10.5px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
+                          <p className="text-[11px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
                             {mov.instruction}
                           </p>
                           {(() => {
@@ -796,8 +825,8 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         </div>
                       </div>
                     ) : (
-                      /* Casilla en blanco para proveído físico */
-                      <div className="flex-1 flex justify-between items-end text-slate-400 pt-8">
+                      /* Casilla en blanco para proveído físico con amplio espacio de escritura */
+                      <div className="flex-1 min-h-0 flex justify-between items-end text-slate-400 pb-1">
                         <div className="text-[8.5px] italic">
                           Espacio reservado para instrucción / proveído N° {proveidoNum}
                         </div>
@@ -812,7 +841,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
             </div>
 
             {/* Pie de Página del Anverso */}
-            <div className={`mt-2 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono transition-all ${
+            <div className={`mt-1.5 pt-1 border-t-2 border-black flex justify-between items-center text-[8px] text-slate-600 font-mono shrink-0 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
             }`}>
               <div className="flex items-center gap-2">
@@ -831,10 +860,10 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
         {/* PÁGINA 2: REVERSO DE LA HOJA DE RUTA (CONTINUACIÓN DE PROVEÍDOS & ARCHIVO) */}
         {/* ========================================================================= */}
         {(pageMode === 'BACK_ONLY' || pageMode === 'DUPLEX_FULL' || (pageMode === 'SINGLE_SLOT_OVERPRINT' && selectedSlot >= 5)) && (
-          <div className="printable-sheet-page bg-white text-black w-full min-h-[279.4mm] max-w-[215.9mm] p-6 sm:p-7 shadow-2xl rounded-sm font-sans text-xs print:shadow-none print:p-0 print:m-0 print:w-full print:max-w-[196mm] print:min-h-0 print:rounded-none">
+          <div className="printable-sheet-page bg-white text-black w-full min-h-[275mm] h-[275mm] max-w-[215.9mm] p-5 sm:p-6 shadow-2xl rounded-sm font-sans text-xs flex flex-col justify-between print:shadow-none print:p-0 print:m-0 print:w-full print:max-w-[198mm] print:h-[266mm] print:min-h-[266mm] print:max-h-[266mm] print:rounded-none">
             
             {/* Header del Reverso */}
-            <div className={`flex items-center justify-between pb-2 mb-1.5 border-b-2 border-black transition-all ${
+            <div className={`flex items-center justify-between pb-2 mb-1.5 border-b-2 border-black shrink-0 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
             }`}>
               <div className="flex items-center gap-2.5">
@@ -866,7 +895,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
             </div>
 
             {/* PROVEÍDOS SUCESIVOS DEL REVERSO (Proveídos 5 al 8) */}
-            <div className={`transition-all mb-3 ${
+            <div className={`printable-slots-container flex-1 min-h-0 flex flex-col my-1 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT'
                 ? 'border-2 border-dashed border-slate-300 divide-y divide-dashed divide-slate-300 overprint-slot-container'
                 : 'border-2 border-black divide-y-2 divide-black'
@@ -885,7 +914,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         handleSelectSlot(proveidoNum);
                       }
                     }}
-                    className={`min-h-[120px] print:min-h-[100px] p-2 print:p-1.5 flex flex-col justify-between relative transition-all ${
+                    className={`printable-slot-item flex-1 min-h-0 p-2 print:p-1.5 flex flex-col justify-between relative transition-all ${
                       isOverprintHidden
                         ? 'overprint-hidden opacity-20 grayscale border-dashed cursor-pointer hover:opacity-40'
                         : isSelected
@@ -904,13 +933,13 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                       </div>
                     )}
 
-                    {/* Encabezado del Proveído */}
-                    <div className={`grid grid-cols-12 pb-1 mb-1 text-[10px] items-center ${
+                    {/* Encabezado del Proveído: N° | A: CARGO — EMPLEADO | Fecha | Hora */}
+                    <div className={`flex items-center justify-between pb-1 mb-1 text-[10px] gap-2 shrink-0 ${
                       isPureOverprint
                         ? 'border-b border-transparent overprint-static-template'
                         : 'border-b border-slate-400'
                     }`}>
-                      <div className="col-span-1">
+                      <div className="shrink-0 w-8">
                         {isPureOverprint ? (
                           <div className="overprint-static-template text-center select-none invisible">
                             N° {proveidoNum}
@@ -922,25 +951,25 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         )}
                       </div>
 
-                      <div className="col-span-6 pl-2 font-black uppercase truncate">
+                      <div className="flex-1 min-w-0 font-black uppercase text-[10.5px] leading-tight">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           A:{' '}
                         </span>
                         <span className={isPureOverprint ? 'font-black tracking-tight text-slate-950 no-underline' : 'underline decoration-1 underline-offset-2'}>
-                          {mov?.targetPersonName
-                            ? `${mov.targetPersonName} (${mov.targetArea})`
-                            : (isPureOverprint ? '' : mov?.targetArea || '__________________________________')}
+                          {isPureOverprint
+                            ? (mov ? formatCargoAndEmployee(mov.targetArea, mov.targetPersonName) : '')
+                            : formatCargoAndEmployee(mov?.targetArea, mov?.targetPersonName)}
                         </span>
                       </div>
 
-                      <div className="col-span-3 text-center text-[9.5px]">
+                      <div className="shrink-0 text-center text-[9.5px] whitespace-nowrap">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           Fecha:{' '}
                         </span>
                         <span className="font-mono font-bold text-slate-900">{formatChlsDate(mov?.createdAt)}</span>
                       </div>
 
-                      <div className="col-span-2 text-right text-[9.5px]">
+                      <div className="shrink-0 text-right text-[9.5px] whitespace-nowrap">
                         <span className={isPureOverprint ? 'overprint-static-template invisible select-none' : ''}>
                           Hora:{' '}
                         </span>
@@ -950,14 +979,14 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
 
                     {/* Cuerpo de Instrucción / Proveído */}
                     {mov ? (
-                      <div className="flex-1 flex justify-between gap-3">
-                        <div className="flex-1">
+                      <div className="flex-1 min-h-0 flex justify-between gap-3 pt-0.5">
+                        <div className="flex-1 flex flex-col justify-start">
                           {mov.quickStamp && (
-                            <div className="inline-block px-2 py-0.5 mb-1 border-2 border-emerald-700 text-emerald-800 font-black text-[10px] rounded uppercase">
+                            <div className="inline-block self-start px-2 py-0.5 mb-1.5 border-2 border-emerald-700 text-emerald-800 font-black text-[10px] rounded uppercase">
                               {mov.quickStamp}
                             </div>
                           )}
-                          <p className="text-[10.5px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
+                          <p className="text-[11px] text-slate-900 font-medium whitespace-pre-wrap leading-relaxed">
                             {mov.instruction}
                           </p>
                           {(() => {
@@ -993,8 +1022,9 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                                 {mov.sourceUser ? `${mov.sourceUser.firstName} ${mov.sourceUser.lastName}` : 'DESPACHO OFICIAL'}
                               </div>
                               <div className="text-[8px] font-bold text-slate-700 uppercase leading-tight">
-                                {mov.sourceArea || 'ÁREA INTERNA'}
+                                {mov.sourceArea || 'INTERNA'}
                               </div>
+
                               <div className="text-[6.5px] text-slate-500 font-bold">
                                 CLUB HÍPICO LOS SARGENTOS
                               </div>
@@ -1003,8 +1033,8 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
                         </div>
                       </div>
                     ) : (
-                      /* Casilla en blanco para proveído físico */
-                      <div className="flex-1 flex justify-between items-end text-slate-400 pt-7">
+                      /* Casilla en blanco para proveído físico con amplio espacio de escritura */
+                      <div className="flex-1 min-h-0 flex justify-between items-end text-slate-400 pb-1">
                         <div className="text-[8.5px] italic">
                           Espacio reservado para instrucción / proveído N° {proveidoNum}
                         </div>
@@ -1019,7 +1049,7 @@ export const PrintableRouteSheet: React.FC<PrintableRouteSheetProps> = ({
             </div>
 
             {/* SECCIÓN OFICIAL DE CONCLUSIÓN Y ARCHIVO EN CUSTODIA DEFINITIVA */}
-            <div className={`border-2 border-black p-2.5 rounded bg-slate-50/70 space-y-2 transition-all ${
+            <div className={`border-2 border-black p-2.5 rounded bg-slate-50/70 space-y-2 shrink-0 transition-all ${
               pageMode === 'SINGLE_SLOT_OVERPRINT' ? 'overprint-hidden opacity-25 grayscale' : ''
             }`}>
               <div className="flex items-center justify-between border-b-2 border-black pb-1">

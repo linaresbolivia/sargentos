@@ -24,6 +24,9 @@ import {
   Calendar,
   Hash,
   UserPlus,
+  Edit3,
+  Search,
+  ShieldAlert,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
@@ -97,6 +100,11 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
   // New Stamp state
   const [newStampText, setNewStampText] = useState('');
 
+  // Privilegios por Usuario para Correspondencia
+  const [systemUsers, setSystemUsers] = useState<Array<{ id: string; email: string; firstName: string; lastName: string; roles?: Array<{ name: string }> }>>([]);
+  const [userPrivileges, setUserPrivileges] = useState<Record<string, { canEdit: boolean; canDelete: boolean }>>({});
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+
   useEffect(() => {
     if (isOpen) {
       loadSettings();
@@ -130,6 +138,8 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
             fromName: data.smtp.fromName || 'Club Hípico Los Sargentos — Correspondencia',
           });
         }
+        if (data.systemUsers) setSystemUsers(data.systemUsers);
+        if (data.userPrivileges) setUserPrivileges(data.userPrivileges);
       }
     } catch {
       toast.error('Error al cargar la configuración');
@@ -158,6 +168,7 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
           },
         },
         smtp,
+        userPrivileges,
       });
       toast.success('¡Parámetros, Gestiones y Servidor de Correo guardados con éxito! ⚙️');
       onClose();
@@ -370,8 +381,8 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                 : 'border-transparent text-slate-500 hover:text-slate-800 dark:hover:text-white'
             }`}
           >
-            <Users className="w-4 h-4" />
-            <span>Gestión de Usuarios</span>
+            <Lock className="w-4 h-4" />
+            <span>🔐 Privilegios de Usuario</span>
           </button>
         </div>
 
@@ -663,10 +674,10 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                         </label>
                         <div className="bg-white dark:bg-[#040a06] border border-emerald-500/40 rounded-xl px-3 py-2 text-center">
                           <span className="text-xs font-mono font-black text-emerald-600 dark:text-emerald-400 tracking-wider">
-                            HR-{currentGestion}-{String(initialCorrelativeNumber).padStart(5, '0')}
+                            {String(new Date().getMonth() + 1).padStart(2, '0')}-{String(initialCorrelativeNumber).padStart(3, '0')}
                           </span>
                           <span className="block text-[9px] text-slate-400 uppercase font-bold mt-0.5">
-                            (Alias: {String(initialCorrelativeNumber).padStart(2, '0')})
+                            (Formato Oficial: MM-XXX • N° {initialCorrelativeNumber})
                           </span>
                         </div>
                       </div>
@@ -699,8 +710,8 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                             <td className="py-3 px-4 font-mono font-bold text-brand-gold">
                               N° {initialCorrelativeNumber}
                             </td>
-                            <td className="py-3 px-4 font-mono text-slate-400">
-                              HR-2026-XXXXX
+                            <td className="py-3 px-4 font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                              MM-XXX (ej. {String(new Date().getMonth() + 1).padStart(2, '0')}-{String(initialCorrelativeNumber).padStart(3, '0')})
                             </td>
                             <td className="py-3 px-4 text-right">
                               <span className="text-emerald-500 font-bold">✓ En Operación</span>
@@ -933,47 +944,245 @@ export const CorrespondenceConfigModal: React.FC<CorrespondenceConfigModalProps>
                 </div>
               )}
 
-              {/* TAB 5: GESTIÓN DE USUARIOS */}
+              {/* TAB 5: PRIVILEGIOS DE USUARIOS (EDITAR / ELIMINAR HOJA DE RUTA) */}
               {activeTab === 'USERS' && (
-                <div className="space-y-4">
-                  <div className="p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-2xl text-center space-y-4">
-                    <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 text-emerald-500 flex items-center justify-center mx-auto border border-emerald-500/30 shadow-md">
-                      <ShieldCheck className="w-7 h-7" />
-                    </div>
+                <div className="space-y-5 animate-fadeIn">
+                  <div className="p-4 sm:p-5 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-emerald-500/10 border border-amber-500/30 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <h3 className="font-bold text-base text-slate-900 dark:text-white">
-                        Alta de Funcionarios & Gestión de Personal Staff
+                      <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                        <Lock className="w-4 h-4 text-amber-500" />
+                        <span>Matriz de Privilegios por Usuario (Correspondencia)</span>
                       </h3>
-                      <p className="text-xs text-slate-500 dark:text-gray-400 max-w-lg mx-auto mt-1">
-                        Para registrar un nuevo funcionario institucional (Jefes de Área, Secretarias, Contrataciones, Finanzas, Mantenimiento) o editar sus permisos en el Organigrama de Correspondencia:
+                      <p className="text-xs text-slate-500 dark:text-gray-400 mt-1 max-w-2xl leading-relaxed">
+                        Habilite o deshabilite explícitamente para cada usuario la capacidad de <strong>Editar</strong> y/o <strong>Eliminar</strong> Hojas de Ruta en el sistema. Los administradores siempre tienen ambos permisos habilitados.
                       </p>
                     </div>
-                    
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onClose();
-                          navigate('/superadmin?tab=INSTITUTIONAL&create=staff');
-                        }}
-                        className="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black px-6 py-3 rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-emerald-950/40 transition-transform active:scale-95 cursor-pointer"
-                      >
-                        <UserPlus className="w-4 h-4" />
-                        <span>+ Crear Funcionario / Staff Ahora</span>
-                      </button>
 
+                    <div className="flex items-center gap-2 shrink-0">
                       <button
                         type="button"
                         onClick={() => {
-                          onClose();
-                          navigate('/superadmin?tab=INSTITUTIONAL');
+                          const updated = { ...userPrivileges };
+                          systemUsers.forEach((u) => {
+                            const isSuper = (u.roles || []).some((r) => ['SUPER_ADMIN', 'ADMIN'].includes(r.name));
+                            const isKey = u.email.includes('geren') || u.email.includes('secre') || isSuper;
+                            if (isKey) {
+                              updated[u.id] = { canEdit: true, canDelete: true };
+                              if (u.email) updated[u.email] = { canEdit: true, canDelete: true };
+                            }
+                          });
+                          setUserPrivileges(updated);
+                          toast.success('Privilegios predeterminados asignados a Gerencia y Secretaría ✨');
                         }}
-                        className="inline-flex items-center gap-2 bg-slate-200 dark:bg-white/10 hover:bg-slate-300 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold px-5 py-3 rounded-xl text-xs transition-colors cursor-pointer"
+                        className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-800 dark:text-amber-300 border border-amber-500/40 text-[11px] font-bold cursor-pointer transition-colors"
                       >
-                        <span>Ver Padrón de Usuarios</span>
-                        <ArrowRight className="w-4 h-4" />
+                        ⚡ Asignar a Gerencia & Secretaría
                       </button>
                     </div>
+                  </div>
+
+                  {/* Buscador de Usuarios */}
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex-1">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Buscar funcionario por nombre, cargo o correo..."
+                        value={userSearchQuery}
+                        onChange={(e) => setUserSearchQuery(e.target.value)}
+                        className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-xl text-xs text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-[#00A652]"
+                      />
+                    </div>
+                    {userSearchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => setUserSearchQuery('')}
+                        className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                      >
+                        Limpiar
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tabla / Lista de Usuarios con Switches */}
+                  <div className="border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden bg-white dark:bg-[#070e0a]">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 dark:bg-white/[0.03] text-slate-500 dark:text-slate-400 font-bold border-b border-slate-200 dark:border-white/10">
+                          <tr>
+                            <th className="py-3 px-4">Funcionario / Usuario</th>
+                            <th className="py-3 px-3">Roles Institucionales</th>
+                            <th className="py-3 px-3 text-center">
+                              <span className="flex items-center justify-center gap-1">
+                                <Edit3 className="w-3.5 h-3.5 text-blue-500" />
+                                <span>Permitir Editar</span>
+                              </span>
+                            </th>
+                            <th className="py-3 px-3 text-center">
+                              <span className="flex items-center justify-center gap-1">
+                                <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                <span>Permitir Eliminar</span>
+                              </span>
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 dark:divide-white/5 font-medium">
+                          {systemUsers
+                            .filter((u) => {
+                              if (!userSearchQuery.trim()) return true;
+                              const q = userSearchQuery.toLowerCase();
+                              const name = `${u.firstName} ${u.lastName}`.toLowerCase();
+                              const email = (u.email || '').toLowerCase();
+                              const rolesStr = (u.roles || []).map((r) => r.name).join(' ').toLowerCase();
+                              return name.includes(q) || email.includes(q) || rolesStr.includes(q);
+                            })
+                            .map((u) => {
+                              const isSuperAdmin = (u.roles || []).some((r) => ['SUPER_ADMIN', 'ADMIN'].includes(r.name));
+                              const currentPriv = userPrivileges[u.id] || (u.email ? userPrivileges[u.email] : null);
+                              const canEdit = isSuperAdmin || Boolean(currentPriv?.canEdit);
+                              const canDelete = isSuperAdmin || Boolean(currentPriv?.canDelete);
+
+                              return (
+                                <tr key={u.id} className="hover:bg-slate-50/60 dark:hover:bg-white/[0.02] transition-colors">
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-black text-xs flex items-center justify-center shrink-0 border border-emerald-500/20">
+                                        {u.firstName?.[0] || 'U'}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <span className="font-bold text-slate-800 dark:text-slate-100 block truncate">
+                                          {u.firstName} {u.lastName}
+                                        </span>
+                                        <span className="text-[11px] text-slate-400 dark:text-slate-500 font-mono block truncate">
+                                          {u.email}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  <td className="py-3 px-3">
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                      {(u.roles || []).map((r, idx) => (
+                                        <span
+                                          key={idx}
+                                          className={`text-[9.5px] font-bold px-1.5 py-0.5 rounded border ${
+                                            ['SUPER_ADMIN', 'ADMIN'].includes(r.name)
+                                              ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 font-black'
+                                              : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-white/10'
+                                          }`}
+                                        >
+                                          {r.name}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+
+                                  {/* Toggle Editar */}
+                                  <td className="py-3 px-3 text-center">
+                                    <label className="inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={canEdit}
+                                        disabled={isSuperAdmin}
+                                        onChange={(e) => {
+                                          const val = e.target.checked;
+                                          setUserPrivileges((prev) => ({
+                                            ...prev,
+                                            [u.id]: {
+                                              canEdit: val,
+                                              canDelete: prev[u.id]?.canDelete || false,
+                                            },
+                                            ...(u.email
+                                              ? {
+                                                  [u.email]: {
+                                                    canEdit: val,
+                                                    canDelete: prev[u.email]?.canDelete || false,
+                                                  },
+                                                }
+                                              : {}),
+                                          }));
+                                        }}
+                                        className="sr-only peer"
+                                      />
+                                      <div className={`w-9 h-5 rounded-full peer peer-focus:outline-none transition-colors relative ${
+                                        canEdit ? 'bg-blue-600' : 'bg-slate-200 dark:bg-white/20'
+                                      } ${isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                        <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${
+                                          canEdit ? 'translate-x-4' : 'translate-x-0'
+                                        }`} />
+                                      </div>
+                                    </label>
+                                    {isSuperAdmin && (
+                                      <span className="block text-[8.5px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold">
+                                        Admin
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* Toggle Eliminar */}
+                                  <td className="py-3 px-3 text-center">
+                                    <label className="inline-flex items-center cursor-pointer">
+                                      <input
+                                        type="checkbox"
+                                        checked={canDelete}
+                                        disabled={isSuperAdmin}
+                                        onChange={(e) => {
+                                          const val = e.target.checked;
+                                          setUserPrivileges((prev) => ({
+                                            ...prev,
+                                            [u.id]: {
+                                              canEdit: prev[u.id]?.canEdit || false,
+                                              canDelete: val,
+                                            },
+                                            ...(u.email
+                                              ? {
+                                                  [u.email]: {
+                                                    canEdit: prev[u.email]?.canEdit || false,
+                                                    canDelete: val,
+                                                  },
+                                                }
+                                              : {}),
+                                          }));
+                                        }}
+                                        className="sr-only peer"
+                                      />
+                                      <div className={`w-9 h-5 rounded-full peer peer-focus:outline-none transition-colors relative ${
+                                        canDelete ? 'bg-red-600' : 'bg-slate-200 dark:bg-white/20'
+                                      } ${isSuperAdmin ? 'opacity-60 cursor-not-allowed' : ''}`}>
+                                        <div className={`absolute top-0.5 left-0.5 bg-white w-4 h-4 rounded-full transition-transform ${
+                                          canDelete ? 'translate-x-4' : 'translate-x-0'
+                                        }`} />
+                                      </div>
+                                    </label>
+                                    {isSuperAdmin && (
+                                      <span className="block text-[8.5px] text-slate-400 dark:text-slate-500 mt-0.5 font-bold">
+                                        Admin
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 rounded-2xl flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>
+                      Total usuarios listados: <strong className="text-slate-800 dark:text-white font-mono">{systemUsers.length}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onClose();
+                        navigate('/superadmin?tab=INSTITUTIONAL');
+                      }}
+                      className="text-xs text-[#00A652] dark:text-emerald-400 font-bold hover:underline inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <span>Ir al Padrón de Usuarios del Club</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               )}

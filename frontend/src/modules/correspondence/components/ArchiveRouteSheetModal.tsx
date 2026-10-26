@@ -173,6 +173,23 @@ export const ArchiveRouteSheetModal: React.FC<ArchiveRouteSheetModalProps> = ({
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
+          {/* Alerta de Archivo en Bloque para Expediente Fusionado */}
+          {(item.parentRouteSheet || item.parentRouteSheetId || (item.fusedRouteSheets && item.fusedRouteSheets.length > 0)) && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 shadow-sm animate-fadeIn">
+              <Layers className="w-5 h-5 text-emerald-500 shrink-0" />
+              <div className="text-xs">
+                <span className="font-bold block uppercase text-[11px] tracking-wide text-emerald-700 dark:text-emerald-300">
+                  Archivo en Bloque — Expediente Fusionado
+                </span>
+                <span>
+                  {item.parentRouteSheet || item.parentRouteSheetId
+                    ? `Este trámite está acumulado al expediente matriz [${item.parentRouteSheet?.hrCode || 'matriz'}]. Al archivar, se archivarán en bloque todas las Hojas de Ruta del expediente consolidado en la misma ubicación física.`
+                    : `Este expediente matriz contiene ${item.fusedRouteSheets?.length} trámite(s) acumulado(s) (${item.fusedRouteSheets?.map((s) => s.hrCode).join(', ')}). Al archivar, se archivarán formalmente todas las Hojas de Ruta en conjunto en la misma ubicación de custodia.`}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Selector simple: Archivo del Cargo vs Archivo Central */}
           <div className="space-y-1.5">
             <label className="block text-xs font-black uppercase tracking-wider text-slate-700 dark:text-emerald-300">

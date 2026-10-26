@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '@store/store';
 import {
@@ -9,6 +9,7 @@ import {
   fetchCorrespondenceStats,
   fetchRouteSheets,
   markRouteSheetOpened,
+  unmergeRouteSheet,
 } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { PrintableRouteSheet, PrintPageMode } from './PrintableRouteSheet';
@@ -18,10 +19,16 @@ import { MergeRouteSheetsModal } from './MergeRouteSheetsModal';
 import { ArchiveRouteSheetModal } from './ArchiveRouteSheetModal';
 import { CorrespondenceTimelineView } from './CorrespondenceTimelineView';
 import { SlaUrgencyAlertModal } from './SlaUrgencyAlertModal';
+import { EditRouteSheetModal } from './EditRouteSheetModal';
+import { DeleteRouteSheetConfirmModal } from './DeleteRouteSheetConfirmModal';
+import { UnmergeRouteSheetModal } from './UnmergeRouteSheetModal';
+import { FusedBundleBreakdownSection } from './FusedBundleBreakdownSection';
 import {
   X,
   Printer,
   Link2,
+  Unlink,
+  Layers,
   FolderArchive,
   FolderCheck,
   Building2,
@@ -36,6 +43,9 @@ import {
   CheckCircle2,
   Inbox,
   RotateCcw,
+  Clock,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -99,12 +109,54 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
     }
   };
 
+  const [unmergeModalTarget, setUnmergeModalTarget] = useState<{
+    childId: string;
+    childHrCode: string;
+    parentHrCode?: string;
+    childReference?: string;
+  } | null>(null);
+
   const movements = currentItem?.movements || [];
   const latestMovement = movements.length > 0 ? movements[movements.length - 1] : null;
   const isLatestMovementUnreceived = Boolean(latestMovement && !latestMovement.receivedAt);
 
   const [isUndoing, setIsUndoing] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const canAccess360 = canUserAccess360(currentUser, userNode);
+  const settings = useSelector((state: RootState) => state.correspondence.settings);
+
+  const canEditRouteSheet = useMemo(() => {
+    if (!currentUser) return false;
+    const roles: string[] = (currentUser.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) return true;
+    const privMap = (settings as any)?.userPrivileges;
+    const uId = currentUser.id || (currentUser as any).userId;
+    const uEmail = (currentUser.email || '').toLowerCase().trim();
+    if (privMap) {
+      if (uId && privMap[uId]?.canEdit !== undefined) return Boolean(privMap[uId].canEdit);
+      if (uEmail && privMap[uEmail]?.canEdit !== undefined) return Boolean(privMap[uEmail].canEdit);
+    }
+    return Boolean((settings as any)?.currentUserPrivileges?.canEdit);
+  }, [currentUser, settings]);
+
+  const canDeleteRouteSheet = useMemo(() => {
+    if (!currentUser) return false;
+    const roles: string[] = (currentUser.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) return true;
+    const privMap = (settings as any)?.userPrivileges;
+    const uId = currentUser.id || (currentUser as any).userId;
+    const uEmail = (currentUser.email || '').toLowerCase().trim();
+    if (privMap) {
+      if (uId && privMap[uId]?.canDelete !== undefined) return Boolean(privMap[uId].canDelete);
+      if (uEmail && privMap[uEmail]?.canDelete !== undefined) return Boolean(privMap[uEmail].canDelete);
+    }
+    return Boolean((settings as any)?.currentUserPrivileges?.canDelete);
+  }, [currentUser, settings]);
 
   const uId = currentUser?.id || (currentUser as any)?.userId;
   const userEmail = currentUser?.email?.toLowerCase().trim();
@@ -194,8 +246,13 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
   const documents = currentItem.documents || [];
   const isFusedChild = Boolean(
+    currentItem.parentRouteSheetId ||
+    currentItem.parentRouteSheet ||
     currentItem.currentArea?.startsWith('FUSIONADO EN') ||
     currentItem.aiSummary?.startsWith('FUSIONADO')
+  );
+  const isFusedParent = Boolean(
+    currentItem.fusedRouteSheets && currentItem.fusedRouteSheets.length > 0
   );
 
   const getStatusBadge = (status: string) => {
@@ -232,6 +289,24 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                       <span className="font-mono text-xs font-bold text-emerald-900 dark:text-emerald-300 bg-emerald-500/10 dark:bg-emerald-950/50 px-3 py-1 rounded-lg border border-emerald-500/30 tracking-wider">
                         {currentItem.hrCode}
                       </span>
+                      {isFusedChild && (
+                        <span
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-black uppercase text-purple-950 dark:text-purple-100 bg-gradient-to-r from-purple-400 via-fuchsia-300 to-purple-400 dark:from-purple-500/35 dark:via-fuchsia-500/30 dark:to-purple-500/35 border-2 border-purple-500 dark:border-purple-400 px-3 py-1 rounded-lg shadow-[0_0_14px_rgba(168,85,247,0.5)] ring-1 ring-purple-400/50"
+                          title={`Acumulada formalmente al expediente matriz ${currentItem.parentRouteSheet?.hrCode || ''}`}
+                        >
+                          <Link2 className="w-4 h-4 text-purple-900 dark:text-purple-300" />
+                          <span>🔗 FUSIONADA EN {currentItem.parentRouteSheet?.hrCode || 'MATRIZ'}</span>
+                        </span>
+                      )}
+                      {isFusedParent && (
+                        <span
+                          className="inline-flex items-center gap-1.5 font-mono text-xs font-black uppercase text-amber-950 dark:text-amber-100 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 dark:from-amber-500/35 dark:via-yellow-500/30 dark:to-amber-500/35 border-2 border-amber-500 dark:border-amber-400 px-3 py-1 rounded-lg shadow-[0_0_14px_rgba(245,158,11,0.5)] ring-1 ring-amber-400/50"
+                          title={`Expediente Matriz Consolidado (${currentItem.fusedRouteSheets?.length} acumuladas)`}
+                        >
+                          <Layers className="w-4 h-4 text-amber-900 dark:text-amber-300" />
+                          <span>🗂️ EXPEDIENTE MATRIZ ({currentItem.fusedRouteSheets?.length} FUSIONADAS)</span>
+                        </span>
+                      )}
                       <span className={`text-[11px] font-bold uppercase px-2.5 py-0.5 rounded-md border ${getStatusBadge(currentItem.status)}`}>
                         {currentItem.status}
                       </span>
@@ -345,7 +420,7 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               </button>
 
               {/* 4. + Fusionar */}
-              {!isFusedChild && (
+              {!isFusedChild && currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO' && (
                 <button
                   type="button"
                   onClick={() => setShowMergeModal(true)}
@@ -357,16 +432,36 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
                 </button>
               )}
 
+              {/* 4.b. Desvincular Trámite (Si es expediente secundario acumulado) */}
+              {isFusedChild && currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO' && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUnmergeModalTarget({
+                      childId: currentItem.id,
+                      childHrCode: currentItem.hrCode,
+                      parentHrCode: currentItem.parentRouteSheet?.hrCode,
+                      childReference: currentItem.reference,
+                    })
+                  }
+                  className="flex items-center gap-2 bg-teal-500/10 hover:bg-teal-500/20 text-teal-800 dark:text-teal-300 border border-teal-500/40 hover:border-teal-500/60 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-bold transition-all shadow-xs cursor-pointer"
+                  title="Desvincular esta Hoja de Ruta de la matriz para tramitarla de forma independiente"
+                >
+                  <Unlink className="w-4 h-4 text-teal-600 dark:text-teal-400 shrink-0" />
+                  <span>Desvincular Trámite</span>
+                </button>
+              )}
+
               {/* 5. Archivar (Archivo del Cargo o Central) */}
-              {currentItem.status !== 'CONCLUIDO' ? (
+              {currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO' ? (
                 <button
                   type="button"
                   onClick={() => setShowArchiveModal(true)}
                   className="flex items-center gap-2 bg-white hover:bg-emerald-500/10 dark:bg-[#091913] dark:hover:bg-emerald-950/50 text-slate-700 dark:text-emerald-200 border border-slate-200 dark:border-emerald-800/40 hover:border-emerald-500/40 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-[13px] font-medium transition-all shadow-xs cursor-pointer"
-                  title="Archivar en Archivo del Cargo o Archivo Central"
+                  title={isFusedChild || isFusedParent ? "Archivar en bloque todo el expediente acumulado" : "Archivar en Archivo del Cargo o Archivo Central"}
                 >
                   <FolderArchive className="w-4 h-4 text-emerald-500 shrink-0" />
-                  <span>Archivar</span>
+                  <span>{isFusedChild || isFusedParent ? 'Archivar en Conjunto' : 'Archivar'}</span>
                 </button>
               ) : (
                 (currentItem.currentArea === 'ARCHIVO_PERSONAL' || currentItem.archiveLocation?.toUpperCase().includes('PERSONAL') || currentItem.archiveLocation?.toUpperCase().includes('CARGO')) && (
@@ -383,15 +478,45 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
               )}
 
               {/* 6. + Derivar / Proveído */}
-              {currentItem.status !== 'CONCLUIDO' && (
+              {currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO' && (
                 <button
                   type="button"
                   onClick={() => setShowAddMovementModal(true)}
                   className="flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold border border-emerald-400/40 px-4 sm:px-5 py-2 rounded-xl text-xs sm:text-[13px] transition-all shadow-lg shadow-emerald-950/40 cursor-pointer"
-                  title="Derivar expediente o registrar un nuevo proveído formal"
+                  title={isFusedChild || isFusedParent ? "Derivar expediente acumulado (deriva a todas las hojas en sincronía)" : "Derivar expediente o registrar un nuevo proveído formal"}
                 >
                   <Send className="w-4 h-4 text-white shrink-0" />
-                  <span>+ Derivar / Proveído</span>
+                  <span>
+                    {(!currentItem.movements || currentItem.movements.length === 0)
+                      ? '+ Cargar Proveído 1'
+                      : (isFusedChild || isFusedParent ? 'Derivar Paquete Fusionado' : '+ Derivar / Proveído')}
+                  </span>
+                </button>
+              )}
+
+              {/* 7. Editar Datos Oficiales */}
+              {canEditRouteSheet && currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO' && (
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(true)}
+                  className="flex items-center gap-1.5 bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  title="Editar datos de radicación de la Hoja de Ruta"
+                >
+                  <Edit3 className="w-4 h-4 text-blue-500" />
+                  <span>Editar</span>
+                </button>
+              )}
+
+              {/* 8. Eliminar / Anular */}
+              {canDeleteRouteSheet && currentItem.status !== 'ANULADO' && (
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(true)}
+                  className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-700 dark:text-red-300 border border-red-500/30 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+                  title="Eliminar o anular formalmente la Hoja de Ruta"
+                >
+                  <Trash2 className="w-4 h-4 text-red-500" />
+                  <span>Eliminar</span>
                 </button>
               )}
             </div>
@@ -399,6 +524,49 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
 
           {/* Modal Content: Unified Timeline Visual 360° */}
           <div className="p-4 sm:p-6 lg:p-8 overflow-y-auto space-y-6 flex-1 text-sm">
+            {/* Desglose Oficial del Paquete Fusionado y Expediente Matriz */}
+            {(isFusedParent || isFusedChild) && (
+              <FusedBundleBreakdownSection
+                currentItem={currentItem}
+                onSelectSheet={(sheetId) => {
+                  dispatch(fetchRouteSheetById(sheetId));
+                }}
+                onUnlinkSheet={setUnmergeModalTarget}
+                canUnlink={currentItem.status !== 'CONCLUIDO' && currentItem.status !== 'ANULADO'}
+              />
+            )}
+
+            {/* Banner de Primer Proveído Pendiente */}
+            {(!currentItem.movements || currentItem.movements.length === 0) && currentItem.status !== 'CONCLUIDO' && (
+              <div className="bg-gradient-to-r from-amber-500/15 via-amber-500/10 to-amber-500/15 border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-md animate-fadeIn">
+                <div className="flex items-start gap-3.5">
+                  <div className="p-2.5 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-2xl border border-amber-500/30 shrink-0 mt-0.5">
+                    <Clock className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h4 className="text-sm sm:text-base font-black text-amber-950 dark:text-amber-200">
+                        Primer Proveído Pendiente de Asignación
+                      </h4>
+                      <span className="text-[10px] font-black uppercase bg-amber-500/20 text-amber-800 dark:text-amber-300 px-2.5 py-0.5 rounded-full border border-amber-500/30">
+                        Radicado en {currentItem.currentArea}
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-900/85 dark:text-amber-300/85 mt-1 leading-relaxed max-w-3xl">
+                      Este documento fue radicado oficialmente con Proveído N° 1 pendiente. En cuanto la Secretaría reciba la instrucción oficial de Gerencia de a quién derivar, cargue aquí el primer proveído para asignar destino oficial y dar curso a la derivación.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddMovementModal(true)}
+                  className="shrink-0 flex items-center justify-center gap-2 bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs sm:text-sm shadow-lg shadow-amber-950/20 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                >
+                  <Send className="w-4 h-4 text-slate-950" />
+                  <span>Cargar Primer Proveído (N° 1)</span>
+                </button>
+              </div>
+            )}
             {isPendingReception && (
               <div className="bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-blue-500/15 border border-blue-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm animate-fadeIn">
                 <div className="flex items-center gap-3">
@@ -693,6 +861,38 @@ export const RouteSheetDetailModal: React.FC<RouteSheetDetailModalProps> = ({
             </div>
           </div>
         </div>
+      )}
+      {/* Modal Editar Hoja de Ruta */}
+      {showEditModal && (
+        <EditRouteSheetModal
+          isOpen={showEditModal}
+          item={currentItem}
+          onClose={() => setShowEditModal(false)}
+        />
+      )}
+
+      {/* Modal Eliminar / Anular Hoja de Ruta */}
+      {showDeleteModal && (
+        <DeleteRouteSheetConfirmModal
+          isOpen={showDeleteModal}
+          item={currentItem}
+          onClose={() => {
+            setShowDeleteModal(false);
+            onClose();
+          }}
+        />
+      )}
+
+      {/* Modal Desvincular / Desfusión de Hoja de Ruta */}
+      {unmergeModalTarget && (
+        <UnmergeRouteSheetModal
+          isOpen={Boolean(unmergeModalTarget)}
+          childId={unmergeModalTarget.childId}
+          childHrCode={unmergeModalTarget.childHrCode}
+          parentHrCode={unmergeModalTarget.parentHrCode}
+          childReference={unmergeModalTarget.childReference}
+          onClose={() => setUnmergeModalTarget(null)}
+        />
       )}
     </>
   );

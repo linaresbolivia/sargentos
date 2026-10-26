@@ -1055,6 +1055,46 @@ export const ChlsWorkflowCanvasModal: React.FC<ChlsWorkflowCanvasModalProps> = (
 
   // Save to Backend
   const handleSaveWorkflow = async () => {
+    // Validar regla institucional: Una persona puede tener un solo cargo, pero un cargo puede tener múltiples personas
+    const emailOccMap = new Map<string, string>();
+    const userOccMap = new Map<string, string>();
+    for (const node of nodes) {
+      const currentCargoTitle = node.title || node.id;
+      const nodeUserIds: string[] = [];
+
+      if (node.userId) nodeUserIds.push(String(node.userId));
+      if (Array.isArray(node.userIds)) {
+        for (const uid of node.userIds) {
+          if (uid && !nodeUserIds.includes(String(uid))) {
+            nodeUserIds.push(String(uid));
+          }
+        }
+      }
+
+      for (const uid of nodeUserIds) {
+        if (userOccMap.has(uid) && userOccMap.get(uid) !== currentCargoTitle) {
+          toast.error(
+            `⚠️ Conflicto de asignación: El funcionario ya está vinculado al cargo "${userOccMap.get(uid)}". Cada persona sólo puede tener un cargo en el organigrama.`,
+            { duration: 6000 }
+          );
+          return;
+        }
+        userOccMap.set(uid, currentCargoTitle);
+      }
+
+      const em = (node.email || '').toLowerCase().trim();
+      if (em && !['sin-correo@chls.bo', 'correspondencia@chls.bo', 'info@sargentos.com.bo'].includes(em)) {
+        if (emailOccMap.has(em) && emailOccMap.get(em) !== currentCargoTitle) {
+          toast.error(
+            `⚠️ Conflicto: El correo oficial "${em}" está asignado a otro cargo distinto ("${emailOccMap.get(em)}").`,
+            { duration: 6000 }
+          );
+          return;
+        }
+        emailOccMap.set(em, currentCargoTitle);
+      }
+    }
+
     const updatedSettings = {
       ...settings,
       workflow: {

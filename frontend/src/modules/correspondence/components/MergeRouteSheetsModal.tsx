@@ -28,12 +28,14 @@ export const MergeRouteSheetsModal: React.FC<MergeRouteSheetsModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter out the target item and already concluded/fused items if necessary
+  // Filter out the target item, already concluded or annulled items, and items already in this bundle
   const candidateItems = items.filter(
     (item) =>
       item.id !== targetItem.id &&
       item.status !== 'ANULADO' &&
-      !item.currentArea?.startsWith('FUSIONADO EN')
+      item.status !== 'CONCLUIDO' &&
+      item.parentRouteSheetId !== targetItem.id &&
+      item.id !== targetItem.parentRouteSheetId
   );
 
   const filteredCandidates = candidateItems.filter((item) => {
@@ -159,10 +161,33 @@ export const MergeRouteSheetsModal: React.FC<MergeRouteSheetsModalProps> = ({
             <h3 className="text-sm sm:text-base font-black text-slate-900 dark:text-white uppercase leading-snug">
               {targetItem.reference}
             </h3>
-            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-gray-400 pt-1">
+            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-gray-400 pt-1 flex-wrap">
               <span>Remite: <strong className="text-slate-700 dark:text-gray-200">{targetItem.senderName}</strong></span>
               <span>Ubicación actual: <strong className="text-brand-gold">{targetItem.currentArea}</strong></span>
             </div>
+
+            {targetItem.fusedRouteSheets && targetItem.fusedRouteSheets.length > 0 && (
+              <div className="pt-2 border-t border-emerald-500/20 mt-2">
+                <span className="text-[10.5px] font-black uppercase text-emerald-900 dark:text-emerald-300 block mb-1">
+                  Trámites ya incorporados a esta Matriz ({targetItem.fusedRouteSheets.length}):
+                </span>
+                <div className="flex flex-wrap gap-1.5">
+                  {targetItem.fusedRouteSheets.map((s) => (
+                    <span
+                      key={s.id}
+                      className="inline-flex items-center gap-1 font-mono text-[11px] font-bold text-emerald-950 dark:text-emerald-200 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/30"
+                      title={s.reference}
+                    >
+                      <Layers className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                      <span>{s.hrCode}</span>
+                      <span className="text-[9.5px] opacity-75 font-sans truncate max-w-[160px]">
+                        {s.reference}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Candidate Selection Section */}
@@ -174,7 +199,7 @@ export const MergeRouteSheetsModal: React.FC<MergeRouteSheetsModalProps> = ({
                   Selecciona las Hojas de Ruta a incorporar al trámite
                 </label>
                 <span className="text-xs text-slate-500 dark:text-gray-400">
-                  Los proveídos y documentos adjuntos se integrarán cronológicamente.
+                  Las Hojas de Ruta acumuladas permanecerán activas y se derivarán y archivarán en bloque conjunto con la matriz.
                 </span>
               </div>
 

@@ -31,6 +31,8 @@ import {
   AlertCircle,
   Lock,
   GitBranch,
+  Layers,
+  Link2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { RouteSheetItem } from '../types/correspondence.types';
@@ -66,42 +68,42 @@ const QUICK_STAMPS = [
 
 // Catálogo institucional de Titulares y Responsables por Cargo / Despacho CHLS
 const AREA_RESPONSIBLES: Record<string, { title: string; defaultPerson: string }> = {
-  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Gerente General' },
-  'SECRETARÍA': { title: 'Secretaría de Despacho', defaultPerson: 'Secretaria de Gerencia' },
-  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'María del Pilar Atanacio (Secretaria de Gerencia)' },
+  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Tito Norman Tornero Rodriguez' },
+  'SECRETARÍA': { title: 'Secretaría de Despacho', defaultPerson: 'Monica Iñiguez Duran' },
+  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'Monica Iñiguez Duran' },
   'MENSAJERO': { title: 'Mensajería y Despacho Externo', defaultPerson: 'Mensajero Oficial' },
-  'ASESORÍA LEGAL': { title: 'Asesoría Legal Principal', defaultPerson: 'Asesor Legal Principal' },
-  'COORDINADOR COMERCIAL': { title: 'Coordinación Comercial', defaultPerson: 'Coordinador Comercial' },
+  'ASESORÍA LEGAL': { title: 'Asesoría Legal Principal', defaultPerson: 'Tatiana Felicidad Perez Fernandez' },
+  'COORDINADOR COMERCIAL': { title: 'Coordinación Comercial', defaultPerson: 'Eduardo Rodrigo Bejarano Miranda' },
   'SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS': { title: 'Subgerencia Financiera y RRHH', defaultPerson: 'Subgerente Financiero y RRHH' },
   'TESORERÍA Y FINANZAS': { title: 'Jefatura de Tesorería y Finanzas', defaultPerson: 'Jefe de Finanzas & Tesorería' },
   'APOYO J.O.F.R.H.': { title: 'Asistencia a Jefatura de Operaciones Financieras', defaultPerson: 'Personal de Apoyo J.O.F.R.H.' },
-  'ARCHIVO': { title: 'Custodia y Archivo Central', defaultPerson: 'Responsable de Archivo Central' },
-  'ARCHIVO CENTRAL': { title: 'Custodia y Archivo Central', defaultPerson: 'Responsable de Archivo Central' },
-  'ALMACÉN': { title: 'Inventarios y Almacén Central', defaultPerson: 'Encargado de Almacén Central' },
-  'ALMACÉN CENTRAL': { title: 'Inventarios y Almacén Central', defaultPerson: 'Encargado de Almacén Central' },
-  'RECURSOS HUMANOS': { title: 'Planillas y Personal', defaultPerson: 'Encargado de RRHH' },
-  'RESPONSABLE DE CONTRATACIONES': { title: 'Licitaciones y Proveedores', defaultPerson: 'Responsable de Contrataciones' },
-  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Responsable de Contrataciones' },
+  'ARCHIVO': { title: 'Custodia y Archivo Central', defaultPerson: 'Freddy Callizaya Salazar' },
+  'ARCHIVO CENTRAL': { title: 'Custodia y Archivo Central', defaultPerson: 'Freddy Callizaya Salazar' },
+  'ALMACÉN': { title: 'Inventarios y Almacén Central', defaultPerson: 'Maria del Pilar Atanacio Tola' },
+  'ALMACÉN CENTRAL': { title: 'Inventarios y Almacén Central', defaultPerson: 'Maria del Pilar Atanacio Tola' },
+  'RECURSOS HUMANOS': { title: 'Planillas y Personal', defaultPerson: 'Severo Huanca Mendoza' },
+  'RESPONSABLE DE CONTRATACIONES': { title: 'Licitaciones y Proveedores', defaultPerson: 'Ian Benjamin Pinto Morales' },
+  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Ian Benjamin Pinto Morales' },
   'ASISTENTE ADMINISTRATIVO CONTRATACIONES': { title: 'Soporte Operativo a Compras', defaultPerson: 'Asistente de Contrataciones' },
   'ENCARGADO DE CONTABILIDAD': { title: 'Estados Financieros y Balance', defaultPerson: 'Encargado de Contabilidad' },
   'CONTABILIDAD': { title: 'Estados Financieros y Balance', defaultPerson: 'Encargado de Contabilidad' },
   'ANALISTA CONTABLE': { title: 'Asientos y Conciliaciones', defaultPerson: 'Analista Contable' },
-  'ANALISTA CONTABLE - RECAUDACIONES': { title: 'Cobranza de Cuotas y Caja', defaultPerson: 'Analista de Recaudaciones' },
+  'ANALISTA CONTABLE - RECAUDACIONES': { title: 'Cobranza de Cuotas y Caja', defaultPerson: 'Monica Karen Gonzales Aramayo' },
   'CAJERO': { title: 'Cobros en Ventanilla', defaultPerson: 'Cajero Principal' },
-  'APOYO COBRANZAS': { title: 'Gestión de Cartera Morosa', defaultPerson: 'Encargado de Cobranzas' },
-  'SUBGERENCIA DE ATENCIÓN AL SOCIO': { title: 'Experiencia del Socio', defaultPerson: 'Subgerente de Atención al Socio' },
+  'APOYO COBRANZAS': { title: 'Gestión de Cartera Morosa', defaultPerson: 'Susana Claudia Carvajal Calderon' },
+  'SUBGERENCIA DE ATENCIÓN AL SOCIO': { title: 'Experiencia del Socio', defaultPerson: 'Andrea Valeria Jordan Bilbao Rioja' },
   'ASISTENTE A.T.S.': { title: 'Asistencia a Subgerencia Atención al Socio', defaultPerson: 'Asistente A.T.S.' },
   'TÉCNICO ESPECIALISTA I': { title: 'Atención Técnica y Trámites', defaultPerson: 'Técnico Especialista' },
   'APOYO A.T.S.': { title: 'Atención a Socios y Visitantes', defaultPerson: 'Personal de Apoyo A.T.S.' },
-  'RECEPCIONISTAS': { title: 'Recepción Central y Control', defaultPerson: 'Recepcionista Central' },
-  'RECEPCIÓN': { title: 'Recepción Central y Control', defaultPerson: 'Recepcionista Central' },
-  'CASETA DE ENTRADA': { title: 'Control de Puerta y Caseta', defaultPerson: 'Operador Caseta de Ingreso' },
+  'RECEPCIONISTAS': { title: 'Recepción Central y Control', defaultPerson: 'Paola Victoria Belzu Quispe' },
+  'RECEPCIÓN': { title: 'Recepción Central y Control', defaultPerson: 'Paola Victoria Belzu Quispe' },
+  'CASETA DE ENTRADA': { title: 'Control de Puerta y Caseta', defaultPerson: 'Paola Victoria Belzu Quispe' },
   'ASISTENTE DE TOALLAS': { title: 'Control y Entrega de Toallas', defaultPerson: 'Asistente de Toallas' },
   'ENCARGADO DE SISTEMAS': { title: 'Tecnología, Redes y Plataformas', defaultPerson: 'Encargado de Sistemas & TI' },
   'SISTEMAS E INFORMÁTICA': { title: 'Tecnología, Redes y Plataformas', defaultPerson: 'Encargado de Sistemas & TI' },
-  'COMUNICACIÓN': { title: 'Redes Sociales y Comunicados', defaultPerson: 'Encargado de Comunicación' },
-  'JEFE DE MANTENIMIENTO': { title: 'Infraestructura y Servicios', defaultPerson: 'Jefe de Mantenimiento' },
-  'MANTENIMIENTO Y OBRAS': { title: 'Infraestructura y Servicios', defaultPerson: 'Jefe de Mantenimiento' },
+  'COMUNICACIÓN': { title: 'Redes Sociales y Comunicados', defaultPerson: 'Ricardo Luis Gomez Garcia' },
+  'JEFE DE MANTENIMIENTO': { title: 'Infraestructura y Servicios', defaultPerson: 'Cristian Alejandro Gonzales Quint Reina' },
+  'MANTENIMIENTO Y OBRAS': { title: 'Infraestructura y Servicios', defaultPerson: 'Cristian Alejandro Gonzales Quint Reina' },
   'ASISTENTE PISCINERO': { title: 'Tratamiento de Aguas y Calderas', defaultPerson: 'Técnico Piscinero' },
   'ASISTENTE CANCHAS TENIS': { title: 'Mantenimiento de Canchas Tenis', defaultPerson: 'Asistente de Canchas Tenis' },
   'ASISTENTE POLÍGONO DE TIRO': { title: 'Polígono de Tiro', defaultPerson: 'Asistente Polígono de Tiro' },
@@ -489,6 +491,8 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
     }
   };
 
+  const isFirstProveido = !item.movements || item.movements.length === 0;
+
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/85 backdrop-blur-md flex justify-center items-center p-2 sm:p-4 lg:p-6 animate-fadeIn">
       <div className="bg-white dark:bg-[#07130E] border border-slate-200 dark:border-emerald-800/40 w-full max-w-7xl xl:max-w-[94vw] 2xl:max-w-[1700px] rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[94vh]">
@@ -508,10 +512,23 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                 <span className="text-[11px] font-semibold uppercase px-2.5 py-0.5 rounded-lg bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
                   Custodia: {item.currentArea}
                 </span>
+                {isFirstProveido ? (
+                  <span className="text-[11px] font-black uppercase px-2.5 py-0.5 rounded-lg bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                    Proveído N° 1 Pendiente
+                  </span>
+                ) : (
+                  <span className="text-[11px] font-mono font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                    Proveído #{(item.movements?.length || 0) + 1}
+                  </span>
+                )}
               </div>
               <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2 mt-1 truncate">
                 <Stamp className="w-5 h-5 text-[#C5A059] shrink-0" />
-                <span className="truncate">Nuevo Proveído & Derivación Formal: {item.reference}</span>
+                <span className="truncate">
+                  {isFirstProveido
+                    ? `Primer Proveído (Proveído N° 1) & Derivación: ${item.reference}`
+                    : `Nuevo Proveído & Derivación Formal: ${item.reference}`}
+                </span>
               </h2>
             </div>
           </div>
@@ -526,6 +543,23 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
         {/* Form Body - Secuencia Natural de Lectura Humana: Izquierda a Derecha por Fila */}
         <form onSubmit={handleSubmit} className="p-4 sm:p-5 lg:p-6 overflow-y-auto flex-1 space-y-3.5 text-sm">
           
+          {/* Alerta de Derivación en Conjunto para Expediente Fusionado */}
+          {(item.parentRouteSheet || item.parentRouteSheetId || (item.fusedRouteSheets && item.fusedRouteSheets.length > 0)) && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-3.5 flex items-center gap-3 text-emerald-800 dark:text-emerald-200 shadow-sm animate-fadeIn">
+              <Layers className="w-5 h-5 text-emerald-500 shrink-0" />
+              <div className="text-xs">
+                <span className="font-bold block uppercase text-[11px] tracking-wide text-emerald-700 dark:text-emerald-300">
+                  Derivación en Conjunto — Expediente Fusionado
+                </span>
+                <span>
+                  {item.parentRouteSheet || item.parentRouteSheetId
+                    ? `Este trámite está acumulado al expediente matriz [${item.parentRouteSheet?.hrCode || 'matriz'}]. Al emitir este proveído, viajarán juntos en sincronía a ${targetArea || 'destino'}.`
+                    : `Este expediente matriz contiene ${item.fusedRouteSheets?.length} trámite(s) acumulado(s) (${item.fusedRouteSheets?.map((s) => s.hrCode).join(', ')}). Al derivar, viajarán juntos en sincronía a ${targetArea || 'destino'}.`}
+                </span>
+              </div>
+            </div>
+          )}
+
           {/* Fila 1 (Izquierda a Derecha): 1. Destino | 2. Con Copia (C.C.) | 3. Estado */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3.5 items-stretch">
             
@@ -865,6 +899,8 @@ export const AddMovementModal: React.FC<AddMovementModalProps> = ({ isOpen, onCl
                   ? 'Registrando...'
                   : organigramInfo.recommendedNodes.length === 0
                   ? 'Sin Conexión en Organigrama'
+                  : isFirstProveido
+                  ? 'Cargar Primer Proveído & Derivar (Proveído N° 1)'
                   : 'Emitir Proveído & Derivar'}
               </span>
             </button>

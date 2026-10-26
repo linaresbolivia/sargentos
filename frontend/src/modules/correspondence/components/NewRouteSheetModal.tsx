@@ -38,7 +38,9 @@ import {
   Search,
   BookOpen,
   CheckCircle2,
+  Globe,
 } from 'lucide-react';
+
 import toast from 'react-hot-toast';
 import CrestLogo from '@shared/components/CrestLogo';
 import SmartCorrespondenceInput from './SmartCorrespondenceInput';
@@ -51,8 +53,10 @@ import CiteSearchCombobox from './CiteSearchCombobox';
 import SelectCiteModal from './SelectCiteModal';
 import { OfficialCiteItem } from '../types/cite.types';
 import { citeService } from '../services/citeService';
+import { api } from '@config/api';
 import { autoCorrectAccents } from '../utils/correspondencePredictiveEngine';
-import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet } from '../utils/organigramWorkflowService';
+
+import { getOrganigramDestinations, DEFAULT_ORGANIGRAM_NODES, getOrganigramNodeForUser, canUserAccess360, canUserCreateRouteSheet, isSameArea } from '../utils/organigramWorkflowService';
 import { countTotalPdfPages } from '../utils/pdfPageCounter';
 import { RouteSheetItem } from '../types/correspondence.types';
 
@@ -79,18 +83,28 @@ const CHLS_INTERNAL_AREAS = [
 ];
 
 const AREA_RESPONSIBLES: Record<string, { title: string; defaultPerson: string }> = {
-  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'María del Pilar Atanacio (Secretaria de Gerencia)' },
-  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Gerente General CHLS' },
+  'SECRETARÍA GENERAL': { title: 'Secretaría de Gerencia General', defaultPerson: 'Monica Iñiguez Duran' },
+  'SECRETARÍA': { title: 'Secretaría de Gerencia General', defaultPerson: 'Monica Iñiguez Duran' },
+  'GERENCIA GENERAL': { title: 'Gerencia General / MAE', defaultPerson: 'Tito Norman Tornero Rodriguez' },
   'TESORERÍA Y FINANZAS': { title: 'Jefatura de Tesorería y Finanzas', defaultPerson: 'Jefe de Finanzas & Tesorería' },
-  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Encargado de Adquisiciones' },
+  'CONTRATACIONES Y ADQUISICIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Ian Benjamin Pinto Morales' },
+  'RESPONSABLE DE CONTRATACIONES': { title: 'Responsable de Compras & Contrataciones', defaultPerson: 'Ian Benjamin Pinto Morales' },
   'COMISIÓN HÍPICA': { title: 'Capitanía Hípica & Área Ecuestre', defaultPerson: 'Capitán de Comisión Hípica' },
   'CAPITANÍA DEPORTES / TENIS': { title: 'Capitanía de Deportes & Tenis', defaultPerson: 'Capitán de Deportes' },
-  'ASESORÍA LEGAL': { title: 'Asesoría Jurídica Institucional', defaultPerson: 'Asesor Legal Principal' },
-  'MANTENIMIENTO Y OBRAS': { title: 'Jefatura de Infraestructura y Mantenimiento', defaultPerson: 'Jefe de Mantenimiento' },
+  'ASESORÍA LEGAL': { title: 'Asesoría Jurídica Institucional', defaultPerson: 'Tatiana Felicidad Perez Fernandez' },
+  'JEFE DE MANTENIMIENTO': { title: 'Infraestructura y Servicios', defaultPerson: 'Cristian Alejandro Gonzales Quint Reina' },
+  'MANTENIMIENTO Y OBRAS': { title: 'Jefatura de Infraestructura y Mantenimiento', defaultPerson: 'Cristian Alejandro Gonzales Quint Reina' },
+  'COORDINADOR COMERCIAL': { title: 'Coordinación Comercial', defaultPerson: 'Eduardo Rodrigo Bejarano Miranda' },
   'DIRECTORIO / PRESIDENCIA': { title: 'Directorio / Presidencia CHLS', defaultPerson: 'Directorio CHLS' },
-  'ALMACÉN': { title: 'Encargado de Almacén & Suministros', defaultPerson: 'Responsable de Almacén' },
+  'ARCHIVO': { title: 'Encargado de Archivo Central', defaultPerson: 'Freddy Callizaya Salazar' },
+  'ALMACÉN': { title: 'Encargado de Almacén & Suministros', defaultPerson: 'Maria del Pilar Atanacio Tola' },
   'SISTEMAS E INFORMÁTICA': { title: 'Jefatura de Sistemas & TI', defaultPerson: 'Administrador de Sistemas' },
-  'RECURSOS HUMANOS': { title: 'Jefatura de Talento Humano', defaultPerson: 'Responsable de RRHH' },
+  'RECURSOS HUMANOS': { title: 'Jefatura de Talento Humano', defaultPerson: 'Severo Huanca Mendoza' },
+  'COMUNICACIÓN': { title: 'Encargado de Comunicación & Prensa', defaultPerson: 'Ricardo Luis Gomez Garcia' },
+  'RECAUDACIONES': { title: 'Analista de Recaudaciones', defaultPerson: 'Monica Karen Gonzales Aramayo' },
+  'APOYO COBRANZAS': { title: 'Encargado de Cobranzas', defaultPerson: 'Susana Claudia Carvajal Calderon' },
+  'SUBGERENCIA DE ATENCIÓN AL SOCIO': { title: 'Subgerencia de Atención al Socio', defaultPerson: 'Andrea Valeria Jordan Bilbao Rioja' },
+  'RECEPCIÓN': { title: 'Recepción Central & Caseta', defaultPerson: 'Paola Victoria Belzu Quispe' },
 };
 
 const QUICK_STAMPS = [
@@ -138,16 +152,32 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
   const [selectedCite, setSelectedCite] = useState<OfficialCiteItem | null>(null);
   const [isSelectCiteModalOpen, setIsSelectCiteModalOpen] = useState(false);
   const [pendingCitesCount, setPendingCitesCount] = useState<number>(0);
+  const [nextHrCode, setNextHrCode] = useState<string | null>(null);
+  const [isLoadingNextCode, setIsLoadingNextCode] = useState<boolean>(false);
 
   useEffect(() => {
     if (isOpen) {
       citeService.listCites({ unlinkedOnly: true, limit: 1 }).then((res) => {
         setPendingCitesCount(res.total || 0);
       }).catch(() => {});
+
+      setIsLoadingNextCode(true);
+      api.get('/correspondence/route-sheets/next-code')
+        .then((res) => {
+          if (res.data?.data?.hrCode) {
+            setNextHrCode(res.data.data.hrCode);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setIsLoadingNextCode(false);
+        });
     } else {
       setSelectedCite(null);
+      setNextHrCode(null);
     }
   }, [isOpen]);
+
 
   const rawNodes = useMemo(() => {
     return (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
@@ -256,35 +286,42 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
     setCite('');
   };
 
-  // Initial instruction & C.C. (derivaciones siempre inmediatas)
+  // Initial instruction & C.C. (derivaciones siempre inmediatas o proveído pendiente)
   const [initialTargetArea, setInitialTargetArea] = useState('');
   const [initialTargetPerson, setInitialTargetPerson] = useState('');
   const [allowExtraordinaryDerivation, setAllowExtraordinaryDerivation] = useState(false);
   const [initialCcAreas, setInitialCcAreas] = useState<string[]>([]);
   const [initialQuickStamp, setInitialQuickStamp] = useState<string>('');
   const [initialInstruction, setInitialInstruction] = useState('Favor su atención y trámite correspondiente.');
+  const [isProveidoPending, setIsProveidoPending] = useState(false);
 
-  // Auto-set initial target EXCLUSIVAMENTE a partir de los destinos conectados en el organigrama
+  // Al abrir el modal, inicializar sugerencia desde el organigrama sin forzar al usuario
   useEffect(() => {
-    if (recommendedNodes && recommendedNodes.length > 0) {
-      const validFirst = recommendedNodes.find(
-        (r) => (r.node.areaKey || r.node.title).toUpperCase() !== effectiveSourceArea.toUpperCase()
-      ) || recommendedNodes[0];
-      const targetNode = validFirst.node;
-      setInitialTargetArea(targetNode.areaKey || targetNode.title);
-      setInitialTargetPerson(targetNode.manager || '');
-      if (validFirst.edgeLabel) {
-        setInitialInstruction(`Para ${validFirst.edgeLabel.toLowerCase()}: Favor su atención y trámite correspondiente.`);
+    if (isOpen) {
+      setIsProveidoPending(false);
+      if (recommendedNodes && recommendedNodes.length > 0) {
+        const validFirst = recommendedNodes.find(
+          (r) => (r.node.areaKey || r.node.title).toUpperCase() !== effectiveSourceArea.toUpperCase()
+        ) || recommendedNodes[0];
+        const targetNode = validFirst.node;
+        setInitialTargetArea(targetNode.areaKey || targetNode.title);
+        setInitialTargetPerson(targetNode.manager || '');
+        if (validFirst.edgeLabel) {
+          setInitialInstruction(`Para ${validFirst.edgeLabel.toLowerCase()}: Favor su atención y trámite correspondiente.`);
+        }
+      } else {
+        setInitialTargetArea('');
+        setInitialTargetPerson('');
+        setInitialInstruction('Favor su atención y trámite correspondiente.');
       }
-    } else {
-      setInitialTargetArea('');
-      setInitialTargetPerson('');
-      setInitialInstruction('Favor su atención y trámite correspondiente.');
     }
-  }, [effectiveSourceArea, recommendedNodes]);
+  }, [isOpen]);
+
+  const hasInitialTarget = Boolean(initialTargetArea.trim()) && !isProveidoPending;
 
   const handleSelectRecommendedDestination = (node: any, edgeLabel?: string) => {
     const area = node.areaKey || node.title;
+    setIsProveidoPending(false);
     setInitialTargetArea(area);
     setInitialTargetPerson(node.manager || '');
     if (edgeLabel) {
@@ -429,9 +466,14 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
       return;
     }
 
-    if (!initialTargetArea.trim() || recommendedNodes.length === 0) {
-      toast.error('Debes seleccionar un área de destino autorizada para la derivación inmediata.');
-      return;
+    if (hasInitialTarget && !allowExtraordinaryDerivation && recommendedNodes.length > 0) {
+      const isAllowed = recommendedNodes.some(
+        (r) => isSameArea(r.node.title, initialTargetArea) || isSameArea(r.node.areaKey, initialTargetArea)
+      );
+      if (!isAllowed) {
+        toast.error(`El despacho destino '${initialTargetArea}' no está autorizado en las conexiones del Organigrama para ${effectiveSourceArea}.`);
+        return;
+      }
     }
 
     const payload = {
@@ -447,11 +489,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
       reference: reference.trim(),
       attachmentDescription: attachmentDescription.trim() || null,
       priority,
-      initialArea: initialTargetArea,
-      initialInstruction: initialInstruction.trim() || 'Favor su atención y trámite correspondiente.',
-      initialTargetPerson: initialTargetPerson.trim() || null,
-      initialQuickStamp: initialQuickStamp.trim() ? initialQuickStamp.trim() : null,
-      initialCcAreas: initialCcAreas,
+      initialArea: hasInitialTarget ? initialTargetArea.trim() : null,
+      initialInstruction: hasInitialTarget ? (initialInstruction.trim() || 'Favor su atención y trámite correspondiente.') : null,
+      initialTargetPerson: hasInitialTarget ? (initialTargetPerson.trim() || null) : null,
+      initialQuickStamp: hasInitialTarget ? (initialQuickStamp.trim() || null) : null,
+      initialCcAreas: hasInitialTarget ? initialCcAreas : [],
       initialCcPersons: null,
       sourceArea: effectiveSourceArea,
       aiSummary: null,
@@ -493,7 +535,9 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
       dispatch(fetchCorrespondenceStats());
 
       toast.success(
-        `Hoja de Ruta ${createdItem.hrCode} creada exitosamente. Abriendo para impresión...`,
+        hasInitialTarget
+          ? `Hoja de Ruta ${createdItem.hrCode} creada y derivada a ${initialTargetArea}. Abriendo para impresión...`
+          : `Hoja de Ruta ${createdItem.hrCode} generada con Proveído 1 pendiente. Abriendo para impresión...`,
         { icon: '🖨️' }
       );
       onClose();
@@ -514,10 +558,22 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
               <CrestLogo size="sm" className="w-10 h-10 shrink-0 filter drop-shadow-[0_0_8px_rgba(16,185,129,0.3)]" />
             </div>
             <div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tracking-tight">
                   NUEVA HOJA DE RUTA
                 </h1>
+
+                {/* Badge Oficial del Código de Hoja de Ruta a Crear */}
+                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-emerald-500/15 to-teal-500/20 border-2 border-emerald-500/50 text-emerald-800 dark:text-emerald-300 shadow-md shadow-emerald-500/10 animate-fadeIn">
+                  <div className="w-2.5 h-2.5 rounded-full bg-[#00A652] animate-pulse" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-emerald-400">
+                    HOJA DE RUTA N°:
+                  </span>
+                  <span className="font-mono font-black text-sm sm:text-base text-[#00A652] dark:text-emerald-200 tracking-wider">
+                    {isLoadingNextCode ? 'Consultando...' : (nextHrCode || 'Asignación Automática')}
+                  </span>
+                </div>
+
                 <span className="text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
                   Radicación 360°
                 </span>
@@ -526,12 +582,26 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                 </span>
               </div>
               <p className="text-xs text-slate-500 dark:text-emerald-400/70 font-medium mt-0.5">
-                Club Hípico Los Sargentos — Despacho Radicador: {sourceNode?.title || effectiveSourceArea}
+                Club Hípico Los Sargentos — {nextHrCode ? (
+                  <strong className="text-emerald-700 dark:text-emerald-300 font-bold">
+                    Expediente Oficial a Generar: {nextHrCode} •{' '}
+                  </strong>
+                ) : ''}Despacho Radicador: {sourceNode?.title || effectiveSourceArea}
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
+            {nextHrCode && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-right">
+                <span className="text-[10px] font-bold uppercase text-slate-500 dark:text-slate-400">
+                  Código Asignado:
+                </span>
+                <span className="font-mono font-black text-sm text-[#00A652] dark:text-emerald-400">
+                  {nextHrCode}
+                </span>
+              </div>
+            )}
             <button
               onClick={onClose}
               className="p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all cursor-pointer"
@@ -540,6 +610,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
             </button>
           </div>
         </div>
+
 
         {/* Sequence Flow Bar (Lectura natural de izquierda a derecha 1 -> 2 -> 3) */}
         <div className="px-6 sm:px-8 py-2.5 bg-slate-100/70 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800/80 shrink-0">
@@ -642,7 +713,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                       }`}
                     >
                       <Building2 className="w-3.5 h-3.5 text-[#C5A059] shrink-0" />
-                      <span className="truncate">Área Interna</span>
+                      <span className="truncate">Interna</span>
                     </button>
 
                     <button
@@ -675,11 +746,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                           : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
                       }`}
                     >
-                      <Truck className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                      <span className="truncate">Courier</span>
+                      <Globe className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <span className="truncate">Externa</span>
                     </button>
                   </div>
                 </div>
+
 
                 {/* Dynamic Remitente Fields */}
                 {senderType === 'AREA_INTERNA' ? (
@@ -862,13 +934,16 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                 </div>
                 <div className="text-xs">
                   <span className="font-bold text-slate-800 dark:text-slate-200 block">
-                    {senderType === 'AREA_INTERNA' ? 'Procedencia Institucional' : 'Remitente Registrado'}
+                    {senderType === 'AREA_INTERNA' ? 'Procedencia Interna' : senderType === 'SOCIO' ? 'Procedencia Socio' : 'Procedencia Externa'}
                   </span>
                   <span className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight block mt-0.5">
                     {senderType === 'AREA_INTERNA' 
                       ? 'Circula directamente por despachos del organigrama oficial.'
-                      : 'Se emitirá acuse de recibo con código de seguimiento único.'}
+                      : senderType === 'SOCIO'
+                      ? 'Se emitirá acuse de recibo para el socio titular.'
+                      : 'Correspondencia recibida de entidad o persona externa.'}
                   </span>
+
                 </div>
               </div>
             </div>
@@ -1200,9 +1275,14 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                     <div className="w-8 h-8 rounded-xl bg-amber-500/15 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-500/25 flex items-center justify-center font-bold text-sm">
                       3
                     </div>
-                    <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                      Primer Proveído
-                    </h2>
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                        Primer Proveído
+                      </h2>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium block">
+                        {hasInitialTarget ? 'Derivación inmediata activa' : 'Radicación con proveído pendiente'}
+                      </span>
+                    </div>
                   </div>
 
                   <span className="text-[11px] font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
@@ -1210,7 +1290,96 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                   </span>
                 </div>
 
-                <div className="space-y-3.5">
+                {/* SELECTOR OFICIAL: DERIVACIÓN INMEDIATA VS PROVEÍDO PENDIENTE */}
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-200/70 dark:bg-slate-900/80 rounded-2xl border border-slate-300/70 dark:border-slate-800 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProveidoPending(false);
+                      if (!initialTargetArea && recommendedNodes && recommendedNodes.length > 0) {
+                        const validFirst = recommendedNodes.find(
+                          (r) => (r.node.areaKey || r.node.title).toUpperCase() !== effectiveSourceArea.toUpperCase()
+                        ) || recommendedNodes[0];
+                        setInitialTargetArea(validFirst.node.areaKey || validFirst.node.title);
+                        setInitialTargetPerson(validFirst.node.manager || '');
+                      }
+                    }}
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      hasInitialTarget
+                        ? 'bg-emerald-600 text-white shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>Derivar Ahora</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsProveidoPending(true);
+                      setInitialTargetArea('');
+                      setInitialTargetPerson('');
+                      setInitialQuickStamp('');
+                      setInitialCcAreas([]);
+                    }}
+                    className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      !hasInitialTarget
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Clock className="w-3.5 h-3.5" />
+                    <span>⏳ Proveído 1 Pendiente</span>
+                  </button>
+                </div>
+
+                {!hasInitialTarget ? (
+                  /* MODO PROVEÍDO 1 PENDIENTE (Hermeneutica Institucional CHLS) */
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-950 dark:text-amber-200 space-y-3 animate-fadeIn">
+                    <div className="flex items-center gap-2 font-bold text-xs sm:text-sm text-amber-800 dark:text-amber-300">
+                      <Clock className="w-4 h-4 text-amber-500 shrink-0" />
+                      <span>Hoja de Ruta con Primer Proveído Pendiente</span>
+                    </div>
+                    <p className="text-[11.5px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                      El trámite se radicará formalmente en custodia de <strong className="text-slate-900 dark:text-white">{effectiveSourceArea}</strong> sin proveído inicial.
+                    </p>
+                    <div className="bg-white/80 dark:bg-black/30 p-3 rounded-xl border border-amber-500/20 text-[11px] space-y-2 text-slate-700 dark:text-slate-300">
+                      <div className="flex items-start gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Impresión Oficial: Casilla N° 1 quedará en blanco lista para llenado o firma física.</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Carga Posterior: La Secretaría cargará el Proveído N° 1 en digital al recibir la instrucción de Gerencia.</span>
+                      </div>
+                      <div className="flex items-start gap-1.5 font-bold text-emerald-700 dark:text-emerald-400">
+                        <Check className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                        <span>Sobreimpresión: Si ya imprimió la hoja, podrá sobreimprimir exclusivamente la Casilla 1 sin reimprimir todo.</span>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsProveidoPending(false);
+                        if (recommendedNodes && recommendedNodes.length > 0) {
+                          const validFirst = recommendedNodes.find(
+                            (r) => (r.node.areaKey || r.node.title).toUpperCase() !== effectiveSourceArea.toUpperCase()
+                          ) || recommendedNodes[0];
+                          setInitialTargetArea(validFirst.node.areaKey || validFirst.node.title);
+                          setInitialTargetPerson(validFirst.node.manager || '');
+                        }
+                      }}
+                      className="w-full py-2 px-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-500/40 hover:border-emerald-500 text-slate-800 dark:text-slate-200 hover:text-emerald-600 font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+                    >
+                      <Send className="w-3.5 h-3.5 text-emerald-500" />
+                      <span>¿Desea asignar destino ahora? Cambiar a derivación inmediata</span>
+                    </button>
+                  </div>
+                ) : (
+                  /* MODO DERIVACIÓN INMEDIATA (Con destino seleccionado) */
+                  <div className="space-y-3.5 animate-fadeIn">
                     {/* Alerta si no hay conexiones autorizadas */}
                     {recommendedNodes.length === 0 && (
                       <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-2xl text-xs text-red-700 dark:text-red-300 flex items-start gap-2">
@@ -1226,11 +1395,25 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
 
                     {/* Destino Principal */}
                     <div>
-                      <label className="block text-xs font-bold uppercase text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-[#C5A059]" />
-                        <span>Destino Principal (Cargo o Funcionario)</span>
-                        <span className="text-rose-500">*</span>
-                      </label>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5 text-[#C5A059]" />
+                          <span>Destino Principal (Cargo o Funcionario)</span>
+                          <span className="text-rose-500">*</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsProveidoPending(true);
+                            setInitialTargetArea('');
+                            setInitialTargetPerson('');
+                          }}
+                          className="text-[10px] font-semibold text-amber-600 hover:text-amber-700 dark:text-amber-400 flex items-center gap-1 cursor-pointer bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20"
+                        >
+                          <Clock className="w-2.5 h-2.5" />
+                          <span>Dejar Pendiente</span>
+                        </button>
+                      </div>
                       <DestinationSearchCombobox
                         currentArea={effectiveSourceArea}
                         selectedCargo={initialTargetArea}
@@ -1242,6 +1425,11 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                         onSelect={(cargo, personName) => {
                           setInitialTargetArea(cargo);
                           setInitialTargetPerson(personName);
+                          if (!cargo) {
+                            setIsProveidoPending(true);
+                          } else {
+                            setIsProveidoPending(false);
+                          }
                         }}
                         getResponsibleForCargo={(cargo) => {
                           const matched = allNodes.find(
@@ -1374,7 +1562,7 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                         rows={2}
                         value={initialInstruction}
                         onChange={(e) => setInitialInstruction(e.target.value)}
-                        required
+                        required={hasInitialTarget}
                         enablePrediction={true}
                         enableQuickPhrases={true}
                         placeholder="Redacta la instrucción formal para el área de destino..."
@@ -1382,11 +1570,18 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                       />
                     </div>
                   </div>
-                </div>
+                )}
+              </div>
 
               {/* Bottom Card Helper for Column 3 */}
               <div className="text-[11px] text-slate-500 dark:text-slate-400 pt-2 border-t border-amber-200/60 dark:border-amber-800/40 flex items-center justify-between">
-                <span>Derivación Inmediata: <strong className="text-slate-900 dark:text-slate-200">{initialTargetArea || 'Por asignar'}</strong></span>
+                <span>
+                  {hasInitialTarget ? (
+                    <>Derivación Inmediata: <strong className="text-slate-900 dark:text-slate-200">{initialTargetArea}</strong></>
+                  ) : (
+                    <>Primer Proveído: <strong className="text-amber-600 dark:text-amber-400">⏳ PENDIENTE (Custodia {effectiveSourceArea})</strong></>
+                  )}
+                </span>
                 <span className="text-amber-600 dark:text-brand-gold font-medium">Flujo Oficial CHLS</span>
               </div>
             </div>
@@ -1398,11 +1593,12 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
           {/* ========================================================================= */}
           <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-center gap-3 bg-slate-50/50 dark:bg-slate-900/40 rounded-2xl p-3.5 shrink-0">
             
-            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-medium">
+            <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-400 font-medium flex-wrap">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs" />
               <span>Radicación activa: <strong className="text-slate-900 dark:text-slate-200">{senderType === 'AREA_INTERNA' ? senderArea : senderName || 'Nuevo Remitente'}</strong></span>
               <span>• Fojas: <strong className="text-slate-900 dark:text-slate-200">{pageCount}</strong></span>
               <span>• Prioridad: <strong className="text-amber-500">{priority}</strong></span>
+              <span>• Proveído 1: <strong className={hasInitialTarget ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>{hasInitialTarget ? initialTargetArea : '⏳ PENDIENTE'}</strong></span>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
@@ -1418,8 +1614,14 @@ export const NewRouteSheetModal: React.FC<NewRouteSheetModalProps> = ({
                 disabled={isSaving}
                 className="flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 via-emerald-500 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-7 py-2.5 rounded-xl text-sm shadow-lg shadow-emerald-950/40 border border-emerald-400/30 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer disabled:opacity-50"
               >
-                <Send className="w-4 h-4 text-white" />
-                <span>{isSaving ? 'Generando Hoja de Ruta...' : 'Generar Hoja de Ruta Oficial 360°'}</span>
+                {hasInitialTarget ? <Send className="w-4 h-4 text-white" /> : <Clock className="w-4 h-4 text-amber-200" />}
+                <span>
+                  {isSaving
+                    ? 'Generando Hoja de Ruta...'
+                    : hasInitialTarget
+                    ? 'Generar Hoja de Ruta Oficial 360°'
+                    : 'Generar Hoja de Ruta (Proveído 1 Pendiente)'}
+                </span>
               </button>
             </div>
 

@@ -1,0 +1,3 @@
+# Forzar fin de línea LF (Unix) para scripts bash para evitar errores en servidores Linux / VPS
+*.sh text eol=lf
+*.bash text eol=lf

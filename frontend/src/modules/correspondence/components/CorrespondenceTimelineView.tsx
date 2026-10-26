@@ -41,6 +41,8 @@ import {
   ChevronUp,
   ChevronLeft,
   ChevronRight,
+  Link2,
+  Layers,
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { getDocumentFullUrl } from '../utils/organigramWorkflowService';
@@ -222,12 +224,32 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
       instruction: item.reference,
       quickStamp: item.cite ? `CITE: ${item.cite}` : null,
       documents: (item.documents || []).filter((d) => !d.movementId),
-      isCurrent: movements.length === 0,
+      isCurrent: false,
       iconType: 'search',
       sourceUserName: item.senderName || 'Mesa de Entradas',
       sourceUserId: item.createdById || null,
       isAccumulated: false,
     },
+    ...(movements.length === 0 && !isConcluido ? [{
+      id: 'pending-proveido-1',
+      stepNumber: 1,
+      isLeft: false,
+      dateStr: 'Pendiente',
+      timeStr: '--:--',
+      fullDate: 'En espera de instrucción',
+      badgeLabel: '⏳ PASO #1: PROVEÍDO PENDIENTE',
+      sourceArea: item.currentArea,
+      targetArea: 'Destino por Asignar',
+      personName: 'Pendiente de Asignación',
+      instruction: 'Hoja de ruta radicada formalmente sin derivación inmediata. Pendiente de cargar el Proveído 1 para dar curso al trámite.',
+      quickStamp: 'PROVEÍDO 1 PENDIENTE',
+      documents: [],
+      isCurrent: true,
+      iconType: 'target' as const,
+      sourceUserName: 'Despacho de Radicación',
+      sourceUserId: null,
+      isAccumulated: false,
+    }] : []),
     ...movements.map((mov, idx) => {
       const isCurrentStep = idx === movements.length - 1 && !isConcluido;
       const isLeft = (idx + 1) % 2 === 0; // Alterna: Der, Izq, Der, Izq...
@@ -315,8 +337,13 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
   };
 
   const isFusedChild = Boolean(
-    item.archivedAt ||
-    (item.status === 'CONCLUIDO' && item.aiSummary?.startsWith('FUSIONADO'))
+    item.parentRouteSheetId ||
+    item.parentRouteSheet ||
+    item.aiSummary?.startsWith('FUSIONADO')
+  );
+
+  const isFusedParent = Boolean(
+    item.fusedRouteSheets && item.fusedRouteSheets.length > 0
   );
 
   const verificationUrl = typeof window !== 'undefined'
@@ -355,17 +382,6 @@ export const CorrespondenceTimelineView: React.FC<CorrespondenceTimelineViewProp
                 Auto de Conclusión: "{item.archiveNotes}"
               </p>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* Si fue fusionado en otra Hoja de Ruta: Banner de Alerta */}
-      {isFusedChild && (
-        <div className="flex items-center gap-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-amber-200">
-          <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />
-          <div className="text-xs">
-            <strong className="block font-bold uppercase text-sm">Trámite Acumulado y Fusionado</strong>
-            Este expediente y sus antecedentes fueron fusionados formalmente en la Hoja de Ruta principal <strong>{item.currentArea}</strong>.
           </div>
         </div>
       )}

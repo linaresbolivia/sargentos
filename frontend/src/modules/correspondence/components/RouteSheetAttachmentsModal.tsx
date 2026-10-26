@@ -283,7 +283,8 @@ export const RouteSheetAttachmentsModal: React.FC<RouteSheetAttachmentsModalProp
                       </h4>
                     </div>
                     <span className="text-[10px] font-mono text-slate-400">
-                      Remitente: {item.senderName} ({item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Club' : 'Externo')})
+                      Remitente: {item.senderName} ({item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Club' : item.senderType === 'AREA_INTERNA' ? 'Interna' : 'Externa')})
+
                     </span>
                   </div>
                   <div className="grid grid-cols-1 gap-2.5">
