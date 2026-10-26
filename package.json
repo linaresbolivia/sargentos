@@ -12,6 +12,12 @@
     "dev:frontend": "npm run dev --workspace=frontend",
     "build:backend": "npm run build --workspace=backend",
     "build:frontend": "npm run build --workspace=frontend",
+    "build:all": "npm run db:generate && npm run build:backend && npm run build:frontend",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:push": "npm run db:push --workspace=backend",
+    "db:generate": "npm run db:generate --workspace=backend",
+    "db:studio": "npm run prisma:studio --workspace=backend",
+    "deploy:vps": "bash deploy.sh",
     "test:backend": "npm run test --workspace=backend",
     "test:frontend": "npm run test --workspace=frontend"
   }

@@ -158,6 +158,27 @@ export class ReservationsController {
         return res.status(400).json({ error: errorMsg, message: errorMsg });
       }
 
+      // Validación de horario de atención para cobros en Efectivo o Tarjeta en Cajas / Recepción
+      // Lunes a Viernes: 06:00 a 22:00 hrs
+      // Sábados y Domingos: 07:00 a 20:00 hrs
+      const methodUpper = String(paymentMethod || 'QR').toUpperCase();
+      if (methodUpper === 'EFECTIVO' || methodUpper === 'TARJETA') {
+        const now = new Date();
+        const boliviaDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/La_Paz' }));
+        const dayOfWeek = boliviaDate.getDay(); // 0 = Domingo, 6 = Sábado
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        const currentMinutes = boliviaDate.getHours() * 60 + boliviaDate.getMinutes();
+
+        const isWithinHours = isWeekend
+          ? (currentMinutes >= 7 * 60 && currentMinutes <= 20 * 60)
+          : (currentMinutes >= 6 * 60 && currentMinutes <= 22 * 60);
+
+        if (!isWithinHours) {
+          const errorMsg = `Los pagos en ${methodUpper === 'EFECTIVO' ? 'efectivo' : 'tarjeta'} solo pueden realizarse en horario de atención de cajas (Lunes a Viernes: 06:00 a 22:00, Sábados y Domingos: 07:00 a 20:00). Por favor utilice Pago QR.`;
+          return res.status(400).json({ error: errorMsg, message: errorMsg });
+        }
+      }
+
       const todayStr = formatDate(new Date());
       const maxDate = new Date();
       maxDate.setDate(maxDate.getDate() + 7);
@@ -254,8 +275,13 @@ export class ReservationsController {
       const guestRate = (court as any).guestRate ?? 25.0;
 
       const numGuests = playerType === 'GUESTS' ? Math.max(0, parseInt(String(guestsCount), 10) || 0) : 0;
+      const isPolifuncional = (court.sport || '').toLowerCase().includes('polifuncional');
+      if (playerType === 'GUESTS' && !isPolifuncional && numGuests > 15) {
+        return res.status(400).json({ error: 'El número máximo permitido de invitados para esta cancha es de 15 personas.' });
+      }
+
       const computedCourtFee = courtFee !== undefined ? Number(courtFee) : durationHours * hourlyRate;
-      const computedGuestFee = guestFee !== undefined ? Number(guestFee) : numGuests * guestRate;
+      const computedGuestFee = guestFee !== undefined ? Number(guestFee) : (isPolifuncional ? (numGuests > 0 ? 100.0 : 0.0) : numGuests * guestRate);
       const computedTotalPrice = totalPrice !== undefined ? Number(totalPrice) : (computedCourtFee + computedGuestFee);
 
       // Generar Código Único de Reserva para Identificación de Pagos
@@ -1324,7 +1350,14 @@ Estimado(a) socio(a) *${reservation.memberName}*, hemos recibido y adjuntado con
       if (notes !== undefined) updateData.notes = notes ? String(notes).trim() : null;
       if (reservationType !== undefined) updateData.reservationType = reservationType;
       if (playerType !== undefined) updateData.playerType = playerType;
-      if (guestsCount !== undefined) updateData.guestsCount = Number(guestsCount);
+      if (guestsCount !== undefined) {
+        const isPolifuncional = ((existing.court && existing.court.sport) || '').toLowerCase().includes('polifuncional');
+        const effectiveType = playerType || existing.playerType;
+        if (effectiveType === 'GUESTS' && !isPolifuncional && Number(guestsCount) > 15) {
+          return res.status(400).json({ error: 'El número máximo permitido de invitados para esta cancha es de 15 personas.' });
+        }
+        updateData.guestsCount = Number(guestsCount);
+      }
       if (playerNames !== undefined) updateData.playerNames = playerNames ? String(playerNames).trim() : null;
       if (totalPrice !== undefined) updateData.totalPrice = Number(totalPrice);
       if (status !== undefined) updateData.status = status;

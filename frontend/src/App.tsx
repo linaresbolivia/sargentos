@@ -10,6 +10,8 @@ import { Register } from '@modules/auth/pages/Register';
 import { MemberDashboard } from '@modules/members/pages/MemberDashboard';
 import { AccessControl } from '@modules/members/pages/AccessControl';
 import { MemberAdminHub } from './modules/members/pages/MemberAdminHub';
+import { AccountStatementsHub } from './modules/members/pages/AccountStatementsHub';
+import { MemberAccountStatementPage } from './modules/members/pages/MemberAccountStatementPage';
 import { SuperAdminDashboard } from '@modules/admin/pages/SuperAdminDashboard';
 import { GatehouseDashboard } from './modules/gatehouse/pages/GatehouseDashboard';
 import WhatsAppDashboard from './modules/whatsapp/pages/WhatsAppDashboard';
@@ -102,6 +104,8 @@ export const App: React.FC = () => {
             <Route path="/" element={<DashboardRedirect />} />
             <Route path="/portal" element={<MainPortal />} />
             <Route path="/member" element={<MemberDashboard />} />
+            <Route path="/member/statement" element={<MemberAccountStatementPage />} />
+            <Route path="/member/estado-cuentas" element={<MemberAccountStatementPage />} />
             <Route path="/member/reservations" element={<CourtBooking />} />
             <Route path="/member/occupancy" element={<LiveClubOccupancy />} />
             <Route path="/live-occupancy" element={<LiveClubOccupancy />} />
@@ -117,13 +121,15 @@ export const App: React.FC = () => {
             <Route path="/access/piscina/reports" element={<AreaReports defaultArea="PISCINA" />} />
             <Route path="/access/gimnasio/reports" element={<AreaReports defaultArea="GIMNASIO" />} />
             <Route path="/access/analytics" element={<AreaManagementAnalytics />} />
-            <Route path="/admin/access" element={<AccessControl />} />
+            <Route path="/admin/access" element={<Navigate to="/gatehouse" replace />} />
           </Route>
 
           {/* 2. Gestión de Socios & Cobranzas */}
           <Route element={<ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'MODULO_SOCIOS', 'MODULO_FACTURACION']} />}>
             <Route path="/admin/members" element={<MemberAdminHub />} />
             <Route path="/admin/socios" element={<MemberAdminHub />} />
+            <Route path="/admin/account-statements" element={<AccountStatementsHub />} />
+            <Route path="/admin/cartera" element={<AccountStatementsHub />} />
           </Route>
 
           {/* 3. Gestión de Canchas & Deportes (Admin) */}

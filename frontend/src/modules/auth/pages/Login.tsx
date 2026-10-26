@@ -73,6 +73,7 @@ export const Login: React.FC = () => {
             <div className="relative flex items-center">
               <Mail size={16} className="absolute left-3 text-slate-400 dark:text-gray-400" />
               <input
+                id="login-email"
                 type="text"
                 placeholder="Ej. tecnologia, gerencia, caja..."
                 value={email}
@@ -89,6 +90,7 @@ export const Login: React.FC = () => {
             <div className="relative flex items-center">
               <Lock size={16} className="absolute left-3 text-slate-400 dark:text-gray-400" />
               <input
+                id="login-password"
                 type={showPassword ? 'text' : 'password'}
                 placeholder={t('login.passwordPlaceholder')}
                 value={password}
@@ -109,6 +111,7 @@ export const Login: React.FC = () => {
           </div>
 
           <button
+            id="login-submit-btn"
             type="submit"
             disabled={isLoading}
             className="glass-button-primary mt-2 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"

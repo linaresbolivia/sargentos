@@ -5,6 +5,8 @@ import { api } from '@config/api';
 import {
   getOrganigramNodeForUser,
   DEFAULT_ORGANIGRAM_NODES,
+  getOrganigramOccupancyMap,
+  validateCargoAssignment,
 } from '@modules/correspondence/utils/organigramWorkflowService';
 import { WorkflowNode } from '@modules/correspondence/types/correspondence.types';
 import CrestLogo from '@shared/components/CrestLogo';
@@ -492,40 +494,74 @@ export const SuperAdminDashboard = () => {
         payload.password = newUserPassword.trim();
       }
 
+      let savedUserId = editingUserId;
       if (modalMode === 'create') {
-        await api.post('/users', payload);
+        const createRes = await api.post('/users', payload);
+        savedUserId = createRes.data?.id;
         toast.success(`¡Usuario ${newUsername || payload.firstName} creado exitosamente! 👤✨`);
       } else if (modalMode === 'edit' && editingUserId) {
         await api.put(`/users/${editingUserId}`, payload);
         toast.success(`Perfil de ${payload.firstName} actualizado correctamente ⚙️`);
       }
 
-      // Sincronizar el nombre y cargo en el organigrama oficial si se seleccionó un puesto
-      if (selectedOrganigramNodeId && (newUserFirstName || newUserLastName)) {
-        try {
-          const fullName = `${newUserFirstName.trim()} ${newUserLastName.trim()}`.trim();
-          const settingsRes = await api.get('/correspondence/settings');
-          const settings = settingsRes.data?.data;
-          if (settings && settings.workflow && Array.isArray(settings.workflow.nodes)) {
-            let updated = false;
-            settings.workflow.nodes = settings.workflow.nodes.map((node: any) => {
-              if (node.id === selectedOrganigramNodeId) {
-                updated = true;
-                return {
-                  ...node,
-                  manager: fullName || node.manager,
-                  subtitle: userPosition ? `${userPosition} (1)` : node.subtitle,
-                };
+      // Sincronizar cargo en el organigrama oficial:
+      // Regla CHLS: Una persona solo puede tener un cargo, pero un cargo puede tener múltiples personas.
+      try {
+        const fullName = `${newUserFirstName.trim()} ${newUserLastName.trim()}`.trim();
+        const settingsRes = await api.get('/correspondence/settings');
+        const settings = settingsRes.data?.data;
+        if (settings && settings.workflow && Array.isArray(settings.workflow.nodes)) {
+          let updated = false;
+          settings.workflow.nodes = settings.workflow.nodes.map((node: any) => {
+            const currentIds: string[] = [];
+            if (node.userId) currentIds.push(String(node.userId));
+            if (Array.isArray(node.userIds)) {
+              for (const uid of node.userIds) {
+                if (uid && !currentIds.includes(String(uid))) currentIds.push(String(uid));
               }
-              return node;
-            });
-            if (updated) {
-              await api.post('/correspondence/settings', settings);
             }
+
+            // 1. Si este nodo contenía a este usuario, pero ahora seleccionó OTRO puesto (o ninguno):
+            // Remover al usuario de este nodo anterior sin afectar a los demás funcionarios de ese puesto
+            if (savedUserId && currentIds.includes(String(savedUserId)) && node.id !== selectedOrganigramNodeId) {
+              updated = true;
+              const remainingIds = currentIds.filter((id) => id !== String(savedUserId));
+              return {
+                ...node,
+                userIds: remainingIds,
+                userId: remainingIds.length > 0 ? (node.userId === savedUserId ? remainingIds[0] : node.userId) : null,
+                manager: remainingIds.length === 0 ? 'Vacante / Sin Asignar' : node.manager,
+              };
+            }
+
+            // 2. Si es el puesto seleccionado para este usuario:
+            // Agregar al usuario a la lista de personas de este cargo (compartiendo el cargo si ya había otros)
+            if (selectedOrganigramNodeId && node.id === selectedOrganigramNodeId) {
+              updated = true;
+              const updatedIds = savedUserId
+                ? Array.from(new Set([...currentIds, String(savedUserId)]))
+                : currentIds;
+              return {
+                ...node,
+                userIds: updatedIds,
+                userId: node.userId || savedUserId,
+                manager: node.manager && node.manager !== 'Vacante / Sin Asignar'
+                  ? node.manager
+                  : fullName || node.manager,
+                email: node.email || finalEmail,
+                phone: newUserPhone ? newUserPhone.trim() : node.phone,
+                subtitle: userPosition ? `${userPosition}` : node.subtitle,
+              };
+            }
+            return node;
+          });
+          if (updated) {
+            await api.post('/correspondence/settings', settings);
+            setOrganigramNodes(settings.workflow.nodes);
           }
-        } catch (orgErr) {
-          console.warn('Could not sync organigram node:', orgErr);
         }
+      } catch (orgErr) {
+        console.warn('Could not sync organigram node:', orgErr);
       }
 
       setIsModalOpen(false);
@@ -599,6 +635,42 @@ export const SuperAdminDashboard = () => {
     try {
       await api.delete(`/users/${deleteTargetUser.id}`);
       setUsers((prev) => prev.filter((u) => u.id !== deleteTargetUser.id));
+
+      // Liberar cargo del organigrama si el usuario tenía uno asignado
+      try {
+        const settingsRes = await api.get('/correspondence/settings');
+        const settings = settingsRes.data?.data;
+        if (settings && settings.workflow && Array.isArray(settings.workflow.nodes)) {
+          let updated = false;
+          settings.workflow.nodes = settings.workflow.nodes.map((node: any) => {
+            const currentIds: string[] = [];
+            if (node.userId) currentIds.push(String(node.userId));
+            if (Array.isArray(node.userIds)) {
+              for (const uid of node.userIds) {
+                if (uid && !currentIds.includes(String(uid))) currentIds.push(String(uid));
+              }
+            }
+            if (currentIds.includes(String(deleteTargetUser.id))) {
+              updated = true;
+              const remainingIds = currentIds.filter((id) => id !== String(deleteTargetUser.id));
+              return {
+                ...node,
+                userIds: remainingIds,
+                userId: remainingIds.length > 0 ? (node.userId === deleteTargetUser.id ? remainingIds[0] : node.userId) : null,
+                manager: remainingIds.length === 0 ? 'Vacante / Sin Asignar' : node.manager,
+              };
+            }
+            return node;
+          });
+          if (updated) {
+            await api.post('/correspondence/settings', settings);
+            setOrganigramNodes(settings.workflow.nodes);
+          }
+        }
+      } catch (err) {
+        console.warn('Could not release organigram cargo on delete:', err);
+      }
+
       toast.success(`Usuario ${deleteTargetUser.firstName} ${deleteTargetUser.lastName} eliminado correctamente 🗑️`);
       setIsDeleteModalOpen(false);
       setDeleteTargetUser(null);
@@ -1192,6 +1264,8 @@ export const SuperAdminDashboard = () => {
                       onSelectNode={handleSelectOrganigramNode}
                       baseRole={baseRole}
                       placeholder="Buscar puesto por cargo, funciones o departamento..."
+                      users={users}
+                      editingUserId={editingUserId}
                     />
                   </div>
 

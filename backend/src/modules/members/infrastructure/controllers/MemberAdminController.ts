@@ -7,7 +7,35 @@ import { AssemblyProtocolService } from '../../application/services/assemblyProt
 import { PredictiveAlertsService } from '../../application/services/predictiveAlerts.service';
 import { FinancialReportsService } from '../../application/services/financialReports.service';
 import { FinancialSettingsService } from '../../application/services/financialSettings.service';
+import { AccountStatementSyncService } from '../../application/services/accountStatementSync.service';
+import { PaymentQrService } from '../../application/services/paymentQr.service';
 import { authenticate, authorize } from '@modules/auth/infrastructure/middlewares/auth.middleware';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+const uploadMemory = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
+
+const qrUploadDir = path.join(process.cwd(), 'uploads/payment-qr');
+if (!fs.existsSync(qrUploadDir)) {
+  fs.mkdirSync(qrUploadDir, { recursive: true });
+}
+
+const qrDiskStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, qrUploadDir);
+  },
+  filename: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    cb(null, `qr-${unique}${ext}`);
+  }
+});
+
+const uploadQr = multer({
+  storage: qrDiskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 }
+});
 
 export class MemberAdminController {
   public router = Router();
@@ -19,6 +47,8 @@ export class MemberAdminController {
   private alertsService: PredictiveAlertsService;
   private reportsService: FinancialReportsService;
   private settingsService: FinancialSettingsService;
+  private accountSyncService: AccountStatementSyncService;
+  private paymentQrService: PaymentQrService;
 
   constructor(private prisma: PrismaClient) {
     this.memberService = new MemberManagementService(prisma);
@@ -28,6 +58,8 @@ export class MemberAdminController {
     this.alertsService = new PredictiveAlertsService(prisma);
     this.reportsService = new FinancialReportsService(prisma);
     this.settingsService = new FinancialSettingsService(prisma);
+    this.accountSyncService = new AccountStatementSyncService(prisma);
+    this.paymentQrService = new PaymentQrService(prisma);
 
     this.initializeRoutes();
   }
@@ -68,6 +100,18 @@ export class MemberAdminController {
     // 7. Settings
     this.router.get('/admin/settings', authenticate, adminRoles, this.getSettings.bind(this));
     this.router.put('/admin/settings/:key', authenticate, adminRoles, this.updateSetting.bind(this));
+
+    // 8. Account Statements & Cartera Sync (Control de Acceso)
+    this.router.get('/admin/account-statements/summary', authenticate, adminRoles, this.getAccountStatementsSummary.bind(this));
+    this.router.get('/admin/account-statements/list', authenticate, adminRoles, this.listAccountStatements.bind(this));
+    this.router.post('/admin/account-statements/sync-default', authenticate, adminRoles, this.syncDefaultAccountStatements.bind(this));
+    this.router.post('/admin/account-statements/upload', authenticate, adminRoles, uploadMemory.single('file'), this.uploadAccountStatements.bind(this));
+
+    // 9. Payment QR Configuration & Socio Vouchers Review
+    this.router.get('/admin/payment-qr', authenticate, adminRoles, this.getPaymentQrConfig.bind(this));
+    this.router.post('/admin/payment-qr', authenticate, adminRoles, uploadQr.single('qrImage'), this.updatePaymentQrConfig.bind(this));
+    this.router.get('/admin/payment-vouchers', authenticate, adminRoles, this.listPaymentVouchers.bind(this));
+    this.router.post('/admin/payment-vouchers/:id/review', authenticate, adminRoles, this.reviewPaymentVoucher.bind(this));
   }
 
   // --- Handlers ---
@@ -287,4 +331,123 @@ export class MemberAdminController {
       res.status(400).json({ success: false, message: error.message });
     }
   }
+
+  // --- Account Statements & Cartera Handlers ---
+
+  private async getAccountStatementsSummary(req: Request, res: Response) {
+    try {
+      const data = await this.accountSyncService.getSummaryMetrics();
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error('Error getting account statements summary:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  private async listAccountStatements(req: Request, res: Response) {
+    try {
+      const { search, statusFilter, page, limit } = req.query;
+      const result = await this.accountSyncService.listAccountStatements({
+        search: search as string,
+        statusFilter: statusFilter as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 20
+      });
+      res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error('Error listing account statements:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  private async syncDefaultAccountStatements(req: Request, res: Response) {
+    try {
+      const result = await this.accountSyncService.syncFromDefaultDesktopFile();
+      res.json({ success: true, message: 'Cartera Especial sincronizada correctamente', data: result });
+    } catch (error: any) {
+      console.error('Error syncing default cartera PDF:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  private async uploadAccountStatements(req: Request, res: Response) {
+    try {
+      if (!req.file || !req.file.buffer) {
+        res.status(400).json({ success: false, message: 'No se recibió ningún archivo PDF' });
+        return;
+      }
+      const cutOffDate = (req.body.cutOffDate as string) || '15/10/2026';
+      const result = await this.accountSyncService.syncFromBuffer(req.file.buffer, cutOffDate);
+      res.json({ success: true, message: 'Archivo PDF procesado y cartera actualizada correctamente', data: result });
+    } catch (error: any) {
+      console.error('Error processing uploaded cartera PDF:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  // --- Payment QR & Voucher Handlers ---
+
+  private async getPaymentQrConfig(req: Request, res: Response) {
+    try {
+      const data = await this.paymentQrService.getActiveQrConfig();
+      res.json({ success: true, data });
+    } catch (error: any) {
+      console.error('Error fetching admin QR config:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  private async updatePaymentQrConfig(req: Request, res: Response) {
+    try {
+      const { bankName, accountNumber, accountType, accountHolder, nit, instructions } = req.body;
+      const data = await this.paymentQrService.updateQrConfig(
+        { bankName, accountNumber, accountType, accountHolder, nit, instructions },
+        req.file,
+        req.user?.email || 'admin'
+      );
+      res.json({ success: true, message: 'Configuración y QR de pago actualizados exitosamente', data });
+    } catch (error: any) {
+      console.error('Error updating admin QR config:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
+
+  private async listPaymentVouchers(req: Request, res: Response) {
+    try {
+      const { status, search, page, limit } = req.query;
+      const data = await this.paymentQrService.listVouchersForAdmin({
+        status: status as string,
+        search: search as string,
+        page: page ? parseInt(page as string) : 1,
+        limit: limit ? parseInt(limit as string) : 20
+      });
+      res.json({ success: true, ...data });
+    } catch (error: any) {
+      console.error('Error listing payment vouchers:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  }
+
+  private async reviewPaymentVoucher(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { action, reviewNotes } = req.body;
+      if (!action || !['APROBADO', 'RECHAZADO'].includes(action)) {
+        res.status(400).json({ success: false, message: 'Acción inválida. Debe ser APROBADO o RECHAZADO' });
+        return;
+      }
+      const data = await this.paymentQrService.reviewVoucher(
+        id,
+        action,
+        reviewNotes,
+        req.user?.email || 'admin'
+      );
+      res.json({ success: true, message: `Comprobante ${action.toLowerCase()} exitosamente`, data });
+    } catch (error: any) {
+      console.error('Error reviewing payment voucher:', error);
+      res.status(400).json({ success: false, message: error.message });
+    }
+  }
 }
+
+

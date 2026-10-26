@@ -1,13 +1,19 @@
-﻿const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+
 async function main() {
-  const user = await prisma.user.findUnique({
-    where: { email: 'shuanca@chls.com' },
-    include: { roles: true }
+  const m = await prisma.membership.findFirst({
+    where: { totalDebt: { gt: 0 } },
+    include: { titular: { include: { user: true } } }
   });
-  console.log('User roles:', user.roles.map(r => r.name));
-  console.log('User ID:', user.id);
-  const tickets = await prisma.pqrsTicket.findMany({ select: { code: true, assignedToId: true } });
-  console.log('Tickets:', tickets);
+  console.log('MEMBER WITH USER:', {
+    number: m?.membershipNumber,
+    debt: m?.totalDebt,
+    email: m?.titular?.user?.email,
+    name: `${m?.titular?.firstName} ${m?.titular?.lastName}`
+  });
+
 }
+
 main().finally(() => prisma.$disconnect());
+

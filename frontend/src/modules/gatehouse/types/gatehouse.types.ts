@@ -29,6 +29,10 @@ export interface AccessSearchResult {
   status: 'GRANTED' | 'DENIED';
   reason: string | null;
   totalDebt: number;
+  debtMonthsCount?: number;
+  debtStatus?: string;
+  debtWarning?: boolean;
+  debtBreakdown?: any;
   lastPaymentDate: Date | string | null;
   vehicles: AccessVehicle[];
   currentLocation: 'INSIDE' | 'OUTSIDE';

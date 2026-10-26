@@ -1,8 +1,17 @@
 import { z } from 'zod';
 
 export const CreateRouteSheetSchema = z.object({
-  senderType: z.enum(['SOCIO', 'AREA_INTERNA', 'EXTERNO']).default('AREA_INTERNA'),
+  senderType: z.preprocess((val) => {
+    if (typeof val === 'string') {
+      const up = val.toUpperCase().trim();
+      if (up === 'INTERNA' || up === 'INTERNO' || up === 'AREA_INTERNA') return 'AREA_INTERNA';
+      if (up === 'EXTERNA' || up === 'EXTERNO' || up === 'COURIER') return 'EXTERNO';
+      if (up === 'SOCIO') return 'SOCIO';
+    }
+    return val;
+  }, z.enum(['SOCIO', 'AREA_INTERNA', 'EXTERNO'])).default('AREA_INTERNA'),
   personId: z.string().optional().nullable(),
+
   senderName: z.string().min(2, 'El nombre del remitente es obligatorio'),
   senderArea: z.string().optional().nullable(),
   senderPhone: z.string().optional().nullable(),
@@ -16,7 +25,7 @@ export const CreateRouteSheetSchema = z.object({
   attachmentDescription: z.string().optional().nullable(),
   
   priority: z.enum(['BAJA', 'NORMAL', 'ALTA', 'URGENTE']).default('NORMAL'),
-  initialArea: z.string().default('SECRETARIA_GENERAL'),
+  initialArea: z.string().optional().nullable(),
   
   // Optional initial instruction
   initialInstruction: z.string().optional().nullable(),

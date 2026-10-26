@@ -202,6 +202,35 @@ export const undoRouteSheetDerivation = createAsyncThunk(
   }
 );
 
+export const updateRouteSheet = createAsyncThunk(
+  'correspondence/updateRouteSheet',
+  async ({ id, data }: { id: string; data: any }, { rejectWithValue }) => {
+    try {
+      const response = await api.put(`/correspondence/route-sheets/${id}`, data);
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al actualizar Hoja de Ruta');
+    }
+  }
+);
+
+export const deleteRouteSheet = createAsyncThunk(
+  'correspondence/deleteRouteSheet',
+  async (
+    { id, reason, mode }: { id: string; reason?: string; mode?: 'DELETE' | 'ANULAR' },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.delete(`/correspondence/route-sheets/${id}`, {
+        data: { reason, mode },
+      });
+      return { id, ...(response.data.data || {}) };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al eliminar Hoja de Ruta');
+    }
+  }
+);
+
 export const mergeRouteSheets = createAsyncThunk(
   'correspondence/mergeRouteSheets',
   async (
@@ -213,6 +242,23 @@ export const mergeRouteSheets = createAsyncThunk(
       return response.data.data; // Consolidate target route sheet
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.message || 'Error al fusionar Hojas de Ruta');
+    }
+  }
+);
+
+export const unmergeRouteSheet = createAsyncThunk(
+  'correspondence/unmergeRouteSheet',
+  async (
+    data: { routeSheetId: string; reason?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await api.post(`/correspondence/route-sheets/${data.routeSheetId}/unmerge`, {
+        reason: data.reason || 'Separación de trámite acumulado',
+      });
+      return response.data.data;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al desvincular Hoja de Ruta');
     }
   }
 );
@@ -284,6 +330,25 @@ export const uploadRouteSheetDocuments = createAsyncThunk(
     }
   }
 );
+
+export const deleteRouteSheetDocument = createAsyncThunk(
+  'correspondence/deleteDocument',
+  async (
+    { routeSheetId, documentId }: { routeSheetId: string; documentId: string },
+    { dispatch, rejectWithValue }
+  ) => {
+    try {
+      const response = await api.delete(`/correspondence/route-sheets/${routeSheetId}/documents/${documentId}`);
+      // Refresh item to reflect removed document
+      dispatch(fetchRouteSheetById(routeSheetId));
+      dispatch(fetchRouteSheets());
+      return { routeSheetId, documentId, data: response.data.data };
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.message || 'Error al eliminar el documento adjunto');
+    }
+  }
+);
+
 
 export const notifySlaAlert = createAsyncThunk(
   'correspondence/notifySlaAlert',
@@ -400,6 +465,13 @@ export const correspondenceSlice = createSlice({
         };
       }
     },
+    handleRealtimeDeleted: (state, action: PayloadAction<{ id: string; hrCode?: string }>) => {
+      state.items = state.items.filter((i) => i.id !== action.payload.id);
+      state.total = Math.max(0, state.total - 1);
+      if (state.selectedItem && state.selectedItem.id === action.payload.id) {
+        state.selectedItem = null;
+      }
+    },
     updateWorkflowLocal: (state, action: PayloadAction<CorrespondenceWorkflow>) => {
       state.workflow = action.payload;
     },
@@ -505,7 +577,42 @@ export const correspondenceSlice = createSlice({
         if (index !== -1 && action.payload) {
           state.items[index] = action.payload;
         }
+      })
+      .addCase(updateRouteSheet.fulfilled, (state, action) => {
+        state.selectedItem = action.payload;
+        const index = state.items.findIndex((i) => i.id === action.payload.id);
+        if (index !== -1) {
+          state.items[index] = action.payload;
+        }
+      })
+      .addCase(deleteRouteSheet.fulfilled, (state, action) => {
+        state.items = state.items.filter((i) => i.id !== action.payload.id);
+        state.total = Math.max(0, state.total - 1);
+        if (state.selectedItem && state.selectedItem.id === action.payload.id) {
+          state.selectedItem = null;
+        }
+      })
+      .addCase(deleteRouteSheetDocument.fulfilled, (state, action) => {
+        const { routeSheetId, documentId, data } = action.payload;
+        if (data) {
+          const index = state.items.findIndex((i) => i.id === routeSheetId);
+          if (index !== -1) {
+            state.items[index] = data;
+          }
+          if (state.selectedItem && state.selectedItem.id === routeSheetId) {
+            state.selectedItem = data;
+          }
+        } else {
+          const index = state.items.findIndex((i) => i.id === routeSheetId);
+          if (index !== -1 && state.items[index].documents) {
+            state.items[index].documents = state.items[index].documents.filter((d) => d.id !== documentId);
+          }
+          if (state.selectedItem && state.selectedItem.id === routeSheetId && state.selectedItem.documents) {
+            state.selectedItem.documents = state.selectedItem.documents.filter((d) => d.id !== documentId);
+          }
+        }
       });
+
 
     // mergeRouteSheets
     builder
@@ -514,6 +621,22 @@ export const correspondenceSlice = createSlice({
         const index = state.items.findIndex((i) => i.id === action.payload.id);
         if (index !== -1) {
           state.items[index] = action.payload;
+        }
+      });
+
+    // unmergeRouteSheet
+    builder
+      .addCase(unmergeRouteSheet.fulfilled, (state, action) => {
+        const { child, parent } = action.payload || {};
+        if (child) {
+          const cIdx = state.items.findIndex((i) => i.id === child.id);
+          if (cIdx !== -1) state.items[cIdx] = child;
+          if (state.selectedItem?.id === child.id) state.selectedItem = child;
+        }
+        if (parent) {
+          const pIdx = state.items.findIndex((i) => i.id === parent.id);
+          if (pIdx !== -1) state.items[pIdx] = parent;
+          if (state.selectedItem?.id === parent.id) state.selectedItem = parent;
         }
       });
 
@@ -571,6 +694,7 @@ export const {
   setSelectedItem,
   handleRealtimeCreated,
   handleRealtimeUpdated,
+  handleRealtimeDeleted,
   updateWorkflowLocal,
 } = correspondenceSlice.actions;
 

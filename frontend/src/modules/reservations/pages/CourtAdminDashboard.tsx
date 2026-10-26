@@ -514,20 +514,20 @@ export const CourtAdminDashboard: React.FC = () => {
         {/* 3. View: LIST */}
         {viewMode === 'LIST' && (
           <div className="space-y-4">
-          <div className="bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 p-5 space-y-4">
+          <div className="bg-slate-50 dark:bg-black/30 backdrop-blur-md rounded-2xl border border-slate-200 dark:border-white/10 p-5 space-y-4">
             
             {/* Filters Bar */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
               
               {/* Search */}
               <div className="md:col-span-1 relative">
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 dark:text-gray-400" />
                 <input
                   type="text"
                   placeholder="Buscar socio, código..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 dark:text-gray-200 placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold shadow-xs"
                 />
               </div>
 
@@ -536,7 +536,7 @@ export const CourtAdminDashboard: React.FC = () => {
                 <select
                   value={filterStatus}
                   onChange={e => setFilterStatus(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold shadow-xs"
                 >
                   <option value="ALL">Estados de Turno</option>
                   <option value="PENDING">Pendientes</option>
@@ -551,7 +551,7 @@ export const CourtAdminDashboard: React.FC = () => {
                 <select
                   value={filterPaymentStatus}
                   onChange={e => setFilterPaymentStatus(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold shadow-xs"
                 >
                   <option value="ALL">Estados de Pago</option>
                   <option value="PENDING_PAYMENT">🟡 Pendiente de Pago</option>
@@ -566,7 +566,7 @@ export const CourtAdminDashboard: React.FC = () => {
                 <select
                   value={filterType}
                   onChange={e => setFilterType(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold shadow-xs"
                 >
                   <option value="ALL">Todos los Tipos</option>
                   <option value="CIERRE_CANCHA">🚫 Cierre de Canchas</option>
@@ -583,7 +583,7 @@ export const CourtAdminDashboard: React.FC = () => {
                 <select
                   value={selectedSport}
                   onChange={e => setSelectedSport(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-xs text-slate-800 dark:text-gray-200 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold shadow-xs"
                 >
                   <option value="ALL">Todos los Deportes</option>
                   {Array.from(new Set(courts.map(c => c.sport))).map(s => (
@@ -594,10 +594,10 @@ export const CourtAdminDashboard: React.FC = () => {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-white/10">
+            <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-white/10">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
-                  <tr className="bg-black/60 border-b border-white/10 uppercase tracking-wider text-gray-400">
+                  <tr className="bg-slate-100 dark:bg-black/60 border-b border-slate-200 dark:border-white/10 uppercase tracking-wider text-slate-700 dark:text-gray-400 font-bold">
                     <th className="py-3.5 px-4 font-bold">Fecha / Hora Solicitud (Llegada)</th>
                     <th className="py-3.5 px-4 font-bold">Turno Deportivo</th>
                     <th className="py-3.5 px-4 font-bold">Cancha / Deporte</th>
@@ -607,11 +607,11 @@ export const CourtAdminDashboard: React.FC = () => {
                     <th className="py-3.5 px-4 font-bold text-right">Acciones</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/5 text-gray-300">
+                <tbody className="divide-y divide-slate-100 dark:divide-white/5 text-slate-800 dark:text-gray-300">
                   {loading ? (
-                    <tr><td colSpan={7} className="py-12 text-center text-gray-400">Cargando registros...</td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center text-slate-500 dark:text-gray-400">Cargando registros...</td></tr>
                   ) : filteredForList.length === 0 ? (
-                    <tr><td colSpan={7} className="py-12 text-center text-gray-400">No se encontraron reservas con los filtros aplicados.</td></tr>
+                    <tr><td colSpan={7} className="py-12 text-center text-slate-500 dark:text-gray-400">No se encontraron reservas con los filtros aplicados.</td></tr>
                   ) : (
                     filteredForList.map((res: Reservation) => {
                       const totalAmount = res.totalPrice ?? (res.courtFee ?? 0) + (res.guestFee ?? 0);
@@ -626,21 +626,21 @@ export const CourtAdminDashboard: React.FC = () => {
                           key={res.id} 
                           className={`transition-colors ${
                             isActionRequired 
-                              ? 'bg-amber-500/[0.06] hover:bg-amber-500/[0.1] border-l-4 border-amber-400' 
+                              ? 'bg-amber-50 dark:bg-amber-500/[0.06] hover:bg-amber-100/60 dark:hover:bg-amber-500/[0.1] border-l-4 border-amber-400' 
                               : isExempt 
-                              ? 'bg-emerald-500/[0.02] hover:bg-emerald-500/[0.05]'
-                              : 'hover:bg-white/[0.02]'
+                              ? 'bg-emerald-50/40 dark:bg-emerald-500/[0.02] hover:bg-emerald-100/50 dark:hover:bg-emerald-500/[0.05]'
+                              : 'hover:bg-slate-50 dark:hover:bg-white/[0.02]'
                           }`}
                         >
                           {/* Columna 1: Fecha y Hora de Llegada / Solicitud */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 mb-1">
-                              <span className={`w-2 h-2 rounded-full ${isExempt ? 'bg-emerald-400 shadow-[0_0_6px_#34d399]' : 'bg-brand-gold shadow-[0_0_6px_#cca14b]'}`}></span>
-                              <span className="font-bold text-white font-mono text-xs">
+                              <span className={`w-2 h-2 rounded-full ${isExempt ? 'bg-emerald-500 shadow-[0_0_6px_#10b981]' : 'bg-amber-500 shadow-[0_0_6px_#cca14b]'}`}></span>
+                              <span className="font-bold text-slate-900 dark:text-white font-mono text-xs">
                                 {res.createdAt ? format(parseISO(res.createdAt), 'dd/MM/yyyy HH:mm:ss') : 'Fecha no reg.'}
                               </span>
                             </div>
-                            <div className="text-[10px] text-emerald-400 font-medium">
+                            <div className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
                               {res.createdAt ? formatDistanceToNow(parseISO(res.createdAt), { addSuffix: true, locale: es }) : ''}
                             </div>
                           </td>
@@ -648,58 +648,58 @@ export const CourtAdminDashboard: React.FC = () => {
                           {/* Columna 2: Turno Deportivo */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                              <span className="font-bold text-white">{format(parseISO(res.date), 'dd/MM/yyyy')}</span>
+                              <span className="font-bold text-slate-900 dark:text-white">{format(parseISO(res.date), 'dd/MM/yyyy')}</span>
                               <span 
                                 onClick={() => {
                                   const c = res.code || res.id.slice(0, 8).toUpperCase();
                                   navigator.clipboard.writeText(c);
                                   toast.success(`Código #${c} copiado`);
                                 }}
-                                className="cursor-pointer px-1.5 py-0.5 rounded bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/30 text-brand-gold font-mono text-[10px] font-bold transition-colors"
+                                className="cursor-pointer px-1.5 py-0.5 rounded bg-amber-100 dark:bg-brand-gold/15 hover:bg-amber-200 dark:hover:bg-brand-gold/25 border border-amber-300 dark:border-brand-gold/30 text-amber-900 dark:text-brand-gold font-mono text-[10px] font-bold transition-colors"
                                 title="Clic para copiar código de reserva"
                               >
                                 #{res.code || res.id.slice(0, 8).toUpperCase()}
                               </span>
                               {isActionRequired && (
-                                <span className="px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-300 border border-yellow-500/40 text-[9px] font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded bg-yellow-100 dark:bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border border-yellow-300 dark:border-yellow-500/40 text-[9px] font-black uppercase tracking-wider animate-pulse flex items-center gap-1">
                                   🔔 Por Confirmar
                                 </span>
                               )}
                               {isExempt && (
-                                <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
                                   ✓ Habilitado
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-brand-gold font-mono">{res.startTime} - {res.endTime}</div>
+                            <div className="text-[11px] text-amber-700 dark:text-brand-gold font-mono font-bold">{res.startTime} - {res.endTime}</div>
                           </td>
                           
                           <td className="py-3 px-4">
-                            <div className="font-semibold text-gray-200">{res.court?.name}</div>
-                            <div className="text-[10px] text-brand-gold-light">{res.court?.sport}</div>
+                            <div className="font-semibold text-slate-900 dark:text-gray-200">{res.court?.name}</div>
+                            <div className="text-[10px] text-amber-700 dark:text-brand-gold-light font-medium">{res.court?.sport}</div>
                           </td>
                           
                           <td className="py-3 px-4">
-                            <div className="font-bold text-white uppercase">
+                            <div className="font-bold text-slate-900 dark:text-white uppercase">
                               {res.reservationType === 'MEMBER' ? res.memberName : (res.title || 'Bloqueo Administrativo')}
                             </div>
                             {res.memberCode && res.memberCode !== 'ADMIN_BLOCK' && (
-                              <div className="text-[10px] text-gray-400">Socio: #{res.memberCode} {res.memberPhone ? `• ${res.memberPhone}` : ''}</div>
+                              <div className="text-[10px] text-slate-500 dark:text-gray-400">Socio: #{res.memberCode} {res.memberPhone ? `• ${res.memberPhone}` : ''}</div>
                             )}
                             {/* Modalidad Badge para Socios */}
                             {res.reservationType === 'MEMBER' && (
                               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${
                                   res.playerType === 'GUESTS' 
-                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                                    ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30' 
                                     : res.playerType === 'MEMBERS'
-                                    ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                                    : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                    ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/30'
+                                    : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
                                 }`}>
                                   {res.playerType === 'GUESTS' ? `👥 Con ${res.guestsCount || 1} Invitado(s)` : res.playerType === 'MEMBERS' ? '🎾 Entre Socios' : '👨‍👩‍👧‍👦 Familiar'}
                                 </span>
                                 {res.playerNames && (
-                                  <span className="text-[10px] text-gray-400 italic truncate max-w-xs" title={res.playerNames}>
+                                  <span className="text-[10px] text-slate-500 dark:text-gray-400 italic truncate max-w-xs" title={res.playerNames}>
                                     ({res.playerNames})
                                   </span>
                                 )}
@@ -710,17 +710,17 @@ export const CourtAdminDashboard: React.FC = () => {
                               <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                                 <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
                                   res.reservationType === 'CIERRE_CANCHA'
-                                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                                    ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40'
                                     : res.reservationType === 'MAINTENANCE'
-                                    ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40'
+                                    ? 'bg-orange-100 dark:bg-orange-500/20 text-orange-800 dark:text-orange-300 border border-orange-300 dark:border-orange-500/40'
                                     : res.reservationType === 'CLASS' || res.reservationType === 'ESCUELA_DEPORTIVA'
-                                    ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                    : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40'
+                                    ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/40'
+                                    : 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/40'
                                 }`}>
                                   {res.reservationType === 'CIERRE_CANCHA' ? '🚫 Cierre de Canchas' : res.reservationType === 'MAINTENANCE' ? '🛠️ Mantenimiento' : res.reservationType === 'CLASS' ? '🎾 Clases Deportivas' : res.reservationType === 'ESCUELA_DEPORTIVA' ? '🎓 Escuela Deportiva' : '🏆 Torneo'}
                                 </span>
                                 {res.notes && (
-                                  <span className="text-[10px] text-gray-300 italic truncate max-w-xs" title={res.notes}>
+                                  <span className="text-[10px] text-slate-600 dark:text-gray-300 italic truncate max-w-xs" title={res.notes}>
                                     • {res.notes}
                                   </span>
                                 )}
@@ -730,7 +730,7 @@ export const CourtAdminDashboard: React.FC = () => {
                           
                           {/* Monto & Pago Column */}
                           <td className="py-3 px-4">
-                            <div className="font-bold text-white font-mono text-sm">
+                            <div className="font-bold text-slate-900 dark:text-white font-mono text-sm">
                               {isExempt ? 'Bs. 0' : `Bs. ${totalAmount}`}
                             </div>
                             <div className="mt-1 flex items-center gap-1.5 flex-wrap">

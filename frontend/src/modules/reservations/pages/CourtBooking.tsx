@@ -42,7 +42,10 @@ import {
   PhoneCall,
   HelpCircle,
   Banknote,
-  Pencil
+  Pencil,
+  Minus,
+  ClipboardList,
+  Ticket
 } from 'lucide-react';
 import { format, addDays, startOfToday, parseISO, isSameDay, isBefore, isSaturday, isSunday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -154,13 +157,13 @@ const SPORT_META: Record<string, {
   },
   'Raquet / Wally': { 
     label: 'Raquet / Wally', 
-    desc: '2 Espacios de Madera', 
+    desc: 'Racquetball o Wally (2 Espacios)', 
     unitSingular: 'espacio', 
     unitPlural: 'espacios',
     guestRate: 50,
     contactPhones: ['+591 76753743'],
     contactDesc: 'Recepción de Gimnasio',
-    notes: 'Reserva de 1 hora. Arancel Bs. 50 por invitado.'
+    notes: 'Reserva de 1 hora. Elige si juegas Racquet o Wally. Arancel Bs. 50 por invitado.'
   },
   'Ping Pong': { 
     label: 'Ping Pong', 
@@ -457,6 +460,7 @@ export const CourtBooking: React.FC = () => {
   const [selectedSport, setSelectedSport] = useState<string>('Tenis');
   const [selectedCourt, setSelectedCourt] = useState<Court | null>(null);
   const [polifunctionalSport, setPolifunctionalSport] = useState<'Futsal' | 'Volleyball' | 'Basketball'>('Futsal');
+  const [racquetWallySport, setRacquetWallySport] = useState<'Racquet' | 'Wally'>('Racquet');
   const [selectedDate, setSelectedDate] = useState<Date>(startOfToday());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [durationHours, setDurationHours] = useState<number>(1);
@@ -464,19 +468,20 @@ export const CourtBooking: React.FC = () => {
   // Booking details
   const [playerType, setPlayerType] = useState<'FAMILY' | 'GUESTS' | 'MEMBERS'>('FAMILY');
   const [guestsCount, setGuestsCount] = useState<number>(1);
-  const [hasGuestPasses, setHasGuestPasses] = useState<boolean>(false);
+  const [hasGuestPasses, setHasGuestPasses] = useState<'YES' | 'NO' | null>(null);
   const [playerNames, setPlayerNames] = useState('');
   
-  // Lista detallada de Invitados (Nombre + CI + Pase de Invitado)
+  // Lista detallada de Invitados (Nombre + CI + Pase de Invitado y Gestión)
   const [guestsList, setGuestsList] = useState<Array<{ 
     name: string; 
     documentId: string;
     guestPassNumber?: string;
+    guestPassYear?: string;
   }>>([
-    { name: '', documentId: '', guestPassNumber: '' }
+    { name: '', documentId: '', guestPassNumber: '', guestPassYear: '' }
   ]);
   
-  // Lista detallada de Socios Compañeros (Nombre + Carnet/Acción)
+  // Lista detallada de Socios Compañeros (Nombre + Código de Socio o Cuota de Participación)
   const [partnersCount, setPartnersCount] = useState<number>(1);
   const [partnerMembersList, setPartnerMembersList] = useState<Array<{ name: string; documentId: string }>>([
     { name: '', documentId: '' }
@@ -485,18 +490,87 @@ export const CourtBooking: React.FC = () => {
   // Texto o detalles de Familiares
   const [familyMembersText, setFamilyMembersText] = useState('');
 
+  // Estado para carga rápida / pegar lista de WhatsApp
+  const [showBulkPasteGuests, setShowBulkPasteGuests] = useState<boolean>(false);
+  const [bulkPasteText, setBulkPasteText] = useState<string>('');
+
+  // Límite de invitados: Polifuncional NO tiene límite de invitados (se reserva la cancha completa, ya no es por invitado)
+  // Para Tenis, Pádel, Frontón y Racquet se aplica un máximo de 15 invitados.
+  const isPolifuncional = selectedSport === 'Polifuncional';
+  const maxGuestsAllowed = isPolifuncional ? null : 15;
+
   const handleGuestsCountChange = (n: number) => {
-    setGuestsCount(n);
+    const rawN = Math.max(1, parseInt(String(n), 10) || 1);
+    const validN = maxGuestsAllowed ? Math.min(rawN, maxGuestsAllowed) : rawN;
+    setGuestsCount(validN);
     setGuestsList(prev => {
       const copy = [...prev];
-      while (copy.length < n) {
-        copy.push({ name: '', documentId: '', guestPassNumber: '' });
+      while (copy.length < validN) {
+        copy.push({ name: '', documentId: '', guestPassNumber: '', guestPassYear: '' });
       }
-      return copy.slice(0, n);
+      return copy.slice(0, validN);
     });
   };
 
-  const handleGuestFieldChange = (index: number, field: 'name' | 'documentId' | 'guestPassNumber', val: any) => {
+  const handleAddGuest = () => {
+    if (maxGuestsAllowed && guestsCount >= maxGuestsAllowed) {
+      toast.error(`El límite máximo permitido es de ${maxGuestsAllowed} invitados para ${selectedSport}.`);
+      return;
+    }
+    handleGuestsCountChange(guestsCount + 1);
+  };
+
+  const handleRemoveGuest = (index: number) => {
+    if (guestsCount <= 1) return;
+    setGuestsList(prev => {
+      const copy = prev.filter((_, i) => i !== index);
+      return copy;
+    });
+    setGuestsCount(prev => Math.max(1, prev - 1));
+  };
+
+  const handleApplyBulkGuests = () => {
+    if (!bulkPasteText.trim()) return;
+    const lines = bulkPasteText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) return;
+
+    let parsed: Array<{ name: string; documentId: string; guestPassNumber?: string; guestPassYear?: string }> = [];
+    lines.forEach(line => {
+      let clean = line.replace(/^[\d\s.\-•*)]+/, '').trim();
+      let ci = '';
+      const ciMatch = clean.match(/(?:ci|dni|carnet)?[:\s-]*([0-9]{5,10}(?:\s*[a-zA-Z]{2,3})?)/i);
+      if (ciMatch) {
+        ci = ciMatch[1].trim();
+        clean = clean.replace(ciMatch[0], '').replace(/[()\[\]]/g, '').trim();
+      }
+      clean = clean.replace(/^[,\s\-]+|[,\s\-]+$/g, '').trim();
+      if (clean) {
+        parsed.push({
+          name: clean,
+          documentId: ci,
+          guestPassNumber: '',
+          guestPassYear: ''
+        });
+      }
+    });
+
+    if (maxGuestsAllowed && parsed.length > maxGuestsAllowed) {
+      toast(`Se cargaron los primeros ${maxGuestsAllowed} invitados (límite máximo permitido para ${selectedSport}).`, { icon: '⚠️' });
+      parsed = parsed.slice(0, maxGuestsAllowed);
+    }
+
+    if (parsed.length > 0) {
+      setGuestsCount(parsed.length);
+      setGuestsList(parsed);
+      setShowBulkPasteGuests(false);
+      setBulkPasteText('');
+      toast.success(`¡${parsed.length} invitados cargados desde la lista!`);
+    } else {
+      toast.error('No se pudieron extraer nombres válidos de la lista.');
+    }
+  };
+
+  const handleGuestFieldChange = (index: number, field: 'name' | 'documentId' | 'guestPassNumber' | 'guestPassYear', val: any) => {
     setGuestsList(prev => {
       const copy = [...prev];
       copy[index] = { ...copy[index], [field]: val };
@@ -505,14 +579,26 @@ export const CourtBooking: React.FC = () => {
   };
 
   const handlePartnersCountChange = (n: number) => {
-    setPartnersCount(n);
+    const validN = Math.max(1, Math.min(Number(n) || 1, 30));
+    setPartnersCount(validN);
     setPartnerMembersList(prev => {
       const copy = [...prev];
-      while (copy.length < n) {
+      while (copy.length < validN) {
         copy.push({ name: '', documentId: '' });
       }
-      return copy.slice(0, n);
+      return copy.slice(0, validN);
     });
+  };
+
+  const handleAddPartner = () => {
+    if (partnersCount >= 30) return;
+    handlePartnersCountChange(partnersCount + 1);
+  };
+
+  const handleRemovePartner = (index: number) => {
+    if (partnersCount <= 1) return;
+    setPartnerMembersList(prev => prev.filter((_, i) => i !== index));
+    setPartnersCount(prev => Math.max(1, prev - 1));
   };
 
   const handlePartnerFieldChange = (index: number, field: 'name' | 'documentId', val: string) => {
@@ -678,20 +764,60 @@ export const CourtBooking: React.FC = () => {
 
   const sportMeta = SPORT_META[selectedSport] || { guestRate: 50, contactPhones: [], contactDesc: '', notes: '' };
 
+  // Validación de pases físicos de invitados
+  // Según comunicado oficial: Solo se admiten pases desde la gestión 2022 en adelante para exonerar arancel.
+  // Pases de gestiones 2021, 2020, 2019, 2018, 2017 no se admiten para exoneración directa y requieren pago de arancel.
+  const isGuestPassValidForExemption = (guest: { guestPassNumber?: string; guestPassYear?: string }) => {
+    if (!guest.guestPassNumber?.trim()) return false;
+    const year = parseInt(guest.guestPassYear || '', 10);
+    return !isNaN(year) && year >= 2022;
+  };
+
+  const isGuestPassDisallowedYear = (guest: { guestPassNumber?: string; guestPassYear?: string }) => {
+    if (!guest.guestPassYear) return false;
+    const year = parseInt(guest.guestPassYear, 10);
+    return !isNaN(year) && year < 2022;
+  };
+
   // Cálculo de aranceles considerando pases de invitados
   let currentGuestFee = 0;
-  if (playerType === 'GUESTS' && !hasGuestPasses) {
-    const payingGuestsCount = guestsList.filter(g => !g.guestPassNumber?.trim()).length;
-    if (sportMeta.isFixedCourtRate) {
-      currentGuestFee = payingGuestsCount > 0 ? (sportMeta.fixedRate || 100) : 0;
+  let exemptGuestsCount = 0;
+  let payingGuestsCount = 0;
+
+  if (playerType === 'GUESTS') {
+    if (hasGuestPasses === 'YES') {
+      exemptGuestsCount = guestsList.slice(0, guestsCount).filter(g => isGuestPassValidForExemption(g)).length;
+      payingGuestsCount = guestsCount - exemptGuestsCount;
+      if (sportMeta.isFixedCourtRate) {
+        currentGuestFee = payingGuestsCount > 0 ? (sportMeta.fixedRate || 100) : 0;
+      } else {
+        currentGuestFee = payingGuestsCount * (sportMeta.guestRate || 50);
+      }
     } else {
-      currentGuestFee = payingGuestsCount * (sportMeta.guestRate || 50);
+      exemptGuestsCount = 0;
+      payingGuestsCount = guestsCount;
+      if (sportMeta.isFixedCourtRate) {
+        currentGuestFee = (sportMeta.fixedRate || 100);
+      } else {
+        currentGuestFee = payingGuestsCount * (sportMeta.guestRate || 50);
+      }
     }
   }
   const currentTotalPrice = currentGuestFee;
 
-  // Verificación de horario de atención para cobro por Tarjeta en Recepción / Atención al Socio
-  const isCardPaymentAllowed = useMemo(() => {
+  const getReservationDisciplineLabel = (resItem: Reservation) => {
+    if (resItem.title?.includes('Wally') || resItem.notes?.includes('Wally')) return 'Wally';
+    if (resItem.title?.includes('Racquet') || resItem.notes?.includes('Racquet')) return 'Racquet';
+    if (resItem.title?.includes('Futsal') || resItem.notes?.includes('Futsal')) return 'Futsal';
+    if (resItem.title?.includes('Volleyball') || resItem.notes?.includes('Volleyball')) return 'Volleyball';
+    if (resItem.title?.includes('Basketball') || resItem.notes?.includes('Basketball')) return 'Basketball';
+    return resItem.court?.sport || '';
+  };
+
+  // Verificación de horario de atención para cobro en Efectivo y Tarjeta en Recepción / Cajas
+  // Lunes a Viernes: 06:00 a 22:00 hrs
+  // Sábados y Domingos: 07:00 a 20:00 hrs
+  const checkCashierPaymentAllowed = () => {
     const now = new Date();
     const dayOfWeek = now.getDay(); // 0 = Domingo, 6 = Sábado
     const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
@@ -706,7 +832,34 @@ export const CourtBooking: React.FC = () => {
       // Lunes a Viernes: 06:00 a 22:00 (360 a 1320 minutos)
       return timeInMinutes >= (6 * 60) && timeInMinutes <= (22 * 60);
     }
+  };
+
+  const [isCashierPaymentAllowed, setIsCashierPaymentAllowed] = useState(checkCashierPaymentAllowed);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setIsCashierPaymentAllowed(checkCashierPaymentAllowed());
+    }, 15000);
+    return () => clearInterval(timer);
   }, []);
+
+  // Si nos encontramos fuera del horario de atención de cajas, forzar o reajustar a Pago QR (24/7)
+  useEffect(() => {
+    if (!isCashierPaymentAllowed && (bookingPaymentMethod === 'EFECTIVO' || bookingPaymentMethod === 'TARJETA')) {
+      setBookingPaymentMethod('QR');
+    }
+  }, [isCashierPaymentAllowed, bookingPaymentMethod]);
+
+  const handleSelectPaymentMethod = (method: 'QR' | 'EFECTIVO' | 'TARJETA') => {
+    if ((method === 'EFECTIVO' || method === 'TARJETA') && !checkCashierPaymentAllowed()) {
+      toast.error(
+        `El cobro en ${method === 'EFECTIVO' ? 'efectivo' : 'tarjeta'} solo está disponible en horario de atención de cajas (Lun-Vie 06:00 a 22:00, Sáb-Dom 07:00 a 20:00). Por favor utilice Pago QR.`
+      );
+      setBookingPaymentMethod('QR');
+      return;
+    }
+    setBookingPaymentMethod(method);
+  };
 
   const currentTimeSlots = useMemo(() => {
     const isWeekend = isSaturday(selectedDate) || isSunday(selectedDate);
@@ -760,6 +913,10 @@ export const CourtBooking: React.FC = () => {
     if (inSport.length > 0) {
       setSelectedCourt(inSport[0]);
     }
+    if (sport !== 'Polifuncional' && guestsCount > 15) {
+      handleGuestsCountChange(15);
+      toast('Límite de 15 invitados aplicado para ' + sport, { icon: 'ℹ️' });
+    }
     setCurrentStep(2);
   };
 
@@ -796,7 +953,7 @@ export const CourtBooking: React.FC = () => {
       setPlayerType('FAMILY');
       setGuestsCount(1);
       setPlayerNames('');
-      setHasGuestPasses(false);
+      setHasGuestPasses(null);
       setCurrentStep(4);
     } else if (res.memberCode === currentMemberCode) {
       setSelectedForQrModal(res);
@@ -814,6 +971,11 @@ export const CourtBooking: React.FC = () => {
       return;
     }
 
+    if (playerType === 'GUESTS' && !hasGuestPasses) {
+      toast.error('Por favor indique si cuenta con pases de invitado (SÍ o NO).');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const dateStr = format(selectedDate, 'yyyy-MM-dd');
@@ -823,14 +985,23 @@ export const CourtBooking: React.FC = () => {
       // Componer nombres de jugadores según la modalidad
       let finalPlayerNames = '';
       if (playerType === 'GUESTS') {
-        const validGuests = guestsList.filter(g => g.name.trim());
+        const validGuests = guestsList.slice(0, guestsCount).filter(g => g.name.trim());
         if (validGuests.length > 0) {
           finalPlayerNames = 'Invitados: ' + validGuests.map(g => {
             let details = g.name.trim();
-            if (g.documentId.trim()) details += ` (CI: ${g.documentId.trim()})`;
-            if (g.guestPassNumber?.trim()) details += ` [Pase Tarjeta #${g.guestPassNumber.trim()}]`;
+            if (g.documentId?.trim()) details += ` (CI: ${g.documentId.trim()})`;
+            if (g.guestPassNumber?.trim()) {
+              const isExempt = isGuestPassValidForExemption(g);
+              const yearStr = g.guestPassYear ? ` Gest. ${g.guestPassYear}` : '';
+              details += ` [Pase #${g.guestPassNumber.trim()}${yearStr}${isExempt ? ' (Exento)' : ' (Arancel por Comunicado)'}]`;
+            }
             return details;
           }).join(', ');
+          if (validGuests.length < guestsCount) {
+            finalPlayerNames += ` (+${guestsCount - validGuests.length} adicionales por registrar en portería)`;
+          }
+        } else {
+          finalPlayerNames = `Invitados: ${guestsCount} persona(s) por registrar en control de acceso`;
         }
       } else if (playerType === 'MEMBERS') {
         const validPartners = partnerMembersList.filter(p => p.name.trim());
@@ -841,6 +1012,26 @@ export const CourtBooking: React.FC = () => {
         if (familyMembersText.trim()) {
           finalPlayerNames = `Familia: ${familyMembersText.trim()}`;
         }
+      }
+
+      const specificDisciplineTitle = selectedSport === 'Polifuncional'
+        ? `Polifuncional - ${polifunctionalSport}`
+        : selectedSport === 'Raquet / Wally'
+        ? `Raquet / Wally - ${racquetWallySport}`
+        : `Reserva de ${selectedSport}`;
+
+      const specificNotes = selectedSport === 'Raquet / Wally'
+        ? `Disciplina: ${racquetWallySport} (${racquetWallySport === 'Wally' ? 'Requiere red de wally instalada' : 'Espacio de racquet sin red'})`
+        : selectedSport === 'Polifuncional'
+        ? `Disciplina: ${polifunctionalSport}`
+        : undefined;
+
+      if (bookingPaymentMethod !== 'QR' && !checkCashierPaymentAllowed()) {
+        toast.error(
+          'Los pagos en efectivo y tarjeta solo pueden realizarse en horario de atención de cajas (Lun-Vie 06:00 a 22:00, Sáb-Dom 07:00 a 20:00). Por favor utilice Pago QR.'
+        );
+        setBookingPaymentMethod('QR');
+        return;
       }
 
       let res;
@@ -856,7 +1047,8 @@ export const CourtBooking: React.FC = () => {
           totalPrice: currentTotalPrice,
           paymentMethod: bookingPaymentMethod,
           memberPhone: formData.memberPhone.trim(),
-          title: selectedSport === 'Polifuncional' ? `Polifuncional - ${polifunctionalSport}` : `Reserva de ${selectedSport}`
+          title: specificDisciplineTitle,
+          notes: specificNotes
         });
         toast.success('¡Reserva actualizada con éxito!');
       } else {
@@ -875,7 +1067,8 @@ export const CourtBooking: React.FC = () => {
           guestFee: currentGuestFee,
           totalPrice: currentTotalPrice,
           paymentMethod: bookingPaymentMethod,
-          title: formData.memberName || (selectedSport === 'Polifuncional' ? `Polifuncional - ${polifunctionalSport}` : `Reserva de ${selectedSport}`)
+          title: specificDisciplineTitle,
+          notes: specificNotes
         });
         toast.success('¡Reserva registrada con éxito!');
       }
@@ -905,6 +1098,20 @@ export const CourtBooking: React.FC = () => {
 
     const sport = res.court?.sport || 'Tenis';
     setSelectedSport(sport);
+
+    if (res.title?.includes('Wally') || res.notes?.includes('Wally')) {
+      setRacquetWallySport('Wally');
+    } else {
+      setRacquetWallySport('Racquet');
+    }
+
+    if (res.title?.includes('Volleyball') || res.notes?.includes('Volleyball')) {
+      setPolifunctionalSport('Volleyball');
+    } else if (res.title?.includes('Basketball') || res.notes?.includes('Basketball')) {
+      setPolifunctionalSport('Basketball');
+    } else if (res.title?.includes('Futsal') || res.notes?.includes('Futsal')) {
+      setPolifunctionalSport('Futsal');
+    }
 
     const matchingCourt = courts.find(c => c.id === res.courtId) || res.court;
     if (matchingCourt) {
@@ -947,19 +1154,22 @@ export const CourtBooking: React.FC = () => {
       setGuestsCount(gCount);
       const rawNames = res.playerNames ? res.playerNames.replace(/^Invitados:\s*/i, '') : '';
       const guestEntries = rawNames.split(',').map(s => s.trim()).filter(Boolean);
-      const parsedList: Array<{ name: string; documentId: string; guestPassNumber?: string }> = [];
+      const parsedList: Array<{ name: string; documentId: string; guestPassNumber?: string; guestPassYear?: string }> = [];
       for (let i = 0; i < gCount; i++) {
         const raw = guestEntries[i] || '';
         const ciMatch = raw.match(/\(CI:\s*([^)]+)\)/i);
-        const passMatch = raw.match(/\[Pase\s*Tarjeta\s*#?([^\]]+)\]/i);
+        const passMatch = raw.match(/\[Pase[^#]*#?([^\s,\]]+)(?:\s*Gest\.?\s*(\d{4}))?/i);
         let cleanName = raw.replace(/\(CI:[^)]+\)/gi, '').replace(/\[Pase[^\]]+\]/gi, '').trim();
         parsedList.push({
           name: cleanName,
           documentId: ciMatch ? ciMatch[1].trim() : '',
-          guestPassNumber: passMatch ? passMatch[1].trim() : ''
+          guestPassNumber: passMatch && passMatch[1] ? passMatch[1].trim() : '',
+          guestPassYear: passMatch && passMatch[2] ? passMatch[2].trim() : ''
         });
       }
       setGuestsList(parsedList);
+      const hasAnyPass = parsedList.some(g => Boolean(g.guestPassNumber));
+      setHasGuestPasses(hasAnyPass ? 'YES' : 'NO');
     } else if (res.playerType === 'MEMBERS') {
       const rawNames = res.playerNames ? res.playerNames.replace(/^Socios:\s*/i, '') : '';
       const partnerEntries = rawNames.split(',').map(s => s.trim()).filter(Boolean);
@@ -1056,12 +1266,12 @@ export const CourtBooking: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto px-3 sm:px-6 py-4 animate-fade-in text-gray-100 pb-16">
+    <div className="space-y-6 max-w-6xl mx-auto px-3 sm:px-6 py-4 animate-fade-in text-slate-800 dark:text-gray-100 pb-16">
 
       {/* ========================================================================= */}
       {/* HEADER SUPERIOR MINIMALISTA */}
       {/* ========================================================================= */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-[#0d1c13] via-[#08120b] to-[#0d1c13] p-4 sm:p-5 rounded-3xl border border-brand-gold/30 shadow-2xl">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-gradient-to-r dark:from-[#0d1c13] dark:via-[#08120b] dark:to-[#0d1c13] p-4 sm:p-5 rounded-3xl border border-slate-200 dark:border-brand-gold/30 shadow-xl">
         <div className="flex items-center gap-3.5">
           <BackButton 
             to={user?.roles.some(r => ['ADMIN', 'SUPER_ADMIN', 'STAFF'].includes(r)) ? '/' : '/member'} 
@@ -1070,15 +1280,15 @@ export const CourtBooking: React.FC = () => {
           <CrestLogo size="sm" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                Reserva de <span className="text-brand-gold">Canchas</span>
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                Reserva de <span className="text-amber-700 dark:text-brand-gold">Canchas</span>
               </h1>
-              <span className="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+              <span className="text-[10px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-400 font-bold px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/30">
                 24/7 EN VIVO
               </span>
             </div>
-            <p className="text-xs text-gray-400">
-              Socio: <strong className="text-white">{currentMemberName}</strong> • Acción #{currentMemberCode}
+            <p className="text-xs text-slate-500 dark:text-gray-400">
+              Socio: <strong className="text-slate-900 dark:text-white">{currentMemberName}</strong> • Código / Cuota de Participación: #{currentMemberCode}
             </p>
           </div>
         </div>
@@ -1087,15 +1297,15 @@ export const CourtBooking: React.FC = () => {
           {/* Botón Mis Reservas */}
           <button
             onClick={() => setShowMyReservationsSheet(!showMyReservationsSheet)}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border shadow-sm ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl text-xs font-bold transition-all border shadow-xs ${
               showMyReservationsSheet 
-                ? 'bg-brand-gold text-black border-brand-gold' 
-                : 'bg-black/50 hover:bg-brand-gold/15 text-brand-gold border-brand-gold/40'
+                ? 'bg-amber-400 dark:bg-brand-gold text-slate-950 border-amber-500 dark:border-brand-gold' 
+                : 'bg-slate-100 dark:bg-black/50 hover:bg-amber-100 dark:hover:bg-brand-gold/15 text-slate-800 dark:text-brand-gold border-slate-300 dark:border-brand-gold/40'
             }`}
           >
             <CalendarCheck className="w-4 h-4" />
             <span>Mis Reservas</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-brand-gold text-black text-[10px] font-black">
+            <span className="px-1.5 py-0.2 rounded-full bg-amber-400 dark:bg-brand-gold text-slate-950 text-[10px] font-black">
               {myReservations.length} / 2
             </span>
           </button>
@@ -1103,10 +1313,10 @@ export const CourtBooking: React.FC = () => {
           {/* Botón Normativa */}
           <button
             onClick={() => setShowInfoModal(!showInfoModal)}
-            className="p-2 rounded-2xl bg-black/50 hover:bg-white/10 text-gray-300 border border-white/10 text-xs font-bold"
+            className="p-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-black/50 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 border border-slate-200 dark:border-white/10 text-xs font-bold transition-colors"
             title="Normativa y Casetas"
           >
-            <HelpCircle className="w-4 h-4 text-brand-gold" />
+            <HelpCircle className="w-4 h-4 text-amber-700 dark:text-brand-gold" />
           </button>
 
           {/* Theme Mode Toggle */}
@@ -1115,7 +1325,7 @@ export const CourtBooking: React.FC = () => {
           {/* Salir */}
           <button
             onClick={handleLogout}
-            className="p-2 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 text-xs"
+            className="p-2 rounded-2xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-400 border border-rose-300 dark:border-rose-500/20 text-xs transition-colors"
             title="Cerrar Sesión"
           >
             <LogOut className="w-4 h-4" />
@@ -1127,47 +1337,47 @@ export const CourtBooking: React.FC = () => {
       {/* PANEL DE "MIS RESERVAS ACTIVAS" (DESPLEGABLE) */}
       {/* ========================================================================= */}
       {showMyReservationsSheet && (
-        <div className="bg-[#0b1610] border-2 border-brand-gold/50 rounded-3xl p-5 space-y-4 shadow-2xl animate-fade-in">
-          <div className="flex justify-between items-center border-b border-white/10 pb-3">
+        <div className="bg-white dark:bg-[#0b1610] border-2 border-amber-400/80 dark:border-brand-gold/50 rounded-3xl p-5 space-y-4 shadow-2xl animate-fade-in text-slate-800 dark:text-gray-200">
+          <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3">
             <div>
-              <span className="text-[10px] font-bold uppercase tracking-widest text-brand-gold">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-amber-800 dark:text-brand-gold">
                 Gestión de Turnos del Socio
               </span>
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <CalendarCheck className="w-4 h-4 text-[#00ff87]" /> Tus Turnos Programados ({myReservations.length} de 2)
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <CalendarCheck className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" /> Tus Turnos Programados ({myReservations.length} de 2)
               </h3>
             </div>
             <button 
               onClick={() => setShowMyReservationsSheet(false)}
-              className="px-3 py-1 rounded-xl bg-white/5 hover:bg-white/10 text-xs text-gray-300 hover:text-white border border-white/10 transition-colors"
+              className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-xs text-slate-700 hover:text-slate-900 border border-slate-300 dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-300 dark:hover:text-white dark:border-white/10 transition-colors"
             >
               ✕ Cerrar
             </button>
           </div>
 
-          {/* Buscador / Recuperador Rápido de Reservas por Carnet, Código o Celular */}
+          {/* Buscador / Recuperador Rápido de Reservas por Código de Socio, Código de Cuota de Participación o Celular */}
           <form 
             onSubmit={(e) => {
               e.preventDefault();
               fetchMyReservations(myReservationsQuery);
             }} 
-            className="flex gap-2 bg-black/40 p-2 rounded-2xl border border-white/10"
+            className="flex gap-2 bg-slate-50 dark:bg-black/40 p-2 rounded-2xl border border-slate-200 dark:border-white/10"
           >
             <div className="relative flex-1">
-              <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+              <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400 dark:text-gray-400" />
               <input 
                 type="text"
                 inputMode="text"
                 autoComplete="off"
                 value={myReservationsQuery}
                 onChange={e => setMyReservationsQuery(e.target.value)}
-                placeholder="Buscar por carnet, código de socio, celular o código de reserva..."
-                className="w-full bg-black/60 border border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold"
+                placeholder="Buscar por código de socio, código de cuota de participación, celular o código de reserva..."
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/10 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold"
               />
             </div>
             <button
               type="submit"
-              className="px-4 py-2 bg-gradient-to-r from-brand-gold to-amber-500 hover:from-amber-400 hover:to-brand-gold text-black rounded-xl font-black text-xs transition-all shadow-md shrink-0 flex items-center gap-1.5"
+              className="px-4 py-2 bg-gradient-to-r from-amber-400 to-amber-500 dark:from-brand-gold dark:to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 rounded-xl font-black text-xs transition-all shadow-xs shrink-0 flex items-center gap-1.5"
             >
               <Search className="w-3.5 h-3.5" />
               <span>Buscar</span>
@@ -1175,13 +1385,13 @@ export const CourtBooking: React.FC = () => {
           </form>
 
           {myReservations.length === 0 ? (
-            <div className="text-center py-6 px-4 bg-black/30 rounded-2xl border border-white/5 space-y-2">
-              <CalendarIcon className="w-8 h-8 text-gray-500 mx-auto" />
-              <p className="text-xs text-gray-300 font-medium">
+            <div className="text-center py-6 px-4 bg-slate-50 dark:bg-black/30 rounded-2xl border border-slate-200 dark:border-white/5 space-y-2">
+              <CalendarIcon className="w-8 h-8 text-slate-400 dark:text-gray-500 mx-auto" />
+              <p className="text-xs text-slate-700 dark:text-gray-300 font-medium">
                 No se encontraron reservas con el identificador actual.
               </p>
-              <p className="text-[11px] text-gray-500">
-                Si realizaste una reserva previa o cerraste el navegador, ingresa tu número de Carnet, Código de Socio o Celular en el buscador superior y haz clic en <strong>Buscar</strong>.
+              <p className="text-[11px] text-slate-500 dark:text-gray-500">
+                Si realizaste una reserva previa o cerraste el navegador, ingresa tu Código de Socio, Código de Cuota de Participación o Celular en el buscador superior y haz clic en <strong>Buscar</strong>.
               </p>
             </div>
           ) : (
@@ -1189,33 +1399,35 @@ export const CourtBooking: React.FC = () => {
               {myReservations.map(res => {
                 const isPaidOrExempt = res.paymentStatus === 'PAID' || res.paymentStatus === 'EXEMPT' || res.totalPrice === 0;
                 return (
-                  <div key={res.id} className="p-4 rounded-2xl bg-black/60 border border-brand-gold/40 flex flex-col justify-between gap-3 shadow-lg hover:border-brand-gold transition-colors">
+                  <div key={res.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-black/60 border border-slate-200 dark:border-brand-gold/40 flex flex-col justify-between gap-3 shadow-sm hover:border-amber-400 dark:hover:border-brand-gold transition-colors">
                     <div className="flex justify-between items-start">
                       <div>
-                        <span className="font-bold text-white text-sm block">{res.court?.name}</span>
-                        <p className="text-xs text-[#00ff87] font-mono font-bold mt-0.5">
+                        <span className="font-bold text-slate-900 dark:text-white text-sm block">
+                          {res.court?.name} <span className="text-emerald-700 dark:text-[#00ff87] font-semibold">({getReservationDisciplineLabel(res)})</span>
+                        </span>
+                        <p className="text-xs text-emerald-700 dark:text-[#00ff87] font-mono font-bold mt-0.5">
                           {format(parseISO(res.date), 'dd/MM/yyyy')} • {res.startTime} - {res.endTime}
                         </p>
                         <span className={`inline-block mt-1.5 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                           isPaidOrExempt 
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                            : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                            ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' 
+                            : 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-500/40 animate-pulse'
                         }`}>
                           {isPaidOrExempt ? '🟢 Reservado & Confirmado' : '🟡 Pre-reserva (Pago Pendiente)'}
                         </span>
                       </div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-brand-gold border border-brand-gold/30 font-mono">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-brand-gold border border-slate-300 dark:border-brand-gold/30 font-mono">
                         #{res.code || res.id.slice(0, 8).toUpperCase()}
                       </span>
                     </div>
 
-                    <div className="flex gap-2 pt-2 border-t border-white/10">
+                    <div className="flex gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
                       <button
                         onClick={() => setSelectedForQrModal(res)}
-                        className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                        className={`flex-1 py-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs ${
                           isPaidOrExempt
-                            ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
-                            : 'bg-gradient-to-r from-brand-gold to-amber-500 hover:from-amber-400 hover:to-brand-gold text-black font-black'
+                            ? 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40'
+                            : 'bg-gradient-to-r from-amber-400 to-amber-500 dark:from-brand-gold dark:to-amber-500 text-slate-950 font-black'
                         }`}
                       >
                         <QrCode className="w-3.5 h-3.5" />
@@ -1223,7 +1435,7 @@ export const CourtBooking: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleStartEditReservation(res)}
-                        className="px-3 py-2 rounded-xl bg-brand-gold/20 hover:bg-brand-gold/30 text-brand-gold text-xs font-bold border border-brand-gold/40 flex items-center gap-1 transition-colors"
+                        className="px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/20 dark:hover:bg-brand-gold/30 text-amber-900 dark:text-brand-gold text-xs font-bold border border-amber-300 dark:border-brand-gold/40 flex items-center gap-1 transition-colors"
                         title="Modificar turno, cancha o acompañantes"
                       >
                         <Pencil className="w-3.5 h-3.5" />
@@ -1231,7 +1443,7 @@ export const CourtBooking: React.FC = () => {
                       </button>
                       <button
                         onClick={() => handleCancelMyReservation(res.id)}
-                        className="px-3 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 text-xs font-bold border border-rose-500/30 transition-colors"
+                        className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/20 dark:hover:bg-rose-500/30 text-rose-800 dark:text-rose-300 text-xs font-bold border border-rose-300 dark:border-rose-500/30 transition-colors"
                       >
                         Liberar
                       </button>
@@ -1246,18 +1458,18 @@ export const CourtBooking: React.FC = () => {
 
       {/* AVISO DESTACADO DE RESERVAS ACTIVAS (Visible en todo momento si hay turnos) */}
       {myReservations.length > 0 && !showMyReservationsSheet && (
-        <div className="bg-gradient-to-r from-[#0a2215] via-[#06170e] to-[#0a2215] border-2 border-emerald-500/40 rounded-3xl p-4 sm:p-5 shadow-[0_0_25px_rgba(0,255,135,0.15)] space-y-3">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-emerald-500/20 pb-2.5">
+        <div className="bg-white dark:bg-gradient-to-r dark:from-[#0a2215] dark:via-[#06170e] dark:to-[#0a2215] border-2 border-emerald-500/30 dark:border-emerald-500/40 rounded-3xl p-4 sm:p-5 shadow-lg space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200 dark:border-emerald-500/20 pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#00ff87] shadow-[0_0_8px_#00ff87] animate-pulse"></span>
-              <h3 className="text-xs sm:text-sm font-black text-white uppercase tracking-wider">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87] animate-pulse"></span>
+              <h3 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
                 Tienes {myReservations.length} Turno{myReservations.length > 1 ? 's' : ''} Activo{myReservations.length > 1 ? 's' : ''} Programado{myReservations.length > 1 ? 's' : ''}
               </h3>
             </div>
             <button
               type="button"
               onClick={() => setShowMyReservationsSheet(true)}
-              className="text-xs font-bold text-brand-gold hover:text-white flex items-center gap-1 underline transition-colors self-start sm:self-auto"
+              className="text-xs font-bold text-amber-800 dark:text-brand-gold hover:text-amber-900 dark:hover:text-white flex items-center gap-1 underline transition-colors self-start sm:self-auto"
             >
               Administrar mis turnos ({myReservations.length}/2) →
             </button>
@@ -1267,22 +1479,24 @@ export const CourtBooking: React.FC = () => {
             {myReservations.map(res => {
               const isPaidOrExempt = res.paymentStatus === 'PAID' || res.paymentStatus === 'EXEMPT' || res.totalPrice === 0;
               return (
-                <div key={res.id} className="p-3.5 rounded-2xl bg-black/50 border border-emerald-500/30 flex flex-col justify-between gap-2.5">
+                <div key={res.id} className="p-3.5 rounded-2xl bg-slate-50 dark:bg-black/50 border border-slate-200 dark:border-emerald-500/30 flex flex-col justify-between gap-2.5">
                   <div className="flex justify-between items-start">
                     <div>
-                      <span className="font-bold text-white text-sm block">{res.court?.name} ({res.court?.sport})</span>
-                      <p className="text-xs text-[#00ff87] font-mono font-bold">
+                      <span className="font-bold text-slate-900 dark:text-white text-sm block">
+                        {res.court?.name} <span className="text-emerald-700 dark:text-[#00ff87] font-semibold">({getReservationDisciplineLabel(res)})</span>
+                      </span>
+                      <p className="text-xs text-emerald-700 dark:text-[#00ff87] font-mono font-bold">
                         {format(parseISO(res.date), 'dd/MM/yyyy')} • {res.startTime} - {res.endTime}
                       </p>
                       <span className={`inline-block mt-1 text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                         isPaidOrExempt 
-                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' 
-                          : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                          ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40' 
+                          : 'bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-300 border-amber-300 dark:border-amber-500/40 animate-pulse'
                       }`}>
                         {isPaidOrExempt ? '🟢 Confirmada' : '🟡 Pago Pendiente'}
                       </span>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-brand-gold border border-brand-gold/30 font-mono">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-brand-gold border border-slate-300 dark:border-brand-gold/30 font-mono">
                       #{res.code || res.id.slice(0, 8).toUpperCase()}
                     </span>
                   </div>
@@ -1363,8 +1577,8 @@ export const CourtBooking: React.FC = () => {
       {currentStep === 1 && (
         <div className="space-y-5 animate-fade-in">
           <div className="text-center py-2">
-            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Elige tu <span className="text-brand-gold">Disciplina Deportiva</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+              Elige tu <span className="text-amber-800 dark:text-brand-gold">Disciplina Deportiva</span>
             </h2>
           </div>
 
@@ -1377,17 +1591,17 @@ export const CourtBooking: React.FC = () => {
                 <button
                   key={sport}
                   onClick={() => handleSelectSport(sport)}
-                  className="p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] hover:border-[#00ff87] hover:from-[#0e2c1c] hover:to-[#071a10] hover:shadow-[0_0_35px_rgba(0,255,135,0.4)] text-left flex flex-col justify-between gap-4 transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden"
+                  className="p-5 sm:p-6 rounded-3xl border-2 border-slate-200 dark:border-emerald-500/40 bg-white dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] hover:border-emerald-500 dark:hover:border-[#00ff87] shadow-md dark:shadow-none hover:shadow-xl text-left flex flex-col justify-between gap-4 transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden"
                 >
                   {/* Neon Glow Ambient Effect */}
                   <div className="absolute -top-10 -right-10 w-36 h-36 bg-[#00ff87]/10 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00ff87]/25 transition-all duration-500" />
 
                   {/* Header: Title + Court Badge */}
                   <div className="flex justify-between items-center w-full relative z-10">
-                    <h3 className="text-xl sm:text-2xl font-black text-white group-hover:text-[#00ff87] transition-colors tracking-tight">
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-[#00ff87] transition-colors tracking-tight">
                       {meta.label}
                     </h3>
-                    <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 group-hover:border-[#00ff87] group-hover:text-white transition-all shadow-sm">
+                    <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/50 group-hover:border-emerald-500 transition-all shadow-xs">
                       {courtsInSport.length} {meta.unitPlural || 'canchas'}
                     </span>
                   </div>
@@ -1398,11 +1612,11 @@ export const CourtBooking: React.FC = () => {
                   </div>
 
                   {/* Footer: Details + Action Button */}
-                  <div className="flex items-center justify-between pt-3 border-t border-emerald-500/20 text-xs relative z-10 w-full">
-                    <span className="text-brand-gold font-bold font-mono bg-brand-gold/10 px-2.5 py-1 rounded-xl border border-brand-gold/30">
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-emerald-500/20 text-xs relative z-10 w-full">
+                    <span className="text-amber-800 dark:text-brand-gold font-bold font-mono bg-amber-50 dark:bg-brand-gold/10 px-2.5 py-1 rounded-xl border border-amber-300 dark:border-brand-gold/30">
                       {meta.isFixedCourtRate ? `Bs. ${meta.fixedRate}/cancha` : `Bs. ${meta.guestRate}/inv.`}
                     </span>
-                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-400 group-hover:text-[#00ff87] group-hover:translate-x-1 transition-all">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 group-hover:text-emerald-800 dark:group-hover:text-[#00ff87] group-hover:translate-x-1 transition-all">
                       <span>Elegir</span>
                       <ArrowRight className="w-4 h-4" />
                     </span>
@@ -1419,15 +1633,15 @@ export const CourtBooking: React.FC = () => {
       {/* ========================================================================= */}
       {currentStep === 2 && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-emerald-500/20 pb-3">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2 tracking-tight">
-                Selecciona la <span className="text-brand-gold">Cancha de {selectedSport}</span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+                Selecciona la <span className="text-amber-800 dark:text-brand-gold">Cancha de {selectedSport}</span>
               </h2>
             </div>
             <button
               onClick={() => setCurrentStep(1)}
-              className="flex items-center gap-1 px-3.5 py-2 rounded-2xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/40 text-emerald-300 text-xs font-bold transition-all hover:border-[#00ff87] hover:text-white"
+              className="flex items-center gap-1 px-3.5 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 border border-slate-300 dark:border-emerald-500/40 text-slate-700 dark:text-emerald-300 text-xs font-bold transition-all hover:border-emerald-500 hover:text-slate-900 dark:hover:text-white"
             >
               <ChevronLeft className="w-4 h-4" /> Volver
             </button>
@@ -1435,9 +1649,9 @@ export const CourtBooking: React.FC = () => {
 
           {/* Sub-selector si es Polifuncional */}
           {selectedSport === 'Polifuncional' && (
-            <div className="p-5 rounded-3xl bg-gradient-to-b from-[#0b1f14] to-[#040e08] border-2 border-emerald-500/40 space-y-3 shadow-lg">
-              <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider block flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
+            <div className="p-5 rounded-3xl bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 space-y-3 shadow-md">
+              <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider block flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
                 Especifica la Disciplina a Jugar:
               </label>
               <div className="grid grid-cols-3 gap-3">
@@ -1451,12 +1665,50 @@ export const CourtBooking: React.FC = () => {
                     onClick={() => setPolifunctionalSport(sub.id as any)}
                     className={`py-3.5 rounded-2xl border-2 text-center font-bold text-xs flex flex-col items-center gap-1.5 transition-all duration-300 ${
                       polifunctionalSport === sub.id
-                        ? 'bg-gradient-to-b from-[#0d331f] to-[#04120b] border-[#00ff87] text-white shadow-[0_0_20px_rgba(0,255,135,0.4)] scale-[1.02]'
-                        : 'bg-black/50 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/50'
+                        ? 'bg-emerald-100 dark:bg-gradient-to-b dark:from-[#0d331f] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] text-slate-950 dark:text-white shadow-sm scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300'
                     }`}
                   >
                     <span className="text-2xl">{sub.icon}</span>
                     <span className="font-black text-xs">{sub.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sub-selector si es Raquet / Wally */}
+          {selectedSport === 'Raquet / Wally' && (
+            <div className="p-5 rounded-3xl bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 space-y-3 shadow-md">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+                <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider block flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
+                  ¿Qué deporte jugarás en este espacio?
+                </label>
+                <span className="text-[11px] text-slate-500 dark:text-gray-400">
+                  La recepción preparará la red o espacio según tu elección
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 max-w-lg mx-auto sm:mx-0">
+                {[
+                  { id: 'Racquet', label: 'Racquet', icon: '🎾', desc: 'Paredes libres (Sin red)' },
+                  { id: 'Wally', label: 'Wally', icon: '🏐', desc: 'Con red de wally instalada' },
+                ].map(sub => (
+                  <button
+                    key={sub.id}
+                    type="button"
+                    onClick={() => setRacquetWallySport(sub.id as any)}
+                    className={`py-3.5 px-4 rounded-2xl border-2 text-center font-bold text-xs flex flex-col items-center gap-1.5 transition-all duration-300 ${
+                      racquetWallySport === sub.id
+                        ? 'bg-emerald-100 dark:bg-gradient-to-b dark:from-[#0d331f] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] text-slate-950 dark:text-white shadow-sm scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="text-2xl">{sub.icon}</span>
+                    <span className="font-black text-sm text-slate-900 dark:text-white">{sub.label}</span>
+                    <span className={`text-[10px] ${racquetWallySport === sub.id ? 'text-emerald-700 dark:text-[#00ff87]' : 'text-slate-500 dark:text-gray-500'}`}>
+                      {sub.desc}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -1468,43 +1720,43 @@ export const CourtBooking: React.FC = () => {
               <button
                 key={court.id}
                 onClick={() => handleSelectCourt(court)}
-                className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] max-w-md p-5 sm:p-6 rounded-3xl border-2 border-emerald-500/40 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] hover:border-[#00ff87] hover:from-[#0e2c1c] hover:to-[#071a10] hover:shadow-[0_0_35px_rgba(0,255,135,0.4)] text-left flex flex-col justify-between gap-4 transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden"
+                className="w-full sm:w-[calc(50%-12px)] lg:w-[calc(33.333%-16px)] max-w-md p-5 sm:p-6 rounded-3xl border-2 border-slate-200 dark:border-emerald-500/40 bg-white dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] hover:border-emerald-500 dark:hover:border-[#00ff87] shadow-md dark:shadow-none hover:shadow-xl text-left flex flex-col justify-between gap-4 transition-all duration-300 hover:scale-[1.02] group relative overflow-hidden"
               >
                 {/* Neon Glow Ambient Effect */}
                 <div className="absolute -top-10 -right-10 w-36 h-36 bg-[#00ff87]/10 rounded-full blur-3xl pointer-events-none group-hover:bg-[#00ff87]/25 transition-all duration-500" />
 
                 <div className="flex justify-between items-start w-full relative z-10">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 flex items-center justify-center text-[#00ff87] group-hover:border-[#00ff87] group-hover:shadow-[0_0_12px_rgba(0,255,135,0.4)] group-hover:scale-105 transition-all duration-300">
+                    <div className="w-11 h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/40 flex items-center justify-center text-emerald-700 dark:text-[#00ff87] group-hover:border-emerald-500 group-hover:scale-105 transition-all duration-300">
                       <MapPin className="w-5 h-5" />
                     </div>
                     <div>
-                      <h3 className="text-lg sm:text-xl font-black text-white group-hover:text-[#00ff87] transition-colors tracking-tight">
+                      <h3 className="text-lg sm:text-xl font-black text-slate-900 group-hover:text-emerald-700 dark:text-white dark:group-hover:text-[#00ff87] transition-colors tracking-tight">
                         {court.name}
                       </h3>
-                      <span className="text-[11px] text-emerald-400 font-bold">
+                      <span className="text-[11px] text-emerald-700 dark:text-emerald-400 font-bold">
                         {selectedSport}
                       </span>
                     </div>
                   </div>
 
-                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/40 text-[#00ff87] border border-emerald-500/40 group-hover:border-[#00ff87] transition-all shadow-sm flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-black/40 text-emerald-700 dark:text-[#00ff87] border border-emerald-300 dark:border-emerald-500/40 group-hover:border-emerald-500 transition-all shadow-xs flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_6px_#00ff87]"></span>
                     En Vivo
                   </span>
                 </div>
 
                 {court.description && (
-                  <p className="text-xs text-gray-300 leading-relaxed font-medium line-clamp-2 relative z-10">
+                  <p className="text-xs text-slate-600 dark:text-gray-300 leading-relaxed font-medium line-clamp-2 relative z-10">
                     {court.description}
                   </p>
                 )}
 
-                <div className="flex items-center justify-between pt-3 border-t border-emerald-500/20 text-xs relative z-10 w-full">
-                  <span className="text-brand-gold font-bold font-mono bg-brand-gold/10 px-2.5 py-1 rounded-xl border border-brand-gold/30">
+                <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-emerald-500/20 text-xs relative z-10 w-full">
+                  <span className="text-amber-800 dark:text-brand-gold font-bold font-mono bg-amber-50 dark:bg-brand-gold/10 px-2.5 py-1 rounded-xl border border-amber-300 dark:border-brand-gold/30">
                     {sportMeta.isFixedCourtRate ? `Bs. ${sportMeta.fixedRate}/cancha` : `Bs. ${sportMeta.guestRate}/inv.`}
                   </span>
-                  <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-transparent border border-emerald-500/30 text-xs font-bold text-[#00ff87] group-hover:border-[#00ff87] group-hover:shadow-[0_0_10px_rgba(0,255,135,0.35)] group-hover:text-white group-hover:translate-x-1 transition-all">
+                  <span className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-slate-50 dark:bg-transparent border border-slate-300 dark:border-emerald-500/30 text-xs font-bold text-emerald-700 dark:text-[#00ff87] group-hover:bg-emerald-500 group-hover:border-emerald-500 group-hover:text-white group-hover:translate-x-1 transition-all">
                     <span>Elegir Horario</span>
                     <ChevronRight className="w-4 h-4" />
                   </span>
@@ -1520,21 +1772,21 @@ export const CourtBooking: React.FC = () => {
       {/* ========================================================================= */}
       {currentStep === 3 && selectedCourt && (
         <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-emerald-500/20 pb-3">
             <div>
-              <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2 tracking-tight">
-                Turnos Disponibles — <span className="text-brand-gold">{selectedCourt.name}</span>
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex items-center gap-2 tracking-tight">
+                Turnos Disponibles — <span className="text-amber-800 dark:text-brand-gold font-bold">{selectedCourt.name}</span>
               </h2>
             </div>
             <button
               onClick={() => setCurrentStep(2)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all hover:border-[#00ff87]"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-emerald-300 text-xs font-bold transition-all hover:border-emerald-500"
             >
               <ChevronLeft className="w-4 h-4" /> Cambiar Cancha
             </button>
           </div>
 
-          {/* Selector de 3 Días Holográfico Neón */}
+          {/* Selector de 3 Días */}
           <div className="grid grid-cols-3 gap-3 sm:gap-4 max-w-2xl mx-auto">
             {next3Days.map((d, index) => {
               const isSelected = isSameDay(d, selectedDate);
@@ -1546,19 +1798,19 @@ export const CourtBooking: React.FC = () => {
                   onClick={() => setSelectedDate(d)}
                   className={`p-3.5 sm:p-4 rounded-3xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 group relative overflow-hidden ${
                     isSelected
-                      ? 'bg-gradient-to-b from-[#0d331f] via-[#082014] to-[#04120b] border-[#00ff87] shadow-[0_0_25px_rgba(0,255,135,0.45),inset_0_0_15px_rgba(0,255,135,0.15)] scale-[1.03]'
-                      : 'bg-gradient-to-b from-[#081910] via-[#05110a] to-[#020805] border-emerald-500/30 text-gray-400 hover:text-white hover:border-[#00ff87] hover:shadow-[0_0_20px_rgba(0,255,135,0.25)] hover:scale-[1.02]'
+                      ? 'bg-emerald-50 dark:bg-gradient-to-b dark:from-[#0d331f] dark:via-[#082014] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] shadow-lg shadow-emerald-500/20 dark:shadow-[0_0_25px_rgba(0,255,135,0.45)] scale-[1.03]'
+                      : 'bg-white dark:bg-gradient-to-b dark:from-[#081910] dark:via-[#05110a] dark:to-[#020805] border-slate-200 dark:border-emerald-500/30 text-slate-600 dark:text-gray-400 hover:text-slate-950 dark:hover:text-white hover:border-emerald-400 dark:hover:border-[#00ff87] hover:shadow-md hover:scale-[1.02]'
                   }`}
                 >
                   {/* Subtle Ambient Backlight Glow for Active */}
                   {isSelected && (
-                    <div className="absolute -top-6 -right-6 w-20 h-20 bg-[#00ff87]/20 rounded-full blur-xl pointer-events-none" />
+                    <div className="absolute -top-6 -right-6 w-20 h-20 bg-emerald-500/15 dark:bg-[#00ff87]/20 rounded-full blur-xl pointer-events-none" />
                   )}
 
                   <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
                     isSelected
-                      ? 'bg-[#00ff87]/20 text-[#00ff87] border-[#00ff87]/50 shadow-[0_0_8px_#00ff87]'
-                      : 'bg-black/40 text-gray-400 border-white/5 group-hover:text-emerald-300 group-hover:border-emerald-500/30'
+                      ? 'bg-emerald-100 dark:bg-[#00ff87]/20 text-emerald-800 dark:text-[#00ff87] border-emerald-400 dark:border-[#00ff87]/50 shadow-xs'
+                      : 'bg-slate-100 dark:bg-black/40 text-slate-600 dark:text-gray-400 border-slate-200 dark:border-white/5 group-hover:text-emerald-700 dark:group-hover:text-emerald-300'
                   }`}>
                     {index === 0 && '⭐ '}
                     {dayLabel}
@@ -1566,16 +1818,16 @@ export const CourtBooking: React.FC = () => {
 
                   <span className={`text-2xl sm:text-3xl font-black font-mono my-0.5 tracking-tight transition-all ${
                     isSelected
-                      ? 'text-white drop-shadow-[0_0_10px_rgba(0,255,135,0.8)]'
-                      : 'text-gray-300 group-hover:text-white'
+                      ? 'text-slate-950 dark:text-white drop-shadow-xs dark:drop-shadow-[0_0_10px_rgba(0,255,135,0.8)]'
+                      : 'text-slate-800 dark:text-gray-300 group-hover:text-slate-950 dark:group-hover:text-white'
                   }`}>
                     {format(d, 'd')}
                   </span>
 
                   <span className={`text-[10px] font-bold uppercase tracking-widest transition-all ${
                     isSelected
-                      ? 'text-emerald-300'
-                      : 'text-gray-500 group-hover:text-emerald-400'
+                      ? 'text-emerald-700 dark:text-emerald-300 font-black'
+                      : 'text-slate-500 dark:text-gray-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400'
                   }`}>
                     {format(d, 'MMMM', { locale: es })}
                   </span>
@@ -1584,19 +1836,19 @@ export const CourtBooking: React.FC = () => {
             })}
           </div>
 
-          {/* Grilla Gráfica de Horarios Neón */}
-          <div className="bg-gradient-to-b from-[#0a1f13] via-[#06150d] to-[#030c07] border-2 border-emerald-500/40 rounded-3xl p-4 sm:p-6 space-y-4 shadow-[0_0_30px_rgba(0,255,135,0.15)]">
-            <div className="flex items-center justify-between text-xs border-b border-emerald-500/20 pb-3">
-              <span className="font-bold text-gray-200 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
+          {/* Grilla Gráfica de Horarios */}
+          <div className="bg-white dark:bg-gradient-to-b dark:from-[#0a1f13] dark:via-[#06150d] dark:to-[#030c07] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl p-4 sm:p-6 space-y-4 shadow-xl dark:shadow-[0_0_30px_rgba(0,255,135,0.15)]">
+            <div className="flex items-center justify-between text-xs border-b border-slate-200 dark:border-emerald-500/20 pb-3">
+              <span className="font-bold text-slate-800 dark:text-gray-200 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
                 Horarios del {format(selectedDate, "EEEE d 'de' MMMM", { locale: es })}:
               </span>
               <div className="flex items-center gap-3">
-                <span className="flex items-center gap-1.5 text-[#00ff87] font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span> Disponible
+                <span className="flex items-center gap-1.5 text-emerald-700 dark:text-[#00ff87] font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span> Disponible
                 </span>
-                <span className="flex items-center gap-1.5 text-gray-500 font-bold">
-                  <span className="w-2.5 h-2.5 rounded-full bg-gray-600"></span> Ocupado
+                <span className="flex items-center gap-1.5 text-slate-500 dark:text-gray-500 font-bold">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400 dark:bg-gray-600"></span> Ocupado
                 </span>
               </div>
             </div>
@@ -1620,15 +1872,15 @@ export const CourtBooking: React.FC = () => {
                       onClick={() => handleSlotClick(time)}
                       className={`p-3 rounded-2xl border-2 transition-all flex flex-col justify-between text-left ${
                         isSelectedTime
-                          ? 'border-brand-gold bg-brand-gold/25 text-white shadow-[0_0_20px_rgba(204,161,75,0.5)] scale-[1.03]'
-                          : 'border-brand-gold/60 bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20'
+                          ? 'border-amber-500 dark:border-brand-gold bg-amber-100 dark:bg-brand-gold/25 text-amber-950 dark:text-white shadow-md scale-[1.03]'
+                          : 'border-amber-400/60 dark:border-brand-gold/60 bg-amber-50 dark:bg-brand-gold/10 text-amber-900 dark:text-brand-gold hover:bg-amber-100 dark:hover:bg-brand-gold/20'
                       }`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-mono font-black text-sm text-brand-gold">{time}</span>
-                        <span className="w-2 h-2 rounded-full bg-brand-gold shadow-[0_0_8px_#cca14b]"></span>
+                        <span className="font-mono font-black text-sm text-amber-900 dark:text-brand-gold">{time}</span>
+                        <span className="w-2 h-2 rounded-full bg-amber-500 dark:bg-brand-gold shadow-[0_0_8px_#cca14b]"></span>
                       </div>
-                      <span className="text-[10px] font-bold text-amber-200 mt-1">
+                      <span className="text-[10px] font-bold text-amber-800 dark:text-amber-200 mt-1">
                         ✏️ {isSelectedTime ? '✓ Turno Actual (Elegido)' : 'Tu Turno Actual (Clic)'}
                       </span>
                     </button>
@@ -1638,12 +1890,12 @@ export const CourtBooking: React.FC = () => {
                 // Si es otra reserva del socio (distinta a la que está editando)
                 if (isMineOther) {
                   return (
-                    <div key={time} className="p-3 rounded-2xl border-2 border-emerald-500/50 bg-emerald-500/20 text-white flex flex-col justify-between shadow-sm">
+                    <div key={time} className="p-3 rounded-2xl border-2 border-emerald-400 dark:border-emerald-500/50 bg-emerald-50 dark:bg-emerald-500/20 text-slate-900 dark:text-white flex flex-col justify-between shadow-xs">
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-mono font-black text-sm text-[#00ff87]">{time}</span>
-                        <span className="w-2 h-2 rounded-full bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
+                        <span className="font-mono font-black text-sm text-emerald-800 dark:text-[#00ff87]">{time}</span>
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-[#00ff87] shadow-[0_0_8px_#00ff87]"></span>
                       </div>
-                      <span className="text-[10px] text-emerald-200 font-bold mt-1">Otra Reserva Tuya</span>
+                      <span className="text-[10px] text-emerald-700 dark:text-emerald-200 font-bold mt-1">Otra Reserva Tuya</span>
                     </div>
                   );
                 }
@@ -1661,14 +1913,14 @@ export const CourtBooking: React.FC = () => {
                   return (
                     <div 
                       key={time} 
-                      className="p-3 rounded-2xl border border-white/10 bg-black/50 text-gray-400 flex flex-col justify-between cursor-not-allowed opacity-80"
+                      className="p-3 rounded-2xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-black/50 text-slate-500 dark:text-gray-400 flex flex-col justify-between cursor-not-allowed opacity-85"
                       title={`${closureReason} (${res?.startTime} - ${res?.endTime})`}
                     >
                       <div className="flex justify-between items-center w-full">
-                        <span className="font-mono font-bold text-sm text-gray-300">{time}</span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500/70 shadow-[0_0_6px_#f43f5e]"></span>
+                        <span className="font-mono font-bold text-sm text-slate-700 dark:text-gray-300">{time}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_6px_#f43f5e]"></span>
                       </div>
-                      <span className="text-[10px] text-amber-300 font-bold truncate mt-1 block" title={closureReason}>
+                      <span className="text-[10px] text-amber-900 dark:text-amber-300 font-bold truncate mt-1 block" title={closureReason}>
                         🚫 {closureReason}
                       </span>
                     </div>
@@ -1680,19 +1932,31 @@ export const CourtBooking: React.FC = () => {
                     key={time}
                     type="button"
                     onClick={() => handleSlotClick(time)}
-                    className={`p-3 rounded-2xl border-2 text-white flex flex-col justify-between transition-all hover:scale-[1.03] text-left group ${
+                    className={`p-3 rounded-2xl border-2 flex flex-col justify-between transition-all hover:scale-[1.03] text-left group ${
                       isSelectedTime
-                        ? 'border-[#00ff87] bg-gradient-to-b from-[#0e3a23] to-[#051a0e] shadow-[0_0_20px_rgba(0,255,135,0.5)] scale-[1.02]'
-                        : 'border-emerald-500/40 bg-gradient-to-b from-[#092215] to-[#04100a] hover:border-[#00ff87] hover:bg-[#0c2f1d] hover:shadow-[0_0_20px_rgba(0,255,135,0.4)]'
+                        ? 'border-emerald-500 dark:border-[#00ff87] bg-emerald-500 dark:bg-gradient-to-b dark:from-[#0e3a23] dark:to-[#051a0e] text-white shadow-lg shadow-emerald-500/30 scale-[1.02]'
+                        : 'border-slate-200 dark:border-emerald-500/40 bg-slate-50/90 dark:bg-gradient-to-b dark:from-[#092215] dark:to-[#04100a] text-slate-800 dark:text-white hover:border-emerald-500 dark:hover:border-[#00ff87] hover:bg-emerald-50 dark:hover:bg-[#0c2f1d] hover:shadow-md'
                     }`}
                   >
                     <div className="flex justify-between items-center w-full">
-                      <span className="font-mono font-black text-sm text-[#00ff87] group-hover:text-white group-hover:drop-shadow-[0_0_8px_#00ff87] transition-all">
+                      <span className={`font-mono font-black text-sm transition-all ${
+                        isSelectedTime 
+                          ? 'text-white' 
+                          : 'text-slate-900 group-hover:text-emerald-700 dark:text-[#00ff87] dark:group-hover:text-white'
+                      }`}>
                         {time}
                       </span>
-                      <span className={`w-2 h-2 rounded-full ${isSelectedTime ? 'bg-[#00ff87] shadow-[0_0_8px_#00ff87]' : 'bg-emerald-500/60 group-hover:bg-[#00ff87]'}`}></span>
+                      <span className={`w-2 h-2 rounded-full ${
+                        isSelectedTime 
+                          ? 'bg-white shadow-xs' 
+                          : 'bg-emerald-500/70 group-hover:bg-emerald-600 dark:bg-emerald-500/60 dark:group-hover:bg-[#00ff87]'
+                      }`}></span>
                     </div>
-                    <span className="text-[10px] text-emerald-400 group-hover:text-white font-bold mt-1 flex items-center justify-between w-full">
+                    <span className={`text-[10px] font-bold mt-1 flex items-center justify-between w-full ${
+                      isSelectedTime
+                        ? 'text-emerald-100'
+                        : 'text-emerald-700 dark:text-emerald-400 group-hover:text-emerald-800 dark:group-hover:text-white'
+                    }`}>
                       <span>{isSelectedTime ? '✓ Seleccionado' : 'Disponible'}</span>
                       <span className="group-hover:translate-x-0.5 transition-transform">→</span>
                     </span>
@@ -1709,54 +1973,54 @@ export const CourtBooking: React.FC = () => {
       {/* ========================================================================= */}
       {currentStep === 4 && selectedCourt && selectedTime && (
         <div className="max-w-xl mx-auto space-y-4 animate-fade-in">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h2 className="text-xl sm:text-2xl font-black text-white">
-              Confirmar <span className="text-brand-gold">Turno</span>
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+            <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">
+              Confirmar <span className="text-amber-800 dark:text-brand-gold font-bold">Turno</span>
             </h2>
             <button
               onClick={() => setCurrentStep(3)}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold transition-colors"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 border border-slate-300 dark:border-transparent text-slate-700 dark:text-gray-300 text-xs font-bold transition-colors"
             >
               <ChevronLeft className="w-4 h-4" /> Cambiar Horario
             </button>
           </div>
 
-          <form onSubmit={handleBooking} className="bg-[#0b1811] border-2 border-brand-gold/50 rounded-3xl p-5 sm:p-7 space-y-5 shadow-2xl relative overflow-hidden">
+          <form onSubmit={handleBooking} className="bg-white dark:bg-[#0b1811] border-2 border-slate-200 dark:border-brand-gold/50 rounded-3xl p-5 sm:p-7 space-y-5 shadow-2xl relative overflow-hidden">
             
             {/* Cabecera del Pase */}
-            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-4">
               <div className="flex items-center gap-2.5">
                 <CrestLogo size="sm" />
                 <div>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold block">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-amber-700 dark:text-brand-gold block">
                     Club Hípico Los Sargentos
                   </span>
-                  <strong className="text-base sm:text-lg text-white font-bold block">
-                    {selectedCourt.name} ({selectedSport})
+                  <strong className="text-base sm:text-lg text-slate-900 dark:text-white font-bold block">
+                    {selectedCourt.name} ({selectedSport === 'Raquet / Wally' ? racquetWallySport : (selectedSport === 'Polifuncional' ? `Polifuncional - ${polifunctionalSport}` : selectedSport)})
                   </strong>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-xs text-emerald-400 font-mono font-bold block">
+                <span className="text-xs text-emerald-700 dark:text-emerald-400 font-mono font-bold block">
                   {selectedTime} - {formatEndTime(selectedTime, durationHours)} ({durationHours} {durationHours === 1 ? 'hora' : 'horas'})
                 </span>
-                <span className="text-[10px] text-gray-400 block">
+                <span className="text-[10px] text-slate-500 dark:text-gray-400 block">
                   {format(selectedDate, "dd/MM/yyyy")}
                 </span>
               </div>
             </div>
 
             {/* Selector de Horario de Inicio & Duración */}
-            <div className="p-4 bg-gradient-to-b from-[#081f13] to-[#04100a] rounded-2xl border-2 border-emerald-500/40 space-y-3 shadow-md">
+            <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#081f13] dark:to-[#04100a] rounded-2xl border-2 border-slate-200 dark:border-emerald-500/40 space-y-3 shadow-md">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
-                  <Clock className="w-4 h-4 text-emerald-400" />
+                <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                  <Clock className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   Horario de Inicio & Duración:
                 </label>
                 <button
                   type="button"
                   onClick={() => setCurrentStep(3)}
-                  className="text-[10px] font-bold text-brand-gold hover:text-white flex items-center gap-1 underline transition-colors"
+                  className="text-[10px] font-bold text-amber-700 dark:text-brand-gold hover:text-amber-900 dark:hover:text-white flex items-center gap-1 underline transition-colors"
                 >
                   Ver matriz completa
                 </button>
@@ -1764,10 +2028,10 @@ export const CourtBooking: React.FC = () => {
 
               {/* Selector Rápido de Horas de Inicio Disponibles */}
               <div className="space-y-1.5">
-                <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                <span className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider block">
                   Selecciona la Hora de Inicio:
                 </span>
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1.5 bg-black/40 rounded-xl border border-white/5">
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2 max-h-36 overflow-y-auto p-1.5 bg-slate-100 dark:bg-black/40 rounded-xl border border-slate-200 dark:border-white/5">
                   {currentTimeSlots.map(t => {
                     const res = getSlotInfo(t);
                     const isAvailable = !res || (editingReservation && res.id === editingReservation.id);
@@ -1777,7 +2041,7 @@ export const CourtBooking: React.FC = () => {
                       return (
                         <div
                           key={t}
-                          className="py-1.5 px-2 rounded-lg bg-black/60 border border-white/5 text-gray-600 font-mono text-xs text-center cursor-not-allowed opacity-40"
+                          className="py-1.5 px-2 rounded-lg bg-slate-200/70 dark:bg-black/60 border border-slate-300 dark:border-white/5 text-slate-400 dark:text-gray-600 font-mono text-xs text-center cursor-not-allowed opacity-60"
                           title="Horario ocupado"
                         >
                           {t}
@@ -1792,8 +2056,8 @@ export const CourtBooking: React.FC = () => {
                         onClick={() => setSelectedTime(t)}
                         className={`py-1.5 px-2 rounded-lg border font-mono font-bold text-xs transition-all text-center ${
                           isSelected
-                            ? 'bg-gradient-to-r from-emerald-500 to-[#00ff87] text-black font-black border-[#00ff87] shadow-[0_0_12px_rgba(0,255,135,0.5)] scale-105'
-                            : 'bg-emerald-950/40 border-emerald-500/30 text-gray-300 hover:text-white hover:border-[#00ff87] hover:bg-emerald-900/40'
+                            ? 'bg-emerald-600 dark:bg-gradient-to-r dark:from-emerald-500 dark:to-[#00ff87] text-white dark:text-black font-black border-emerald-600 dark:border-[#00ff87] shadow-md dark:shadow-[0_0_12px_rgba(0,255,135,0.5)] scale-105'
+                            : 'bg-white dark:bg-emerald-950/40 border-slate-300 dark:border-emerald-500/30 text-slate-800 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-white hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/40'
                         }`}
                       >
                         {t}
@@ -1804,12 +2068,12 @@ export const CourtBooking: React.FC = () => {
               </div>
 
               {/* Selector de Duración: 1 Hora o 2 Horas */}
-              <div className="space-y-1.5 pt-2 border-t border-white/10">
+              <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-white/10">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider block">
                     Duración del Turno:
                   </span>
-                  <span className="text-[10px] font-bold text-brand-gold bg-brand-gold/15 px-2 py-0.5 rounded-full border border-brand-gold/30 font-mono">
+                  <span className="text-[10px] font-bold text-amber-800 dark:text-brand-gold bg-amber-100 dark:bg-brand-gold/15 px-2 py-0.5 rounded-full border border-amber-300 dark:border-brand-gold/30 font-mono">
                     Máximo 2 horas
                   </span>
                 </div>
@@ -1820,15 +2084,15 @@ export const CourtBooking: React.FC = () => {
                     onClick={() => setDurationHours(1)}
                     className={`p-3 rounded-2xl border-2 font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${
                       durationHours === 1
-                        ? 'bg-gradient-to-b from-[#0d331f] via-[#082014] to-[#04120b] border-[#00ff87] text-white shadow-[0_0_15px_rgba(0,255,135,0.45)] scale-[1.02]'
-                        : 'bg-black/50 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/40'
+                        ? 'bg-emerald-50 dark:bg-gradient-to-b dark:from-[#0d331f] dark:via-[#082014] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] text-slate-900 dark:text-white shadow-md dark:shadow-[0_0_15px_rgba(0,255,135,0.45)] scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/40'
                     }`}
                   >
                     <div className="flex items-center gap-1">
-                      <span className="text-sm font-black font-mono text-[#00ff87]">1 Hora</span>
-                      <span className="text-[10px] text-gray-300 font-medium">(60 min)</span>
+                      <span className="text-sm font-black font-mono text-emerald-700 dark:text-[#00ff87]">1 Hora</span>
+                      <span className="text-[10px] text-slate-500 dark:text-gray-300 font-medium">(60 min)</span>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-mono">
+                    <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono">
                       {selectedTime} a {formatEndTime(selectedTime, 1)}
                     </span>
                   </button>
@@ -1841,17 +2105,17 @@ export const CourtBooking: React.FC = () => {
                     }}
                     className={`p-3 rounded-2xl border-2 font-bold text-xs flex flex-col items-center justify-center gap-1 transition-all ${
                       durationHours === 2
-                        ? 'bg-gradient-to-b from-[#0d331f] via-[#082014] to-[#04120b] border-[#00ff87] text-white shadow-[0_0_15px_rgba(0,255,135,0.45)] scale-[1.02]'
+                        ? 'bg-emerald-50 dark:bg-gradient-to-b dark:from-[#0d331f] dark:via-[#082014] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] text-slate-900 dark:text-white shadow-md dark:shadow-[0_0_15px_rgba(0,255,135,0.45)] scale-[1.02]'
                         : !isNextHourAvailable
-                        ? 'bg-black/20 border-white/5 text-gray-600 cursor-not-allowed opacity-50'
-                        : 'bg-black/50 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/40'
+                        ? 'bg-slate-100 dark:bg-black/20 border-slate-200 dark:border-white/5 text-slate-400 dark:text-gray-600 cursor-not-allowed opacity-60'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/40'
                     }`}
                   >
                     <div className="flex items-center gap-1">
-                      <span className={`text-sm font-black font-mono ${isNextHourAvailable ? 'text-[#00ff87]' : 'text-gray-500'}`}>2 Horas</span>
-                      <span className="text-[10px] text-gray-300 font-medium">(120 min)</span>
+                      <span className={`text-sm font-black font-mono ${isNextHourAvailable ? 'text-emerald-700 dark:text-[#00ff87]' : 'text-slate-400 dark:text-gray-500'}`}>2 Horas</span>
+                      <span className="text-[10px] text-slate-500 dark:text-gray-300 font-medium">(120 min)</span>
                     </div>
-                    <span className="text-[10px] text-gray-400 font-mono">
+                    <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono">
                       {isNextHourAvailable 
                         ? `${selectedTime} a ${formatEndTime(selectedTime, 2)}` 
                         : '🚫 Turno sgte. ocupado'}
@@ -1861,9 +2125,85 @@ export const CourtBooking: React.FC = () => {
               </div>
             </div>
 
-            {/* Modalidad de Juego (3 botones Neón) */}
+            {/* Sub-selector de Disciplina en Confirmación (Raquet vs Wally) */}
+            {selectedSport === 'Raquet / Wally' && (
+              <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#081f13] dark:to-[#04100a] rounded-2xl border-2 border-slate-200 dark:border-emerald-500/40 space-y-2.5 shadow-md">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>🎾 / 🏐</span>
+                    ¿Qué deporte jugarás en este espacio?
+                  </label>
+                  <span className="text-[10px] text-amber-700 dark:text-brand-gold font-bold font-mono">
+                    {racquetWallySport === 'Wally' ? 'Con Red' : 'Sin Red'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {[
+                    { id: 'Racquet', label: 'Racquet', icon: '🎾', desc: 'Paredes libres sin red' },
+                    { id: 'Wally', label: 'Wally', icon: '🏐', desc: 'Instalación de red de wally' },
+                  ].map(sub => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => setRacquetWallySport(sub.id as any)}
+                      className={`p-3 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-1 ${
+                        racquetWallySport === sub.id
+                          ? 'bg-emerald-50 dark:bg-[#00ff87]/20 border-emerald-500 dark:border-[#00ff87] text-slate-900 dark:text-white shadow-md dark:shadow-[0_0_15px_rgba(0,255,135,0.4)] scale-[1.02]'
+                          : 'bg-white dark:bg-black/60 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-lg">{sub.icon}</span>
+                        <span className="text-xs font-black text-slate-900 dark:text-white">{sub.label}</span>
+                      </div>
+                      <span className={`text-[10px] font-medium ${racquetWallySport === sub.id ? 'text-emerald-700 dark:text-[#00ff87]' : 'text-slate-500 dark:text-gray-500'}`}>
+                        {sub.desc}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Sub-selector de Disciplina en Confirmación (Polifuncional) */}
+            {selectedSport === 'Polifuncional' && (
+              <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#081f13] dark:to-[#04100a] rounded-2xl border-2 border-slate-200 dark:border-emerald-500/40 space-y-2.5 shadow-md">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                    <span>⚽ / 🏐 / 🏀</span>
+                    Disciplina a Jugar en Cancha:
+                  </label>
+                  <span className="text-[10px] text-amber-700 dark:text-brand-gold font-bold font-mono">
+                    {polifunctionalSport}
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'Futsal', label: 'Futsal', icon: '⚽' },
+                    { id: 'Volleyball', label: 'Volleyball', icon: '🏐' },
+                    { id: 'Basketball', label: 'Basketball', icon: '🏀' },
+                  ].map(sub => (
+                    <button
+                      key={sub.id}
+                      type="button"
+                      onClick={() => setPolifunctionalSport(sub.id as any)}
+                      className={`py-2 px-2 rounded-xl border-2 text-center transition-all flex flex-col items-center gap-0.5 ${
+                        polifunctionalSport === sub.id
+                          ? 'bg-emerald-50 dark:bg-[#00ff87]/20 border-emerald-500 dark:border-[#00ff87] text-slate-900 dark:text-white shadow-md dark:shadow-[0_0_12px_rgba(0,255,135,0.4)] scale-[1.02]'
+                          : 'bg-white dark:bg-black/60 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/50'
+                      }`}
+                    >
+                      <span className="text-base">{sub.icon}</span>
+                      <span className="text-[11px] font-black text-slate-900 dark:text-white">{sub.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Modalidad de Juego (3 botones) */}
             <div className="space-y-2.5">
-              <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider block flex items-center gap-1.5">
+              <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider block flex items-center gap-1.5">
                 <Users className="w-3.5 h-3.5" />
                 ¿Con quiénes jugarás?
               </label>
@@ -1871,7 +2211,7 @@ export const CourtBooking: React.FC = () => {
                 {[
                   { id: 'FAMILY', label: 'Familia', icon: '👨‍👩‍👧‍👦', cost: 'Sin Costo' },
                   { id: 'MEMBERS', label: 'Socios', icon: '🎾', cost: 'Sin Costo' },
-                  { id: 'GUESTS', label: 'Invitados', icon: '👥', cost: sportMeta.isFixedCourtRate ? `Bs. ${sportMeta.fixedRate}` : `+Bs. ${sportMeta.guestRate}/inv.` }
+                  { id: 'GUESTS', label: 'Invitados', icon: '👥', cost: sportMeta.isFixedCourtRate ? `Bs. ${sportMeta.fixedRate} (Cancha)` : `+Bs. ${sportMeta.guestRate}/inv.` }
                 ].map(mod => (
                   <button
                     key={mod.id}
@@ -1879,13 +2219,13 @@ export const CourtBooking: React.FC = () => {
                     onClick={() => setPlayerType(mod.id as any)}
                     className={`p-3 sm:p-3.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 group relative overflow-hidden ${
                       playerType === mod.id
-                        ? 'bg-gradient-to-b from-[#0d331f] via-[#082014] to-[#04120b] border-[#00ff87] text-white shadow-[0_0_20px_rgba(0,255,135,0.4)] scale-[1.02]'
-                        : 'bg-black/50 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/50'
+                        ? 'bg-emerald-50 dark:bg-gradient-to-b dark:from-[#0d331f] dark:via-[#082014] dark:to-[#04120b] border-emerald-500 dark:border-[#00ff87] text-slate-900 dark:text-white shadow-md dark:shadow-[0_0_20px_rgba(0,255,135,0.4)] scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/50'
                     }`}
                   >
                     <span className="text-xl">{mod.icon}</span>
-                    <span className="text-xs font-black text-white">{mod.label}</span>
-                    <span className={`text-[10px] font-bold ${playerType === mod.id ? 'text-[#00ff87]' : 'text-gray-500'}`}>
+                    <span className="text-xs font-black text-slate-900 dark:text-white">{mod.label}</span>
+                    <span className={`text-[10px] font-bold ${playerType === mod.id ? 'text-emerald-700 dark:text-[#00ff87]' : 'text-slate-500 dark:text-gray-500'}`}>
                       {mod.cost}
                     </span>
                   </button>
@@ -1893,139 +2233,631 @@ export const CourtBooking: React.FC = () => {
               </div>
             </div>
 
-            {/* SECCIÓN DINÁMICA: INVITADOS (Nombre + CI) */}
+            {/* SECCIÓN DINÁMICA: INVITADOS (Nombre + CI + Pase) */}
             {playerType === 'GUESTS' && (
-              <div className="p-4 sm:p-5 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-4 shadow-xl animate-fade-in">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
-                  <span className="text-xs text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <UserPlus className="w-4 h-4" />
-                    Cantidad de Invitados:
-                  </span>
-                  <div className="flex gap-2">
-                    {[1, 2, 3, 4].map(n => (
+              <div className="p-4 sm:p-5 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-4 shadow-xl animate-fade-in">
+                {/* Header de Cantidad de Invitados & Selector de N */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-emerald-500/20 pb-3.5">
+                  <div className="space-y-0.5">
+                    <span className="text-xs text-emerald-800 dark:text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
+                      <UserPlus className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
+                      Cantidad de Invitados {selectedSport === 'Polifuncional' ? '(Sin límite de personas)' : '(Máx. 15 invitados)'}:
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-gray-400 block">
+                      {selectedSport === 'Polifuncional'
+                        ? 'Se reserva la cancha completa (no se cobra por invitado) • Puedes ingresar las personas que desees'
+                        : `Máximo 15 invitados permitidos para ${selectedSport} (Arancel: Bs. ${sportMeta.guestRate || 50}/inv.)`}
+                    </span>
+                  </div>
+
+                  {/* Stepper Interactivo N Personas */}
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-black/70 border border-slate-200 dark:border-emerald-500/40 rounded-2xl px-2.5 py-1.5 self-start sm:self-auto shadow-inner">
+                    <span className="text-[11px] font-black text-slate-700 dark:text-gray-300 uppercase tracking-wider">Total N:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleGuestsCountChange(guestsCount - 1)}
+                      disabled={guestsCount <= 1}
+                      className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-emerald-950/80 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-emerald-300 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-500/20 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center font-bold transition-all"
+                      title="Disminuir invitado"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxGuestsAllowed || undefined}
+                      value={guestsCount}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) handleGuestsCountChange(val);
+                      }}
+                      className="w-12 text-center bg-transparent text-sm font-black text-emerald-700 dark:text-[#00ff87] focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:focus:ring-[#00ff87] rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleGuestsCountChange(guestsCount + 1)}
+                      disabled={maxGuestsAllowed ? guestsCount >= maxGuestsAllowed : false}
+                      className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-emerald-950/80 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-emerald-300 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-500/20 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center font-bold transition-all"
+                      title="Aumentar invitado"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Botones de Selección Rápida (Presets de N personas) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider">
+                    <span>Opciones rápidas de ingreso:</span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-mono font-bold">
+                      {guestsCount} {maxGuestsAllowed ? `/ ${maxGuestsAllowed}` : ''} seleccionados
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(selectedSport === 'Polifuncional'
+                      ? [2, 5, 8, 10, 12, 14, 16, 20, 25, 30]
+                      : [1, 2, 4, 6, 8, 10, 12, 15]
+                    ).map(n => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => handleGuestsCountChange(n)}
-                        className={`w-8 h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center border-2 ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center justify-center border-2 ${
                           guestsCount === n
-                            ? 'bg-[#00ff87]/20 border-[#00ff87] text-[#00ff87] shadow-[0_0_10px_#00ff87] scale-105'
-                            : 'bg-black/60 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/50'
+                            ? 'bg-emerald-100 dark:bg-[#00ff87]/20 border-emerald-500 dark:border-[#00ff87] text-emerald-800 dark:text-[#00ff87] shadow-sm dark:shadow-[0_0_12px_rgba(0,255,135,0.4)] scale-105'
+                            : 'bg-white dark:bg-black/60 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/50'
                         }`}
                       >
-                        {n}
+                        {n} {n === 1 ? 'persona' : 'personas'}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <span className="text-[11px] text-gray-300 font-medium block">
-                    Registra los datos para autorizar el ingreso en Control de Entrada:
-                  </span>
-
-                  {Array.from({ length: guestsCount }).map((_, idx) => {
-                    const guestItem = guestsList[idx] || { name: '', documentId: '', guestPassNumber: '' };
-
-                    return (
-                      <div key={idx} className="p-3.5 bg-black/60 border border-emerald-500/30 rounded-2xl space-y-2.5 hover:border-emerald-400 transition-colors">
-                        <div className="flex items-center justify-between text-xs font-black text-[#00ff87]">
-                          <span className="flex items-center gap-1.5">
-                            <UserPlus className="w-3.5 h-3.5" />
-                            Invitado #{idx + 1}
+                {/* Banner Informativo */}
+                {selectedSport === 'Polifuncional' ? (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-gradient-to-r dark:from-emerald-950/80 dark:via-emerald-900/40 dark:to-black border border-emerald-300 dark:border-emerald-500/30 text-[11px] text-slate-800 dark:text-gray-200 flex items-start gap-3 shadow-inner">
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-[#00ff87]/20 border border-emerald-300 dark:border-[#00ff87]/40 flex items-center justify-center shrink-0 mt-0.5 text-emerald-700 dark:text-[#00ff87] text-base">
+                      ⚽
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-emerald-900 dark:text-[#00ff87] text-xs">
+                        Cancha Polifuncional ({polifunctionalSport}): Reserva de Cancha Completa (Sin Límite de Invitados)
+                      </p>
+                      <p className="text-slate-700 dark:text-gray-300 text-[11px] leading-relaxed">
+                        El arancel es de <strong className="text-slate-900 dark:text-white font-bold">Bs. 100 fijo</strong> por la reserva de la cancha completa (no es por persona ni por invitado). Puedes ingresar con todo tu equipo, jugadores y acompañantes (<span className="text-emerald-700 dark:text-[#00ff87] font-semibold">{guestsCount} invitados en lista</span>) libremente sin ningún límite.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-gradient-to-r dark:from-emerald-950/60 dark:via-emerald-900/30 dark:to-black border border-emerald-300 dark:border-emerald-500/30 text-[11px] text-slate-800 dark:text-gray-200 flex items-start gap-3 shadow-inner">
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-[#00ff87]/20 border border-emerald-300 dark:border-[#00ff87]/40 flex items-center justify-center shrink-0 mt-0.5 text-emerald-700 dark:text-[#00ff87] text-sm">
+                      {selectedSport === 'Raquet / Wally' ? (racquetWallySport === 'Wally' ? '🏐' : '🎾') : '🎾'}
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="font-bold text-emerald-900 dark:text-[#00ff87] text-xs">
+                        Disciplina: {selectedSport === 'Raquet / Wally' ? `${selectedCourt?.name || 'Espacio'} (${racquetWallySport})` : selectedSport} (Máximo 15 Invitados Permitidos)
+                      </p>
+                      <p className="text-slate-700 dark:text-gray-300 text-[11px] leading-relaxed">
+                        Se permite invitar hasta un máximo de <strong className="text-slate-900 dark:text-white font-bold">15 personas</strong> por turno. Arancel: <strong className="text-slate-900 dark:text-white font-bold">Bs. {sportMeta.guestRate}</strong> por invitado (o pase de pronto pago físico).
+                        {selectedSport === 'Raquet / Wally' && (
+                          <span className="block mt-0.5 text-emerald-700 dark:text-[#00ff87] font-semibold">
+                            Modalidad en cancha: {racquetWallySport} ({racquetWallySport === 'Wally' ? 'con red de wally instalada' : 'espacio libre de racquet sin red'}).
                           </span>
-                          <span className="text-[10px] text-emerald-400/80 font-mono bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                            Pase Invitado
-                          </span>
-                        </div>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                )}
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="relative">
-                            <input
-                              type="text"
-                              inputMode="text"
-                              autoComplete="name"
-                              required
-                              value={guestItem.name || ''}
-                              onChange={e => handleGuestFieldChange(idx, 'name', e.target.value)}
-                              placeholder="Nombre y Apellidos *"
-                              className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
-                            />
-                          </div>
-                          <div className="relative">
-                            <input
-                              type="text"
-                              inputMode="text"
-                              autoComplete="off"
-                              required
-                              value={guestItem.documentId || ''}
-                              onChange={e => handleGuestFieldChange(idx, 'documentId', e.target.value)}
-                              placeholder="C.I. / DNI / Pasaporte *"
-                              className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
-                            />
-                          </div>
-                        </div>
+                {/* Barra de Herramientas: Carga Rápida / Pegar Lista de WhatsApp y Agregar */}
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-emerald-500/10">
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkPasteGuests(!showBulkPasteGuests)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-emerald-950/60 dark:hover:bg-emerald-500/20 border border-slate-300 dark:border-emerald-500/40 text-slate-700 dark:text-emerald-300 transition-all shadow-sm"
+                  >
+                    <ClipboardList className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00ff87]" />
+                    {showBulkPasteGuests ? 'Cerrar Pegar Lista' : '📋 Pegar Lista desde WhatsApp'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddGuest}
+                    disabled={maxGuestsAllowed ? guestsCount >= maxGuestsAllowed : false}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold bg-white dark:bg-black/60 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-gray-300 hover:text-emerald-700 dark:hover:text-[#00ff87] hover:border-emerald-500 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <Plus className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00ff87]" />
+                    +1 Invitado Adicional
+                  </button>
+                </div>
 
-                        {/* Opción de Pase de Invitado */}
-                        <div className="pt-1 border-t border-white/5">
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="off"
-                            value={guestItem.guestPassNumber || ''}
-                            onChange={e => handleGuestFieldChange(idx, 'guestPassNumber', e.target.value)}
-                            placeholder="N° Tarjeta / Pase de Invitado (Opcional si cuenta con pase físico)"
-                            className="w-full bg-black/80 border border-brand-gold/30 rounded-xl px-3 py-2 text-xs text-brand-gold placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-all"
-                          />
+                {/* Cajón Desplegable para Pegar Lista de WhatsApp */}
+                {showBulkPasteGuests && (
+                  <div className="p-3.5 bg-white dark:bg-black/85 border border-slate-300 dark:border-emerald-500/40 rounded-2xl space-y-2.5 animate-fade-in shadow-xl">
+                    <div className="flex items-center justify-between text-xs font-bold text-emerald-800 dark:text-[#00ff87]">
+                      <span className="flex items-center gap-1.5">
+                        <ClipboardList className="w-4 h-4" />
+                        Copia y pega la lista de jugadores de tu grupo {maxGuestsAllowed ? `(Máx. ${maxGuestsAllowed})` : '(Sin límite)'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkPasteGuests(false)}
+                        className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white text-xs px-1.5 py-0.5 rounded hover:bg-slate-100 dark:hover:bg-white/10"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-slate-600 dark:text-gray-300">
+                      Un invitado por línea con su nombre y opcionalmente C.I. (detectará automáticamente números de CI):
+                    </p>
+                    <textarea
+                      rows={5}
+                      value={bulkPasteText}
+                      onChange={e => setBulkPasteText(e.target.value)}
+                      placeholder="1. Carlos Gómez 4920192 LP&#10;2. Juan Pérez 6182012&#10;3. Rodrigo Morales&#10;4. Luis Benitez 7129018..."
+                      className="w-full bg-slate-50 dark:bg-black/90 border border-slate-300 dark:border-emerald-500/30 rounded-xl p-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] font-mono leading-relaxed resize-y"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowBulkPasteGuests(false)}
+                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 border border-slate-300 dark:border-white/10"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyBulkGuests}
+                        className="px-4 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-gradient-to-r dark:from-[#00ff87] dark:to-emerald-500 dark:text-black shadow-md dark:shadow-[0_0_12px_rgba(0,255,135,0.4)] flex items-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Cargar Lista a la Reserva
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* SEGUNDO: Opción obligatoria ¿Tiene Pase de Invitados? SÍ o NO */}
+                <div className="p-4 bg-slate-100/90 dark:bg-gradient-to-r dark:from-[#0c2417] dark:via-black/85 dark:to-[#081a10] border-2 border-slate-300 dark:border-emerald-500/50 rounded-2xl space-y-3 shadow-lg">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-1">
+                      <span className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                        <Ticket className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
+                        ¿Tiene Pase(s) de Invitados?
+                      </span>
+                      <p className="text-[11px] text-slate-600 dark:text-gray-300">
+                        Indica si tus invitados ingresarán con pases físicos de pronto pago o si se abonará el arancel correspondiente:
+                      </p>
+                    </div>
+
+                    {/* Botones de Selección SÍ / NO */}
+                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setHasGuestPasses('YES')}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border-2 ${
+                          hasGuestPasses === 'YES'
+                            ? 'bg-emerald-600 text-white border-emerald-600 dark:bg-[#00ff87] dark:text-black dark:border-[#00ff87] shadow-md dark:shadow-[0_0_15px_rgba(0,255,135,0.4)] scale-105'
+                            : 'bg-white text-slate-700 border-slate-300 hover:border-emerald-500 hover:text-slate-900 dark:bg-black/70 dark:text-gray-300 dark:border-white/20 dark:hover:border-[#00ff87] dark:hover:text-white'
+                        }`}
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>SÍ</span>
+                        <span className="text-[10px] font-normal opacity-90">(Tengo Pases)</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setHasGuestPasses('NO')}
+                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border-2 ${
+                          hasGuestPasses === 'NO'
+                            ? 'bg-amber-500 text-white border-amber-500 dark:bg-amber-400 dark:text-black dark:border-amber-400 shadow-md dark:shadow-[0_0_15px_rgba(251,191,36,0.4)] scale-105'
+                            : 'bg-white text-slate-700 border-slate-300 hover:border-amber-400 hover:text-slate-900 dark:bg-black/70 dark:text-gray-300 dark:border-white/20 dark:hover:border-amber-400 dark:hover:text-white'
+                        }`}
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        <span>NO</span>
+                        <span className="text-[10px] font-normal opacity-90">(Pagar Arancel)</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {hasGuestPasses === 'YES' && (
+                    <div className="text-[11px] text-emerald-900 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 p-2.5 rounded-xl border border-emerald-300 dark:border-emerald-500/30 flex items-center gap-2 animate-fade-in">
+                      <span>🎫</span>
+                      <span>
+                        Has indicado que <strong>cuentas con pases de invitado</strong>. A continuación completa el <strong>nombre de invitado</strong>, la <strong>gestión del pase</strong> y el <strong>número de pase</strong>.
+                      </span>
+                    </div>
+                  )}
+
+                  {hasGuestPasses === 'NO' && (
+                    <div className="text-[11px] text-amber-900 dark:text-amber-200 bg-amber-50 dark:bg-amber-950/60 p-2.5 rounded-xl border border-amber-300 dark:border-amber-500/30 flex items-center gap-2 animate-fade-in">
+                      <CreditCard className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>
+                        Has indicado que <strong>no cuentas con pases de invitado</strong>. Completa el <strong>nombre completo</strong> y <strong>C.I.</strong> de tus invitados para derivarte <strong>directamente al pago</strong> del arancel.
+                      </span>
+                    </div>
+                  )}
+
+                  {!hasGuestPasses && (
+                    <div className="text-[11px] text-slate-600 dark:text-gray-400 bg-slate-200/60 dark:bg-white/5 p-2.5 rounded-xl border border-slate-300 dark:border-white/10 flex items-center gap-2">
+                      <span className="text-base">👉</span>
+                      <span>Por favor presiona <strong>SÍ</strong> o <strong>NO</strong> para habilitar las opciones de registro de tus invitados.</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* CASO A: SI PRESIONA SÍ -> Nombre de Invitado + Gestión del Pase + Número de Pase */}
+                {hasGuestPasses === 'YES' && (
+                  <div className="space-y-3 animate-fade-in">
+                    <span className="text-[11px] text-slate-700 dark:text-gray-300 font-medium block">
+                      Ingresa el nombre de invitado, la gestión del pase y el número de pase físico:
+                    </span>
+
+                    {Array.from({ length: guestsCount }).map((_, idx) => {
+                      const guestItem = guestsList[idx] || { name: '', documentId: '', guestPassNumber: '', guestPassYear: '' };
+
+                      return (
+                        <div key={idx} className="p-3.5 bg-white dark:bg-black/60 border border-slate-200 dark:border-emerald-500/30 rounded-2xl space-y-2.5 hover:border-emerald-400 transition-colors shadow-sm">
+                          <div className="flex items-center justify-between text-xs font-black text-emerald-800 dark:text-[#00ff87]">
+                            <span className="flex items-center gap-1.5">
+                              <UserPlus className="w-3.5 h-3.5" />
+                              Invitado #{idx + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {guestsCount > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveGuest(idx)}
+                                  className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 transition-all"
+                                  title="Eliminar este invitado"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Quitar
+                                </button>
+                              )}
+                              <span className="text-[10px] text-emerald-700 dark:text-emerald-400/80 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/30">
+                                Pase Físico
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            {/* Nombre del Invitado */}
+                            <div>
+                              <label className="text-[10px] text-slate-600 dark:text-gray-400 font-bold block mb-1">
+                                Nombre del Invitado:
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="text"
+                                autoComplete="name"
+                                value={guestItem.name || ''}
+                                onChange={e => handleGuestFieldChange(idx, 'name', e.target.value)}
+                                placeholder={idx === 0 ? "Nombre y Apellidos del Invitado *" : `Nombre del Invitado #${idx + 1}`}
+                                className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {/* Gestión del Pase */}
+                              <div>
+                                <label className="text-[10px] text-slate-600 dark:text-gray-400 font-bold block mb-1">
+                                  Gestión del Pase:
+                                </label>
+                                <select
+                                  value={guestItem.guestPassYear || ''}
+                                  onChange={e => handleGuestFieldChange(idx, 'guestPassYear', e.target.value)}
+                                  className={`w-full bg-slate-50 dark:bg-black/90 border rounded-xl px-2.5 py-2 text-xs focus:outline-none transition-all ${
+                                    isGuestPassValidForExemption(guestItem)
+                                      ? 'border-emerald-500 text-emerald-800 dark:text-[#00ff87]'
+                                      : isGuestPassDisallowedYear(guestItem)
+                                      ? 'border-amber-500 text-amber-800 dark:text-amber-300'
+                                      : 'border-slate-300 dark:border-brand-gold/30 text-slate-900 dark:text-white focus:border-emerald-500'
+                                  }`}
+                                >
+                                  <option value="">Selecciona Gestión del Pase...</option>
+                                  <optgroup label="✅ Gestiones Válidas (Exentas de Arancel)">
+                                    <option value="2026">Gestión 2026 (Válido)</option>
+                                    <option value="2025">Gestión 2025 (Válido)</option>
+                                    <option value="2024">Gestión 2024 (Válido)</option>
+                                    <option value="2023">Gestión 2023 (Válido)</option>
+                                    <option value="2022">Gestión 2022 (Válido)</option>
+                                  </optgroup>
+                                  <optgroup label="⚠️ Gestiones No Admitidas (Requieren Pago)">
+                                    <option value="2021">Gestión 2021 (Requiere Pago de Arancel)</option>
+                                    <option value="2020">Gestión 2020 (Requiere Pago de Arancel)</option>
+                                    <option value="2019">Gestión 2019 (Requiere Pago de Arancel)</option>
+                                    <option value="2018">Gestión 2018 (Requiere Pago de Arancel)</option>
+                                    <option value="2017">Gestión 2017 (Requiere Pago de Arancel)</option>
+                                    <option value="2016">Gestión 2016 o anterior (Requiere Pago)</option>
+                                  </optgroup>
+                                </select>
+                              </div>
+
+                              {/* Número de Pase */}
+                              <div>
+                                <label className="text-[10px] text-slate-600 dark:text-gray-400 font-bold block mb-1">
+                                  Número de Pase:
+                                </label>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="off"
+                                  value={guestItem.guestPassNumber || ''}
+                                  onChange={e => handleGuestFieldChange(idx, 'guestPassNumber', e.target.value)}
+                                  placeholder="Número de Pase (ej. 0842, 1024...)"
+                                  className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-brand-gold/30 rounded-xl px-3 py-2 text-xs text-amber-800 dark:text-brand-gold font-bold placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500 dark:focus:border-brand-gold transition-all"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Alerta si es gestión no admitida para exoneración */}
+                            {isGuestPassDisallowedYear(guestItem) && (
+                              <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-500/40 text-[11px] text-amber-900 dark:text-amber-200 flex items-start gap-2 shadow-inner animate-fade-in">
+                                <span className="text-base shrink-0">⚠️</span>
+                                <div className="space-y-0.5 leading-snug">
+                                  <p className="font-bold text-amber-800 dark:text-amber-300">
+                                    Pase Gestión {guestItem.guestPassYear} no admitido para exoneración directa
+                                  </p>
+                                  <p className="text-slate-700 dark:text-gray-300 text-[10px]">
+                                    Según comunicado oficial del Club, los pases físicos de las gestiones 2021, 2020, 2019, 2018 y 2017 no se admiten para ingreso liberado. 
+                                    Para poder utilizar este pase, se habilita la opción de <strong>abonar el arancel correspondiente</strong> (Bs. {sportMeta.guestRate || 50}).
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Mensaje de confirmación de pase válido */}
+                            {isGuestPassValidForExemption(guestItem) && (
+                              <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-500/30 text-[11px] text-emerald-900 dark:text-emerald-300 flex items-center gap-2 animate-fade-in">
+                                <span className="text-sm">✅</span>
+                                <span>
+                                  Pase N° <strong>{guestItem.guestPassNumber}</strong> (Gestión {guestItem.guestPassYear}) verificado: <strong>Exento de arancel de invitado (Bs. 0)</strong>.
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
+                      );
+                    })}
+
+                    {/* CUARTO: NOTA AL FINAL SI EL SOCIO PRESIONA QUE CUENTA CON PASES DE INVITADO */}
+                    <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-gradient-to-r dark:from-emerald-950/90 dark:via-black/90 dark:to-emerald-950/90 border-2 border-emerald-400 dark:border-emerald-500/50 text-xs text-emerald-900 dark:text-emerald-200 flex items-start gap-3 shadow-md dark:shadow-[0_0_20px_rgba(0,255,135,0.2)] animate-fade-in">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 border border-emerald-300 dark:border-emerald-500/40 flex items-center justify-center shrink-0 text-emerald-800 dark:text-emerald-300 text-lg shadow-sm">
+                        🎫
                       </div>
-                    );
-                  })}
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-800 dark:text-[#00ff87] block">
+                          Nota de Control de Garita / Caseta:
+                        </span>
+                        <p className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-relaxed">
+                          Estimado socio gracias por su preferencia, por favor no olvide dejar su pase de invitado a caseta. Gracias.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* CASO B: TERCERO: SI EL SOCIO PRESIONA NO -> Nombre Completo + CI Y DIRECTAMENTE EL PAGO */}
+                {hasGuestPasses === 'NO' && (
+                  <div className="space-y-3 animate-fade-in">
+                    <span className="text-[11px] text-slate-700 dark:text-gray-300 font-medium block">
+                      Ingresa el nombre completo y número de C.I. de tus invitados para autorizar su ingreso en portería:
+                    </span>
+
+                    {Array.from({ length: guestsCount }).map((_, idx) => {
+                      const guestItem = guestsList[idx] || { name: '', documentId: '', guestPassNumber: '', guestPassYear: '' };
+
+                      return (
+                        <div key={idx} className="p-3.5 bg-white dark:bg-black/60 border border-slate-200 dark:border-amber-500/30 rounded-2xl space-y-2.5 hover:border-amber-400 transition-colors shadow-sm">
+                          <div className="flex items-center justify-between text-xs font-black text-amber-700 dark:text-amber-400">
+                            <span className="flex items-center gap-1.5">
+                              <UserPlus className="w-3.5 h-3.5" />
+                              Invitado #{idx + 1}
+                            </span>
+                            <div className="flex items-center gap-2">
+                              {guestsCount > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveGuest(idx)}
+                                  className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 transition-all"
+                                  title="Eliminar este invitado"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                  Quitar
+                                </button>
+                              )}
+                              <span className="text-[10px] text-amber-800 dark:text-amber-400/80 font-mono bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-300 dark:border-amber-500/30">
+                                Arancel a Cancelar
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-[10px] text-slate-600 dark:text-gray-400 font-bold block mb-1">
+                                Nombre Completo del Invitado:
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="text"
+                                autoComplete="name"
+                                value={guestItem.name || ''}
+                                onChange={e => handleGuestFieldChange(idx, 'name', e.target.value)}
+                                placeholder={idx === 0 ? "Nombre y Apellidos completos *" : `Nombre Completo del Invitado #${idx + 1}`}
+                                className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-amber-500/30 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-all"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-slate-600 dark:text-gray-400 font-bold block mb-1">
+                                C.I. (Carnet de Identidad):
+                              </label>
+                              <input
+                                type="text"
+                                inputMode="text"
+                                autoComplete="off"
+                                value={guestItem.documentId || ''}
+                                onChange={e => handleGuestFieldChange(idx, 'documentId', e.target.value)}
+                                placeholder="Número de C.I. (ej. 4820192 LP)"
+                                className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-amber-500/30 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-amber-500 dark:focus:border-amber-400 transition-all"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Banner: Derivación Directa a Pago */}
+                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-gradient-to-r dark:from-amber-950/80 dark:via-black/90 dark:to-amber-950/80 border-2 border-amber-300 dark:border-brand-gold/50 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3 shadow-md dark:shadow-[0_0_20px_rgba(212,175,55,0.2)] animate-fade-in">
+                      <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-brand-gold/20 border border-amber-300 dark:border-brand-gold/40 flex items-center justify-center shrink-0 text-amber-700 dark:text-brand-gold text-lg shadow-sm">
+                        <CreditCard className="w-4 h-4 text-amber-700 dark:text-brand-gold" />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-800 dark:text-brand-gold block">
+                          Derivado Directamente a Pago:
+                        </span>
+                        <p className="text-slate-800 dark:text-gray-200 leading-relaxed text-[11px]">
+                          Sus invitados están registrados para ingresar con pago de arancel ({sportMeta.isFixedCourtRate ? 'arancel de cancha' : `Bs. ${sportMeta.guestRate || 50}/invitado`} • Total: <strong className="text-slate-900 dark:text-white font-mono text-sm">Bs. {currentGuestFee}</strong>). Se deriva directamente a la pasarela de pago (QR Oficial / Efectivo / Tarjeta).
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Pie de lista de invitados con botón Agregar */}
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 border-t border-slate-200 dark:border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={handleAddGuest}
+                    disabled={maxGuestsAllowed ? guestsCount >= maxGuestsAllowed : false}
+                    className="w-full sm:w-auto px-4 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-emerald-950/60 border border-slate-300 dark:border-emerald-500/40 text-slate-800 dark:text-emerald-300 hover:border-emerald-500 dark:hover:text-white dark:hover:border-[#00ff87] dark:hover:bg-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all text-xs font-black flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
+                    Agregar otro invitado (#{guestsCount + 1})
+                  </button>
+
+                  <div className="text-[11px] text-slate-700 dark:text-gray-300 font-medium">
+                    Total: <strong className="text-emerald-700 dark:text-[#00ff87] font-black">{guestsCount}</strong> {guestsCount === 1 ? 'invitado' : 'invitados'}
+                    {maxGuestsAllowed ? ` (Máx. ${maxGuestsAllowed})` : ' (Sin límite de personas)'}
+                    {hasGuestPasses === 'YES' && exemptGuestsCount > 0 && (
+                      <span className="text-emerald-700 dark:text-[#00ff87] font-semibold"> • {exemptGuestsCount} con pase válido</span>
+                    )}
+                    {hasGuestPasses === 'YES' && payingGuestsCount > 0 && (
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold"> • {payingGuestsCount} con arancel</span>
+                    )}
+                    {hasGuestPasses === 'NO' && (
+                      <span className="text-amber-700 dark:text-amber-300 font-semibold"> • {guestsCount} con arancel (Pago Directo)</span>
+                    )}
+                    {sportMeta.isFixedCourtRate 
+                      ? ' • Alquiler Cancha Completa: Bs. 100' 
+                      : ` • Total Arancel Invitados: Bs. ${currentGuestFee}`}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* SECCIÓN DINÁMICA: SOCIOS COMPAÑEROS */}
             {playerType === 'MEMBERS' && (
-              <div className="p-4 sm:p-5 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-4 shadow-xl animate-fade-in">
-                <div className="flex items-center justify-between border-b border-emerald-500/20 pb-3">
-                  <span className="text-xs text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <Users className="w-4 h-4" />
-                    Socios Compañeros:
-                  </span>
-                  <div className="flex gap-2">
-                    {[1, 2, 3].map(n => (
+              <div className="p-4 sm:p-5 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-4 shadow-xl animate-fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-emerald-500/20 pb-3.5">
+                  <div className="space-y-0.5">
+                    <span className="text-xs text-emerald-800 dark:text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
+                      <Users className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
+                      Socios Compañeros:
+                    </span>
+                    <span className="text-[10px] text-slate-500 dark:text-gray-400 block">
+                      Selecciona o ajusta el número de socios que jugarán contigo
+                    </span>
+                  </div>
+
+                  {/* Stepper N Socios */}
+                  <div className="flex items-center gap-1.5 bg-white dark:bg-black/70 border border-slate-200 dark:border-emerald-500/40 rounded-2xl px-2.5 py-1.5 self-start sm:self-auto shadow-inner">
+                    <span className="text-[11px] font-black text-slate-700 dark:text-gray-300 uppercase tracking-wider">Total:</span>
+                    <button
+                      type="button"
+                      onClick={() => handlePartnersCountChange(partnersCount - 1)}
+                      disabled={partnersCount <= 1}
+                      className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-emerald-950/80 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-emerald-300 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-500/20 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center font-bold transition-all"
+                      title="Disminuir socio"
+                    >
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={partnersCount}
+                      onChange={e => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) handlePartnersCountChange(val);
+                      }}
+                      className="w-12 text-center bg-transparent text-sm font-black text-emerald-700 dark:text-[#00ff87] focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:focus:ring-[#00ff87] rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handlePartnersCountChange(partnersCount + 1)}
+                      disabled={partnersCount >= 30}
+                      className="w-7 h-7 rounded-xl bg-slate-100 dark:bg-emerald-950/80 border border-slate-300 dark:border-emerald-500/30 text-slate-700 dark:text-emerald-300 hover:bg-emerald-100 hover:text-emerald-900 dark:hover:bg-emerald-500/20 dark:hover:text-white disabled:opacity-30 disabled:cursor-not-allowed flex items-center justify-center font-bold transition-all"
+                      title="Aumentar socio"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Presets Socios */}
+                <div className="space-y-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    {(selectedSport === 'Polifuncional'
+                      ? [2, 4, 6, 8, 10, 12]
+                      : [1, 2, 3, 4, 6]
+                    ).map(n => (
                       <button
                         key={n}
                         type="button"
                         onClick={() => handlePartnersCountChange(n)}
-                        className={`w-8 h-8 rounded-xl text-xs font-black transition-all flex items-center justify-center border-2 ${
+                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center justify-center border-2 ${
                           partnersCount === n
-                            ? 'bg-[#00ff87]/20 border-[#00ff87] text-[#00ff87] shadow-[0_0_10px_#00ff87] scale-105'
-                            : 'bg-black/60 border-emerald-500/20 text-gray-400 hover:text-white hover:border-emerald-500/50'
+                            ? 'bg-emerald-100 dark:bg-[#00ff87]/20 border-emerald-500 dark:border-[#00ff87] text-emerald-800 dark:text-[#00ff87] shadow-sm dark:shadow-[0_0_12px_rgba(0,255,135,0.4)] scale-105'
+                            : 'bg-white dark:bg-black/60 border-slate-200 dark:border-emerald-500/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white hover:border-emerald-500/50'
                         }`}
                       >
-                        {n}
+                        {n} {n === 1 ? 'socio' : 'socios'}
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div className="space-y-3">
-                  <span className="text-[11px] text-gray-300 font-medium block">
+                  <span className="text-[11px] text-slate-700 dark:text-gray-300 font-medium block">
                     Indica los datos de los socios que jugarán contigo en esta cancha:
                   </span>
 
                   {Array.from({ length: partnersCount }).map((_, idx) => (
-                    <div key={idx} className="p-3.5 bg-black/60 border border-emerald-500/30 rounded-2xl space-y-2 hover:border-emerald-400 transition-colors">
-                      <div className="flex items-center justify-between text-xs font-black text-[#00ff87]">
+                    <div key={idx} className="p-3.5 bg-white dark:bg-black/60 border border-slate-200 dark:border-emerald-500/30 rounded-2xl space-y-2 hover:border-emerald-400 transition-colors shadow-sm">
+                      <div className="flex items-center justify-between text-xs font-black text-emerald-800 dark:text-[#00ff87]">
                         <span className="flex items-center gap-1.5">
                           <Users className="w-3.5 h-3.5" />
                           Socio Compañero #{idx + 1}
                         </span>
-                        <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
-                          Sin Costo
-                        </span>
+                        <div className="flex items-center gap-2">
+                          {partnersCount > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePartner(idx)}
+                              className="text-rose-600 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300 text-[10px] font-bold flex items-center gap-1 px-2 py-0.5 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 hover:bg-rose-100 transition-all"
+                              title="Eliminar este socio"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                              Quitar
+                            </button>
+                          )}
+                          <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/30">
+                            Sin Costo
+                          </span>
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2037,7 +2869,7 @@ export const CourtBooking: React.FC = () => {
                             value={partnerMembersList[idx]?.name || ''}
                             onChange={e => handlePartnerFieldChange(idx, 'name', e.target.value)}
                             placeholder="Nombre del Socio (ej. Carlos Paz)"
-                            className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
+                            className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
                           />
                         </div>
                         <div className="relative">
@@ -2047,30 +2879,46 @@ export const CourtBooking: React.FC = () => {
                             autoComplete="off"
                             value={partnerMembersList[idx]?.documentId || ''}
                             onChange={e => handlePartnerFieldChange(idx, 'documentId', e.target.value)}
-                            placeholder="Nro. Acción / Carnet (ej. #CHLS-104)"
-                            className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
+                            placeholder="Código de Socio o Código de Cuota de Participación"
+                            className="w-full bg-slate-50 dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
                           />
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
+
+                <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-2.5 border-t border-slate-200 dark:border-emerald-500/20">
+                  <button
+                    type="button"
+                    onClick={handleAddPartner}
+                    disabled={partnersCount >= 30}
+                    className="w-full sm:w-auto px-4 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-emerald-950/60 border border-slate-300 dark:border-emerald-500/40 text-slate-800 dark:text-emerald-300 hover:border-emerald-500 dark:hover:text-white dark:hover:border-[#00ff87] dark:hover:bg-emerald-500/20 transition-all text-xs font-black flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
+                    Agregar otro socio (#{partnersCount + 1})
+                  </button>
+
+                  <div className="text-[11px] text-slate-700 dark:text-gray-300 font-medium">
+                    Total: <strong className="text-emerald-700 dark:text-[#00ff87] font-black">{partnersCount}</strong> {partnersCount === 1 ? 'socio' : 'socios'}
+                  </div>
+                </div>
               </div>
             )}
 
             {/* SECCIÓN DINÁMICA: FAMILIA */}
             {playerType === 'FAMILY' && (
-              <div className="p-4 sm:p-5 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-2.5 shadow-xl animate-fade-in">
+              <div className="p-4 sm:p-5 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-2.5 shadow-xl animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4" />
+                  <span className="text-xs text-emerald-800 dark:text-[#00ff87] font-black uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
                     Uso Familiar Directo
                   </span>
-                  <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/30">
                     Sin Costo
                   </span>
                 </div>
-                <p className="text-[11px] text-gray-300">
+                <p className="text-[11px] text-slate-600 dark:text-gray-300">
                   Nombres de familiares dependientes que te acompañarán (opcional):
                 </p>
                 <input
@@ -2080,25 +2928,25 @@ export const CourtBooking: React.FC = () => {
                   value={familyMembersText}
                   onChange={e => setFamilyMembersText(e.target.value)}
                   placeholder="Ej. Esposa e Hijos: Andrea y Mateo Linares"
-                  className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
+                  className="w-full bg-white dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
                 />
               </div>
             )}
 
             {/* Datos del Socio Titular que Reserva */}
-            <div className="p-4 bg-gradient-to-b from-[#0b1f14] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-3 shadow-lg">
+            <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-3 shadow-lg">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
-                  <User className="w-3.5 h-3.5" />
+                <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00ff87]" />
                   Socio Titular que Reserva:
                 </label>
-                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
-                  Acción #{currentMemberCode}
+                <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/30 font-bold">
+                  Código de Socio / Cuota de Participación: #{currentMemberCode}
                 </span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <div>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Nombre Completo:</span>
+                  <span className="text-[10px] text-slate-600 dark:text-gray-400 font-bold uppercase tracking-wider block mb-1">Nombre Completo:</span>
                   <input
                     type="text"
                     required
@@ -2109,11 +2957,11 @@ export const CourtBooking: React.FC = () => {
                       localStorage.setItem('chls_member_name', val);
                     }}
                     placeholder="Nombre del Socio Titular"
-                    className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] transition-all"
+                    className="w-full bg-white dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
                   />
                 </div>
                 <div>
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">N° Carnet / Acción:</span>
+                  <span className="text-[10px] text-slate-600 dark:text-gray-400 font-bold uppercase tracking-wider block mb-1">CODIGO DE SOCIO O CODIGO DE CUOTA DE PARTICIPACIÓN:</span>
                   <input
                     type="text"
                     required
@@ -2123,17 +2971,17 @@ export const CourtBooking: React.FC = () => {
                       setFormData(prev => ({ ...prev, memberCode: val }));
                       localStorage.setItem('chls_member_code', val);
                     }}
-                    placeholder="N° de Acción (ej. 21)"
-                    className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] transition-all"
+                    placeholder="Código de Socio o Código de Cuota de Participación"
+                    className="w-full bg-white dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-3.5 py-2 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
                   />
                 </div>
               </div>
             </div>
 
             {/* Teléfono WhatsApp */}
-            <div className="p-4 bg-gradient-to-b from-[#0b1f14] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-2 shadow-lg">
-              <label className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
-                <Phone className="w-3.5 h-3.5" />
+            <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-2 shadow-lg">
+              <label className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5 text-emerald-600 dark:text-[#00ff87]" />
                 Celular / WhatsApp de Notificación:
               </label>
               <input
@@ -2144,47 +2992,47 @@ export const CourtBooking: React.FC = () => {
                 value={formData.memberPhone}
                 onChange={e => setFormData({ ...formData, memberPhone: e.target.value })}
                 placeholder="Ej. 70123456"
-                className="w-full bg-black/80 border border-emerald-500/30 rounded-xl px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-[#00ff87] focus:shadow-[0_0_8px_rgba(0,255,135,0.3)] transition-all"
+                className="w-full bg-white dark:bg-black/80 border border-slate-300 dark:border-emerald-500/30 rounded-xl px-4 py-2.5 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-emerald-500 dark:focus:border-[#00ff87] transition-all"
               />
             </div>
 
             {/* Resumen y Pase Digital / Opciones de Pago */}
             {currentTotalPrice === 0 ? (
-              <div className="p-4 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] border-2 border-emerald-500/40 rounded-3xl space-y-3 shadow-xl animate-fade-in">
+              <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] border-2 border-slate-200 dark:border-emerald-500/40 rounded-3xl space-y-3 shadow-xl animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4" />
+                  <span className="text-xs font-black text-emerald-800 dark:text-[#00ff87] uppercase tracking-wider flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-[#00ff87]" />
                     Estado: Confirmación Inmediata
                   </span>
-                  <span className="text-[10px] text-emerald-300 font-bold bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/40">
+                  <span className="text-[10px] text-emerald-800 dark:text-emerald-300 font-bold bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-300 dark:border-emerald-500/40">
                     🟢 Cortesía de Socio (Bs. 0)
                   </span>
                 </div>
 
-                <div className="p-3.5 bg-black/60 border border-emerald-500/30 rounded-2xl flex items-center gap-3.5">
-                  <div className="w-16 h-16 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 flex flex-col items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_15px_rgba(0,255,135,0.2)]">
+                <div className="p-3.5 bg-white dark:bg-black/60 border border-slate-200 dark:border-emerald-500/30 rounded-2xl flex items-center gap-3.5 shadow-sm">
+                  <div className="w-16 h-16 rounded-2xl bg-emerald-100 dark:bg-emerald-500/15 border border-emerald-300 dark:border-emerald-500/40 flex flex-col items-center justify-center text-emerald-700 dark:text-emerald-400 shrink-0 shadow-sm dark:shadow-[0_0_15px_rgba(0,255,135,0.2)]">
                     <QrCode className="w-8 h-8" />
                     <span className="text-[7px] font-black uppercase tracking-wider mt-0.5">Pase Directo</span>
                   </div>
-                  <div className="text-xs text-gray-300 space-y-1">
-                    <p className="font-bold text-white flex items-center gap-1">
+                  <div className="text-xs text-slate-700 dark:text-gray-300 space-y-1">
+                    <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1">
                       <span>Pase Digital de Acceso Deportivo</span>
-                      <span className="text-emerald-400 font-mono text-[11px] font-black">#100% Liberado</span>
+                      <span className="text-emerald-700 dark:text-emerald-400 font-mono text-[11px] font-black">#100% Liberado</span>
                     </p>
-                    <p className="text-[11px] text-gray-400">
+                    <p className="text-[11px] text-slate-600 dark:text-gray-400">
                       Como socio titular, su uso de cancha no tiene costo. Al presionar <strong>Confirmar Reserva</strong>, su turno queda reservado y recibirá su pase de acceso directamente en su WhatsApp.
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="p-4 bg-gradient-to-b from-[#0b1f14] via-[#07160e] to-[#040e08] border-2 border-brand-gold/40 rounded-3xl space-y-3 shadow-xl animate-fade-in">
+              <div className="p-4 bg-slate-50 dark:bg-gradient-to-b dark:from-[#0b1f14] dark:via-[#07160e] dark:to-[#040e08] border-2 border-slate-200 dark:border-brand-gold/40 rounded-3xl space-y-3 shadow-xl animate-fade-in">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-black text-brand-gold uppercase tracking-wider flex items-center gap-1.5">
-                    <CreditCard className="w-4 h-4" />
+                  <span className="text-xs font-black text-amber-800 dark:text-brand-gold uppercase tracking-wider flex items-center gap-1.5">
+                    <CreditCard className="w-4 h-4 text-amber-600 dark:text-brand-gold" />
                     Estado: Pre-Reserva con Pago Requerido
                   </span>
-                  <span className="text-[10px] text-amber-300 font-bold bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-brand-gold/40 animate-pulse">
+                  <span className="text-[10px] text-amber-800 dark:text-amber-300 font-bold bg-amber-100 dark:bg-amber-950/60 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-brand-gold/40 animate-pulse">
                     🟡 Pre-reserva
                   </span>
                 </div>
@@ -2195,11 +3043,11 @@ export const CourtBooking: React.FC = () => {
                     onClick={() => setBookingPaymentMethod('QR')}
                     className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 relative ${
                       bookingPaymentMethod === 'QR'
-                        ? 'bg-brand-gold/20 border-brand-gold text-brand-gold shadow-[0_0_15px_rgba(212,175,55,0.3)] scale-[1.02]'
-                        : 'bg-black/50 border-white/10 text-gray-400 hover:text-white'
+                        ? 'bg-amber-50 dark:bg-brand-gold/20 border-amber-500 dark:border-brand-gold text-amber-900 dark:text-brand-gold shadow-sm dark:shadow-[0_0_15px_rgba(212,175,55,0.3)] scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
-                    <span className="absolute -top-2 bg-brand-gold text-black text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full">
+                    <span className="absolute -top-2 bg-amber-600 dark:bg-brand-gold text-white dark:text-black text-[9px] font-black uppercase px-1.5 py-0.2 rounded-full">
                       Default
                     </span>
                     <QrCode className="w-5 h-5 mt-1" />
@@ -2208,67 +3056,127 @@ export const CourtBooking: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={() => setBookingPaymentMethod('EFECTIVO')}
-                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
-                      bookingPaymentMethod === 'EFECTIVO'
-                        ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.3)] scale-[1.02]'
-                        : 'bg-black/50 border-white/10 text-gray-400 hover:text-white'
+                    onClick={() => handleSelectPaymentMethod('EFECTIVO')}
+                    title={
+                      !isCashierPaymentAllowed
+                        ? 'Cobro en efectivo fuera del horario de atención de cajas (Lun-Vie 06:00-22:00, Sáb-Dom 07:00-20:00)'
+                        : 'Pago en Efectivo en recepción'
+                    }
+                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 relative ${
+                      !isCashierPaymentAllowed
+                        ? 'opacity-55 cursor-not-allowed bg-slate-100 dark:bg-black/40 border-slate-200 dark:border-white/5 text-slate-400 dark:text-gray-500'
+                        : bookingPaymentMethod === 'EFECTIVO'
+                        ? 'bg-emerald-50 dark:bg-emerald-500/20 border-emerald-500 text-emerald-900 dark:text-emerald-400 shadow-sm dark:shadow-[0_0_15px_rgba(16,185,129,0.3)] scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
+                    {!isCashierPaymentAllowed && (
+                      <span className="absolute -top-2 bg-rose-600 dark:bg-rose-700 text-white text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full shadow-sm">
+                        🔒 Cerrado
+                      </span>
+                    )}
                     <Banknote className="w-5 h-5" />
                     <span className="text-xs font-black">Efectivo</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setBookingPaymentMethod('TARJETA')}
-                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 ${
-                      bookingPaymentMethod === 'TARJETA'
-                        ? 'bg-blue-500/20 border-blue-500 text-blue-400 shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-[1.02]'
-                        : 'bg-black/50 border-white/10 text-gray-400 hover:text-white'
+                    onClick={() => handleSelectPaymentMethod('TARJETA')}
+                    title={
+                      !isCashierPaymentAllowed
+                        ? 'Cobro con tarjeta fuera del horario de atención de cajas (Lun-Vie 06:00-22:00, Sáb-Dom 07:00-20:00)'
+                        : 'Pago con Tarjeta en recepción'
+                    }
+                    className={`p-2.5 rounded-2xl border-2 text-center transition-all flex flex-col items-center justify-center gap-1 relative ${
+                      !isCashierPaymentAllowed
+                        ? 'opacity-55 cursor-not-allowed bg-slate-100 dark:bg-black/40 border-slate-200 dark:border-white/5 text-slate-400 dark:text-gray-500'
+                        : bookingPaymentMethod === 'TARJETA'
+                        ? 'bg-blue-50 dark:bg-blue-500/20 border-blue-500 text-blue-900 dark:text-blue-400 shadow-sm dark:shadow-[0_0_15px_rgba(59,130,246,0.3)] scale-[1.02]'
+                        : 'bg-white dark:bg-black/50 border-slate-200 dark:border-white/10 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
                     }`}
                   >
+                    {!isCashierPaymentAllowed && (
+                      <span className="absolute -top-2 bg-rose-600 dark:bg-rose-700 text-white text-[8px] font-black uppercase px-1.5 py-0.2 rounded-full shadow-sm">
+                        🔒 Cerrado
+                      </span>
+                    )}
                     <CreditCard className="w-5 h-5" />
                     <span className="text-xs font-black">Tarjeta / POS</span>
                   </button>
                 </div>
 
-                {bookingPaymentMethod === 'QR' && (
-                  <div className="p-3 bg-black/60 border border-brand-gold/30 rounded-2xl flex items-center gap-3">
-                    <img src={qrPagosUrl} alt="QR Pagos CHLS" className="w-16 h-16 object-cover rounded-xl border border-brand-gold/40 shrink-0 shadow-md" />
-                    <div className="text-[11px] text-gray-300 space-y-0.5">
-                      <p className="font-bold text-brand-gold">QR Oficial Club Hípico Los Sargentos</p>
-                      <p className="text-gray-400">Banco BMSC / BCP. Al confirmar, este QR también se enviará a su WhatsApp.</p>
+                {/* Banner de restricción de horarios para cobros presenciales */}
+                {!isCashierPaymentAllowed && (
+                  <div className="p-3 bg-amber-50 dark:bg-amber-950/40 rounded-2xl border border-amber-300 dark:border-amber-500/40 text-xs text-amber-950 dark:text-amber-200 space-y-2 animate-fade-in">
+                    <div className="flex items-center gap-2 font-black text-amber-800 dark:text-amber-300 text-[12px]">
+                      <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                      <span>Horarios de Atención para Cobro en Cajas:</span>
+                    </div>
+                    <p className="text-[11px] text-slate-700 dark:text-gray-300">
+                      Los pagos presenciales en <strong>Efectivo</strong> y <strong>Tarjeta</strong> solo están habilitados dentro del horario de atención:
+                    </p>
+                    <div className="bg-white/90 dark:bg-black/50 p-2.5 rounded-xl border border-amber-200 dark:border-amber-500/20 text-[11px] text-slate-700 dark:text-gray-300 space-y-1">
+                      <p>• Lunes a Viernes: <strong>06:00 a 22:00 hrs</strong></p>
+                      <p>• Sábados y Domingos: <strong>07:00 a 20:00 hrs</strong></p>
+                    </div>
+                    <div className="flex items-center gap-2 text-[11px] font-semibold text-emerald-800 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border border-emerald-200 dark:border-emerald-500/30">
+                      <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span>Fuera de este horario, las reservas deben confirmarse mediante <strong>Pago QR (Disponible 24/7)</strong>.</span>
                     </div>
                   </div>
                 )}
 
-                {bookingPaymentMethod === 'TARJETA' && (
-                  <div className="p-3 bg-blue-950/40 rounded-2xl border border-blue-500/30 space-y-1.5 text-xs text-blue-200">
+                {/* Detalle Pago QR */}
+                {bookingPaymentMethod === 'QR' && (
+                  <div className="p-3 bg-white dark:bg-black/60 border border-slate-200 dark:border-brand-gold/30 rounded-2xl flex items-center gap-3 shadow-sm">
+                    <img src={qrPagosUrl} alt="QR Pagos CHLS" className="w-16 h-16 object-cover rounded-xl border border-brand-gold/40 shrink-0 shadow-md" />
+                    <div className="text-[11px] text-slate-700 dark:text-gray-300 space-y-0.5">
+                      <p className="font-bold text-amber-800 dark:text-brand-gold">QR Oficial Club Hípico Los Sargentos (Disponible 24/7)</p>
+                      <p className="text-slate-500 dark:text-gray-400">Banco BMSC / BCP. Habilitado 24 horas. Al confirmar, este QR también se enviará a su WhatsApp.</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Detalle Pago Efectivo */}
+                {bookingPaymentMethod === 'EFECTIVO' && isCashierPaymentAllowed && (
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl border border-emerald-200 dark:border-emerald-500/30 space-y-1.5 text-xs text-slate-800 dark:text-emerald-200 animate-fade-in">
                     <p>
-                      💳 <strong>Pago con Tarjeta:</strong> Puede cancelar con tarjeta de débito o crédito en <strong>Oficinas de Atención al Socio y recepciones</strong>.
+                      💵 <strong>Pago en Efectivo:</strong> Puede cancelar en efectivo en <strong>Oficinas de Atención al Socio y recepciones</strong>.
                     </p>
-                    <div className="bg-black/40 p-2.5 rounded-xl border border-blue-500/20 text-[11px] text-gray-300 space-y-1">
-                      <p className="font-bold text-brand-gold">
-                        🕒 Horarios de Atención para Cobro con Tarjeta:
+                    <div className="bg-white/80 dark:bg-black/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-500/20 text-[11px] text-slate-700 dark:text-gray-300 space-y-1">
+                      <p className="font-bold text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-brand-gold" />
+                        Horarios de Atención para Cobro en Efectivo:
                       </p>
                       <p>• Lunes a Viernes: <strong>06:00 a 22:00 hrs</strong></p>
                       <p>• Sábados y Domingos: <strong>07:00 a 20:00 hrs</strong></p>
                     </div>
-                    {!isCardPaymentAllowed && (
-                      <p className="text-[10px] text-amber-300 bg-amber-950/50 p-2 rounded-lg border border-amber-500/30">
-                        ⚠️ <em>Nota: Se encuentra fuera del horario de atención de cajas. Su turno quedará reservado y podrá cancelar con tarjeta al abrir las recepciones o pagar con QR ahora.</em>
+                  </div>
+                )}
+
+                {/* Detalle Pago Tarjeta */}
+                {bookingPaymentMethod === 'TARJETA' && isCashierPaymentAllowed && (
+                  <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-2xl border border-blue-200 dark:border-blue-500/30 space-y-1.5 text-xs text-slate-800 dark:text-blue-200 animate-fade-in">
+                    <p>
+                      💳 <strong>Pago con Tarjeta:</strong> Puede cancelar con tarjeta de débito o crédito en <strong>Oficinas de Atención al Socio y recepciones</strong>.
+                    </p>
+                    <div className="bg-white/80 dark:bg-black/40 p-2.5 rounded-xl border border-blue-200 dark:border-blue-500/20 text-[11px] text-slate-700 dark:text-gray-300 space-y-1">
+                      <p className="font-bold text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-amber-600 dark:text-brand-gold" />
+                        Horarios de Atención para Cobro con Tarjeta:
                       </p>
-                    )}
+                      <p>• Lunes a Viernes: <strong>06:00 a 22:00 hrs</strong></p>
+                      <p>• Sábados y Domingos: <strong>07:00 a 20:00 hrs</strong></p>
+                    </div>
                   </div>
                 )}
               </div>
             )}
 
             {/* Total */}
-            <div className="p-4 bg-gradient-to-b from-[#0c2417] to-[#05140c] rounded-3xl border-2 border-emerald-500/50 flex items-center justify-between shadow-xl">
-              <span className="text-xs font-black text-gray-200 uppercase tracking-wider">TOTAL A PAGAR:</span>
-              <span className="text-xl sm:text-2xl font-black text-[#00ff87] font-mono drop-shadow-[0_0_8px_rgba(0,255,135,0.6)]">
+            <div className="p-4 bg-slate-100 dark:bg-gradient-to-b dark:from-[#0c2417] dark:to-[#05140c] rounded-3xl border-2 border-slate-300 dark:border-emerald-500/50 flex items-center justify-between shadow-xl">
+              <span className="text-xs font-black text-slate-800 dark:text-gray-200 uppercase tracking-wider">TOTAL A PAGAR:</span>
+              <span className="text-xl sm:text-2xl font-black text-emerald-700 dark:text-[#00ff87] font-mono dark:drop-shadow-[0_0_8px_rgba(0,255,135,0.6)]">
                 {currentTotalPrice === 0 ? 'Bs. 0 (Cortesía Socio)' : `Bs. ${currentTotalPrice}`}
               </span>
             </div>
@@ -2277,10 +3185,10 @@ export const CourtBooking: React.FC = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 rounded-3xl bg-gradient-to-r from-emerald-500 via-[#00ff87] to-emerald-500 hover:from-emerald-400 hover:to-[#00ff87] text-black font-black text-base flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(0,255,135,0.4)] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
+              className="w-full py-4 rounded-3xl bg-emerald-600 hover:bg-emerald-700 text-white dark:bg-gradient-to-r dark:from-emerald-500 dark:via-[#00ff87] dark:to-emerald-500 dark:hover:from-emerald-400 dark:hover:to-[#00ff87] dark:text-black font-black text-base flex items-center justify-center gap-2 shadow-lg dark:shadow-[0_0_30px_rgba(0,255,135,0.4)] transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
             >
               {isSubmitting ? (
-                <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
                   <CheckCircle2 className="w-5 h-5" />
@@ -2314,25 +3222,25 @@ export const CourtBooking: React.FC = () => {
       {/* MODAL DE NORMATIVA & CONTACTOS */}
       {/* ========================================================================= */}
       {showInfoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="bg-[#0b1610] border border-brand-gold/40 rounded-3xl p-6 max-w-lg w-full space-y-4 relative shadow-2xl">
-            <div className="flex justify-between items-center border-b border-white/10 pb-2">
-              <h3 className="text-sm font-bold text-brand-gold uppercase tracking-wider flex items-center gap-2">
-                <HelpCircle className="w-4 h-4" /> Normativa & Casetas Deportivas
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="bg-white dark:bg-[#0b1610] border border-slate-200 dark:border-brand-gold/40 rounded-3xl p-6 max-w-lg w-full space-y-4 relative shadow-2xl">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-2">
+              <h3 className="text-sm font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-amber-700 dark:text-brand-gold" /> Normativa & Casetas Deportivas
               </h3>
-              <button onClick={() => setShowInfoModal(false)} className="text-gray-400 hover:text-white">✕</button>
+              <button onClick={() => setShowInfoModal(false)} className="text-slate-400 hover:text-slate-700 dark:text-gray-400 dark:hover:text-white">✕</button>
             </div>
 
-            <div className="text-xs space-y-2.5 text-gray-300">
+            <div className="text-xs space-y-2.5 text-slate-700 dark:text-gray-300">
               <p>• <strong>Cortesía de Socio:</strong> El uso de cancha es gratuito para el socio y sus familiares directos.</p>
-              <p>• <strong>Aranceles de Invitados:</strong> Tenis (Bs. 50/h), Pádel (Bs. 80/h), Frontón/Raquet (Bs. 50/h), Polifuncional (Bs. 100/reserva).</p>
-              <p>• <strong>Pases de Invitados:</strong> Si tienes pases de pronto pago anual, tus invitados no pagan arancel.</p>
+              <p>• <strong>Aranceles y Límite de Invitados:</strong> Máximo 15 invitados en Tenis (Bs. 50/h), Pádel (Bs. 80/h), Frontón/Raquet (Bs. 50/h). Polifuncional con arancel plano de Bs. 100/reserva para grupos de N personas.</p>
+              <p>• <strong>Pases de Invitados:</strong> Solo se admiten pases físicos desde la gestión 2022 en adelante para exoneración de arancel. Pases de gestiones 2021, 2020, 2019, 2018 o 2017 no son admitidos para ingreso liberado según comunicado oficial y deben abonar el arancel correspondiente.</p>
               <p>• <strong>Contactos de Casetas:</strong> Tenis/Frontón (+591 76753734 / 76753758) • Pádel (+591 76753744) • Gimnasio (+591 76753743).</p>
             </div>
 
             <button
               onClick={() => setShowInfoModal(false)}
-              className="w-full py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs"
+              className="w-full py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-800 dark:text-white font-bold text-xs transition-colors"
             >
               Cerrar
             </button>

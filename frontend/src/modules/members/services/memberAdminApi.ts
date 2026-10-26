@@ -106,5 +106,29 @@ export const memberAdminApi = {
   updateSetting: async (key: string, value: string, numericValue?: number) => {
     const res = await api.put(`/members/admin/settings/${key}`, { value, numericValue });
     return res.data;
+  },
+
+  // 8. Payment QR Configuration & Vouchers
+  getPaymentQrConfig: async () => {
+    const res = await api.get('/members/admin/payment-qr');
+    return res.data;
+  },
+
+  updatePaymentQrConfig: async (formData: FormData) => {
+    const res = await api.post('/members/admin/payment-qr', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return res.data;
+  },
+
+  listPaymentVouchers: async (params?: { status?: string; search?: string; page?: number; limit?: number }) => {
+    const res = await api.get('/members/admin/payment-vouchers', { params });
+    return res.data;
+  },
+
+  reviewPaymentVoucher: async (id: string, action: 'APROBADO' | 'RECHAZADO', reviewNotes?: string) => {
+    const res = await api.post(`/members/admin/payment-vouchers/${id}/review`, { action, reviewNotes });
+    return res.data;
   }
 };
+

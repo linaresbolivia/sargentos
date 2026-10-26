@@ -83,14 +83,17 @@ export class CorrespondenceController {
 
     // List & Stats
     this.router.get('/route-sheets', this.listRouteSheets.bind(this));
+    this.router.get('/route-sheets/next-code', this.getNextRouteSheetCode.bind(this));
     this.router.get('/stats', this.getStats.bind(this));
     this.router.get('/member-impact', this.getMemberEcoImpact.bind(this));
     this.router.get('/sla-summary', this.getSlaSummary.bind(this));
     this.router.get('/route-sheets/:idOrCode', this.getRouteSheetByIdOrCode.bind(this));
 
+
     // Create & Manage
     this.router.post('/route-sheets', this.createRouteSheet.bind(this));
     this.router.post('/route-sheets/merge', this.mergeRouteSheets.bind(this));
+    this.router.post('/route-sheets/:id/unmerge', this.unmergeRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/movements', this.addMovement.bind(this));
     this.router.post('/route-sheets/:id/receive', this.receiveRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/open', this.markRouteSheetOpened.bind(this));
@@ -98,6 +101,8 @@ export class CorrespondenceController {
     this.router.post('/route-sheets/:id/movements/undo', this.undoDerivation.bind(this));
     this.router.post('/route-sheets/:id/notify-sla', this.notifySlaAlert.bind(this));
     this.router.patch('/route-sheets/:id/status', this.updateStatus.bind(this));
+    this.router.put('/route-sheets/:id', this.updateRouteSheet.bind(this));
+    this.router.delete('/route-sheets/:id', this.deleteRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/archive', this.archiveRouteSheet.bind(this));
     this.router.post('/route-sheets/:id/unarchive', this.unarchiveRouteSheet.bind(this));
 
@@ -107,6 +112,13 @@ export class CorrespondenceController {
       upload.any(),
       this.uploadDocuments.bind(this)
     );
+
+    // Delete file attachment
+    this.router.delete(
+      '/route-sheets/:id/documents/:documentId',
+      this.deleteDocument.bind(this)
+    );
+
 
     // Unified Dossier PDF (Compiled chronological expediente with physical PDF attachments)
     this.router.get(
@@ -241,8 +253,27 @@ export class CorrespondenceController {
     }
   }
 
+  // 1.b. Get Next Route Sheet Code (Preview for creation modal)
+  public async getNextRouteSheetCode(_req: Request, res: Response) {
+    try {
+      const data = await this.routeSheetService.getNextCode();
+      return res.status(200).json({
+        success: true,
+        data,
+      });
+    } catch (error: any) {
+      logger.error('Error getting next route sheet code:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error al obtener el siguiente código correlativo de Hoja de Ruta',
+        error: error.message,
+      });
+    }
+  }
+
   // 2. Get Route Sheet by ID or Code
   public async getRouteSheetByIdOrCode(req: Request, res: Response) {
+
     try {
       const { idOrCode } = req.params;
       const item = await this.routeSheetService.getByIdOrCode(idOrCode);
@@ -346,6 +377,34 @@ export class CorrespondenceController {
         success: false,
         message: 'Error al fusionar las Hojas de Ruta',
         error: error.message,
+      });
+    }
+  }
+
+  // 3.1 Unmerge Route Sheet / Desfusionar
+  public async unmergeRouteSheet(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const user = (req as any).user;
+      const userId = user?.userId || user?.id || 'SYSTEM_ADMIN';
+
+      const result = await this.routeSheetService.unmergeRouteSheet(
+        id,
+        reason || 'Separación de trámite acumulado',
+        userId
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: 'Hoja de Ruta separada y desvinculada exitosamente',
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error('Error unmerging route sheet:', error);
+      return res.status(500).json({
+        success: false,
+        message: error.message || 'Error al desvincular la Hoja de Ruta',
       });
     }
   }
@@ -493,6 +552,107 @@ export class CorrespondenceController {
         error: error.message,
       });
     }
+  }
+
+  // 5.a. Update Route Sheet Details (Edit)
+  public async updateRouteSheet(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+
+      const canEdit = await this.canUserEditRouteSheet(user);
+      if (!canEdit) {
+        return res.status(403).json({
+          success: false,
+          message: 'No cuenta con el privilegio institucional para editar Hojas de Ruta en Correspondencia.',
+        });
+      }
+
+      const updated = await this.routeSheetService.updateRouteSheet(id, req.body, user);
+
+      return res.status(200).json({
+        success: true,
+        message: `Hoja de Ruta ${updated.hrCode} actualizada con éxito`,
+        data: updated,
+      });
+    } catch (error: any) {
+      logger.error('Error updating route sheet:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Error al actualizar la Hoja de Ruta',
+      });
+    }
+  }
+
+  // 5.b. Delete or Void Route Sheet
+  public async deleteRouteSheet(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const user = (req as any).user;
+
+      const canDelete = await this.canUserDeleteRouteSheet(user);
+      if (!canDelete) {
+        return res.status(403).json({
+          success: false,
+          message: 'No cuenta con el privilegio institucional para eliminar Hojas de Ruta en Correspondencia.',
+        });
+      }
+
+      const { reason, mode } = req.body || {};
+      const result = await this.routeSheetService.deleteRouteSheet(id, { reason, mode }, user);
+
+      return res.status(200).json({
+        success: true,
+        message: result.mode === 'ANULAR'
+          ? `Hoja de Ruta ${result.hrCode} anulada formalmente`
+          : `Hoja de Ruta ${result.hrCode} eliminada exitosamente del sistema`,
+        data: result,
+      });
+    } catch (error: any) {
+      logger.error('Error deleting route sheet:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Error al eliminar la Hoja de Ruta',
+      });
+    }
+  }
+
+  /**
+   * Determina si el usuario autenticado tiene el privilegio de editar Hojas de Ruta
+   */
+  public async canUserEditRouteSheet(user: any): Promise<boolean> {
+    if (!user) return false;
+    const roles: string[] = (user.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      return true;
+    }
+
+    const settings = this.routeSheetService.getSettingsConfig();
+    const userId = user.userId || user.id;
+    const email = (user.email || '').toLowerCase().trim();
+    const userPriv = settings?.userPrivileges?.[userId] || (email ? settings?.userPrivileges?.[email] : null);
+    return Boolean(userPriv?.canEdit);
+  }
+
+  /**
+   * Determina si el usuario autenticado tiene el privilegio de eliminar Hojas de Ruta
+   */
+  public async canUserDeleteRouteSheet(user: any): Promise<boolean> {
+    if (!user) return false;
+    const roles: string[] = (user.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      return true;
+    }
+
+    const settings = this.routeSheetService.getSettingsConfig();
+    const userId = user.userId || user.id;
+    const email = (user.email || '').toLowerCase().trim();
+    const userPriv = settings?.userPrivileges?.[userId] || (email ? settings?.userPrivileges?.[email] : null);
+    return Boolean(userPriv?.canDelete);
   }
 
   // 6. Get Dashboard Stats & Eco-Metrics
@@ -675,7 +835,38 @@ export class CorrespondenceController {
     }
   }
 
+  // 7.b. Delete Document Attachment
+  public async deleteDocument(req: Request, res: Response) {
+    try {
+      const { id, documentId } = req.params;
+      const user = (req as any).user;
+
+      const canEdit = await this.canUserEditRouteSheet(user);
+      if (!canEdit) {
+        return res.status(403).json({
+          success: false,
+          message: 'No cuenta con el privilegio institucional para editar o eliminar adjuntos en Correspondencia.',
+        });
+      }
+
+      const updated = await this.routeSheetService.deleteDocument(id, documentId, user);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Documento adjunto eliminado correctamente',
+        data: updated,
+      });
+    } catch (error: any) {
+      logger.error('Error deleting route sheet document:', error);
+      return res.status(400).json({
+        success: false,
+        message: error.message || 'Error al eliminar el documento adjunto',
+      });
+    }
+  }
+
   // 8. AI Copilot Assist (Intelligent Area & Priority Suggestion)
+
   public async analyzeWithAi(req: Request, res: Response) {
     try {
       const { text } = req.body;
@@ -1118,9 +1309,38 @@ export class CorrespondenceController {
         fs.writeFileSync(configFilePath, JSON.stringify(configData, null, 2), 'utf8');
       }
 
+      // Cargar lista de usuarios del sistema activos para la matriz de privilegios
+      let systemUsers: any[] = [];
+      try {
+        systemUsers = await this.prisma.user.findMany({
+          where: { isActive: true },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            roles: { select: { name: true } },
+          },
+          orderBy: [{ firstName: 'asc' }, { lastName: 'asc' }],
+        });
+      } catch (uErr) {
+        logger.warn('Could not load users for correspondence privileges:', uErr);
+      }
+
+      const user = (_req as any).user;
+      const canEdit = await this.canUserEditRouteSheet(user);
+      const canDelete = await this.canUserDeleteRouteSheet(user);
+
       return res.status(200).json({
         success: true,
-        data: configData,
+        data: {
+          ...configData,
+          systemUsers,
+          currentUserPrivileges: {
+            canEdit,
+            canDelete,
+          },
+        },
       });
     } catch (error: any) {
       logger.error('Error fetching settings:', error);
@@ -1139,6 +1359,50 @@ export class CorrespondenceController {
       const dataDir = path.join(process.cwd(), 'data');
       if (!fs.existsSync(dataDir)) {
         fs.mkdirSync(dataDir, { recursive: true });
+      }
+
+      // Validación institucional: Una persona puede tener un único cargo, pero un cargo puede tener varias personas
+      if (payload.workflow && Array.isArray(payload.workflow.nodes)) {
+        const userToCargoMap = new Map<string, string>(); // userId -> cargo title
+        const emailToCargoMap = new Map<string, string>(); // institutional email -> cargo title
+
+        for (const node of payload.workflow.nodes) {
+          const currentCargoTitle = node.title || node.id;
+          const nodeUserIds: string[] = [];
+
+          if (node.userId) {
+            nodeUserIds.push(String(node.userId));
+          }
+          if (Array.isArray(node.userIds)) {
+            for (const uid of node.userIds) {
+              if (uid && !nodeUserIds.includes(String(uid))) {
+                nodeUserIds.push(String(uid));
+              }
+            }
+          }
+
+          // Verificar que ninguno de los usuarios de este nodo esté ya en OTRO nodo distinto
+          for (const uid of nodeUserIds) {
+            if (userToCargoMap.has(uid) && userToCargoMap.get(uid) !== currentCargoTitle) {
+              return res.status(400).json({
+                success: false,
+                message: `Conflicto de asignación: El funcionario ya está asignado al cargo "${userToCargoMap.get(uid)}". Cada persona sólo puede tener un cargo en el organigrama.`,
+              });
+            }
+            userToCargoMap.set(uid, currentCargoTitle);
+          }
+
+          const em = (node.email || '').toLowerCase().trim();
+          if (em && !['sin-correo@chls.bo', 'correspondencia@chls.bo', 'info@sargentos.com.bo'].includes(em)) {
+            if (emailToCargoMap.has(em) && emailToCargoMap.get(em) !== currentCargoTitle) {
+              return res.status(400).json({
+                success: false,
+                message: `Conflicto de correo institucional: El correo "${em}" ya está asignado a otro cargo distinto ("${emailToCargoMap.get(em)}").`,
+              });
+            }
+            emailToCargoMap.set(em, currentCargoTitle);
+          }
+        }
       }
 
       const configFilePath = path.join(dataDir, 'correspondence_settings.json');

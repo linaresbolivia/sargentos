@@ -136,26 +136,26 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-[#0b1812] border-2 border-brand-gold/50 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-[#0b1812] border-2 border-brand-gold/50 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-white/10 pb-3">
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-brand-gold">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold block">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-brand-gold block">
                 Edición de Registro
               </span>
-              <h3 className="text-lg font-bold text-white">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 Editar Turno / Bloqueo
               </h3>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 rounded-xl text-gray-400 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
           >
             ✕
           </button>
@@ -166,13 +166,13 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
           
           {/* Cancha */}
           <div>
-            <label className="block text-[11px] font-bold text-brand-gold uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider mb-1">
               Espacio / Cancha Asignada *
             </label>
             <select
               value={courtId}
               onChange={e => setCourtId(e.target.value)}
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
             >
               {courts.map(c => (
                 <option key={c.id} value={c.id}>
@@ -183,9 +183,9 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
           </div>
 
           {/* Fecha y Horarios */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 bg-black/40 rounded-2xl border border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 p-3.5 bg-slate-50 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/10">
             <div>
-              <label className="block text-[10px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Fecha *
               </label>
               <input
@@ -193,17 +193,17 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
                 required
                 value={date}
                 onChange={e => setDate(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-brand-gold font-mono"
               />
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Hora Inicio *
               </label>
               <select
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-brand-gold font-mono"
               >
                 {TIME_SLOTS.map(t => (
                   <option key={t} value={t}>{t}</option>
@@ -211,13 +211,13 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Hora Fin *
               </label>
               <select
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-2.5 py-2 text-white text-xs focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-2.5 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-brand-gold font-mono"
               >
                 {TIME_SLOTS.map(t => (
                   <option key={t} value={t}>{t}</option>
@@ -228,7 +228,7 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
 
           {/* Título / Motivo del Cierre o Socio */}
           <div>
-            <label className="block text-[11px] font-bold text-brand-gold uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider mb-1">
               Título / Motivo del Turno o Cierre *
             </label>
             <input
@@ -237,20 +237,20 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
               value={title}
               onChange={e => setTitle(e.target.value)}
               placeholder="Ej. Clases de Tenis - Academia / Cierre por Mantenimiento"
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
             />
           </div>
 
           {/* Tipo de Reserva y Estado */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Tipo de Actividad
               </label>
               <select
                 value={reservationType}
                 onChange={e => setReservationType(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white text-xs focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs focus:outline-none focus:border-brand-gold"
               >
                 <option value="MEMBER">Reserva de Socio</option>
                 <option value="CIERRE_CANCHA">Cierre de Canchas</option>
@@ -263,13 +263,13 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Estado de Reserva
               </label>
               <select
                 value={status}
                 onChange={e => setStatus(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
               >
                 <option value="APPROVED">🟢 Aprobada / Activa</option>
                 <option value="PENDING">🟡 Pendiente de Aprobación</option>
@@ -281,7 +281,7 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
 
           {/* Notas / Instructor */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Observaciones / Profesor / Detalles
             </label>
             <input
@@ -289,13 +289,13 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Ej. Prof. Marcelo / Cancha asignada a torneo"
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
             />
           </div>
 
           {/* Acompañantes / Invitados */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Acompañantes o Invitados Registrados
             </label>
             <input
@@ -303,12 +303,12 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
               value={playerNames}
               onChange={e => setPlayerNames(e.target.value)}
               placeholder="Ej. Juan Pérez (CI: 4930219 LP), Carlos Gómez"
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2.5 pt-3 border-t border-white/10">
+          <div className="flex gap-2.5 pt-3 border-t border-slate-200 dark:border-white/10">
             <button
               type="submit"
               disabled={isSubmitting}
@@ -327,7 +327,7 @@ export const AdminEditReservationModal: React.FC<AdminEditReservationModalProps>
             <button
               type="button"
               onClick={onClose}
-              className="py-3 px-5 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs"
+              className="py-3 px-5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 font-bold text-xs transition-colors"
             >
               Cancelar
             </button>

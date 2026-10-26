@@ -16,11 +16,13 @@ import {
   undoRouteSheetDerivation,
   handleRealtimeCreated,
   handleRealtimeUpdated,
+  handleRealtimeDeleted,
   markRouteSheetOpened,
 } from '@store/correspondenceSlice';
 import { RouteSheetItem } from '../types/correspondence.types';
 import { NewRouteSheetModal } from '../components/NewRouteSheetModal';
 import { RouteSheetDetailModal } from '../components/RouteSheetDetailModal';
+import { AddMovementModal } from '../components/AddMovementModal';
 import { PrintableRouteSheet } from '../components/PrintableRouteSheet';
 import { CorrespondenceConfigModal } from '../components/CorrespondenceConfigModal';
 import { CorrespondenceInternalChatDrawer } from '../components/CorrespondenceInternalChatDrawer';
@@ -31,6 +33,8 @@ import { RouteSheetLocatorModal } from '../components/RouteSheetLocatorModal';
 import { EcoMetricsNormativeModal, EcoMetricType } from '../components/EcoMetricsNormativeModal';
 import GenerateCiteModal from '../components/GenerateCiteModal';
 import OfficialCitesLedgerModal from '../components/OfficialCitesLedgerModal';
+import { EditRouteSheetModal } from '../components/EditRouteSheetModal';
+import { DeleteRouteSheetConfirmModal } from '../components/DeleteRouteSheetConfirmModal';
 import toast from 'react-hot-toast';
 import {
   Search,
@@ -51,6 +55,7 @@ import {
   Droplet,
   Wind,
   Layers,
+  Link2,
   ChevronRight,
   Settings,
   Receipt,
@@ -84,6 +89,8 @@ import {
   Lock,
   RotateCcw,
   Menu,
+  Edit3,
+  Trash2,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -106,7 +113,7 @@ export const CorrespondenceHub: React.FC = () => {
   const [searchParams] = useSearchParams();
   const urlCode = searchParams.get('code');
 
-  const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem, selectedGestion, workflow } = useSelector(
+  const { items, stats, isLoading, activeMailbox, searchQuery, selectedItem, selectedGestion, workflow, settings } = useSelector(
     (state: RootState) => state.correspondence
   );
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -168,6 +175,49 @@ export const CorrespondenceHub: React.FC = () => {
     );
   }, [canAccess360, currentUser]);
 
+  // Privilegios para Editar y Eliminar Hoja de Ruta en Correspondencia
+  const canEditRouteSheet = useMemo(() => {
+    if (!currentUser) return false;
+    const roles: string[] = (currentUser.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      return true;
+    }
+    const privMap = (settings as any)?.userPrivileges;
+    const uId = currentUser.id || (currentUser as any).userId;
+    const uEmail = (currentUser.email || '').toLowerCase().trim();
+    if (privMap) {
+      if (uId && privMap[uId]?.canEdit !== undefined) return Boolean(privMap[uId].canEdit);
+      if (uEmail && privMap[uEmail]?.canEdit !== undefined) return Boolean(privMap[uEmail].canEdit);
+    }
+    if ((settings as any)?.currentUserPrivileges?.canEdit !== undefined) {
+      return Boolean((settings as any).currentUserPrivileges.canEdit);
+    }
+    return false;
+  }, [currentUser, settings]);
+
+  const canDeleteRouteSheet = useMemo(() => {
+    if (!currentUser) return false;
+    const roles: string[] = (currentUser.roles || []).map((r: any) =>
+      (typeof r === 'string' ? r : r.name || '').toUpperCase()
+    );
+    if (roles.includes('SUPER_ADMIN') || roles.includes('ADMIN')) {
+      return true;
+    }
+    const privMap = (settings as any)?.userPrivileges;
+    const uId = currentUser.id || (currentUser as any).userId;
+    const uEmail = (currentUser.email || '').toLowerCase().trim();
+    if (privMap) {
+      if (uId && privMap[uId]?.canDelete !== undefined) return Boolean(privMap[uId].canDelete);
+      if (uEmail && privMap[uEmail]?.canDelete !== undefined) return Boolean(privMap[uEmail].canDelete);
+    }
+    if ((settings as any)?.currentUserPrivileges?.canDelete !== undefined) {
+      return Boolean((settings as any).currentUserPrivileges.canDelete);
+    }
+    return false;
+  }, [currentUser, settings]);
+
   const defaultPerspective = useMemo(() => {
     return userNode?.title || officialDepartments[0]?.id || 'GERENCIA GENERAL';
   }, [userNode, officialDepartments]);
@@ -206,6 +256,9 @@ export const CorrespondenceHub: React.FC = () => {
   const [locatorInitialArea, setLocatorInitialArea] = useState<string | undefined>(undefined);
   const [isCitesLedgerOpen, setIsCitesLedgerOpen] = useState(false);
   const [isGenerateCiteOpen, setIsGenerateCiteOpen] = useState(false);
+  const [movementModalItem, setMovementModalItem] = useState<RouteSheetItem | null>(null);
+  const [editingItem, setEditingItem] = useState<RouteSheetItem | null>(null);
+  const [deletingItem, setDeletingItem] = useState<RouteSheetItem | null>(null);
 
   // Storage key for user-specific read/opened items
   const storageUserKey = currentUser?.id || (currentUser as any)?.username || 'user';
@@ -361,6 +414,12 @@ export const CorrespondenceHub: React.FC = () => {
         dispatch(handleRealtimeUpdated(data.item));
       }
       dispatch(fetchCorrespondenceStats());
+    });
+
+    socket.on('correspondence:deleted', (data: { id: string; hrCode?: string }) => {
+      dispatch(handleRealtimeDeleted(data));
+      dispatch(fetchCorrespondenceStats());
+      toast('Hoja de Ruta eliminada en el sistema', { icon: '🗑️' });
     });
 
     // Realtime Organigram & Workflow Synchronization
@@ -1424,7 +1483,7 @@ export const CorrespondenceHub: React.FC = () => {
 
                         {/* 4. Código Hoja de Ruta & Prioridad */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-mono font-bold text-xs text-[#1A4331] dark:text-emerald-300 bg-[#00A652]/10 dark:bg-emerald-950/50 px-2.5 py-1 rounded-lg border border-[#00A652]/30 tracking-wider">
                               {item.hrCode}
                             </span>
@@ -1440,6 +1499,29 @@ export const CorrespondenceHub: React.FC = () => {
                               <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" title="Prioridad Urgente" />
                             )}
                           </div>
+                          {/* Badges de Fusión / Acumulación con Alta Visibilidad */}
+                          {item.parentRouteSheetId && (
+                            <div className="mt-1">
+                              <span
+                                className="inline-flex items-center gap-1.5 font-mono text-[10px] font-black uppercase text-purple-950 dark:text-purple-100 bg-gradient-to-r from-purple-400 via-fuchsia-300 to-purple-400 dark:from-purple-500/35 dark:via-fuchsia-500/30 dark:to-purple-500/35 border-2 border-purple-500 dark:border-purple-400 px-2.5 py-0.5 rounded-lg shadow-[0_0_12px_rgba(168,85,247,0.5)] ring-1 ring-purple-400/50"
+                                title={`Trámite acumulado formalmente al expediente matriz ${item.parentRouteSheet?.hrCode || ''}`}
+                              >
+                                <Link2 className="w-3 h-3 text-purple-900 dark:text-purple-300 shrink-0" />
+                                <span>FUSIONADA EN {item.parentRouteSheet?.hrCode || 'MATRIZ'}</span>
+                              </span>
+                            </div>
+                          )}
+                          {item.fusedRouteSheets && item.fusedRouteSheets.length > 0 && (
+                            <div className="mt-1">
+                              <span
+                                className="inline-flex items-center gap-1.5 font-mono text-[10px] font-black uppercase text-amber-950 dark:text-amber-100 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 dark:from-amber-500/35 dark:via-yellow-500/30 dark:to-amber-500/35 border-2 border-amber-500 dark:border-amber-400 px-2.5 py-0.5 rounded-lg shadow-[0_0_12px_rgba(245,158,11,0.5)] ring-1 ring-amber-400/50"
+                                title={`Expediente Matriz Consolidado (${item.fusedRouteSheets.length} acumuladas: ${item.fusedRouteSheets.map(s => s.hrCode).join(', ')})`}
+                              >
+                                <Layers className="w-3 h-3 text-amber-900 dark:text-amber-300 shrink-0" />
+                                <span>MATRIZ ({item.fusedRouteSheets.length} FUSIONADAS)</span>
+                              </span>
+                            </div>
+                          )}
                           <span className="text-[10px] font-medium text-[#1A4331]/70 dark:text-slate-500 block mt-1">
                             {item.priority === 'URGENTE' ? '🔴 Urgente' : item.priority === 'ALTA' ? '🟡 Alta' : '🟢 Normal'}
                           </span>
@@ -1452,7 +1534,8 @@ export const CorrespondenceHub: React.FC = () => {
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-[#1A4331]/75 dark:text-emerald-400/60 font-medium mt-0.5 truncate max-w-[210px]">
                             <Building2 className="w-3 h-3 text-[#00A652] shrink-0" />
-                            <span className="truncate">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo')}</span>
+                            <span className="truncate">{item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : item.senderType === 'AREA_INTERNA' ? 'Interna' : 'Externa')}</span>
+
                           </div>
                         </td>
 
@@ -1518,6 +1601,17 @@ export const CorrespondenceHub: React.FC = () => {
                             <span className={`inline-block text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${getStatusBadge(item.status)}`}>
                               {item.status}
                             </span>
+                            {(!item.movements || item.movements.length === 0) && item.status !== 'CONCLUIDO' && (
+                              <div>
+                                <span
+                                  className="inline-flex items-center gap-1 text-[9px] font-black text-amber-800 dark:text-amber-200 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-full"
+                                  title="Hoja de ruta radicada con Proveído 1 pendiente de derivación"
+                                >
+                                  <Clock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                                  <span>PROVEÍDO 1 PENDIENTE</span>
+                                </span>
+                              </div>
+                            )}
                             {/* Si estamos en Bandeja de Salida, mostrar estado de recepción en destino en globo rojo WhatsApp */}
                             {activeMailbox === 'OUTBOX' && (() => {
                               const latestMov = item.movements && item.movements.length > 0 ? item.movements[item.movements.length - 1] : null;
@@ -1562,6 +1656,22 @@ export const CorrespondenceHub: React.FC = () => {
                         {/* 9. Acciones Rápidas */}
                         <td className="py-3.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1">
+                            {/* Botón directo de Cargar Primer Proveído si está pendiente */}
+                            {(!item.movements || item.movements.length === 0) && item.status !== 'CONCLUIDO' && isSameArea(item.currentArea, currentPerspective) && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setMovementModalItem(item);
+                                }}
+                                title="Cargar Primer Proveído (N° 1) y derivar oficialmente"
+                                className="px-2 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[10.5px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+                              >
+                                <Plus className="w-3 h-3" />
+                                <span className="hidden xl:inline">+ Proveído 1</span>
+                              </button>
+                            )}
+
                             {/* Botón directo de Recepción si está derivado a mi despacho y pendiente de recibir */}
                             {isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item) && (
                               <button
@@ -1649,6 +1759,36 @@ export const CorrespondenceHub: React.FC = () => {
                             >
                               <Printer className="w-3.5 h-3.5 text-[#D3A373]" />
                             </button>
+
+                            {/* Botón Editar Hoja de Ruta si tiene privilegio */}
+                            {canEditRouteSheet && item.status !== 'CONCLUIDO' && item.status !== 'ANULADO' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingItem(item);
+                                }}
+                                title="Editar Datos Oficiales de la Hoja de Ruta"
+                                className="p-1.5 rounded-lg bg-[#F1F4F8] hover:bg-blue-600 text-[#1A4331] hover:text-white dark:bg-slate-800/70 dark:hover:bg-blue-600 dark:text-slate-400 dark:hover:text-white border border-[#1A4331]/20 dark:border-slate-700/60 transition-all cursor-pointer shadow-2xs group/btn"
+                              >
+                                <Edit3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover/btn:text-white" />
+                              </button>
+                            )}
+
+                            {/* Botón Eliminar / Anular Hoja de Ruta si tiene privilegio */}
+                            {canDeleteRouteSheet && item.status !== 'ANULADO' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDeletingItem(item);
+                                }}
+                                title="Eliminar o Anular Hoja de Ruta"
+                                className="p-1.5 rounded-lg bg-[#F1F4F8] hover:bg-red-600 text-[#1A4331] hover:text-white dark:bg-slate-800/70 dark:hover:bg-red-600 dark:text-slate-400 dark:hover:text-white border border-[#1A4331]/20 dark:border-slate-700/60 transition-all cursor-pointer shadow-2xs group/btn"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400 group-hover/btn:text-white" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -1714,6 +1854,24 @@ export const CorrespondenceHub: React.FC = () => {
                           <span className="font-mono text-xs font-bold text-[#1A4331] dark:text-emerald-300 bg-[#00A652]/10 dark:bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-[#00A652]/30 tracking-wider shrink-0">
                             {item.hrCode}
                           </span>
+                          {item.parentRouteSheetId && (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono text-[10px] font-black uppercase text-purple-950 dark:text-purple-100 bg-gradient-to-r from-purple-400 via-fuchsia-300 to-purple-400 dark:from-purple-500/35 dark:via-fuchsia-500/30 dark:to-purple-500/35 border-2 border-purple-500 dark:border-purple-400 px-2 py-0.5 rounded-lg shrink-0 shadow-[0_0_12px_rgba(168,85,247,0.5)] ring-1 ring-purple-400/50"
+                              title={`Trámite acumulado formalmente al expediente matriz ${item.parentRouteSheet?.hrCode || ''}`}
+                            >
+                              <Link2 className="w-3 h-3 text-purple-900 dark:text-purple-300 shrink-0" />
+                              <span>FUSIONADA EN {item.parentRouteSheet?.hrCode || 'MATRIZ'}</span>
+                            </span>
+                          )}
+                          {item.fusedRouteSheets && item.fusedRouteSheets.length > 0 && (
+                            <span
+                              className="inline-flex items-center gap-1 font-mono text-[10px] font-black uppercase text-amber-950 dark:text-amber-100 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 dark:from-amber-500/35 dark:via-yellow-500/30 dark:to-amber-500/35 border-2 border-amber-500 dark:border-amber-400 px-2 py-0.5 rounded-lg shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.5)] ring-1 ring-amber-400/50"
+                              title={`Expediente Matriz Consolidado (${item.fusedRouteSheets.length} acumuladas: ${item.fusedRouteSheets.map(s => s.hrCode).join(', ')})`}
+                            >
+                              <Layers className="w-3 h-3 text-amber-900 dark:text-amber-300 shrink-0" />
+                              <span>MATRIZ ({item.fusedRouteSheets.length} FUSIONADAS)</span>
+                            </span>
+                          )}
                           {/* Globo WhatsApp si el expediente está pendiente de recepción (entrante o saliente) */}
                           {((isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item)) ||
                             (activeMailbox === 'OUTBOX' && Boolean(item.movements && item.movements.length > 0 && !item.movements[item.movements.length - 1].receivedAt))) && (
@@ -1740,9 +1898,20 @@ export const CorrespondenceHub: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border shrink-0 ${getStatusBadge(item.status)}`}>
-                          {item.status}
-                        </span>
+                        <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
+                          {(!item.movements || item.movements.length === 0) && item.status !== 'CONCLUIDO' && (
+                            <span
+                              className="inline-flex items-center gap-1 text-[9.5px] font-bold text-amber-800 dark:text-amber-200 bg-amber-500/20 border border-amber-500/40 px-2 py-0.5 rounded-md shrink-0"
+                              title="Hoja de ruta radicada con Proveído 1 pendiente de derivación"
+                            >
+                              <Clock className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400" />
+                              <span>PROVEÍDO 1 PENDIENTE</span>
+                            </span>
+                          )}
+                          <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md border shrink-0 ${getStatusBadge(item.status)}`}>
+                            {item.status}
+                          </span>
+                        </div>
                       </div>
 
                       {/* SLA Indicator & Reception Status */}
@@ -1808,8 +1977,9 @@ export const CorrespondenceHub: React.FC = () => {
                           </div>
                         </div>
                         <span className="text-[10px] text-[#1A4331] dark:text-emerald-300 font-semibold bg-[#1A4331]/5 dark:bg-emerald-950/50 px-2 py-0.5 rounded border border-[#1A4331]/15 dark:border-emerald-800/40 shrink-0 truncate max-w-[140px]">
-                          {item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : 'Externo')}
+                          {item.senderArea || (item.senderType === 'SOCIO' ? 'Socio Titular' : item.senderType === 'AREA_INTERNA' ? 'Interna' : 'Externa')}
                         </span>
+
                       </div>
 
                       {/* Custodia Actual */}
@@ -1865,6 +2035,22 @@ export const CorrespondenceHub: React.FC = () => {
 
                     {/* Acciones Toolbar */}
                     <div className="flex items-center gap-1.5 shrink-0">
+                      {/* Botón directo de Cargar Primer Proveído en Tarjeta */}
+                      {(!item.movements || item.movements.length === 0) && item.status !== 'CONCLUIDO' && isSameArea(item.currentArea, currentPerspective) && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setMovementModalItem(item);
+                          }}
+                          title="Cargar Primer Proveído (N° 1) y dar curso a la derivación oficial"
+                          className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] flex items-center gap-1 shadow-xs transition-transform hover:scale-105 active:scale-95 cursor-pointer whitespace-nowrap"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>+ Proveído 1</span>
+                        </button>
+                      )}
+
                       {/* Botón directo de Recepción en Tarjeta */}
                       {isSameArea(item.currentArea, currentPerspective) && isItemPendingInboxReception(item) && (
                         <button
@@ -1943,6 +2129,36 @@ export const CorrespondenceHub: React.FC = () => {
                       >
                         <Printer className="w-3.5 h-3.5 text-[#D3A373]" />
                       </button>
+
+                      {/* Botón Editar en Tarjeta */}
+                      {canEditRouteSheet && item.status !== 'CONCLUIDO' && item.status !== 'ANULADO' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingItem(item);
+                          }}
+                          title="Editar Datos Oficiales de la Hoja de Ruta"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-blue-600 text-[#1A4331] hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-blue-600 border border-slate-200 dark:border-slate-700/80 transition-all cursor-pointer shadow-2xs group/btn"
+                        >
+                          <Edit3 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 group-hover/btn:text-white" />
+                        </button>
+                      )}
+
+                      {/* Botón Eliminar en Tarjeta */}
+                      {canDeleteRouteSheet && item.status !== 'ANULADO' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeletingItem(item);
+                          }}
+                          title="Eliminar o Anular Hoja de Ruta"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-red-600 text-[#1A4331] hover:text-white dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-red-600 border border-slate-200 dark:border-slate-700/80 transition-all cursor-pointer shadow-2xs group/btn"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-red-600 dark:text-red-400 group-hover/btn:text-white" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1973,6 +2189,33 @@ export const CorrespondenceHub: React.FC = () => {
           isOpen={Boolean(selectedItem)}
           item={selectedItem}
           onClose={() => dispatch(setSelectedItem(null))}
+        />
+      )}
+
+      {/* Modal Cargar Proveído / Derivación */}
+      {movementModalItem && (
+        <AddMovementModal
+          isOpen={Boolean(movementModalItem)}
+          item={movementModalItem}
+          onClose={() => setMovementModalItem(null)}
+        />
+      )}
+
+      {/* Modal Editar Hoja de Ruta */}
+      {editingItem && (
+        <EditRouteSheetModal
+          isOpen={Boolean(editingItem)}
+          item={editingItem}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
+
+      {/* Modal Confirmar Eliminación / Anulación */}
+      {deletingItem && (
+        <DeleteRouteSheetConfirmModal
+          isOpen={Boolean(deletingItem)}
+          item={deletingItem}
+          onClose={() => setDeletingItem(null)}
         />
       )}
 

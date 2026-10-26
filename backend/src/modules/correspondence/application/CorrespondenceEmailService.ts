@@ -220,8 +220,9 @@ export class CorrespondenceEmailService {
                 </tr>
                 <tr>
                   <td class="label">Remitente:</td>
-                  <td class="value">${routeSheet.senderName} (${routeSheet.senderType || 'SOCIO'})</td>
+                  <td class="value">${routeSheet.senderName} (${routeSheet.senderType === 'AREA_INTERNA' ? 'Interna' : routeSheet.senderType === 'SOCIO' ? 'Socio' : 'Externa'})</td>
                 </tr>
+
                 ${routeSheet.cite ? `
                 <tr>
                   <td class="label">CITE / Nota:</td>
@@ -351,8 +352,9 @@ export class CorrespondenceEmailService {
                 </tr>
                 <tr>
                   <td style="font-weight: 800; color: #64748b;">REMITENTE:</td>
-                  <td style="font-weight: 700;">${routeSheet.senderName} (${routeSheet.senderArea || routeSheet.senderType})</td>
+                  <td style="font-weight: 700;">${routeSheet.senderName} (${routeSheet.senderArea || (routeSheet.senderType === 'AREA_INTERNA' ? 'Interna' : routeSheet.senderType === 'SOCIO' ? 'Socio' : 'Externa')})</td>
                 </tr>
+
                 <tr>
                   <td style="font-weight: 800; color: #64748b;">PRIORIDAD:</td>
                   <td style="font-weight: 800; color: #b91c1c;">${routeSheet.priority}</td>

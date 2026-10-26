@@ -165,26 +165,26 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-[#0b1812] border-2 border-brand-gold/50 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-[#0b1812] border-2 border-brand-gold/50 rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 relative max-h-[90vh] overflow-y-auto">
         
         {/* Header */}
-        <div className="flex justify-between items-center border-b border-white/10 pb-3">
+        <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold">
+            <div className="w-10 h-10 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-brand-gold">
               <MapPin className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-brand-gold block">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-800 dark:text-brand-gold block">
                 Gestión de Instalaciones
               </span>
-              <h3 className="text-lg font-bold text-white">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white">
                 {isCreatingNew ? 'Registrar Nueva Cancha / Espacio' : 'Editar Cancha / Espacio Deportivo'}
               </h3>
             </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 rounded-xl text-gray-400 hover:text-white hover:bg-white/10"
+            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
           >
             ✕
           </button>
@@ -193,13 +193,13 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
         {/* Court Selector & New Button */}
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Selecciona Cancha a Modificar:
             </label>
             <select
               value={isCreatingNew ? 'NEW' : selectedCourtId}
               onChange={e => handleSelectCourtChange(e.target.value)}
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
             >
               {courts.map(c => (
                 <option key={c.id} value={c.id}>
@@ -212,7 +212,7 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
           <button
             type="button"
             onClick={handleStartNewCourt}
-            className="mt-5 px-3 py-2 rounded-xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/30 text-brand-gold text-xs font-bold flex items-center gap-1 shrink-0"
+            className="mt-5 px-3 py-2 rounded-xl bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/15 dark:hover:bg-brand-gold/25 border border-amber-300 dark:border-brand-gold/30 text-amber-900 dark:text-brand-gold text-xs font-bold flex items-center gap-1 shrink-0 transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Nueva</span>
@@ -224,7 +224,7 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
           
           {/* Name */}
           <div>
-            <label className="block text-[11px] font-bold text-brand-gold uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-amber-800 dark:text-brand-gold uppercase tracking-wider mb-1">
               Nombre de la Cancha / Espacio *
             </label>
             <input
@@ -233,20 +233,20 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder="Ej. Cancha Tenis 1, Espacio Frontón 2, Cancha Pádel 1"
-              className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
             />
           </div>
 
           {/* Sport & Status Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Disciplina / Deporte *
               </label>
               <select
                 value={sport}
                 onChange={e => setSport(e.target.value)}
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2.5 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2.5 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
               >
                 {AVAILABLE_SPORTS.map(s => (
                   <option key={s} value={s}>{s}</option>
@@ -255,7 +255,7 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Estado Operativo
               </label>
               <button
@@ -263,8 +263,8 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
                 onClick={() => setIsActive(!isActive)}
                 className={`w-full py-2.5 px-3 rounded-xl border text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                   isActive 
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-sm'
-                    : 'bg-rose-500/20 text-rose-300 border-rose-500/40'
+                    ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/40 shadow-xs'
+                    : 'bg-rose-100 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300 border-rose-300 dark:border-rose-500/40 shadow-xs'
                 }`}
               >
                 <Power className="w-3.5 h-3.5" />
@@ -274,9 +274,9 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
           </div>
 
           {/* Rates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-black/40 rounded-2xl border border-white/10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 dark:bg-black/40 rounded-2xl border border-slate-200 dark:border-white/10">
             <div>
-              <label className="block text-[10px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Arancel Invitado Adulto (Bs.)
               </label>
               <input
@@ -286,13 +286,13 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
                 value={guestRate}
                 onChange={e => setGuestRate(Number(e.target.value))}
                 placeholder="50"
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-brand-gold font-mono font-bold text-sm focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-amber-800 dark:text-brand-gold font-mono font-bold text-sm focus:outline-none focus:border-brand-gold"
               />
-              <span className="text-[10px] text-gray-400 mt-0.5 block">Arancel cobrado por invitado externo</span>
+              <span className="text-[10px] text-slate-500 dark:text-gray-400 mt-0.5 block">Arancel cobrado por invitado externo</span>
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+              <label className="block text-[10px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
                 Tarifa Cancha / Hora (Bs.)
               </label>
               <input
@@ -302,15 +302,15 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
                 value={hourlyRate}
                 onChange={e => setHourlyRate(Number(e.target.value))}
                 placeholder="0"
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-gold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white font-mono font-bold text-sm focus:outline-none focus:border-brand-gold"
               />
-              <span className="text-[10px] text-emerald-400 mt-0.5 block">0 Bs. para socios del club</span>
+              <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5 block">0 Bs. para socios del club</span>
             </div>
           </div>
 
           {/* Description */}
           <div>
-            <label className="block text-[11px] font-bold text-gray-300 uppercase tracking-wider mb-1">
+            <label className="block text-[11px] font-bold text-slate-700 dark:text-gray-300 uppercase tracking-wider mb-1">
               Descripción / Características de la Cancha
             </label>
             <textarea
@@ -318,12 +318,12 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
               value={description}
               onChange={e => setDescription(e.target.value)}
               placeholder="Ej. Tierra batida / Arcilla con iluminación LED reglamentaria para torneos"
-              className="w-full bg-black/60 border border-white/20 rounded-xl p-3 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs leading-relaxed"
+              className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl p-3 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs leading-relaxed"
             />
           </div>
 
           {/* Action Buttons */}
-          <div className="flex gap-2.5 pt-3 border-t border-white/10">
+          <div className="flex gap-2.5 pt-3 border-t border-slate-200 dark:border-white/10">
             <button
               type="submit"
               disabled={isSaving}
@@ -342,7 +342,7 @@ export const AdminEditCourtModal: React.FC<AdminEditCourtModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="py-3 px-5 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-300 font-bold text-xs"
+              className="py-3 px-5 rounded-2xl bg-slate-100 hover:bg-slate-200 dark:bg-white/5 dark:hover:bg-white/10 text-slate-700 dark:text-gray-300 font-bold text-xs transition-colors"
             >
               Cancelar
             </button>

@@ -36,7 +36,9 @@ import { ScheduledBillingGeneratorView } from '../components/ScheduledBillingGen
 import { SalesCommissionsView } from '../components/SalesCommissionsView';
 import { MemberNotificationsRegistryView } from '../components/MemberNotificationsRegistryView';
 import { GateAttendanceConsoleView } from '../components/GateAttendanceConsoleView';
-import { Building, GraduationCap, Layers, Send, UserCheck, Percent, Sparkles } from 'lucide-react';
+import { AccountStatementsView } from '../components/AccountStatementsView';
+import { PaymentQrAdminView } from '../components/PaymentQrAdminView';
+import { Building, GraduationCap, Layers, Send, UserCheck, Percent, Sparkles, QrCode } from 'lucide-react';
 
 export const MemberAdminHub: React.FC = () => {
   const navigate = useNavigate();
@@ -45,6 +47,8 @@ export const MemberAdminHub: React.FC = () => {
     | 'DIRECTORIO' 
     | 'VENTAS_CDP' 
     | 'CAJA' 
+    | 'ESTADOS_CUENTA_CARTERA'
+    | 'CONFIG_PAGOS_QR'
     | 'FACTURACION_MASIVA'
     | 'GARITA_ASISTENCIAS'
     | 'ALQUILERES' 
@@ -167,6 +171,20 @@ export const MemberAdminHub: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('ESTADOS_CUENTA_CARTERA')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'ESTADOS_CUENTA_CARTERA' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <FileText className="w-4 h-4" /> Estados de Cuenta (Cartera PDF)
+            </button>
+
+            <button
+              onClick={() => setActiveTab('CONFIG_PAGOS_QR')}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'CONFIG_PAGOS_QR' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
+            >
+              <QrCode className="w-4 h-4" /> Pagos QR & Comprobantes
+            </button>
+
+            <button
               onClick={() => setActiveTab('FACTURACION_MASIVA')}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shrink-0 ${activeTab === 'FACTURACION_MASIVA' ? 'bg-brand-gold text-black shadow-lg shadow-brand-gold/20' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5'}`}
             >
@@ -262,6 +280,14 @@ export const MemberAdminHub: React.FC = () => {
 
         {activeTab === 'CAJA' && (
           <CashierUnifiedPaymentView initialPersonId={cashierTargetPersonId} />
+        )}
+
+        {activeTab === 'ESTADOS_CUENTA_CARTERA' && (
+          <AccountStatementsView />
+        )}
+
+        {activeTab === 'CONFIG_PAGOS_QR' && (
+          <PaymentQrAdminView />
         )}
 
         {activeTab === 'FACTURACION_MASIVA' && (

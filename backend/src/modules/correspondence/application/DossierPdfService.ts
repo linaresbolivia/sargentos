@@ -18,6 +18,49 @@ function cleanAnsi(text: any): string {
     .replace(/[^\x00-\xFF]/g, ' ');
 }
 
+const OFFICIAL_HOLDERS: Record<string, string> = {
+  'GERENCIA GENERAL': 'Tito Norman Tornero Rodriguez',
+  'SECRETARÍA': 'Monica Iñiguez Duran',
+  'ASESORÍA LEGAL': 'Tatiana Felicidad Perez Fernandez',
+  'COORDINADOR COMERCIAL': 'Eduardo Rodrigo Bejarano Miranda',
+  'ARCHIVO': 'Freddy Callizaya Salazar',
+  'ALMACÉN': 'Maria del Pilar Atanacio Tola',
+  'RECURSOS HUMANOS': 'Severo Huanca Mendoza',
+  'RESPONSABLE DE CONTRATACIONES': 'Ian Benjamin Pinto Morales',
+  'RECAUDACIONES': 'Monica Karen Gonzales Aramayo',
+  'ANALISTA CONTABLE - RECAUDACIONES': 'Monica Karen Gonzales Aramayo',
+  'APOYO COBRANZAS': 'Susana Claudia Carvajal Calderon',
+  'SUBGERENCIA DE ATENCIÓN AL SOCIO': 'Andrea Valeria Jordan Bilbao Rioja',
+  'RECEPCIONISTAS': 'Paola Victoria Belzu Quispe',
+  'COMUNICACIÓN': 'Ricardo Luis Gomez Garcia',
+  'JEFE DE MANTENIMIENTO': 'Cristian Alejandro Gonzales Quint Reina',
+};
+
+function formatCargoAndEmployee(cargo?: string | null, person?: string | null): string {
+  const cleanCargo = (cargo || '').trim();
+  let cleanPerson = (person || '').trim();
+
+  const normalize = (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+
+  if (
+    !cleanPerson ||
+    normalize(cleanPerson) === normalize(cleanCargo) ||
+    ((/jefe|gerente|responsable|personal|secretaria|encargad|coordinador|analista|apoyo|asistente/i.test(cleanPerson)) && cleanPerson.length <= cleanCargo.length + 5)
+  ) {
+    for (const [key, val] of Object.entries(OFFICIAL_HOLDERS)) {
+      if (normalize(cleanCargo).includes(normalize(key)) || normalize(key).includes(normalize(cleanCargo))) {
+        cleanPerson = val;
+        break;
+      }
+    }
+  }
+
+  if (cleanCargo && cleanPerson && normalize(cleanCargo) !== normalize(cleanPerson)) {
+    return `${cleanCargo} - ${cleanPerson}`;
+  }
+  return cleanCargo || cleanPerson || '__________________________________';
+}
+
 export class DossierPdfService {
   private prisma: PrismaClient;
 
@@ -33,11 +76,44 @@ export class DossierPdfService {
    * 4. Foliación continua institucional ("Foja X de Y").
    */
   public async generateUnifiedDossierPdf(idOrCode: string): Promise<Buffer> {
-    const routeSheet = await this.prisma.routeSheet.findFirst({
+    const rawRouteSheet = await this.prisma.routeSheet.findFirst({
       where: {
         OR: [{ id: idOrCode }, { hrCode: idOrCode }],
       },
       include: {
+        parentRouteSheet: {
+          include: {
+            person: true,
+            createdBy: true,
+            movements: {
+              orderBy: { sequenceNumber: 'asc' },
+              include: { sourceUser: true, documents: true },
+            },
+            documents: true,
+            fusedRouteSheets: {
+              include: {
+                person: true,
+                createdBy: true,
+                movements: {
+                  orderBy: { sequenceNumber: 'asc' },
+                  include: { sourceUser: true, documents: true },
+                },
+                documents: true,
+              },
+            },
+          },
+        },
+        fusedRouteSheets: {
+          include: {
+            person: true,
+            createdBy: true,
+            movements: {
+              orderBy: { sequenceNumber: 'asc' },
+              include: { sourceUser: true, documents: true },
+            },
+            documents: true,
+          },
+        },
         person: true,
         createdBy: true,
         movements: {
@@ -51,9 +127,16 @@ export class DossierPdfService {
       },
     });
 
-    if (!routeSheet) {
+    if (!rawRouteSheet) {
       throw new Error(`Hoja de Ruta ${idOrCode} no encontrada`);
     }
+
+    // Identificar si este expediente es parte de un paquete fusionado/acumulado
+    const isChild = Boolean(rawRouteSheet.parentRouteSheetId && rawRouteSheet.parentRouteSheet);
+    const mainSheet = isChild ? rawRouteSheet.parentRouteSheet! : rawRouteSheet;
+    const secondarySheets = isChild
+      ? (mainSheet.fusedRouteSheets || []).filter((s) => s.id !== mainSheet.id)
+      : (rawRouteSheet.fusedRouteSheets || []);
 
     const masterDoc = await PDFDocument.create();
 
@@ -77,8 +160,8 @@ export class DossierPdfService {
       }
     }
 
-    // QR de Validación Oficial en vivo
-    const verificationUrl = `https://chls.bo/correspondencia?code=${encodeURIComponent(routeSheet.hrCode)}`;
+    // QR de Validación Oficial en vivo para la Matriz
+    const verificationUrl = `https://chls.bo/correspondencia?code=${encodeURIComponent(mainSheet.hrCode)}`;
     let qrImage = null;
     try {
       const qrDataUrl = await QRCode.toDataURL(verificationUrl, { margin: 1, width: 140 });
@@ -97,25 +180,23 @@ export class DossierPdfService {
     const textGrey = rgb(0.35, 0.38, 0.42);
     const lightBg = rgb(0.96, 0.97, 0.98);
 
-    // Obtener datos del usuario que archivó si aplica
+    // Obtener datos del usuario que archivó la matriz si aplica
     let archivedByUser: any = null;
-    if (routeSheet.archivedById) {
+    if (mainSheet.archivedById) {
       try {
         archivedByUser = await this.prisma.user.findUnique({
-          where: { id: routeSheet.archivedById },
+          where: { id: mainSheet.archivedById },
           select: { firstName: true, lastName: true, email: true },
         });
       } catch {}
     }
 
     // =========================================================================
-    // 1. BLOQUE PRINCIPAL: HOJA DE RUTA OFICIAL CHLS (ANVERSO & REVERSO)
-    // En el compendio final del expediente completo, DEBE ir al principio la Hoja de Ruta
-    // oficial exactamente idéntica al formato impreso del Club (Anverso y Reverso).
+    // 1. BLOQUE PRINCIPAL: HOJA DE RUTA MATRIZ CHLS (ANVERSO & REVERSO)
     // =========================================================================
     await this.appendOfficialRouteSheetPages(
       masterDoc,
-      routeSheet,
+      mainSheet,
       archivedByUser,
       fontRegular,
       fontBold,
@@ -131,13 +212,187 @@ export class DossierPdfService {
     );
 
     // =========================================================================
-    // 2. BLOQUE ADJUNTOS: ANEXOS Y EXPEDIENTE DIGITALIZADO (DESPUÉS DE HOJA DE RUTA)
-    // Orden archivístico cronológico inverso: Inmediatamente después de la Hoja
-    // de Ruta viene el ÚLTIMO PDF adjuntado, seguido en orden descendente por
-    // las derivaciones precedentes hasta llegar a los documentos iniciales de origen.
+    // 1.b. BLOQUE SECUNDARIO: HOJAS DE RUTA ACUMULADAS POR CONEXIDAD (SI EXISTEN)
     // =========================================================================
-    const originDocs = (routeSheet.documents || []).filter((d) => !d.movementId);
-    const movementsList = [...(routeSheet.movements || [])].reverse(); // De la última derivación a la primera
+    if (secondarySheets.length > 0) {
+      for (const secSheet of secondarySheets) {
+        // Carátula divisoria institucional para cada expediente acumulado
+        const sepPage = masterDoc.addPage(PageSizes.Letter);
+        const { width: sepW, height: sepH } = sepPage.getSize();
+
+        // Marco doble decorativo
+        sepPage.drawRectangle({
+          x: 25,
+          y: 25,
+          width: sepW - 50,
+          height: sepH - 50,
+          borderColor: emeraldDark,
+          borderWidth: 2,
+          color: rgb(0.98, 0.99, 0.98),
+        });
+
+        sepPage.drawRectangle({
+          x: 29,
+          y: 29,
+          width: sepW - 58,
+          height: sepH - 58,
+          borderColor: goldColor,
+          borderWidth: 1,
+        });
+
+        if (logoImage) {
+          sepPage.drawImage(logoImage, {
+            x: (sepW - 55) / 2,
+            y: sepH - 130,
+            width: 55,
+            height: 65,
+          });
+        }
+
+        const titleText = 'CLUB HÍPICO LOS SARGENTOS';
+        const titleW = fontTimes.widthOfTextAtSize(titleText, 17);
+        sepPage.drawText(titleText, {
+          x: (sepW - titleW) / 2,
+          y: sepH - 160,
+          size: 17,
+          font: fontTimes,
+          color: slateDark,
+        });
+
+        const subText = 'EXPEDIENTE ACUMULADO POR CONEXIDAD';
+        const subW = fontBold.widthOfTextAtSize(subText, 13);
+        sepPage.drawRectangle({
+          x: (sepW - subW - 30) / 2,
+          y: sepH - 205,
+          width: subW + 30,
+          height: 28,
+          color: emeraldDark,
+        });
+        sepPage.drawText(subText, {
+          x: (sepW - subW) / 2,
+          y: sepH - 196,
+          size: 13,
+          font: fontBold,
+          color: rgb(1, 1, 1),
+        });
+
+        const hrBadge = `HOJA DE RUTA N° ${secSheet.hrCode}`;
+        const hrBadgeW = fontBold.widthOfTextAtSize(hrBadge, 16);
+        sepPage.drawText(hrBadge, {
+          x: (sepW - hrBadgeW) / 2,
+          y: sepH - 245,
+          size: 16,
+          font: fontBold,
+          color: emeraldDark,
+        });
+
+        // Recuadro de detalles ejecutivos del trámite secundario
+        const boxX = 50;
+        const boxY = sepH - 430;
+        const boxW = sepW - 100;
+        const boxH = 160;
+
+        sepPage.drawRectangle({
+          x: boxX,
+          y: boxY,
+          width: boxW,
+          height: boxH,
+          borderColor: rgb(0.7, 0.7, 0.7),
+          borderWidth: 1,
+          color: rgb(1, 1, 1),
+        });
+
+        sepPage.drawText(`Expediente Matriz: ${mainSheet.hrCode}`, {
+          x: boxX + 20,
+          y: boxY + boxH - 28,
+          size: 10,
+          font: fontBold,
+          color: slateDark,
+        });
+
+        sepPage.drawText(`CITE Oficial: ${secSheet.cite || 'S/N'}   |   Fojas Originales: ${secSheet.pageCount || 1}`, {
+          x: boxX + 20,
+          y: boxY + boxH - 50,
+          size: 9.5,
+          font: fontRegular,
+          color: slateDark,
+        });
+
+        sepPage.drawText(`Remitente: ${cleanAnsi(secSheet.senderName || 'N/A')}`, {
+          x: boxX + 20,
+          y: boxY + boxH - 72,
+          size: 9.5,
+          font: fontRegular,
+          color: slateDark,
+        });
+
+        sepPage.drawText(`Procedencia / Área: ${cleanAnsi(secSheet.senderArea || secSheet.currentArea || 'N/A')}`, {
+          x: boxX + 20,
+          y: boxY + boxH - 94,
+          size: 9.5,
+          font: fontRegular,
+          color: slateDark,
+        });
+
+        const refLine = cleanAnsi(secSheet.reference || 'Sin referencia');
+        sepPage.drawText(`Referencia: ${refLine.substring(0, 75)}`, {
+          x: boxX + 20,
+          y: boxY + boxH - 118,
+          size: 9,
+          font: fontBold,
+          color: emeraldDark,
+        });
+
+        sepPage.drawText('A continuación se adjuntan la carátula oficial y antecedentes de este expediente acumulado.', {
+          x: (sepW - 380) / 2,
+          y: boxY - 35,
+          size: 8.5,
+          font: fontRegular,
+          color: textGrey,
+        });
+
+        let secArchivedUser = null;
+        if (secSheet.archivedById) {
+          try {
+            secArchivedUser = await this.prisma.user.findUnique({
+              where: { id: secSheet.archivedById },
+              select: { firstName: true, lastName: true, email: true },
+            });
+          } catch {}
+        }
+
+        let secQrImage = null;
+        try {
+          const secUrl = `https://chls.bo/correspondencia?code=${encodeURIComponent(secSheet.hrCode)}`;
+          const secQrData = await QRCode.toDataURL(secUrl, { margin: 1, width: 140 });
+          const secB64 = secQrData.replace(/^data:image\/png;base64,/, '');
+          secQrImage = await masterDoc.embedPng(Buffer.from(secB64, 'base64'));
+        } catch {}
+
+        await this.appendOfficialRouteSheetPages(
+          masterDoc,
+          secSheet,
+          secArchivedUser || archivedByUser,
+          fontRegular,
+          fontBold,
+          fontTimes,
+          logoImage,
+          secQrImage || qrImage,
+          emeraldDark,
+          emeraldAccent,
+          goldColor,
+          slateDark,
+          textGrey,
+          lightBg
+        );
+      }
+    }
+
+    // =========================================================================
+    // 2. BLOQUE ADJUNTOS: COMPENDIO TOTAL DE ANEXOS FÍSICOS Y DIGITALES
+    // Se recopilan en orden cronológico descendente los adjuntos de la matriz
+    // y de cada expediente acumulado.
+    // =========================================================================
     const seenDocIds = new Set<string>();
     const allDossierDocs: Array<{
       doc: any;
@@ -145,35 +400,47 @@ export class DossierPdfService {
       sequenceNumber: number;
     }> = [];
 
-    // 1. Documentos adjuntados en cada derivación (del último proveído al primero)
-    for (const mov of movementsList) {
-      const movDocs = (mov.documents && mov.documents.length > 0)
-        ? [...mov.documents].reverse()
-        : [...(routeSheet.documents || []).filter((d) => d.movementId === mov.id)].reverse();
+    // Función auxiliar para registrar adjuntos de una hoja
+    const collectDocsForSheet = (sheet: any, sheetLabel: string) => {
+      const originDocs = (sheet.documents || []).filter((d: any) => !d.movementId);
+      const movementsList = [...(sheet.movements || [])].reverse();
 
-      for (const doc of movDocs) {
+      for (const mov of movementsList) {
+        const movDocs = (mov.documents && mov.documents.length > 0)
+          ? [...mov.documents].reverse()
+          : [...(sheet.documents || []).filter((d: any) => d.movementId === mov.id)].reverse();
+
+        for (const doc of movDocs) {
+          if (!seenDocIds.has(doc.id)) {
+            seenDocIds.add(doc.id);
+            allDossierDocs.push({
+              doc,
+              originLabel: `[${sheetLabel}] Derivación #${mov.sequenceNumber} (${cleanAnsi(mov.sourceArea || 'Emisor')} -> ${cleanAnsi(mov.targetArea || 'Destino')})`,
+              sequenceNumber: mov.sequenceNumber,
+            });
+          }
+        }
+      }
+
+      const reversedOriginDocs = [...originDocs].reverse();
+      for (const doc of reversedOriginDocs) {
         if (!seenDocIds.has(doc.id)) {
           seenDocIds.add(doc.id);
           allDossierDocs.push({
             doc,
-            originLabel: `Derivación #${mov.sequenceNumber} (${cleanAnsi(mov.sourceArea || 'Emisor')} -> ${cleanAnsi(mov.targetArea || 'Destino')})`,
-            sequenceNumber: mov.sequenceNumber,
+            originLabel: `[${sheetLabel}] Radicación Inicial (Origen)`,
+            sequenceNumber: 0,
           });
         }
       }
-    }
+    };
 
-    // 2. Documentos adjuntados en radicación inicial (al final del compendio de antecedentes)
-    const reversedOriginDocs = [...originDocs].reverse();
-    for (const doc of reversedOriginDocs) {
-      if (!seenDocIds.has(doc.id)) {
-        seenDocIds.add(doc.id);
-        allDossierDocs.push({
-          doc,
-          originLabel: 'Radicación Inicial (Origen)',
-          sequenceNumber: 0,
-        });
-      }
+    // 1. Recopilar documentos de la Matriz
+    collectDocsForSheet(mainSheet, `Matriz ${mainSheet.hrCode}`);
+
+    // 2. Recopilar documentos de cada secundaria acumulada
+    for (const secSheet of secondarySheets) {
+      collectDocsForSheet(secSheet, `Acumulada ${secSheet.hrCode}`);
     }
 
     if (allDossierDocs.length > 0) {
@@ -190,14 +457,15 @@ export class DossierPdfService {
     // 4. FOLIACIÓN CONTINUA INSTITUCIONAL EN TODAS LAS PÁGINAS DEL DOSSIER
     // =========================================================================
     const totalPages = masterDoc.getPageCount();
+    const consolidatedNotice = secondarySheets.length > 0 ? ` (Compendio Unificado con ${secondarySheets.length} trámites acumulados)` : '';
     for (let i = 0; i < totalPages; i++) {
       const page = masterDoc.getPage(i);
       page.drawText(
-        cleanAnsi(`Expediente CHLS No. ${routeSheet.hrCode}  |  Foja ${i + 1} de ${totalPages}  |  Dossier Compilado Oficial (Tamaño Carta)`),
+        cleanAnsi(`Expediente CHLS No. ${mainSheet.hrCode}${consolidatedNotice}  |  Foja ${i + 1} de ${totalPages}  |  Dossier Compilado Oficial (Tamaño Carta)`),
         {
           x: 30,
           y: 24,
-          size: 7,
+          size: 6.8,
           font: fontRegular,
           color: rgb(0.4, 0.4, 0.4),
         }
@@ -578,14 +846,32 @@ export class DossierPdfService {
 
     // Fila 2: Remitente | Procedencia / Área (y: 636 a 668)
     frontPage.drawText('REMITENTE', { x: 34, y: 657, size: 7, font: fontBold, color: textGrey });
-    frontPage.drawText(cleanAnsi(routeSheet.senderName || 'No especificado').substring(0, 52), { x: 34, y: 646, size: 8.5, font: fontBold, color: slateDark });
+    const senderParts: string[] = [cleanAnsi(routeSheet.senderName || 'No especificado')];
     if (routeSheet.senderDoc) {
-      frontPage.drawText(`C.I. / NIT: ${cleanAnsi(routeSheet.senderDoc)}`, { x: 34, y: 638, size: 6.5, font: fontRegular, color: textGrey });
+      senderParts.push(`C.I. / NIT: ${cleanAnsi(routeSheet.senderDoc)}`);
+    }
+    if (routeSheet.senderPhone) {
+      senderParts.push(`TEL: ${cleanAnsi(routeSheet.senderPhone)}`);
+    }
+    const fullSenderLine = senderParts.join(' — ');
+
+    if (fullSenderLine.length <= 48) {
+      frontPage.drawText(fullSenderLine, { x: 34, y: 645, size: 8.5, font: fontBold, color: slateDark });
+    } else {
+      frontPage.drawText(cleanAnsi(routeSheet.senderName || 'No especificado').substring(0, 48), { x: 34, y: 647, size: 8, font: fontBold, color: slateDark });
+      if (routeSheet.senderDoc || routeSheet.senderPhone) {
+        const subParts: string[] = [];
+        if (routeSheet.senderDoc) subParts.push(`C.I. / NIT: ${cleanAnsi(routeSheet.senderDoc)}`);
+        if (routeSheet.senderPhone) subParts.push(`TEL: ${cleanAnsi(routeSheet.senderPhone)}`);
+        frontPage.drawText(subParts.join(' — ').substring(0, 48), { x: 34, y: 638, size: 8, font: fontBold, color: slateDark });
+      }
     }
 
+
     frontPage.drawText('PROCEDENCIA / ÁREA', { x: 356, y: 657, size: 7, font: fontBold, color: textGrey });
-    const originLabel = routeSheet.senderArea || (routeSheet.senderType === 'SOCIO' ? 'SOCIO TITULAR CHLS' : 'EXTERNO');
+    const originLabel = routeSheet.senderArea || (routeSheet.senderType === 'SOCIO' ? 'SOCIO TITULAR CHLS' : routeSheet.senderType === 'AREA_INTERNA' ? 'INTERNA' : 'EXTERNA');
     frontPage.drawText(cleanAnsi(originLabel).substring(0, 42), { x: 356, y: 645, size: 8.5, font: fontBold, color: slateDark });
+
 
     frontPage.drawLine({ start: { x: startX, y: 636 }, end: { x: startX + tableW, y: 636 }, thickness: 1, color: rgb(0, 0, 0) });
     frontPage.drawLine({ start: { x: 350, y: 636 }, end: { x: 350, y: 668 }, thickness: 1, color: rgb(0, 0, 0) });
@@ -661,10 +947,8 @@ export class DossierPdfService {
         color: rgb(1, 1, 1),
       });
 
-      const destTarget = mov?.targetPersonName
-        ? `${mov.targetPersonName} (${mov.targetArea})`
-        : mov?.targetArea || '__________________________________';
-      frontPage.drawText(`A: ${cleanAnsi(destTarget).substring(0, 48)}`, {
+      const destTarget = formatCargoAndEmployee(mov?.targetArea, mov?.targetPersonName);
+      frontPage.drawText(`A: ${cleanAnsi(destTarget).substring(0, 60)}`, {
         x: 64,
         y: topY - 11,
         size: 8,
@@ -887,10 +1171,8 @@ export class DossierPdfService {
         color: rgb(1, 1, 1),
       });
 
-      const destTarget = mov?.targetPersonName
-        ? `${mov.targetPersonName} (${mov.targetArea})`
-        : mov?.targetArea || '__________________________________';
-      backPage.drawText(`A: ${cleanAnsi(destTarget).substring(0, 48)}`, {
+      const destTarget = formatCargoAndEmployee(mov?.targetArea, mov?.targetPersonName);
+      backPage.drawText(`A: ${cleanAnsi(destTarget).substring(0, 60)}`, {
         x: 64,
         y: topY - 11,
         size: 8,
@@ -1416,8 +1698,9 @@ export class DossierPdfService {
     page.drawText(cleanAnsi(routeSheet.senderName).substring(0, 30), { x: 55, y: curY - 23, size: 8, font: fontRegular, color: slateDark });
 
     page.drawText('ORIGEN / EMPRESA:', { x: 210, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
-    const originArea = routeSheet.senderArea || (routeSheet.senderType === 'SOCIO' ? 'Socio CHLS' : 'Externo');
+    const originArea = routeSheet.senderArea || (routeSheet.senderType === 'SOCIO' ? 'Socio CHLS' : routeSheet.senderType === 'AREA_INTERNA' ? 'Interna' : 'Externa');
     page.drawText(cleanAnsi(originArea).substring(0, 25), { x: 210, y: curY - 23, size: 8, font: fontRegular, color: slateDark });
+
 
     page.drawText('CUSTODIA ACTUAL:', { x: 350, y: curY - 12, size: 7, font: fontBold, color: emeraldDark });
     page.drawText(cleanAnsi(routeSheet.currentArea).substring(0, 22), { x: 350, y: curY - 23, size: 8, font: fontBold, color: emeraldDark });

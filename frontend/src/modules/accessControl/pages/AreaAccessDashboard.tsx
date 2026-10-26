@@ -424,11 +424,11 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
   };
 
   const handleSelectSuggestion = (s: any) => {
-    const fullName = `${s.firstName || ''} ${s.lastName || ''}`.trim();
+    const fullName = s.fullName || `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.personName || '';
     setPersonName(fullName);
     setMemberCode(s.membershipNumber || s.memberCode || s.documentId || '');
     setDocumentId(s.documentId || '');
-    setSelectedPersonId(s.id || null);
+    setSelectedPersonId(s.personId || s.id || null);
 
     if (s.personType === 'TITULAR' || s.personType === 'SOCIO') {
       setDependency('TITULAR');
@@ -1312,10 +1312,10 @@ export const AreaAccessDashboard: React.FC<AreaAccessDashboardProps> = ({ areaPr
                     >
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-md bg-brand-gold/20 text-brand-gold text-[10px] font-bold flex items-center justify-center">
-                          {(s.firstName || s.personName || 'S').charAt(0).toUpperCase()}
+                          {(s.fullName || s.firstName || s.personName || 'S').charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="font-bold text-xs">{s.firstName ? `${s.firstName} ${s.lastName}` : s.personName}</div>
+                          <div className="font-bold text-xs">{s.fullName || (s.firstName ? `${s.firstName} ${s.lastName}` : s.personName || 'Socio')}</div>
                           <div className="text-[10px] text-gray-500 dark:text-gray-400">Cód: {s.membershipNumber || s.memberCode || s.documentId || 'S/C'} • {s.personType || 'SOCIO'}</div>
                         </div>
                       </div>

@@ -104,23 +104,23 @@ export const AdminReservationCalendar: React.FC<AdminReservationCalendarProps> =
             key={day.toString()} 
             onClick={() => onSelectDate(isSelected ? null : cloneDay)}
             className={`min-h-[100px] border-r border-b border-gray-200 dark:border-white/5 p-2 transition-all cursor-pointer relative
-              ${!isCurrentMonth ? 'opacity-30 bg-gray-50 dark:bg-black/20' : 'hover:bg-brand-green/5 dark:hover:bg-white/5'}
-              ${isSelected ? 'bg-brand-gold/10 border-brand-gold/50 shadow-[inset_0_0_20px_rgba(212,175,55,0.1)]' : ''}
-              ${isToday && !isSelected ? 'bg-brand-green/5' : ''}
+              ${!isCurrentMonth ? 'opacity-40 bg-gray-100/60 dark:bg-black/20' : 'hover:bg-brand-green/5 dark:hover:bg-white/5'}
+              ${isSelected ? 'bg-brand-gold/15 border-brand-gold/60 shadow-[inset_0_0_20px_rgba(212,175,55,0.15)] font-bold' : ''}
+              ${isToday && !isSelected ? 'bg-brand-green/10' : ''}
             `}
           >
-            <div className={`font-bold text-sm mb-2 ${isToday ? 'text-brand-green' : isSelected ? 'text-brand-gold' : 'text-gray-500 dark:text-gray-400'}`}>
+            <div className={`font-bold text-sm mb-2 ${isToday ? 'text-brand-green font-black' : isSelected ? 'text-brand-gold font-black' : 'text-slate-800 dark:text-gray-200'}`}>
               {formattedDate}
             </div>
             
             <div className="space-y-1">
               {pendingCount > 0 && (
-                <div className="text-[10px] font-bold px-2 py-1 bg-amber-500/20 text-amber-400 rounded-md">
+                <div className="text-[10px] font-bold px-2 py-1 bg-amber-100 dark:bg-amber-500/20 text-amber-900 dark:text-amber-400 rounded-md border border-amber-300 dark:border-transparent shadow-xs">
                   {pendingCount} Pendientes
                 </div>
               )}
               {approvedCount > 0 && (
-                <div className="text-[10px] font-bold px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-md">
+                <div className="text-[10px] font-bold px-2 py-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-400 rounded-md border border-emerald-300 dark:border-transparent shadow-xs">
                   {approvedCount} Aprobadas
                 </div>
               )}

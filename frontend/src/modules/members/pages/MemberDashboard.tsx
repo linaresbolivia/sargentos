@@ -45,6 +45,8 @@ import toast from 'react-hot-toast';
 import { useTranslation } from 'react-i18next';
 import { LanguageToggle } from '@shared/components/LanguageToggle';
 import { MemberEcoImpactModal } from '../components/MemberEcoImpactModal';
+import { memberPortalApi, SocioAccountStatementResponse } from '../services/memberPortalApi';
+import { MemberQrPaymentModal } from '../components/MemberQrPaymentModal';
 
 export const MemberDashboard: React.FC = () => {
   const { t } = useTranslation();
@@ -59,26 +61,40 @@ export const MemberDashboard: React.FC = () => {
   const [showFamilyModal, setShowFamilyModal] = useState(false);
   const [showHorsesModal, setShowHorsesModal] = useState(false);
   const [showVehiclesModal, setShowVehiclesModal] = useState(false);
-  const [showAccountStatementModal, setShowAccountStatementModal] = useState(false);
   const [showQrPayModal, setShowQrPayModal] = useState(false);
   const [showEcoModal, setShowEcoModal] = useState(false);
+  const [statement, setStatement] = useState<SocioAccountStatementResponse | null>(null);
+
+  const loadStatement = () => {
+    memberPortalApi.getMyAccountStatement()
+      .then(data => setStatement(data))
+      .catch(err => console.error('Error fetching statement in dashboard:', err));
+  };
 
   useEffect(() => {
     dispatch(fetchCurrentProfile());
+    loadStatement();
   }, [dispatch]);
+
+  const dynamicDebt = statement?.financialSummary?.totalDebt ?? currentProfile?.debt ?? 0;
+  const dynamicAccessStatus = statement?.financialSummary?.accessStatus ?? (dynamicDebt === 0 ? 'GRANTED' : 'WARNING');
+  const dynamicMembershipNum = statement?.socio?.membershipNumber ?? currentProfile?.membershipNumber ?? 'FAM-1042';
+  const dynamicFullName = statement?.socio?.fullName ?? (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Gonzalo Durán Morales');
+  const dynamicCategory = statement?.socio?.category ?? currentProfile?.category ?? 'Socio Familiar Propietario';
+  const dynamicDocumentId = statement?.socio?.documentId ?? user?.documentId ?? '3489201 LP';
 
   // Master Comprehensive Data for the Member
   const socio = {
-    fullName: user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Gonzalo Durán Morales',
-    alphaCode: 'DUR-MOR-G-M',
-    documentId: '3489201 LP',
-    membershipNumber: 'FAM-1042',
-    status: 'ACTIVA',
-    category: 'Socio Familiar Propietario',
-    seniorityYears: 4,
+    fullName: dynamicFullName,
+    alphaCode: statement?.socio?.alphaCode || 'DUR-MOR-G-M',
+    documentId: dynamicDocumentId,
+    membershipNumber: dynamicMembershipNum,
+    status: statement?.socio?.membershipStatus || 'ACTIVA',
+    category: dynamicCategory,
+    seniorityYears: currentProfile?.antiquityYears || 4,
     admissionVoucher: 'BNB-9482018 (15/03/2022)',
-    debt: 0.00,
-    nextQuotaDate: '01 de Septiembre, 2026',
+    debt: dynamicDebt,
+    nextQuotaDate: statement?.financialSummary?.nextDueDate || '05 de Noviembre, 2026',
     monthlyQuotaAmount: 880,
     boxMonthlyAmount: 195,
     lastEntry: 'Hoy a las 08:30 am (Garita Principal)',
@@ -171,6 +187,14 @@ export const MemberDashboard: React.FC = () => {
             {/* Quick Actions Header Pills */}
             <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap sm:flex-nowrap">
               <button
+                onClick={() => navigate('/member/statement')}
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/15 text-brand-gold text-xs font-bold border border-brand-gold/30 hover:scale-105 transition-all shadow-md"
+              >
+                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Estado de Cuentas</span>
+              </button>
+
+              <button
                 onClick={() => navigate('/member/reservations')}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black text-xs font-extrabold shadow-md shadow-brand-gold/20 hover:scale-105 transition-all"
               >
@@ -245,10 +269,17 @@ export const MemberDashboard: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setShowAccountStatementModal(true)}
-                className="px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 text-gray-200 text-xs font-bold flex items-center justify-center gap-2 border border-white/10 transition-all"
+                onClick={() => navigate('/member/statement')}
+                className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-bold flex items-center justify-center gap-2 border border-brand-gold/30 transition-all"
               >
-                <CreditCard className="w-4 h-4 text-emerald-400" /> Estado de Cuenta
+                <CreditCard className="w-4 h-4 text-emerald-400" /> Ver Estado de Cuenta
+              </button>
+
+              <button
+                onClick={() => setShowQrPayModal(true)}
+                className="px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:scale-105 text-black text-xs font-black flex items-center justify-center gap-2 transition-all shadow-md"
+              >
+                <DollarSign className="w-4 h-4" /> Pagar por QR
               </button>
             </div>
           </div>
@@ -257,15 +288,25 @@ export const MemberDashboard: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-brand-gold/15 text-xs">
             <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
               <p className="text-[10px] text-gray-400 uppercase font-semibold">Estado de Membresía</p>
-              <p className="text-sm font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                <CheckCircle2 className="w-4 h-4" /> 100% Habilitado
-              </p>
+              {dynamicAccessStatus === 'GRANTED' ? (
+                <p className="text-sm font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <CheckCircle2 className="w-4 h-4" /> 100% Habilitado
+                </p>
+              ) : dynamicAccessStatus === 'WARNING' ? (
+                <p className="text-sm font-bold text-amber-400 flex items-center gap-1 mt-0.5">
+                  <AlertTriangle className="w-4 h-4" /> 1 Mes Mora (Tolerancia)
+                </p>
+              ) : (
+                <p className="text-sm font-bold text-red-400 flex items-center gap-1 mt-0.5">
+                  <AlertTriangle className="w-4 h-4" /> Acceso Restringido
+                </p>
+              )}
             </div>
 
             <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
               <p className="text-[10px] text-gray-400 uppercase font-semibold">Saldo en Mora</p>
-              <p className="text-sm font-bold text-emerald-400 mt-0.5">
-                Bs {socio.debt.toFixed(2)} (Al Día)
+              <p className={`text-sm font-bold mt-0.5 ${dynamicDebt === 0 ? 'text-emerald-400' : 'text-amber-400 font-mono'}`}>
+                Bs {dynamicDebt.toFixed(2)} {dynamicDebt === 0 ? '(Al Día)' : '(Pendiente)'}
               </p>
             </div>
 
@@ -536,15 +577,19 @@ export const MemberDashboard: React.FC = () => {
 
             {/* Card 3: Estado de Cuenta & Pagos */}
             <div 
-              onClick={() => setShowAccountStatementModal(true)}
+              onClick={() => navigate('/member/statement')}
               className="p-5 rounded-3xl bg-gradient-to-br from-[#101b15] to-[#08100c] border border-white/10 hover:border-brand-gold cursor-pointer transition-all duration-300 hover:-translate-y-1 group space-y-3"
             >
               <div className="flex justify-between items-start">
                 <div className="w-10 h-10 rounded-xl bg-yellow-500/20 text-brand-gold flex items-center justify-center font-bold">
                   💳
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                  Al Día
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                  dynamicDebt === 0
+                    ? 'bg-emerald-500/20 text-emerald-400'
+                    : 'bg-amber-500/20 text-amber-400'
+                }`}>
+                  {dynamicDebt === 0 ? 'Al Día' : `Mora Bs ${dynamicDebt.toFixed(2)}`}
                 </span>
               </div>
               <div>
@@ -556,7 +601,7 @@ export const MemberDashboard: React.FC = () => {
                 </p>
               </div>
               <div className="pt-2 flex items-center text-xs font-bold text-brand-gold group-hover:translate-x-1 transition-transform">
-                <span>Ver historial & facturas</span>
+                <span>Ver estado & pagar por QR</span>
                 <ChevronRight className="w-4 h-4" />
               </div>
             </div>
@@ -796,106 +841,17 @@ export const MemberDashboard: React.FC = () => {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 5: ESTADO DE CUENTA & PAGOS QR                                      */}
+      {/* MODAL 5: PAGO QR & COMPROBANTES                                           */}
       {/* ========================================================================= */}
-      {showAccountStatementModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="relative w-full max-w-xl bg-gradient-to-b from-[#13221a] to-[#0a100d] border border-brand-gold/40 rounded-3xl p-6 shadow-2xl space-y-4 text-white">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <div>
-                <h3 className="text-lg font-bold serif-brand flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-brand-gold" /> Estado de Cuenta & Historial de Pagos
-                </h3>
-                <p className="text-xs text-gray-400">Socio #{socio.membershipNumber} - {socio.fullName}</p>
-              </div>
-              <button onClick={() => setShowAccountStatementModal(false)} className="p-1 rounded-full hover:bg-white/10 text-gray-400">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Current Financial Status */}
-            <div className="p-4 rounded-2xl bg-black/60 border border-brand-gold/30 flex justify-between items-center text-xs">
-              <div>
-                <p className="text-gray-400">Estado de Cobranza:</p>
-                <p className="text-base font-bold text-emerald-400 mt-0.5">✓ Al Día (0.00 Bs Mora)</p>
-                <p className="text-[11px] text-gray-400 mt-1">Próxima Cuota Social: 01/09/2026 (Bs 880 + Bs 195 Box)</p>
-              </div>
-              <button 
-                onClick={() => setShowQrPayModal(true)}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black text-xs font-black hover:scale-105 transition-all shadow-md shadow-brand-gold/20 flex items-center gap-1.5"
-              >
-                <DollarSign className="w-4 h-4" /> Pagar por QR
-              </button>
-            </div>
-
-            {/* Recent Billing Breakdown */}
-            <div className="space-y-2 text-xs">
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Últimas Transacciones Registradas</h4>
-              
-              <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-white">Cuota Social Agosto 2026</p>
-                  <p className="text-[11px] text-gray-400">Factura #FAC-2026-0814 • Pagado 01/08/2026</p>
-                </div>
-                <p className="font-bold text-emerald-400">Bs 880.00</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-white">Alquiler Box H-08 (Sultán)</p>
-                  <p className="text-[11px] text-gray-400">Factura #FAC-2026-0814 • Pagado 01/08/2026</p>
-                </div>
-                <p className="font-bold text-emerald-400">Bs 195.00</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-black/40 border border-white/10 flex justify-between items-center">
-                <div>
-                  <p className="font-bold text-white">Cuota CDP 40/60</p>
-                  <p className="text-[11px] text-gray-400">Recibo Oficial #REC-2026-0040 • Pagado 01/08/2026</p>
-                </div>
-                <p className="font-bold text-emerald-400">Bs 464.00</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-3 border-t border-white/10">
-              <button 
-                onClick={() => toast.success('Descargando extracto oficial de cuenta en PDF...')}
-                className="px-4 py-2 rounded-xl bg-white/10 text-gray-200 text-xs font-bold hover:bg-white/20 flex items-center gap-1"
-              >
-                <Download className="w-3.5 h-3.5" /> Descargar Extracto PDF
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* QR BANCO SIMPLE PAYMENT MODAL */}
-      {showQrPayModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="relative w-full max-w-sm bg-gradient-to-b from-[#14231b] to-[#070b09] border-2 border-brand-gold/60 rounded-3xl p-6 shadow-2xl space-y-4 text-center text-white">
-            <button onClick={() => setShowQrPayModal(false)} className="absolute top-4 right-4 p-2 rounded-full hover:bg-white/10 text-gray-400">
-              <X className="w-5 h-5" />
-            </button>
-
-            <h3 className="text-lg font-bold serif-brand">Pago por QR Simple Bancario</h3>
-            <p className="text-xs text-gray-400">Escanea desde la app de cualquier banco boliviano</p>
-
-            <div className="p-4 bg-white rounded-2xl inline-block shadow-xl">
-              <QRCodeSVG value="https://pagos.chls.bo/qr/pay/FAM-1042" size={170} level="H" />
-            </div>
-
-            <p className="text-sm font-bold text-brand-gold">Monto: Bs 1,075.00</p>
-            <p className="text-[10px] text-gray-400">Concepto: Cuota Social Septiembre 2026 + Box H-08</p>
-
-            <button 
-              onClick={() => { toast.success('¡Pago verificado y acreditado!'); setShowQrPayModal(false); }}
-              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 text-black text-xs font-black"
-            >
-              Ya realicé el pago
-            </button>
-          </div>
-        </div>
-      )}
+      <MemberQrPaymentModal
+        isOpen={showQrPayModal}
+        onClose={() => setShowQrPayModal(false)}
+        statement={statement}
+        onVoucherSubmitted={() => {
+          loadStatement();
+          dispatch(fetchCurrentProfile());
+        }}
+      />
 
       {/* ========================================================================= */}
       {/* MODAL: INICIATIVA CERO PAPEL • CLUB INTELIGENTE (SOCIO ECO-IMPACT)        */}

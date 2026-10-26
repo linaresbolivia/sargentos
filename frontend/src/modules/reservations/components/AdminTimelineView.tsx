@@ -124,13 +124,13 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
     <div className="space-y-5 animate-fade-in">
       
       {/* Date & Sport Navigation Bar */}
-      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-white/80 dark:bg-[#081c13]/90 p-4 sm:p-5 rounded-2xl border border-emerald-500/30 dark:border-emerald-500/40 shadow-[0_0_25px_rgba(16,185,129,0.1)] backdrop-blur-md">
+      <div className="flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-4 bg-slate-50/90 dark:bg-[#081c13]/90 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-emerald-500/40 shadow-sm backdrop-blur-md">
         
         {/* Date Navigator */}
         <div className="flex items-center gap-2">
           <button
             onClick={() => onChangeDate(subDays(selectedDate, 1))}
-            className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-white/15 text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className="p-2.5 rounded-xl bg-white dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-800 dark:text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
             title="Día anterior"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -147,14 +147,14 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                   dateInputRef.current?.focus();
                 }
               }}
-              className="flex items-center gap-2.5 px-4 py-2 bg-slate-100 dark:bg-black/60 hover:bg-black/80 rounded-xl border-2 border-brand-gold/40 hover:border-brand-gold text-left transition-all duration-300 group shadow-[0_0_15px_rgba(234,179,8,0.15)] hover:shadow-[0_0_25px_rgba(234,179,8,0.3)] cursor-pointer"
+              className="flex items-center gap-2.5 px-4 py-2 bg-white dark:bg-black/60 hover:bg-slate-100 dark:hover:bg-black/80 rounded-xl border-2 border-amber-500/40 hover:border-amber-500 text-left transition-all duration-300 group shadow-sm cursor-pointer"
               title="Haz clic para abrir el selector de calendario"
             >
-              <CalendarIcon className="w-4 h-4 text-brand-gold group-hover:scale-110 transition-transform" />
+              <CalendarIcon className="w-4 h-4 text-amber-600 dark:text-brand-gold group-hover:scale-110 transition-transform" />
               <span className="font-black text-sm text-slate-900 dark:text-white capitalize">
                 {format(selectedDate, "EEEE d 'de' MMMM, yyyy", { locale: es })}
               </span>
-              <span className="text-[10px] font-black text-slate-900 bg-brand-gold px-2 py-0.5 rounded-md font-mono shadow-xs">
+              <span className="text-[10px] font-black text-slate-900 bg-amber-400 px-2 py-0.5 rounded-md font-mono shadow-xs">
                 📅 Calendario
               </span>
             </button>
@@ -175,7 +175,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
           <button
             onClick={() => onChangeDate(addDays(selectedDate, 1))}
-            className="p-2.5 rounded-xl bg-slate-100 dark:bg-white/5 hover:bg-white/15 text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+            className="p-2.5 rounded-xl bg-white dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/15 text-slate-800 dark:text-brand-gold border border-slate-200 dark:border-white/10 transition-all hover:scale-105 active:scale-95 cursor-pointer shadow-xs"
             title="Día siguiente"
           >
             <ChevronRight className="w-5 h-5" />
@@ -183,20 +183,20 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
           <button
             onClick={() => onChangeDate(new Date())}
-            className="px-3.5 py-2 rounded-xl bg-brand-gold/20 border border-brand-gold/40 text-slate-900 dark:text-brand-gold text-xs font-black hover:bg-brand-gold/30 transition-all ml-1 cursor-pointer hover:scale-105"
+            className="px-3.5 py-2 rounded-xl bg-amber-100 dark:bg-brand-gold/20 border border-amber-300 dark:border-brand-gold/40 text-amber-900 dark:text-brand-gold text-xs font-black hover:bg-amber-200 dark:hover:bg-brand-gold/30 transition-all ml-1 cursor-pointer hover:scale-105"
           >
             Hoy
           </button>
         </div>
 
         {/* Sport Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 scrollbar-none">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 lg:pb-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <button
             onClick={() => onChangeSport('ALL')}
             className={`px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all duration-300 cursor-pointer ${
               selectedSport === 'ALL'
                 ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-105'
-                : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-emerald-500/40'
+                : 'bg-white dark:bg-white/5 text-slate-700 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-amber-400 dark:hover:border-emerald-500/40 shadow-xs'
             }`}
           >
             Todos ({courts.length})
@@ -211,7 +211,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                 className={`px-3.5 py-2 rounded-xl text-xs font-black whitespace-nowrap transition-all duration-300 cursor-pointer ${
                   isSelected
                     ? 'bg-gradient-to-r from-amber-400 via-brand-gold to-yellow-500 text-slate-950 shadow-[0_0_15px_rgba(234,179,8,0.4)] scale-105'
-                    : 'bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-emerald-500/40'
+                    : 'bg-white dark:bg-white/5 text-slate-700 dark:text-gray-300 hover:text-slate-950 dark:hover:text-white border border-slate-200 dark:border-white/10 hover:border-amber-400 dark:hover:border-emerald-500/40 shadow-xs'
                 }`}
               >
                 {sport} ({count})
@@ -225,25 +225,25 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
       {/* Mini KPIs & Legend */}
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-slate-500 dark:text-gray-400 font-bold uppercase tracking-wider text-[10px]">Estado en vivo:</span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40 font-bold shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]"></span>
+          <span className="text-slate-700 dark:text-gray-400 font-bold uppercase tracking-wider text-[10px]">Estado en vivo:</span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-100 dark:bg-emerald-500/15 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40 font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_8px_#10b981]"></span>
             Disponible
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-500/15 text-amber-800 dark:text-brand-gold border border-amber-500/40 font-bold shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-brand-gold"></span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-100 dark:bg-amber-500/15 text-amber-900 dark:text-brand-gold border border-amber-300 dark:border-amber-500/40 font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
             Reserva Socio ({memberBookings})
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/15 text-purple-800 dark:text-purple-300 border border-purple-500/40 font-bold shadow-xs">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-100 dark:bg-purple-500/15 text-purple-900 dark:text-purple-300 border border-purple-300 dark:border-purple-500/40 font-bold shadow-xs">
             <Dumbbell className="w-3.5 h-3.5" />
             Clases ({classesCount})
           </span>
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-500/15 text-rose-800 dark:text-rose-300 border border-rose-500/40 font-bold shadow-xs">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-rose-100 dark:bg-rose-500/15 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-500/40 font-bold shadow-xs">
             <Wrench className="w-3.5 h-3.5" />
             Mantenimiento ({maintenanceCount})
           </span>
           {pendingCount > 0 && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-yellow-500/20 text-yellow-800 dark:text-yellow-300 border-2 border-yellow-500/50 animate-pulse font-black shadow-[0_0_15px_rgba(234,179,8,0.3)]">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-yellow-100 dark:bg-yellow-500/20 text-yellow-900 dark:text-yellow-300 border-2 border-yellow-400 dark:border-yellow-500/50 animate-pulse font-black shadow-sm">
               ⚠️ {pendingCount} Pendientes de aprobación
             </span>
           )}
@@ -259,19 +259,19 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
       </div>
 
       {/* Grid Timeline Header & Matrix Container */}
-      <div className="overflow-x-auto border-2 border-emerald-500/40 rounded-3xl bg-white/90 dark:bg-black/40 backdrop-blur-xl shadow-[0_0_35px_rgba(16,185,129,0.12)]">
+      <div className="overflow-x-auto border border-slate-200 dark:border-emerald-500/40 rounded-3xl bg-white dark:bg-black/40 backdrop-blur-xl shadow-lg [scrollbar-width:thin] scrollbar-thin scrollbar-thumb-amber-300 dark:scrollbar-thumb-emerald-800 scrollbar-track-slate-100 dark:scrollbar-track-black/40">
         
         {/* Timeline Matrix */}
         <div className="min-w-[1360px]">
           
           {/* Header Row: Hours */}
-          <div className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-gray-200 dark:border-white/10 bg-black/40 text-xs font-bold text-gray-400 sticky top-0 z-10">
-            <div className="p-3 border-r border-white/10 text-brand-gold flex items-center justify-between">
+          <div className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-black/60 text-xs font-bold text-slate-800 dark:text-gray-300 sticky top-0 z-30 shadow-xs">
+            <div className="p-3 border-r border-slate-200 dark:border-white/10 text-amber-800 dark:text-brand-gold flex items-center justify-between sticky left-0 z-40 bg-slate-100 dark:bg-[#07130c] shadow-sm">
               <span>Cancha / Espacio</span>
               <Layers className="w-3.5 h-3.5" />
             </div>
             {HOURS.map(hour => (
-              <div key={hour} className="p-3 text-center border-r border-white/5 font-mono text-[11px]">
+              <div key={hour} className="p-3 text-center border-r border-slate-200 dark:border-white/5 font-mono text-[11px] text-slate-700 dark:text-gray-300">
                 {hour}
               </div>
             ))}
@@ -279,35 +279,35 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
           {/* Body Rows: One per court */}
           {loading ? (
-            <div className="py-16 text-center text-gray-400">
+            <div className="py-16 text-center text-slate-500 dark:text-gray-400">
               <div className="inline-block w-6 h-6 border-2 border-brand-gold border-t-transparent rounded-full animate-spin mb-2"></div>
               <p>Cargando cronograma en vivo...</p>
             </div>
           ) : filteredCourts.length === 0 ? (
-            <div className="p-8 text-center text-gray-400 text-sm">
+            <div className="p-8 text-center text-slate-500 dark:text-gray-400 text-sm">
               No hay canchas configuradas para esta disciplina.
             </div>
           ) : (
             filteredCourts.map(court => (
               <div 
                 key={court.id}
-                className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-white/5 hover:bg-white/[0.02] transition-colors group"
+                className="grid grid-cols-[180px_repeat(16,minmax(74px,1fr))] border-b border-slate-200 dark:border-white/5 hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors group"
               >
-                {/* Court Name Column */}
-                <div className="p-3 border-r border-white/10 bg-black/30 flex flex-col justify-center">
+                {/* Court Name Column (Sticky on Horizontal Scroll) */}
+                <div className="p-3 border-r border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#07130c] flex flex-col justify-center sticky left-0 z-20 shadow-sm">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-white group-hover:text-brand-gold transition-colors truncate" title={court.name}>
+                    <span className="font-bold text-xs text-slate-900 dark:text-white group-hover:text-amber-700 dark:group-hover:text-brand-gold transition-colors truncate" title={court.name}>
                       {court.name}
                     </span>
                     <button
                       onClick={() => onOpenCreateBlock(court.id, court.sport)}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-brand-gold/20 text-brand-gold rounded transition-opacity"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-amber-100 dark:hover:bg-brand-gold/20 text-amber-700 dark:text-brand-gold rounded transition-opacity"
                       title="Bloquear o programar clases en esta cancha"
                     >
                       <Sparkles className="w-3 h-3" />
                     </button>
                   </div>
-                  <span className="text-[10px] text-gray-400">{court.sport}</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 font-medium">{court.sport}</span>
                 </div>
 
                 {/* Hour Slots Columns */}
@@ -319,10 +319,10 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                       <div
                         key={hour}
                         onClick={() => onOpenCreateBlock(court.id, court.sport)}
-                        className="border-r border-white/5 p-1 min-h-[66px] cursor-pointer hover:bg-brand-gold/10 transition-colors flex items-center justify-center group/slot"
+                        className="border-r border-slate-200 dark:border-white/5 p-1 min-h-[66px] cursor-pointer hover:bg-amber-100/40 dark:hover:bg-brand-gold/10 transition-colors flex items-center justify-center group/slot"
                         title={`Disponible: Clic para programar clase/bloqueo a las ${hour}`}
                       >
-                        <span className="opacity-0 group-hover/slot:opacity-100 text-[10px] text-brand-gold font-bold">
+                        <span className="opacity-0 group-hover/slot:opacity-100 text-[10px] text-amber-600 dark:text-brand-gold font-bold">
                           +
                         </span>
                       </div>
@@ -335,15 +335,26 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                   const isTournament = res.reservationType === 'TOURNAMENT';
                   const isClubEvent = res.reservationType === 'EVENTO_CLUB' || res.reservationType === 'CIERRE_CANCHA';
 
-                  let badgeColor = 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300';
+                  let badgeColor = 'bg-emerald-50 dark:bg-emerald-950/85 border-emerald-300 dark:border-emerald-500/40 text-emerald-950 dark:text-emerald-300';
+                  let codeColor1 = 'text-emerald-800 dark:text-brand-gold';
+                  let codeColor2 = 'text-emerald-700 dark:text-emerald-300';
+
                   if (isClass) {
-                    badgeColor = 'bg-amber-950/80 border-amber-500/40 text-amber-300';
+                    badgeColor = 'bg-amber-100 dark:bg-amber-950/85 border-amber-300 dark:border-amber-500/40 text-amber-950 dark:text-amber-300';
+                    codeColor1 = 'text-amber-900 dark:text-brand-gold';
+                    codeColor2 = 'text-amber-800 dark:text-amber-300';
                   } else if (isMaintenance) {
-                    badgeColor = 'bg-rose-950/80 border-rose-500/40 text-rose-300';
+                    badgeColor = 'bg-rose-100 dark:bg-rose-950/85 border-rose-300 dark:border-rose-500/40 text-rose-950 dark:text-rose-300';
+                    codeColor1 = 'text-rose-900 dark:text-rose-300';
+                    codeColor2 = 'text-rose-800 dark:text-rose-400';
                   } else if (isTournament) {
-                    badgeColor = 'bg-indigo-950/80 border-indigo-500/40 text-indigo-300';
+                    badgeColor = 'bg-indigo-100 dark:bg-indigo-950/85 border-indigo-300 dark:border-indigo-500/40 text-indigo-950 dark:text-indigo-300';
+                    codeColor1 = 'text-indigo-900 dark:text-indigo-300';
+                    codeColor2 = 'text-indigo-800 dark:text-indigo-400';
                   } else if (isClubEvent) {
-                    badgeColor = 'bg-cyan-950/80 border-cyan-500/40 text-cyan-300';
+                    badgeColor = 'bg-cyan-100 dark:bg-cyan-950/85 border-cyan-300 dark:border-cyan-500/40 text-cyan-950 dark:text-cyan-300';
+                    codeColor1 = 'text-cyan-900 dark:text-cyan-300';
+                    codeColor2 = 'text-cyan-800 dark:text-cyan-400';
                   }
 
                   const rawCode = res.code || (res.id ? res.id.slice(0, 8).toUpperCase() : 'RES');
@@ -371,28 +382,28 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     <div
                       key={hour}
                       onClick={() => setSelectedSlotDetails(res)}
-                      className="border-r border-white/5 p-1 min-h-[66px] cursor-pointer"
+                      className="border-r border-slate-200 dark:border-white/5 p-1 min-h-[66px] cursor-pointer"
                       title={
                         isMember 
                           ? `Código: ${formattedCode}\nSocio: ${res.memberName} (${res.memberCode ? '#' + res.memberCode : ''})\nModalidad: ${res.playerType === 'GUESTS' ? 'Con Invitados' : res.playerType === 'MEMBERS' ? 'Entre Socios' : 'Familiar'}\nAcompañantes: ${res.playerNames || 'Ninguno'}\nHorario: ${res.startTime} - ${res.endTime}`
                           : `${res.title || 'Ocupado'} (${formattedCode}) - (${res.startTime} - ${res.endTime})`
                       }
                     >
-                      <div className={`h-full w-full rounded-xl border p-1.5 flex flex-col justify-between transition-all hover:scale-105 shadow-sm overflow-hidden ${badgeColor}`}>
+                      <div className={`h-full w-full rounded-xl border p-1.5 flex flex-col justify-between transition-all hover:scale-105 shadow-xs overflow-hidden ${badgeColor}`}>
                         {/* Nivel 1: Código de Reserva en 2 filas completas */}
-                        <div className="border-b border-white/10 pb-0.5">
+                        <div className="border-b border-black/10 dark:border-white/10 pb-0.5">
                           <div className="flex items-center justify-between gap-0.5">
-                            <span className="font-mono text-[9px] font-black text-brand-gold tracking-tight leading-none">
+                            <span className={`font-mono text-[9px] font-black ${codeColor1} tracking-tight leading-none`}>
                               {codeLine1}
                             </span>
                             {res.status === 'PENDING' ? (
                               <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-ping shrink-0" title="Pendiente de confirmación" />
                             ) : (
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0 opacity-80" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shrink-0 opacity-80" />
                             )}
                           </div>
                           {codeLine2 && (
-                            <div className="font-mono text-[9px] font-black text-amber-300 tracking-tight leading-tight mt-0.5">
+                            <div className={`font-mono text-[9px] font-black ${codeColor2} tracking-tight leading-tight mt-0.5`}>
                               {codeLine2}
                             </div>
                           )}
@@ -400,7 +411,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
 
                         {/* Nivel 2: Nombre del Socio o Título */}
                         <div className="pt-0.5">
-                          <p className="text-[10px] font-black truncate leading-tight text-white tracking-tight" title={displayTitle}>
+                          <p className="text-[10px] font-black truncate leading-tight text-slate-900 dark:text-white tracking-tight" title={displayTitle}>
                             {displayTitle}
                           </p>
                         </div>
@@ -420,60 +431,60 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
       {/* Selected Slot Details Popover Modal */}
       {selectedSlotDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-          <div className="bg-[#0b1610] border border-brand-gold/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 relative">
-            <div className="flex justify-between items-center border-b border-white/10 pb-3">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Info className="w-5 h-5 text-brand-gold" />
+          <div className="bg-white dark:bg-[#0b1610] border border-slate-300 dark:border-brand-gold/40 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 relative text-slate-800 dark:text-gray-200">
+            <div className="flex justify-between items-center border-b border-slate-200 dark:border-white/10 pb-3">
+              <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Info className="w-5 h-5 text-amber-600 dark:text-brand-gold" />
                 Detalles del Turno
               </h3>
               <button 
                 onClick={() => setSelectedSlotDetails(null)}
-                className="p-1 rounded-xl text-gray-400 hover:text-white hover:bg-white/10"
+                className="p-1 rounded-xl text-slate-400 dark:text-gray-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10"
               >
                 ✕
               </button>
             </div>
 
-            <div className="space-y-2 text-xs text-gray-300">
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Espacio / Cancha:</span>
-                <strong className="text-white">{selectedSlotDetails.court?.name} ({selectedSlotDetails.court?.sport})</strong>
+            <div className="space-y-2 text-xs text-slate-700 dark:text-gray-300">
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                <span className="text-slate-500 dark:text-gray-400">Espacio / Cancha:</span>
+                <strong className="text-slate-900 dark:text-white">{selectedSlotDetails.court?.name} ({selectedSlotDetails.court?.sport})</strong>
               </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Fecha:</span>
-                <span className="text-white font-mono">{selectedSlotDetails.date}</span>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                <span className="text-slate-500 dark:text-gray-400">Fecha:</span>
+                <span className="text-slate-900 dark:text-white font-mono">{selectedSlotDetails.date}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-white/5">
-                <span className="text-gray-400">Horario:</span>
-                <span className="text-brand-gold font-mono font-bold">{selectedSlotDetails.startTime} - {selectedSlotDetails.endTime}</span>
+              <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                <span className="text-slate-500 dark:text-gray-400">Horario:</span>
+                <span className="text-amber-700 dark:text-brand-gold font-mono font-bold">{selectedSlotDetails.startTime} - {selectedSlotDetails.endTime}</span>
               </div>
 
               {selectedSlotDetails.reservationType === 'MEMBER' ? (
                 <>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-gray-400">Socio Titular:</span>
-                    <strong className="text-white uppercase">{selectedSlotDetails.memberName}</strong>
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                    <span className="text-slate-500 dark:text-gray-400">Socio Titular:</span>
+                    <strong className="text-slate-900 dark:text-white uppercase">{selectedSlotDetails.memberName}</strong>
                   </div>
                   {selectedSlotDetails.memberCode && selectedSlotDetails.memberCode !== 'ADMIN_BLOCK' && (
-                    <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-gray-400">Código de Socio:</span>
-                      <span className="font-bold font-mono text-brand-gold">#{selectedSlotDetails.memberCode}</span>
+                    <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                      <span className="text-slate-500 dark:text-gray-400">Código de Socio:</span>
+                      <span className="font-bold font-mono text-amber-700 dark:text-brand-gold">#{selectedSlotDetails.memberCode}</span>
                     </div>
                   )}
                   {selectedSlotDetails.memberPhone && (
-                    <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-gray-400">WhatsApp / Teléfono:</span>
-                      <span className="font-medium text-gray-200">{selectedSlotDetails.memberPhone}</span>
+                    <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                      <span className="text-slate-500 dark:text-gray-400">WhatsApp / Teléfono:</span>
+                      <span className="font-medium text-slate-800 dark:text-gray-200">{selectedSlotDetails.memberPhone}</span>
                     </div>
                   )}
-                  <div className="flex justify-between py-1 border-b border-white/5 items-center">
-                    <span className="text-gray-400">Modalidad:</span>
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5 items-center">
+                    <span className="text-slate-500 dark:text-gray-400">Modalidad:</span>
                     <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
                       selectedSlotDetails.playerType === 'GUESTS' 
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' 
+                        ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-500/30' 
                         : selectedSlotDetails.playerType === 'MEMBERS'
-                        ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
-                        : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                        ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-800 dark:text-indigo-300 border border-indigo-300 dark:border-indigo-500/30'
+                        : 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30'
                     }`}>
                       {selectedSlotDetails.playerType === 'GUESTS' 
                         ? `👥 Con ${selectedSlotDetails.guestsCount || 1} Invitado(s)` 
@@ -483,26 +494,26 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     </span>
                   </div>
                   {selectedSlotDetails.playerNames && (
-                    <div className="flex justify-between py-1 border-b border-white/5">
-                      <span className="text-gray-400">Acompañantes:</span>
-                      <span className="font-medium text-emerald-300 text-right">{selectedSlotDetails.playerNames}</span>
+                    <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                      <span className="text-slate-500 dark:text-gray-400">Acompañantes:</span>
+                      <span className="font-medium text-emerald-700 dark:text-emerald-300 text-right">{selectedSlotDetails.playerNames}</span>
                     </div>
                   )}
                 </>
               ) : (
                 <>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-gray-400">Actividad / Título:</span>
-                    <strong className="text-white">{selectedSlotDetails.title || 'Bloqueo Administrativo'}</strong>
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                    <span className="text-slate-500 dark:text-gray-400">Actividad / Título:</span>
+                    <strong className="text-slate-900 dark:text-white">{selectedSlotDetails.title || 'Bloqueo Administrativo'}</strong>
                   </div>
-                  <div className="flex justify-between py-1 border-b border-white/5">
-                    <span className="text-gray-400">Tipo de Reserva:</span>
-                    <span className="font-bold text-amber-400">{selectedSlotDetails.reservationType}</span>
+                  <div className="flex justify-between py-1 border-b border-slate-200 dark:border-white/5">
+                    <span className="text-slate-500 dark:text-gray-400">Tipo de Reserva:</span>
+                    <span className="font-bold text-amber-700 dark:text-amber-400">{selectedSlotDetails.reservationType}</span>
                   </div>
                   {selectedSlotDetails.notes && (
-                    <div className="py-1 border-b border-white/5">
-                      <span className="text-gray-400 block mb-0.5">Notas / Instructor:</span>
-                      <span className="text-gray-200 italic">{selectedSlotDetails.notes}</span>
+                    <div className="py-1 border-b border-slate-200 dark:border-white/5">
+                      <span className="text-slate-500 dark:text-gray-400 block mb-0.5">Notas / Instructor:</span>
+                      <span className="text-slate-700 dark:text-gray-200 italic">{selectedSlotDetails.notes}</span>
                     </div>
                   )}
                 </>
@@ -537,9 +548,9 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     setSelectedSlotDetails(null);
                     onViewQrDetails(target);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/20 hover:bg-emerald-100 dark:hover:bg-emerald-500/30 border border-emerald-300 dark:border-emerald-500/40 text-emerald-900 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
                 >
-                  <QrCode className="w-4 h-4 text-emerald-400" />
+                  <QrCode className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                   <span>Ver QR, Mensaje & Datos de Pre-Reserva</span>
                 </button>
               )}
@@ -553,7 +564,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     setSelectedSlotDetails(null);
                     onEditReservation(target);
                   }}
-                  className="w-full py-2 rounded-xl bg-brand-gold/15 hover:bg-brand-gold/25 border border-brand-gold/40 text-brand-gold font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
+                  className="w-full py-2 rounded-xl bg-amber-50 dark:bg-brand-gold/15 hover:bg-amber-100 dark:hover:bg-brand-gold/25 border border-amber-300 dark:border-brand-gold/40 text-amber-900 dark:text-brand-gold font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-xs"
                 >
                   <Pencil className="w-4 h-4" />
                   <span>Editar Datos / Horario de este Turno</span>
@@ -567,7 +578,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                       onUpdateStatus(selectedSlotDetails.id, 'APPROVED');
                       setSelectedSlotDetails(null);
                     }}
-                    className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs flex items-center justify-center gap-1.5 transition-colors"
+                    className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors shadow-sm"
                   >
                     <CheckCircle className="w-4 h-4" /> Aprobar
                   </button>
@@ -576,7 +587,7 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                       onUpdateStatus(selectedSlotDetails.id, 'REJECTED');
                       setSelectedSlotDetails(null);
                     }}
-                    className="p-2.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-rose-500/40"
+                    className="p-2.5 rounded-xl bg-rose-50 dark:bg-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/30 text-rose-900 dark:text-rose-300 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors border border-rose-300 dark:border-rose-500/40"
                   >
                     <XCircle className="w-4 h-4" /> Rechazar
                   </button>
@@ -591,14 +602,14 @@ export const AdminTimelineView: React.FC<AdminTimelineViewProps> = ({
                     setSelectedSlotDetails(null);
                     onReleaseReservation(id);
                   }}
-                  className="w-full py-2.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
+                  className="w-full py-2.5 rounded-xl bg-amber-50 dark:bg-amber-500/20 hover:bg-amber-100 dark:hover:bg-amber-500/30 border border-amber-300 dark:border-amber-500/40 text-amber-900 dark:text-amber-300 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
                 >
-                  <Ban className="w-4 h-4 text-amber-400" />
+                  <Ban className="w-4 h-4 text-amber-600 dark:text-amber-400" />
                   <span>Liberar Cancha (Habilitar Turno Inmediatamente)</span>
                 </button>
               )}
 
-              <div className="flex justify-between items-center gap-2 pt-2 border-t border-white/10">
+              <div className="flex justify-between items-center gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
                 {selectedSlotDetails.recurringGroupId && onDeleteRecurringGroup && (
                   <button
                     onClick={() => {

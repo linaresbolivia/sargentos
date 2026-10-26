@@ -80,17 +80,25 @@ export const GatehouseDashboard: React.FC = () => {
     }
 
     try {
-      const response = await api.get(`/access/search?q=${val}&type=${searchType}`);
+      const response = await api.get(`/access/search?q=${encodeURIComponent(val.trim())}&type=${searchType}`);
       setHasSearched(true);
-      if (response.data.success) {
-        setSearchResults(response.data.data);
-        if (response.data.data.length === 1) {
-          handleSelectMember(response.data.data[0], false);
-        } else if (response.data.data.length > 0 && selectedMember) {
-          // Keep selection if it's still in results, else clear
-          const stillExists = response.data.data.find((m: any) => m.personId === selectedMember.personId);
-          if (!stillExists) setSelectedMember(null);
+      if (response.data.success && response.data.data) {
+        const results = response.data.data;
+        setSearchResults(results);
+
+        const cleanVal = val.trim().toLowerCase();
+        // Exact match on membershipNumber or documentId immediately selects the right person
+        const exactMatch = results.find(
+          (m: any) => (m.membershipNumber && m.membershipNumber.toLowerCase() === cleanVal) ||
+                      (m.documentId && m.documentId.toLowerCase() === cleanVal)
+        );
+
+        if (exactMatch) {
+          handleSelectMember(exactMatch, false);
+        } else if (results.length === 1) {
+          handleSelectMember(results[0], false);
         } else {
+          // If multiple partial results, clear previous selection so user can pick from dropdown
           setSelectedMember(null);
         }
       }
@@ -325,15 +333,15 @@ export const GatehouseDashboard: React.FC = () => {
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
-                  if (selectedMember) {
+                  if (searchResults.length >= 1) {
+                    handleSelectMember(searchResults[0], true);
+                  } else if (selectedMember) {
                     const isVip = selectedMember.personType === 'INVITADO_VIP' || selectedMember.personId?.startsWith('vip_');
                     if (isVip) {
                       vehicleRadioRef.current?.focus();
                     } else {
                       socioRadioRef.current?.focus();
                     }
-                  } else if (searchResults.length >= 1) {
-                    handleSelectMember(searchResults[0], true);
                   }
                 }
               }}
@@ -407,13 +415,18 @@ export const GatehouseDashboard: React.FC = () => {
                     );
                   }
 
+                  const isWarning = selectedMember.status === 'GRANTED' && selectedMember.debtWarning;
+                  const isGrantedClean = selectedMember.status === 'GRANTED' && !selectedMember.debtWarning;
+
                   return (
-                    <div className={`flex-1 w-full rounded-3xl border-2 p-7 shadow-[0_0_40px_rgba(16,185,129,0.25)] backdrop-blur-xl transition-all duration-300 flex flex-col items-center justify-center text-center ${
-                      selectedMember.status === 'GRANTED' 
+                    <div className={`flex-1 w-full rounded-3xl border-2 p-7 shadow-2xl backdrop-blur-xl transition-all duration-300 flex flex-col items-center justify-center text-center ${
+                      isGrantedClean 
                         ? 'bg-white/90 dark:bg-gradient-to-br dark:from-[#093120] dark:via-[#051e13] dark:to-[#020f09] border-emerald-500/50 shadow-[0_0_45px_rgba(16,185,129,0.35)]' 
+                        : isWarning
+                        ? 'bg-white/90 dark:bg-gradient-to-br dark:from-[#382606] dark:via-[#221603] dark:to-[#120a01] border-yellow-500/60 shadow-[0_0_45px_rgba(234,179,8,0.35)]'
                         : 'bg-white/90 dark:bg-gradient-to-br dark:from-[#330c0c] dark:via-[#1f0606] dark:to-[#100303] border-rose-500/50 shadow-[0_0_45px_rgba(244,63,94,0.35)]'
                     }`}>
-                      {selectedMember.status === 'GRANTED' ? (
+                      {isGrantedClean ? (
                         <>
                           <CheckCircle className="w-22 h-22 text-emerald-400 mb-3 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
                           <h2 className="text-3xl font-black text-emerald-400 tracking-wide mb-2 serif-brand">Acceso Concedido</h2>
@@ -422,13 +435,38 @@ export const GatehouseDashboard: React.FC = () => {
                             <p className="text-xs text-slate-400 dark:text-gray-400 mt-1">Último pago: {new Date(selectedMember.lastPaymentDate).toLocaleDateString()}</p>
                           )}
                         </>
+                      ) : isWarning ? (
+                        <>
+                          <AlertTriangle className="w-22 h-22 text-yellow-400 mb-3 drop-shadow-[0_0_15px_rgba(234,179,8,0.5)] animate-bounce" />
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="px-2.5 py-0.5 rounded-full bg-yellow-500 text-black text-[10px] font-black uppercase">
+                              Tolerancia Activa (1 Mes)
+                            </span>
+                          </div>
+                          <h2 className="text-3xl font-black text-yellow-400 tracking-wide mb-2 serif-brand">Acceso Permitido</h2>
+                          <div className="bg-yellow-500/20 border border-yellow-500/40 rounded-2xl px-4 py-2 mt-1">
+                            <p className="text-yellow-700 dark:text-yellow-300 font-bold text-sm">
+                              ⚠️ Advertencia: 1 mes de cuota pendiente (Bs. {selectedMember.totalDebt.toLocaleString()})
+                            </p>
+                            <p className="text-[11px] text-yellow-600 dark:text-yellow-400 mt-0.5">
+                              Recordar al socio regularizar su cuota en Recaudaciones / Caja
+                            </p>
+                          </div>
+                        </>
                       ) : (
                         <>
-                          <XCircle className="w-22 h-22 text-rose-500 mb-3 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)]" />
+                          <XCircle className="w-22 h-22 text-rose-500 mb-3 drop-shadow-[0_0_15px_rgba(244,63,94,0.5)] animate-pulse" />
                           <h2 className="text-3xl font-black text-rose-500 tracking-wide mb-2 serif-brand">Acceso Denegado</h2>
                           <p className="text-slate-800 dark:text-gray-200 font-bold">{selectedMember.reason || 'Restricción Administrativa'}</p>
                           {selectedMember.totalDebt > 0 && (
-                            <p className="text-rose-500 dark:text-rose-400 font-black mt-2 text-lg">Deuda Pendiente: ${selectedMember.totalDebt.toLocaleString()}</p>
+                            <div className="mt-3 px-4 py-2 rounded-2xl bg-rose-500/20 border border-rose-500/40">
+                              <p className="text-rose-500 dark:text-rose-400 font-black text-lg">
+                                Deuda Pendiente: Bs. {selectedMember.totalDebt.toLocaleString()}
+                              </p>
+                              <p className="text-xs text-rose-300 font-semibold mt-0.5">
+                                {selectedMember.debtMonthsCount ? `${selectedMember.debtMonthsCount} meses en mora acumulada` : 'Mora acumulada'} &bull; Pase Bloqueado
+                              </p>
+                            </div>
                           )}
                         </>
                       )}

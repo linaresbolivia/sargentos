@@ -49,6 +49,21 @@ export interface CorrDocument {
   createdAt: string;
 }
 
+export interface FusedRouteSheetSummary {
+  id: string;
+  hrCode: string;
+  reference: string;
+  currentArea: string;
+  status: RouteSheetStatus;
+  pageCount?: number;
+  senderName?: string;
+  senderArea?: string | null;
+  senderType?: string;
+  cite?: string | null;
+  createdAt?: string;
+  documents?: CorrDocument[];
+}
+
 export interface RouteSheetItem {
   id: string;
   hrCode: string;
@@ -57,6 +72,8 @@ export interface RouteSheetItem {
   senderType: RouteSheetSenderType;
   personId?: string | null;
   senderName: string;
+  senderEntity?: string | null;
+  senderPosition?: string | null;
   senderArea?: string | null;
   senderPhone?: string | null;
   senderEmail?: string | null;
@@ -97,6 +114,12 @@ export interface RouteSheetItem {
   } | null;
   movements?: HrMovement[];
   documents?: CorrDocument[];
+  // Fusión y Acumulación de Expedientes
+  parentRouteSheetId?: string | null;
+  parentRouteSheet?: (FusedRouteSheetSummary & {
+    fusedRouteSheets?: FusedRouteSheetSummary[];
+  }) | null;
+  fusedRouteSheets?: FusedRouteSheetSummary[];
   // SLA Fields
   slaStatus?: 'ON_TIME' | 'WARNING' | 'OVERDUE' | 'COMPLETED';
   slaDeadline?: string;
@@ -144,6 +167,8 @@ export interface WorkflowNode {
   autoCcArea?: string;
   email?: string;
   phone?: string;
+  userId?: string | null;
+  userIds?: string[];
 }
 
 export interface WorkflowEdge {
@@ -172,3 +197,34 @@ export interface CorrespondenceStats {
   slaSummary?: SlaSummary;
   workflow?: CorrespondenceWorkflow;
 }
+
+export interface UserCorrespondencePrivilege {
+  canEdit?: boolean;
+  canDelete?: boolean;
+}
+
+export interface CorrespondenceUserItem {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  roles?: Array<{ name: string }>;
+}
+
+export interface CorrespondenceSettings {
+  areas: any[];
+  stamps: string[];
+  routingMode: string;
+  defaultSlaDays: number;
+  socioSubsanacionDays: number;
+  currentGestion: number;
+  initialCorrelativeNumber: number;
+  prefixFormat: string;
+  gestiones: Record<string, any>;
+  smtp: any;
+  userPrivileges?: Record<string, UserCorrespondencePrivilege>;
+  systemUsers?: CorrespondenceUserItem[];
+  currentUserPrivileges?: UserCorrespondencePrivilege;
+  workflow?: CorrespondenceWorkflow;
+}
+

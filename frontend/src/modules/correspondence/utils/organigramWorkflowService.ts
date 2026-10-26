@@ -1,13 +1,115 @@
 import { CorrespondenceWorkflow, WorkflowNode, WorkflowEdge, RouteSheetItem } from '../types/correspondence.types';
 export type { WorkflowNode, WorkflowEdge };
 
+/**
+ * Directorio oficial de titulares/empleados asignados por cargo en Club Hípico Los Sargentos
+ */
+export const OFFICIAL_CARGO_HOLDERS: Record<string, string> = {
+  'JEFE DE MANTENIMIENTO': 'Cristian Alejandro Gonzales Quint Reina',
+  'MANTENIMIENTO Y OBRAS': 'Cristian Alejandro Gonzales Quint Reina',
+  'MANTENIMIENTO': 'Cristian Alejandro Gonzales Quint Reina',
+  'INFRAESTRUCTURA': 'Cristian Alejandro Gonzales Quint Reina',
+  'GERENCIA GENERAL': 'Tito Norman Tornero Rodriguez',
+  'GERENCIA': 'Tito Norman Tornero Rodriguez',
+  'SECRETARÍA GENERAL': 'Monica Iñiguez Duran',
+  'SECRETARIA GENERAL': 'Monica Iñiguez Duran',
+  'SECRETARÍA': 'Monica Iñiguez Duran',
+  'SECRETARIA': 'Monica Iñiguez Duran',
+  'ASESORÍA LEGAL': 'Tatiana Felicidad Perez Fernandez',
+  'ASESORIA LEGAL': 'Tatiana Felicidad Perez Fernandez',
+  'RESPONSABLE DE CONTRATACIONES': 'Ian Benjamin Pinto Morales',
+  'CONTRATACIONES Y ADQUISICIONES': 'Ian Benjamin Pinto Morales',
+  'CONTRATACIONES': 'Ian Benjamin Pinto Morales',
+  'COORDINADOR COMERCIAL': 'Eduardo Rodrigo Bejarano Miranda',
+  'COMERCIAL': 'Eduardo Rodrigo Bejarano Miranda',
+  'ARCHIVO': 'Freddy Callizaya Salazar',
+  'ARCHIVO CENTRAL': 'Freddy Callizaya Salazar',
+  'RECURSOS HUMANOS': 'Severo Huanca Mendoza',
+  'RRHH': 'Severo Huanca Mendoza',
+  'ALMACÉN': 'Maria del Pilar Atanacio Tola',
+  'ALMACEN': 'Maria del Pilar Atanacio Tola',
+  'COMUNICACIÓN': 'Ricardo Luis Gomez Garcia',
+  'COMUNICACION': 'Ricardo Luis Gomez Garcia',
+  'RECAUDACIONES': 'Monica Karen Gonzales Aramayo',
+  'ANALISTA CONTABLE - RECAUDACIONES': 'Monica Karen Gonzales Aramayo',
+  'APOYO COBRANZAS': 'Susana Claudia Carvajal Calderon',
+  'SUBGERENCIA DE ATENCIÓN AL SOCIO': 'Andrea Valeria Jordan Bilbao Rioja',
+  'ATENCIÓN AL SOCIO': 'Andrea Valeria Jordan Bilbao Rioja',
+  'ATENCION AL SOCIO': 'Andrea Valeria Jordan Bilbao Rioja',
+  'CASETA DE ENTRADA': 'Paola Victoria Belzu Quispe',
+  'RECEPCIÓN': 'Paola Victoria Belzu Quispe',
+  'RECEPCION': 'Paola Victoria Belzu Quispe',
+  'RECEPCIONISTAS': 'Paola Victoria Belzu Quispe',
+};
+
+/**
+ * Normaliza y formatea el destinatario oficial de un proveído mostrando el Cargo junto al Nombre del Empleado:
+ * ej. "JEFE DE MANTENIMIENTO — CRISTIAN ALEJANDRO GONZALES QUINT REINA"
+ */
+export function formatCargoAndEmployee(cargo?: string | null, person?: string | null): string {
+  const c = (cargo || '').trim();
+  const p = (person || '').trim();
+
+  if (!c && !p) return '__________________________________';
+
+  const findOfficial = (cargoKey: string): string => {
+    if (!cargoKey) return '';
+    const normKey = cargoKey.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    for (const [key, val] of Object.entries(OFFICIAL_CARGO_HOLDERS)) {
+      const normItem = key.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+      if (normKey === normItem || normKey.includes(normItem) || normItem.includes(normKey)) {
+        return val;
+      }
+    }
+    return '';
+  };
+
+  const isGenericPlaceholder = (text: string): boolean => {
+    if (!text) return true;
+    const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const genericPhrases = [
+      'jefe de mantenimiento',
+      'encargado de',
+      'titular de despacho',
+      'secretaria de gerencia',
+      'gerente general',
+      'personal de',
+      'equipo de',
+      'asistente de',
+      'responsable de',
+      'asesor legal principal',
+      'coordinador comercial',
+    ];
+    if (c && isSameArea(text, c)) return true;
+    return genericPhrases.some((ph) => lower === ph || lower.startsWith(ph));
+  };
+
+  let employee = '';
+  if (p && !isGenericPlaceholder(p)) {
+    const parenMatch = p.match(/^([^(]+)\s*\([^)]+\)$/);
+    employee = parenMatch ? parenMatch[1].trim() : p;
+  } else if (c) {
+    employee = findOfficial(c);
+  }
+
+  if (!c && employee) {
+    return employee.toUpperCase();
+  }
+
+  if (c && employee && !isSameArea(c, employee)) {
+    return `${c.toUpperCase()} — ${employee.toUpperCase()}`;
+  }
+
+  return c ? c.toUpperCase() : '__________________________________';
+}
+
 export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
   {
     id: 'node-gerencia-general',
     type: 'GERENCIA',
     title: 'GERENCIA GENERAL',
     subtitle: 'Máxima Autoridad Ejecutiva (1)',
-    manager: 'Gerente General',
+    manager: 'Tito Norman Tornero Rodriguez',
     areaKey: 'GERENCIA GENERAL',
     x: 1800,
     y: 40,
@@ -21,7 +123,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'SECRETARIA',
     title: 'SECRETARÍA',
     subtitle: 'Secretaría de Despacho (1)',
-    manager: 'Secretaria de Gerencia',
+    manager: 'Monica Iñiguez Duran',
     areaKey: 'SECRETARÍA',
     x: 1380,
     y: 40,
@@ -49,7 +151,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'LEGAL',
     title: 'ASESORÍA LEGAL',
     subtitle: 'Dictámenes, Contratos y Normativa (1)',
-    manager: 'Asesor Legal Principal',
+    manager: 'Tatiana Felicidad Perez Fernandez',
     areaKey: 'ASESORÍA LEGAL',
     x: 2220,
     y: 40,
@@ -63,7 +165,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'COMPRAS',
     title: 'COORDINADOR COMERCIAL',
     subtitle: 'Convenios, Alianzas y Publicidad (1)',
-    manager: 'Coordinador Comercial',
+    manager: 'Eduardo Rodrigo Bejarano Miranda',
     areaKey: 'COORDINADOR COMERCIAL',
     x: 2220,
     y: 180,
@@ -105,7 +207,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'ARCHIVO',
     title: 'ARCHIVO',
     subtitle: 'Custodia y Archivo Central Institucional (1)',
-    manager: 'Responsable de Archivo',
+    manager: 'Freddy Callizaya Salazar',
     areaKey: 'ARCHIVO',
     x: 50,
     y: 520,
@@ -119,7 +221,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'OPERACIONES',
     title: 'ALMACÉN',
     subtitle: 'Inventarios, Ingresos y Salidas de Material (1)',
-    manager: 'Encargado de Almacén',
+    manager: 'Maria del Pilar Atanacio Tola',
     areaKey: 'ALMACÉN',
     x: 330,
     y: 520,
@@ -133,7 +235,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'OPERACIONES',
     title: 'RECURSOS HUMANOS',
     subtitle: 'Planillas, Personal y Contrataciones Internas (1)',
-    manager: 'Encargado de RRHH',
+    manager: 'Severo Huanca Mendoza',
     areaKey: 'RECURSOS HUMANOS',
     x: 610,
     y: 520,
@@ -147,7 +249,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'COMPRAS',
     title: 'RESPONSABLE DE CONTRATACIONES',
     subtitle: 'Licitaciones, Cotizaciones y Proveedores (1)',
-    manager: 'Responsable de Contrataciones',
+    manager: 'Ian Benjamin Pinto Morales',
     areaKey: 'RESPONSABLE DE CONTRATACIONES',
     x: 890,
     y: 520,
@@ -203,7 +305,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'FINANZAS',
     title: 'ANALISTA CONTABLE - RECAUDACIONES',
     subtitle: 'Cobranza de Cuotas, Facturación y Caja (1)',
-    manager: 'Analista de Recaudaciones',
+    manager: 'Monica Karen Gonzales Aramayo',
     areaKey: 'ANALISTA CONTABLE - RECAUDACIONES',
     x: 1450,
     y: 520,
@@ -231,7 +333,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'FINANZAS',
     title: 'APOYO COBRANZAS',
     subtitle: 'Gestión de Cartera Morosa y Notificaciones (1)',
-    manager: 'Encargado de Cobranzas',
+    manager: 'Susana Claudia Carvajal Calderon',
     areaKey: 'APOYO COBRANZAS',
     x: 1450,
     y: 840,
@@ -245,7 +347,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'RECEPCION',
     title: 'SUBGERENCIA DE ATENCIÓN AL SOCIO',
     subtitle: 'Experiencia del Socio, Reclamos y Solicitudes (1)',
-    manager: 'Subgerente de Atención al Socio',
+    manager: 'Andrea Valeria Jordan Bilbao Rioja',
     areaKey: 'SUBGERENCIA DE ATENCIÓN AL SOCIO',
     x: 1780,
     y: 340,
@@ -301,7 +403,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'RECEPCION',
     title: 'RECEPCIONISTAS',
     subtitle: 'Recepción Central, Puntos de Control y Caseta (6)',
-    manager: 'Equipo de Recepción',
+    manager: 'Paola Victoria Belzu Quispe',
     areaKey: 'RECEPCIONISTAS',
     x: 1780,
     y: 840,
@@ -343,7 +445,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'COMPRAS',
     title: 'COMUNICACIÓN',
     subtitle: 'Redes Sociales, Boletines y Comunicados (1)',
-    manager: 'Encargado de Comunicación',
+    manager: 'Ricardo Luis Gomez Garcia',
     areaKey: 'COMUNICACIÓN',
     x: 2360,
     y: 520,
@@ -357,7 +459,7 @@ export const DEFAULT_ORGANIGRAM_NODES: WorkflowNode[] = [
     type: 'OPERACIONES',
     title: 'JEFE DE MANTENIMIENTO',
     subtitle: 'Infraestructura, Áreas Verdes, Pistas y Servicios (1)',
-    manager: 'Jefe de Mantenimiento',
+    manager: 'Cristian Alejandro Gonzales Quint Reina',
     areaKey: 'JEFE DE MANTENIMIENTO',
     x: 2680,
     y: 340,
@@ -844,6 +946,14 @@ export function getOrganigramNodeForUser(
   if (!user) return undefined;
   const activeNodes = (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
 
+  // 0. Vinculación estricta y directa por userId del titular o inclusión en userIds
+  if (user.id) {
+    const byUserId = activeNodes.find(
+      (n) => n.userId === user.id || (Array.isArray(n.userIds) && n.userIds.includes(user.id))
+    );
+    if (byUserId) return byUserId;
+  }
+
   const email = (user.email || '').toLowerCase().trim();
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim();
   const normalize = (str: string) =>
@@ -858,7 +968,7 @@ export function getOrganigramNodeForUser(
   const uDept = normalize(user.area || user.department || '');
   const prefix = email.split('@')[0];
 
-  // 0. Mapeos prioritarios por funcionario / cuenta conocida
+  // 0.1. Mapeos prioritarios por funcionario / cuenta conocida
   if (prefix === 'mantenimiento' || prefix === 'cgonzales' || uName.includes('CRISTIAN GONZALES')) {
     const mantNode = activeNodes.find((n) => n.id === 'node-jefe-mantenimiento');
     if (mantNode) return mantNode;
@@ -912,6 +1022,140 @@ export function getOrganigramNodeForUser(
 
   // Si es SUPER_ADMIN o ADMIN general, por defecto es Gerencia General
   return activeNodes.find((n) => n.id === 'node-gerencia-general') || activeNodes[0];
+}
+
+export interface CargoOccupantInfo {
+  isOccupied: boolean;
+  occupants: any[]; // Todos los funcionarios asignados a este cargo
+  occupant?: any;   // Primer funcionario titular (por compatibilidad)
+  node: WorkflowNode;
+}
+
+/**
+ * Calcula un mapa de ocupación de todos los cargos del organigrama.
+ * Regla institucional CHLS:
+ * - Una persona puede tener un solo cargo en el organigrama.
+ * - Pero un cargo puede tener múltiples personas asignadas (ej. Portería, Recepción, Cajas).
+ */
+export function getOrganigramOccupancyMap(
+  users: any[] = [],
+  workflow?: CorrespondenceWorkflow | null
+): Map<string, CargoOccupantInfo> {
+  const activeNodes = (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
+  const map = new Map<string, CargoOccupantInfo>();
+
+  // Inicializar todos los nodos con lista de ocupantes vacía
+  for (const node of activeNodes) {
+    map.set(node.id, {
+      isOccupied: false,
+      occupants: [],
+      node,
+    });
+  }
+
+  // Filtrar solo usuarios activos
+  const activeUsers = users.filter((u) => u.isActive !== false);
+
+  // 1. Asignaciones explícitas por node.userId y node.userIds
+  for (const node of activeNodes) {
+    const current = map.get(node.id);
+    if (!current) continue;
+
+    const assignedIds: string[] = [];
+    if (node.userId) assignedIds.push(String(node.userId));
+    if (Array.isArray(node.userIds)) {
+      for (const uid of node.userIds) {
+        if (uid && !assignedIds.includes(String(uid))) {
+          assignedIds.push(String(uid));
+        }
+      }
+    }
+
+    for (const uid of assignedIds) {
+      const matchedUser = activeUsers.find((u) => u.id === uid);
+      if (matchedUser && !current.occupants.some((occ) => occ.id === matchedUser.id)) {
+        current.occupants.push(matchedUser);
+      }
+    }
+
+    current.isOccupied = current.occupants.length > 0;
+    current.occupant = current.occupants[0];
+  }
+
+  // 2. Mapear funcionarios activos restantes por heurística institucional
+  for (const user of activeUsers) {
+    // Si el usuario ya está explícitamente en algún nodo, no mapear doble
+    const alreadyMapped = Array.from(map.values()).some((info) =>
+      info.occupants.some((occ) => occ.id === user.id)
+    );
+    if (alreadyMapped) continue;
+
+    // Ignorar socios estándar sin rol administrativo o institucional
+    const roles: string[] = Array.isArray(user.roles)
+      ? user.roles.map((r: any) => (typeof r === 'string' ? r : r.name || ''))
+      : [];
+    const isMemberOnly = roles.includes('USER') && !roles.some((r) =>
+      ['STAFF', 'ADMIN', 'SUPER_ADMIN'].includes(r) || r.startsWith('MODULO_')
+    );
+    if (isMemberOnly) continue;
+
+    const matchedNode = getOrganigramNodeForUser(user, workflow);
+    if (matchedNode) {
+      const current = map.get(matchedNode.id);
+      if (current && !current.occupants.some((occ) => occ.id === user.id)) {
+        current.occupants.push(user);
+        current.isOccupied = true;
+        current.occupant = current.occupants[0];
+      }
+    }
+  }
+
+  return map;
+}
+
+/**
+ * Valida la asignación de un cargo a un funcionario.
+ * Regla institucional CHLS:
+ * - Un cargo puede tener múltiples personas asignadas (es completamente válido compartir cargo).
+ * - Una persona solo puede tener un cargo en el organigrama (si ya tenía uno anterior, se reasigna).
+ */
+export function validateCargoAssignment(
+  targetNodeId: string,
+  targetUserId: string | null | undefined,
+  users: any[] = [],
+  workflow?: CorrespondenceWorkflow | null
+): {
+  isValid: boolean;
+  message?: string;
+  previousNode?: WorkflowNode;
+  targetNode?: WorkflowNode;
+  currentOccupants: any[];
+} {
+  if (!targetNodeId) {
+    return { isValid: true, currentOccupants: [] };
+  }
+
+  const activeNodes = (workflow?.nodes && workflow.nodes.length > 0) ? workflow.nodes : DEFAULT_ORGANIGRAM_NODES;
+  const occupancyMap = getOrganigramOccupancyMap(users, workflow);
+  const info = occupancyMap.get(targetNodeId);
+
+  // Buscar si el usuario ya tenía asignado otro cargo anterior diferente
+  let previousNode: WorkflowNode | undefined;
+  if (targetUserId) {
+    previousNode = activeNodes.find((n) => {
+      if (n.id === targetNodeId) return false;
+      if (n.userId === targetUserId) return true;
+      if (Array.isArray(n.userIds) && n.userIds.includes(targetUserId)) return true;
+      return false;
+    });
+  }
+
+  return {
+    isValid: true,
+    targetNode: info?.node,
+    previousNode,
+    currentOccupants: info?.occupants || [],
+  };
 }
 
 /**

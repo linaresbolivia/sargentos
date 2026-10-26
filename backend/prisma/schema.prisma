@@ -149,6 +149,7 @@ model Person {
   extraordinaryCharges  ExtraordinaryCharge[]
   paymentTransactions   MemberPaymentTransaction[]
   refundRequests        MembershipRefundRequest[]
+  paymentVouchers       MemberPaymentVoucher[]
 
   // Correspondence
   routeSheets           RouteSheet[]
@@ -222,6 +223,10 @@ model Membership {
   physicalDossierLoc String?
   observations       String?
   totalDebt          Decimal   @default(0) // Financial state caching (real mora devengada)
+  debtStatus         String?   @default("SIN_DEUDA") // SIN_DEUDA, 1_MES, 2_MESES, 3_MESES, MAS_6_MESES
+  debtMonthsCount    Int       @default(0)
+  lastDebtSync       DateTime?
+  debtBreakdown      String?   // JSON string with month breakdown details
 
   beneficiaries Beneficiary[]
   history       MembershipHistory[]
@@ -229,6 +234,7 @@ model Membership {
   horses        Horse[]
   pets          Pet[]
   plans         MembershipPlan[]
+  paymentVouchers MemberPaymentVoucher[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -523,6 +529,48 @@ model SystemFinancialParameter {
   updatedAt      DateTime @updatedAt
 
   @@map("system_financial_parameters")
+}
+
+model PaymentQrConfig {
+  id             String   @id @default(uuid())
+  bankName       String   @default("Banco Nacional de Bolivia (BNB)")
+  accountNumber  String   @default("1000-2938472-01")
+  accountType    String   @default("Cuenta Corriente en Bolivianos")
+  accountHolder  String   @default("Club Hípico Los Sargentos")
+  nit            String   @default("1028394021")
+  qrImageUrl     String   @default("/uploads/payment-qr/qr-pagos.jpg")
+  instructions   String   @default("Indicar en la glosa su N° de Acción y Apellido. Una vez realizada la transferencia, suba su comprobante en esta plataforma para conciliación inmediata.")
+  isActive       Boolean  @default(true)
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("payment_qr_configs")
+}
+
+model MemberPaymentVoucher {
+  id               String      @id @default(uuid())
+  personId         String
+  person           Person      @relation(fields: [personId], references: [id], onDelete: Cascade)
+  membershipId     String?
+  membership       Membership? @relation(fields: [membershipId], references: [id], onDelete: SetNull)
+  membershipNumber String
+  
+  amount           Decimal
+  referenceNumber  String      // Nro de Comprobante / Transacción Bancaria
+  transferDate     DateTime    @default(now())
+  voucherUrl       String      // Ruta al archivo del comprobante
+  concept          String      @default("PAGO_CUOTA_EXPENSAS")
+  notes            String?
+  status           String      @default("PENDIENTE") // PENDIENTE, APROBADO, RECHAZADO
+  reviewedBy       String?
+  reviewedAt       DateTime?
+  reviewNotes      String?
+  
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  @@map("member_payment_vouchers")
 }
 
 model MembershipRefundRequest {
@@ -979,6 +1027,11 @@ model RouteSheet {
   documents             CorrDocument[]
   officialCites         OfficialCite[]
   
+  // Fusión y Acumulación de Expedientes
+  parentRouteSheetId    String?
+  parentRouteSheet      RouteSheet?           @relation("FusedRouteSheets", fields: [parentRouteSheetId], references: [id], onDelete: SetNull)
+  fusedRouteSheets      RouteSheet[]          @relation("FusedRouteSheets")
+
   createdAt             DateTime              @default(now())
   updatedAt             DateTime              @updatedAt
 

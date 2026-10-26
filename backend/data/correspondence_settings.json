@@ -3,7 +3,7 @@
     {
       "id": "1",
       "name": "GERENCIA GENERAL",
-      "manager": "Gerente General",
+      "manager": "Tito Norman Tornero Rodriguez",
       "position": "Máxima Autoridad Ejecutiva (MAE)",
       "canReceiveExternal": true,
       "email": "gerencia@chls.bo",
@@ -12,7 +12,7 @@
     {
       "id": "2",
       "name": "SECRETARÍA",
-      "manager": "Secretaria de Gerencia",
+      "manager": "Monica Iñiguez Duran",
       "position": "Secretaría de Gerencia General (1)",
       "canReceiveExternal": true,
       "email": "secretaria@chls.bo",
@@ -30,7 +30,7 @@
     {
       "id": "4",
       "name": "ASESORÍA LEGAL",
-      "manager": "Asesor Legal Principal",
+      "manager": "Tatiana Felicidad Perez Fernandez",
       "position": "Asesoría Legal (1)",
       "canReceiveExternal": false,
       "email": "legal@chls.bo",
@@ -39,7 +39,7 @@
     {
       "id": "5",
       "name": "COORDINADOR COMERCIAL",
-      "manager": "Coordinador Comercial",
+      "manager": "Eduardo Rodrigo Bejarano Miranda",
       "position": "Coordinación Comercial (1)",
       "canReceiveExternal": true,
       "email": "comercial@chls.bo",
@@ -66,7 +66,7 @@
     {
       "id": "8",
       "name": "ARCHIVO",
-      "manager": "Responsable de Archivo",
+      "manager": "Freddy Callizaya Salazar",
       "position": "Archivo Central (1)",
       "canReceiveExternal": false,
       "email": "archivo@chls.bo",
@@ -75,7 +75,7 @@
     {
       "id": "9",
       "name": "ALMACÉN",
-      "manager": "Encargado de Almacén",
+      "manager": "Maria del Pilar Atanacio Tola",
       "position": "Almacén y Suministros (1)",
       "canReceiveExternal": false,
       "email": "almacen@chls.bo",
@@ -84,7 +84,7 @@
     {
       "id": "10",
       "name": "RECURSOS HUMANOS",
-      "manager": "Encargado de RRHH",
+      "manager": "Severo Huanca Mendoza",
       "position": "Recursos Humanos (1)",
       "canReceiveExternal": false,
       "email": "rrhh@chls.bo",
@@ -93,7 +93,7 @@
     {
       "id": "11",
       "name": "RESPONSABLE DE CONTRATACIONES",
-      "manager": "Responsable de Contrataciones",
+      "manager": "Ian Benjamin Pinto Morales",
       "position": "Responsable de Contrataciones (1)",
       "canReceiveExternal": false,
       "email": "contrataciones@chls.bo",
@@ -129,7 +129,7 @@
     {
       "id": "15",
       "name": "ANALISTA CONTABLE - RECAUDACIONES",
-      "manager": "Analista de Recaudaciones",
+      "manager": "Monica Karen Gonzales Aramayo",
       "position": "Analista Contable - Recaudaciones (1)",
       "canReceiveExternal": false,
       "email": "recaudaciones@chls.bo",
@@ -147,7 +147,7 @@
     {
       "id": "17",
       "name": "APOYO COBRANZAS",
-      "manager": "Encargado de Cobranzas",
+      "manager": "Susana Claudia Carvajal Calderon",
       "position": "Apoyo Cobranzas (1)",
       "canReceiveExternal": false,
       "email": "cobranzas@chls.bo",
@@ -156,7 +156,7 @@
     {
       "id": "18",
       "name": "SUBGERENCIA DE ATENCIÓN AL SOCIO",
-      "manager": "Subgerente de Atención al Socio",
+      "manager": "Andrea Valeria Jordan Bilbao Rioja",
       "position": "Subgerencia de Atención al Socio (1)",
       "canReceiveExternal": true,
       "email": "atencionsocio@chls.bo",
@@ -192,7 +192,7 @@
     {
       "id": "22",
       "name": "RECEPCIONISTAS",
-      "manager": "Equipo de Recepción",
+      "manager": "Paola Victoria Belzu Quispe",
       "position": "Recepcionistas (6)",
       "canReceiveExternal": true,
       "email": "recepcion@chls.bo",
@@ -219,7 +219,7 @@
     {
       "id": "25",
       "name": "COMUNICACIÓN",
-      "manager": "Encargado de Comunicación",
+      "manager": "Ricardo Luis Gomez Garcia",
       "position": "Comunicación & Prensa (1)",
       "canReceiveExternal": true,
       "email": "comunicacion@chls.bo",
@@ -228,7 +228,7 @@
     {
       "id": "26",
       "name": "JEFE DE MANTENIMIENTO",
-      "manager": "Jefe de Mantenimiento",
+      "manager": "Cristian Alejandro Gonzales Quint Reina",
       "position": "Jefe de Mantenimiento (1)",
       "canReceiveExternal": true,
       "email": "mantenimiento@chls.bo",
@@ -383,11 +383,11 @@
   "defaultSlaDays": 5,
   "socioSubsanacionDays": 10,
   "currentGestion": 2026,
-  "initialCorrelativeNumber": 1,
+  "initialCorrelativeNumber": 80,
   "prefixFormat": "HR",
   "gestiones": {
     "2026": {
-      "initialCorrelative": 1,
+      "initialCorrelative": 80,
       "label": "Gestión 2026"
     }
   },
@@ -401,31 +401,3061 @@
     "fromEmail": "correspondencia@chls.bo",
     "fromName": "Club Hípico Los Sargentos — Correspondencia"
   },
+  "systemUsers": [
+    {
+      "id": "fd1ace57-8faf-4a30-a334-06daa061c4f4",
+      "email": "aaguilar@inditec.com.bo",
+      "firstName": "ABAD LUIS",
+      "lastName": "AGUILAR MAMANI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "710ded51-3d96-4d3e-a76e-5d43746ff45a",
+      "email": "vioalcada@sargentos.com.bo",
+      "firstName": "ADALBERTO",
+      "lastName": "VIOLAND ALCAZAR",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "94a8bf5e-ea71-44ff-a6f5-08fb0816b43a",
+      "email": "admin@sargentos.com.bo",
+      "firstName": "Administrador",
+      "lastName": "General",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "SUPER_ADMIN"
+        },
+        {
+          "name": "ADMIN"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "fe924d7c-78b1-40d5-a1ae-c120ae1989ab",
+      "email": "superadmin@sargentos.com.bo",
+      "firstName": "Administrador",
+      "lastName": "Maestro CHLS",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "SUPER_ADMIN"
+        },
+        {
+          "name": "ADMIN"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "8008c1e1-fdd8-4780-b748-4309589835aa",
+      "email": "adriana-mpd@hotmail.com",
+      "firstName": "ADRIANA MARIA",
+      "lastName": "PALMA DAVILA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "18008102-f3ce-4bd4-bb8b-3c7e3aec2eb8",
+      "email": "azaratehinojosaa@gmail.com",
+      "firstName": "ALAN MAURICIO",
+      "lastName": "ZARATE HINOJOSA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4091fc96-69d6-4126-9c9a-1b40d5878ca6",
+      "email": "alberto.vega@gmail.com",
+      "firstName": "ALBERTO",
+      "lastName": "ALEMAN VEGA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "905bd165-7d01-4199-a019-bb46ab72cda6",
+      "email": "deportes@sargentos.com.bo",
+      "firstName": "ALBERTO",
+      "lastName": "ARELLANO",
+      "roles": [
+        {
+          "name": "MODULO_CANCHAS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "db0c7e1f-13ac-4212-ba98-d6024ba055a9",
+      "email": "alex.aramayo@gmail.com",
+      "firstName": "ALEX SEBASTIAN",
+      "lastName": "ARAMAYO TABORGA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "dc350bec-0f39-4526-b1ef-7b53c90e6322",
+      "email": "allison.zuazo@lbc.bo",
+      "firstName": "ALLISON",
+      "lastName": "ZUAZO FERNANDEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "6df5e174-c078-4e02-a218-45d08bde0250",
+      "email": "alvaro.aranibar@gmail.com",
+      "firstName": "ALVARO",
+      "lastName": "ARANIBAR SANCHEZ DE LOZADA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "74403a03-7ed3-4d0c-a967-5fec13317fdc",
+      "email": "alvaro.arias@bufeteag.com",
+      "firstName": "ALVARO FERNANDO",
+      "lastName": "ARIAS GONZALES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "3a88ddd7-f830-4168-a1fc-881798680236",
+      "email": "aalvarez@bancosol.com.bo",
+      "firstName": "ALVARO NELSON",
+      "lastName": "ALVAREZ MONASTERIOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "1129f498-5f51-4b38-9bbc-4d8b9f99d773",
+      "email": "anddy_08@hotmail.com",
+      "firstName": "ANDREA",
+      "lastName": "LILIANA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "fba7ee96-6b17-459e-ab67-c30d4f983a1d",
+      "email": "profesora.natacion@sargentos.com.bo",
+      "firstName": "ANDREA",
+      "lastName": "SANJINEZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "d52869fa-9e92-47fc-83bf-97f0e4e98089",
+      "email": "atencionsocio@chls.bo",
+      "firstName": "ANDREA VALERIA",
+      "lastName": "JORDAN BILBAO RIOJA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "33269485-8082-44d3-abb6-fe1a69eb45f4",
+      "email": "zamalaand@sargentos.com.bo",
+      "firstName": "ANDRES ",
+      "lastName": "ZAMORA ALARCON",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "3c238a6c-236a-453f-b438-f43f4588e18a",
+      "email": "andres.apaza@gmail.com",
+      "firstName": "ANDRES IGNACIO",
+      "lastName": "APAZA GUTIERREZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "39a92e96-7d5a-413a-a6ac-8edb12b96e1f",
+      "email": "recepcionangela@sargentos.com.bo",
+      "firstName": "ANGELA PATRICIA",
+      "lastName": "PALENQUE GUTIERREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "577e6dfe-7bc3-4a71-a40f-08d692282873",
+      "email": "anacha40@hotmail.com",
+      "firstName": "ANTONIETA",
+      "lastName": "ABS VDA. DE MENDOZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "fd96eab1-06de-45c1-90ef-3fc0e31fa0b5",
+      "email": "aaldunate@lawbolivia.net",
+      "firstName": "ANTONIO ALFREDO",
+      "lastName": "ALDUNATE VARGAS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "da1f6038-22bc-46a9-8300-92afb845cdde",
+      "email": "eduarce90@hotmail.com",
+      "firstName": "ANTONIO EDUARDO",
+      "lastName": "ARCE QUINT",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ccbae82e-6102-4c16-a997-4f3c3d5ce04f",
+      "email": "ariel.apaza@gmail.com",
+      "firstName": "ARIEL FERNANDO",
+      "lastName": "APAZA GUTIERREZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "96d7e8bf-4c32-4f45-a6f6-eba1219aef25",
+      "email": "medranosusy@yahoo.es",
+      "firstName": "ARIEL ROBERTO",
+      "lastName": "ARANCIBIA MEDRANO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "8204c626-6805-41e5-9f2a-1cb7b4fb6bd9",
+      "email": "cvbergen@papelera.com",
+      "firstName": "ARRAYA CONRAD",
+      "lastName": "VON BERGEN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "954abb47-82ca-4f13-b9d8-d2bf56b6893a",
+      "email": "compras@sargentos.com.bo",
+      "firstName": "Asistente",
+      "lastName": "de Contrataciones & Compras",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "af313d92-5d03-469d-b9d3-b02766efe36e",
+      "email": "recepcionaynne@sargentos.com.bo",
+      "firstName": "AYNNE DARLEEN",
+      "lastName": "SALINAS TOLEDO",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c2048c87-6b58-431f-951c-28ef37456998",
+      "email": "rwallace@wcs.org",
+      "firstName": "BENEDICT",
+      "lastName": "WALLACE ROBERT",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "05539f98-916b-48b6-8520-9f4351a6e3d5",
+      "email": "barcepa@gmail.com",
+      "firstName": "BERNARDO",
+      "lastName": "ARCE PACELLO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "66ce23f6-d3be-471f-9825-41803339ff0e",
+      "email": "guardavidas@sargentos.com.bo",
+      "firstName": "BERNARDO FRANZ",
+      "lastName": "PABON PEREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "934cbb89-911d-4846-b284-8119a0b46364",
+      "email": "balvarezbozo@gmail.com",
+      "firstName": "BRAYAN RUDDY",
+      "lastName": "ALVAREZ BOZO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a0ac0d10-6932-4340-8f11-83ee6130816a",
+      "email": "zapramcamb@sargentos.com.bo",
+      "firstName": "CAMILA BELEN",
+      "lastName": "ZAPATA RAMIREZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4523ad4c-8da5-459c-b56a-514118706d63",
+      "email": "zuabatcar@sargentos.com.bo",
+      "firstName": "CARLA ANDREA",
+      "lastName": "ZUAZO BATCHELDER",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "26c5e4da-d19a-47a0-93a0-5e5fd046f69c",
+      "email": "vilcascarf@sargentos.com.bo",
+      "firstName": "CARLA FERNANDA",
+      "lastName": "VILLEGAS CORDERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "fa1440b7-fb71-4b49-bf60-296bab7a5e24",
+      "email": "auxcontabilidad@sargentos.com.bo",
+      "firstName": "CARLA MARIEL",
+      "lastName": "YUJRA DELGADO",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "ADMIN"
+        }
+      ]
+    },
+    {
+      "id": "9c592b6f-2931-4f28-b81a-f5a7bce69275",
+      "email": "supervisor.hipica@sargentos.com.bo",
+      "firstName": "CARLOS",
+      "lastName": "MAMANI CHAMBI",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "861cb634-4b87-4bc0-8815-7c28ead58fea",
+      "email": "mantenimiento.operativo5@sargentos.com.bo",
+      "firstName": "CARLOS DAVID",
+      "lastName": "HUARINA KANTUTA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "53d506c3-6c6b-4693-af79-3ae3cca4ace6",
+      "email": "toallas@sargentos.com.bo",
+      "firstName": "CARLOS FERNANDO",
+      "lastName": "LOPEZ SALVATIERRA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c424099d-4231-4b03-817d-59f509fb6806",
+      "email": "carlos.aguilar@corimsrl.com.bo",
+      "firstName": "CARLOS RAYMUNDO VLADIMIR",
+      "lastName": "AGUILAR LIENDO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a618a52d-6756-4ee3-8fc0-41c11e6854c1",
+      "email": "jvillavicencior@hotmail.com",
+      "firstName": "CAROLINA ANDREA",
+      "lastName": "ARAMAYO DE VILLAVICENCIO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "3ec8daf0-66b7-47e8-afdf-42537bad72dc",
+      "email": "cesar.apaza@gmail.com",
+      "firstName": "CESAR ALEJANDRO",
+      "lastName": "APAZA MONASTERIOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "de97c30c-1614-4d51-a03e-8e40789e8773",
+      "email": "clau.aguirre.28@gmail.com",
+      "firstName": "CLAUDIA MERCEDES",
+      "lastName": "AGUIRRE MORALES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "bc688c39-952a-4eb7-9059-49e7455157c7",
+      "email": "p-lorini@hotmail.com",
+      "firstName": "CLOTILDE",
+      "lastName": "ARAUCO DE LORINI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "72543c07-00a6-48ab-9950-3f169fb3862e",
+      "email": "crhistianwallstron@hotmail.com",
+      "firstName": "CRHISTIAN JAVIER",
+      "lastName": "WALLSTRON BELTRAN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "0e766990-4b30-4912-b361-882af13c0080",
+      "email": "mantenimiento@chls.bo",
+      "firstName": "CRISTIAN ALEJANDRO",
+      "lastName": "GONZALES QUINT REINA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c4ae7f85-b250-4ede-9ce1-fb4103f5183f",
+      "email": "dalmaaraucoromero@gmail.com",
+      "firstName": "DALMA GABRIELA",
+      "lastName": "ARAUCO ROMERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "658f8040-7260-49f0-9c2e-bb94727aea60",
+      "email": "mantenimiento.operativo4@sargentos.com.bo",
+      "firstName": "DAMIAN",
+      "lastName": "CHACON",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c1bfdddf-4b01-47ed-b7f0-c4285772f0d0",
+      "email": "daniela@gmail.com",
+      "firstName": "DANIELA",
+      "lastName": "AGUILAR ROCHA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "12c27494-eed1-4e41-93c3-d45a9a0478f2",
+      "email": "daniloalborta@gmail.com",
+      "firstName": "DANILO RAMIRO",
+      "lastName": "ALBORTA SOLARES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "df0bad38-372e-42bc-a68b-6b17b3843201",
+      "email": "dzuazo@bmsc.com.bo",
+      "firstName": "DARKO IVAN",
+      "lastName": "ZUAZO BATCHELDER",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "9f9a5911-ff77-46ba-a6bb-8c8f23965d52",
+      "email": "david.mazzi.dm@gmail.com",
+      "firstName": "DAVID",
+      "lastName": "AGUIRRE MAZZI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4cb16a44-6377-4d7c-9b39-22d5d5fe7694",
+      "email": "zamvierdies@sargentos.com.bo",
+      "firstName": "DIEGO SEBASTIEN",
+      "lastName": "ZAMORA VIRREIRA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "5ba29f89-ba79-4f52-815a-bddcf282bc4d",
+      "email": "edgarinali@gmail.com",
+      "firstName": "EDGAR CARMELO",
+      "lastName": "ALIAGA ARIAS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "767c582e-b440-4810-9655-80fedf147021",
+      "email": "comercial@chls.bo",
+      "firstName": "EDUARDO RODRIGO",
+      "lastName": "BEJARANO MIRANDA",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "bba595d8-9391-439f-abd5-9ce1eb27f266",
+      "email": "toallas1@sargentos.com.bo",
+      "firstName": "EDWIN",
+      "lastName": "MAMANI TUSCO",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "a0fe1fa8-cec9-4ee7-aa16-a83a815ab3f7",
+      "email": "eapaza@manquiri.com.bo",
+      "firstName": "EFRAIN GUIDO",
+      "lastName": "APAZA MONASTERIOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "1f11a6d7-6a2b-4954-ae60-4103701bda14",
+      "email": "encargada.contable@sargentos.com.bo",
+      "firstName": "ELIANA SUSAN",
+      "lastName": "CARITA SEGALES",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "eabfcb4c-913e-4ad9-a0b9-978dbf6b2119",
+      "email": "tiro@sargentos.com.bo",
+      "firstName": "ELIAS MARIO",
+      "lastName": "QUISPE CALLE",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "149e47fd-3ad9-4efd-bc79-3e169f36df37",
+      "email": "contabilidad@sargentos.com.bo",
+      "firstName": "Encargado",
+      "lastName": "de Contabilidad",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "1d2481bc-bcbf-40ea-8dc8-999fe445dcf4",
+      "email": "supervisor.raquet@sargentos.com.bo",
+      "firstName": "ENRIQUE",
+      "lastName": "GARBAY",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "00466a40-67ea-4e1e-b214-f3e5fd6a9aee",
+      "email": "analista.contable@sargentos.com.bo",
+      "firstName": "ERIK FARIT",
+      "lastName": "FRANCO RIVEROS",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "23caccb2-6e63-4912-98a7-3dbdd28a2831",
+      "email": "piscinero@sargentos.com.bo",
+      "firstName": "ERIK OMAR",
+      "lastName": "CORONEL CONDORI",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "6c734a5c-0cd2-4b21-996e-8468dad56bdc",
+      "email": "mantenimiento.operativo3@sargentos.com.bo",
+      "firstName": "ESTEBAN",
+      "lastName": "CALLE QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "00722d11-da7c-48bc-8868-34102e0f4639",
+      "email": "ealanoca2717@gmail.com",
+      "firstName": "ESTEFANI GRACIELA",
+      "lastName": "ALANOCA CONTRERAS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "323f2bfd-b977-43c9-a598-31b0d9689722",
+      "email": "felipevillarroel@hotmail.com",
+      "firstName": "FELIPE EFRAIN",
+      "lastName": "VILLAROEL VALENCIA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "63516f39-7d1d-4ad5-805b-f8bc96f80dab",
+      "email": "piscinero1@sargentos.com.bo",
+      "firstName": "FELIX",
+      "lastName": "QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "cfe24e00-153f-4d18-9939-a4e6e9a04b3d",
+      "email": "fjarandag@hotmail.com",
+      "firstName": "FELIX JAVIER",
+      "lastName": "ARANDA GARRAFFA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "0be5cafb-58ed-4698-8089-bcfc9c152331",
+      "email": "fernando_andia_cuiza@hotmail.com",
+      "firstName": "FERNANDO",
+      "lastName": "ANDIA CUIZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "0a0f6532-02f6-4753-b417-66776499ccd1",
+      "email": "faramayo@yahoo.es",
+      "firstName": "FERNANDO HUGO",
+      "lastName": "ARAMAYO CARRASCO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "b638d9f9-6937-421c-8f91-ba1ff9d95750",
+      "email": "maliaga@senelap.com.bo",
+      "firstName": "FERNANDO MARTIN",
+      "lastName": "ALIAGA ROCABADO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "d7e196aa-adbe-4ce2-b81c-e62cd8c735dc",
+      "email": "archivo@chls.bo",
+      "firstName": "FREDDY",
+      "lastName": "CALLIZAYA SALAZAR",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "3095eba5-89cb-4b88-80cd-12cfb821e3a6",
+      "email": "sereno@sargentos.com.bo",
+      "firstName": "FREDY",
+      "lastName": "QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "67edffb0-c408-4a1b-af76-f7c1cd9925c9",
+      "email": "delnuevomundo@gmail.com",
+      "firstName": "GABRIEL",
+      "lastName": "ZEBALLOS CASTELLON",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "54ed3af5-1f9b-4eb4-ad38-42612e5deea0",
+      "email": "finanzas@sargentos.com.bo",
+      "firstName": "GABRIELA GLADYS",
+      "lastName": "MENESES DELGADILLO",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "76597741-c465-4358-a8ed-e02e7bb6c4e8",
+      "email": "pironac22@gmail.com",
+      "firstName": "GILMAR MARTIN",
+      "lastName": "ANTEZANA CADARIO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2edc0257-d2d3-454d-91f6-aee98a40e443",
+      "email": "gloria@gmail.com",
+      "firstName": "GLORIA CLEOFE",
+      "lastName": "AGRAMONT CARRILLO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "89fedc4e-a642-464d-ae13-61ad0c70f625",
+      "email": "gr.a.m.ga@gmail.com",
+      "firstName": "GRACIELA",
+      "lastName": "AGUILAR MIRANDA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "128eaff9-7858-4569-babf-3bb813884333",
+      "email": "gantoniok@gmail.com",
+      "firstName": "GUILLERMO TAREK",
+      "lastName": "ANTONIO KAWASHITA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "657cb4c1-4384-4a0c-a051-5922017bc5a3",
+      "email": "hvillarroel@grupobisa.com",
+      "firstName": "HEBER OSVALDO",
+      "lastName": "VILLAROEL TORRES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "d32ceb18-c7ef-44db-8ddb-29f337576431",
+      "email": "vissalher@sargentos.com.bo",
+      "firstName": "HERNAN",
+      "lastName": "VISCARRA SALGUEIRO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "9bbc8607-2d44-403a-9433-466b7c07bf03",
+      "email": "hugo.aliaga@huawei.com",
+      "firstName": "HUGO ARIEL",
+      "lastName": "ALIAGA REGUERIN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "82cca30d-165a-4d38-8de0-d614fef9b342",
+      "email": "contrataciones@chls.bo",
+      "firstName": "IAN BENJAMIN",
+      "lastName": "PINTO MORALES",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "85544ea3-c48c-4eec-b9d1-bc08b80e4629",
+      "email": "zebcamisrf@sargentos.com.bo",
+      "firstName": "ISRAEL FERNANDO",
+      "lastName": "ZEBALLOS CAMACHO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "75ab279f-d6fa-4e56-a06f-d582a0cfb606",
+      "email": "jaimeanturiano@gmail.com",
+      "firstName": "JAIME RODRIEGO",
+      "lastName": "ANTURIANO GARCIA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "e942eb69-1fbd-43d3-bfc0-aa8749bf2be7",
+      "email": "marce1950@hotmail.com",
+      "firstName": "JAVIER MARCELO",
+      "lastName": "ALIAGA AYOROA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "df70c83d-51e2-4fef-9747-1e4617d7c470",
+      "email": "javiwilde@unete.com",
+      "firstName": "JAVIER SERGIO",
+      "lastName": "WILDE JORDAN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "1b20dbb6-9fe0-4160-893b-d2a17fe41660",
+      "email": "erick.almendras@gmail.com",
+      "firstName": "JEMIO ERICK ALBERTO",
+      "lastName": "ALMENDRAS ROCHA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2475b88b-bf95-4845-bfdd-32f4e8cd8c8b",
+      "email": "herrero@sargentos.com.bo",
+      "firstName": "JHONY",
+      "lastName": "CONDORI QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c35c680a-ad21-418b-9049-7dc1c113b8b5",
+      "email": "jimmy.arauco@gmail.com",
+      "firstName": "JIMMY DAVID",
+      "lastName": "ARAUCO GONZALES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2df9149c-350d-4953-8820-3b45c27a2580",
+      "email": "gerencia@medidentsalud.com",
+      "firstName": "JIMMY JUNIOR",
+      "lastName": "ARAUCO ROMERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "db9e3908-2a93-43db-8330-63ca4a350f12",
+      "email": "joaquin.antonio@gmail.com",
+      "firstName": "JOAQUIN GUILLERMO",
+      "lastName": "ANTONIO OSORIO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "eb1a6c59-923c-4e1d-8915-005e75eef837",
+      "email": "jgaramburo@hotmail.com",
+      "firstName": "JOAQUIN GUSTAVO",
+      "lastName": "ARAMBURO ANTEZANA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "90427016-7a0a-4aa9-bf54-8d9fa3987240",
+      "email": "j.ardiles.f@gmail.com",
+      "firstName": "JOAQUIN RODRIGO",
+      "lastName": "ARDILLES FIGUEREDO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ee3dbc5f-6629-4681-ae4a-09951e295a95",
+      "email": "linaresbolivia@gmail.com",
+      "firstName": "Jorge",
+      "lastName": "Espinoza",
+      "roles": [
+        {
+          "name": "SOCIO"
+        },
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "33ab24db-653a-4a01-9c6d-15fd57eff772",
+      "email": "jorgemj_obe@hotmail.com",
+      "firstName": "JORGE",
+      "lastName": "AQUIZE RENDON",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "18894648-8f66-4e5b-8b39-6a84d44bdf6e",
+      "email": "jamestegui@hotmail.com",
+      "firstName": "JORGE ALEJANDRO",
+      "lastName": "AMESTEGUI PACHECO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "7160c902-1839-46d7-a1b9-3579621b5949",
+      "email": "jor_alvarado@hotmail.com",
+      "firstName": "JORGE ANTONIO",
+      "lastName": "ALVARADO ALVAREZ PLATA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "c940be76-2ee0-4adc-a1c3-53393d810f68",
+      "email": "plasfilm@entelnet.bo",
+      "firstName": "JORGE HORACIO",
+      "lastName": "VILLEGAS JAUREGUI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "1b48bf02-2c56-4de3-8f9f-db59fc116df6",
+      "email": "rjyanezp@repsolypf.com",
+      "firstName": "JORGE NICOLAS",
+      "lastName": "YAÑEZ PADILLA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4f96e3f7-189f-4e8c-93c7-0f6a34546b18",
+      "email": "jabuday@gmail.com",
+      "firstName": "JORGE OMAR",
+      "lastName": "ABUDAY YAÑEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "cd0269df-68b7-4bc8-af49-3317bf0cbc5a",
+      "email": "jorgeantezan@hotmail.com",
+      "firstName": "JORGE ROBERTO",
+      "lastName": "ANTEZANA ALIAGA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4f5c74c3-422a-4682-8209-4a0f66fc18e6",
+      "email": "jorge.aramayo@gmail.com",
+      "firstName": "JORGE ROLANDO",
+      "lastName": "ARAMAYO MONTES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "c4b55268-5b57-408b-9adb-4d8ce2e33d8c",
+      "email": "drjsantezana@yahoo.com",
+      "firstName": "JORGE SANDRO",
+      "lastName": "ANTEZANA ARAMAYO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "715a39aa-10c2-4522-b918-a0a77dee679d",
+      "email": "ja959114@gmail.com",
+      "firstName": "JOSE",
+      "lastName": "ALFARO VALVERDE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ef4b601f-e6ea-4abd-9dc1-b05835000971",
+      "email": "tenis1@sargentos.com.bo",
+      "firstName": "JOSE ANTONIO",
+      "lastName": "MAMANI MAMANI",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "a031b64a-303f-475d-9d47-6fca6f3ea3bd",
+      "email": "jose-carlos.almanza@ec.europa.eu",
+      "firstName": "JOSE CARLOS",
+      "lastName": "ALMANZA VILLAROEL",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "93e12884-7eeb-45ab-b753-84560935a6d9",
+      "email": "mantenimiento.operativo@sargentos.com.bo",
+      "firstName": "JOSE LUIS",
+      "lastName": "ARUQUIPA MENDOZA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "f60fb60b-7fba-4b3f-bd83-d05134b6bf7a",
+      "email": "sereno2@sargentos.com.bo",
+      "firstName": "JOSE MARCELO",
+      "lastName": "RODAS ROMERO",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "de79b846-7fb6-4c59-8068-fd6400dff08c",
+      "email": "josemiguelarevalo@gmail.com",
+      "firstName": "JOSE MIGUEL",
+      "lastName": "AREVALO DEHEZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "9ef0a318-86e9-4021-91f1-7dd2364a694a",
+      "email": "moreliaruiz@gmail.com",
+      "firstName": "JOSE NOEL",
+      "lastName": "ZAMORA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "248fdb8c-793a-4f08-81a6-1e20fdb57f86",
+      "email": "ninoalvarezj@hotmail.com",
+      "firstName": "JOSE ROBERTO",
+      "lastName": "ALVAREZ JEREZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "9280df8c-fe10-4fe6-b500-d27a123c1d58",
+      "email": "mantenimiento.operativo2@sargentos.com.bo",
+      "firstName": "JUAN CARLOS",
+      "lastName": "BALLON GUAYGUA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "4f358982-81b9-4b15-ac20-67c523e43ffc",
+      "email": "cayozamorano@hotmail.com",
+      "firstName": "JUAN CARLOS",
+      "lastName": "ZAMORANO SOMOZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "70c57984-3516-411a-bc89-b1eb4e031e2f",
+      "email": "juan.carlos.zegarra.ayllon@gmail.com",
+      "firstName": "JUAN CARLOS",
+      "lastName": "ZEGARRA AYLON",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "60935358-a7ca-4579-8026-3c08de6a9b36",
+      "email": "jucazega@entelnet.bo",
+      "firstName": "JUAN CARLOS GONZALO",
+      "lastName": "ZEGARRA ARANDA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a145e1f2-1bbd-4612-a3c7-84423d6655fc",
+      "email": "juam.gabriel@gmail.com",
+      "firstName": "JUAN GABRIEL",
+      "lastName": "ALIAGA TERAN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4932bf95-1cd1-4c8a-a745-f395aab523f2",
+      "email": "gavaplas@hotmail.com",
+      "firstName": "JUAN LUIS",
+      "lastName": "ALIAGA CUSICANQUI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "b3bfeb8e-6e1f-427d-901b-7d32a19ad503",
+      "email": "ozegarrabogado@hotmail.com",
+      "firstName": "JUAN OSWALDO",
+      "lastName": "ZEGARRA FERNANDEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "77523740-220e-4657-80c4-8db2ff006352",
+      "email": "zammujjul@sargentos.com.bo",
+      "firstName": "JULIO",
+      "lastName": "ZAMORA MUJIA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "01abf618-523a-4a52-ba6d-d7f2a88e7c00",
+      "email": "arancibiajulio80@gmail.com",
+      "firstName": "JULIO ROBERTO",
+      "lastName": "ARANCIBIA RODRIGUEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "116395e5-d721-4e82-883f-74fccc05d9f3",
+      "email": "piscina@sargentos.com.bo",
+      "firstName": "KAREN MILENKA",
+      "lastName": "TORREZ GUZMAN",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "c03abb29-896c-4454-84cb-de77ad1cffc9",
+      "email": "karen.aguirre@toyosa.com",
+      "firstName": "KAREN VIVIANA",
+      "lastName": "AGUIRRE PORTUGAL",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "72204ee0-4827-4b64-aa10-6c54f818343b",
+      "email": "kalborta@hotmail.com",
+      "firstName": "KARINA ROCIO",
+      "lastName": "ALBORTA SOLARES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "558693e9-b639-47ca-a221-0b52d2d88ab0",
+      "email": "recepcionlidia@sargentos.com.bo",
+      "firstName": "LIDIA",
+      "lastName": "SALAZAR CHAMBI",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "48b4d9e2-ba4a-4403-83c1-e29806ea8f90",
+      "email": "asistente.ats@chls.bo",
+      "firstName": "LORENA JERALDY",
+      "lastName": "MAMANI HUANTO",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "ADMIN"
+        }
+      ]
+    },
+    {
+      "id": "fdd5b140-8b4d-4369-a280-c5555f667730",
+      "email": "luiwallgon@hotmail.com",
+      "firstName": "LUIS ANTONIO",
+      "lastName": "WALLPHER GONZALES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "555b23c9-b4cc-4b4a-9be3-0d11d38e3a9c",
+      "email": "fwildeb@gmail.com",
+      "firstName": "LUIS FERNANDO",
+      "lastName": "WILDE BENAVENTE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "d9f10afd-d9c1-407b-b5a3-c38e903e522c",
+      "email": "javierzubieta@me.com",
+      "firstName": "LUIS JAVIER",
+      "lastName": "ZUBIETA HERRERA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "f9f15aa6-9770-4c26-944c-4d0863035524",
+      "email": "capataz@sargentos.com.bo",
+      "firstName": "LUIS REYNALDO",
+      "lastName": "FLORES VARGAS",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "67c891a1-cd6d-4f09-bfdb-a7876d9994e7",
+      "email": "lsvilte@icc.com.bo",
+      "firstName": "LUIS SERGIO",
+      "lastName": "VILTE BELLIDO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "bda2eef4-f315-4926-8ea2-920720129e68",
+      "email": "balovillena@hotmail.com",
+      "firstName": "MANUEL ALBARO",
+      "lastName": "VILLENA MEDRANO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "13bdc9cd-6f4c-482d-9e45-1e82bfb1a165",
+      "email": "guardavidas1@sargentos.com.bo",
+      "firstName": "MANUEL JUAN",
+      "lastName": "RHU ZURITA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "1b555aca-9025-470d-b2d6-a0ea79a895fc",
+      "email": "sistemas@chls.bo",
+      "firstName": "MARCELO",
+      "lastName": "LINARES GUTIERREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "f7733be3-24c3-46ff-9ac1-1ed40b02752a",
+      "email": "mache.v@gmail.com",
+      "firstName": "MARCELO JAVIER",
+      "lastName": "VILLEGAS ALBA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4c69e326-ecbd-439a-88b5-2deeb64d64ea",
+      "email": "malcazarballes@gmail.com",
+      "firstName": "MARCO ANTONIO",
+      "lastName": "ALCAZAR BALLESTEROS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "8a46ca8c-b714-4760-ac12-1aa9bb9a7211",
+      "email": "arceirahola@gmail.com",
+      "firstName": "MARCO ANTONIO",
+      "lastName": "ARCE IRAHOLA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a2a72b28-6157-4988-85d6-66474565ffeb",
+      "email": "caja@asargentos.com.bo",
+      "firstName": "MARCO ANTONIO",
+      "lastName": "COLQUE GOMEZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTABILIDAD"
+        },
+        {
+          "name": "MODULO_FACTURACION"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "90767264-f8fc-4b2f-bfd0-c188cdab02d3",
+      "email": "asistente.a.h@sargentos.com.bo",
+      "firstName": "MARCOS AMERICO",
+      "lastName": "JUCUMANI POMA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "1578ccaf-19d5-4e46-97c4-5e29fc730441",
+      "email": "auxiliar.ats@sargentos.com.bo",
+      "firstName": "MARIA ALEXANDRA",
+      "lastName": "GUZMAN ANTEZANA",
+      "roles": [
+        {
+          "name": "MODULO_SOCIOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "10c0834c-8cb7-4374-a52e-9a5445eae4f8",
+      "email": "daisywunder@gmail.com",
+      "firstName": "MARIA DAISY GRETSEL",
+      "lastName": "WUNDER SALINAS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "b96165ea-ddfc-48f4-9fdd-e9b76065e054",
+      "email": "almacen@chls.bo",
+      "firstName": "MARIA DEL PILAR",
+      "lastName": "ATANACIO TOLA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "0e294a54-c1e0-4d8e-838e-1ae5c5eebb42",
+      "email": "maria.arias@gmail.com",
+      "firstName": "MARIANA",
+      "lastName": "ARIAS NUÑEZ",
+      "roles": [
+        {
+          "name": "SOCIO"
+        },
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "03f7c29e-3676-4bec-8536-8869c8af1839",
+      "email": "tiro1@sargentos.com.bo",
+      "firstName": "MARIANO",
+      "lastName": "BLANCO ZAPANA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "5d399853-cbbf-48dc-b226-90f5bc2ae656",
+      "email": "norkazabala18@gmail.com",
+      "firstName": "MARIBEL",
+      "lastName": "ZABALA NORKA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "c86372e4-b0d9-40c7-b49d-090fcb0c88bb",
+      "email": "aramayomario@hotmail.com",
+      "firstName": "MARIO ALBERTO",
+      "lastName": "ARAMAYO ANDULCE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "08dda5bb-7255-4633-bbad-a44ed3d0e3f0",
+      "email": "raqueluno@hotmail.com",
+      "firstName": "MARIO ALEJANDRO",
+      "lastName": "VIRREIRA TORO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "25708392-8ce6-4ca1-a4ba-d146123a122c",
+      "email": "danielaranda@hotmail.com",
+      "firstName": "MARIO DANIEL",
+      "lastName": "ARANDA PEÑARANDA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "20719259-4173-4a15-962a-4121bbe92800",
+      "email": "mario.alcocer@gmail.com",
+      "firstName": "MARIO DIEGO",
+      "lastName": "ALCOCER GALARZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a9d38495-ce78-458d-b3dd-5c9d5cc943a2",
+      "email": "ivanchumel@gmail.com",
+      "firstName": "MARIO IVAN",
+      "lastName": "ZUMELZU ALBARRACIN",
+      "roles": [
+        {
+          "name": "SOCIO"
+        },
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "13cfaac8-0f09-4d6d-90a2-9819a3b2d495",
+      "email": "marcheal@hotmail.com",
+      "firstName": "MARIO MARCELO",
+      "lastName": "AVAREZ FORRASTAL",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "8acd51bc-eb1c-4844-b8b2-10b16f09066c",
+      "email": "mantenimiento.operativo7@sargentos.com.bo",
+      "firstName": "MARTIN RODRIGO",
+      "lastName": "ROMERO SILVA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "82fd91a4-b619-46bb-827c-cfb1b8e208eb",
+      "email": "vilmenmara@sargentos.com.bo",
+      "firstName": "MARTINA AGUSTINA",
+      "lastName": "VILLEGAS MENDIZABAL",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "fcc47670-1f21-4b82-95cb-a1e2ff21c06f",
+      "email": "monicjimenez1@gmail.com",
+      "firstName": "MATEO ALEJANDRO",
+      "lastName": "WILDE JIMENEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "dfb7663c-0ef3-4d7d-8866-8e34cdd1eb47",
+      "email": "matias.alcocer@gmail.com",
+      "firstName": "MATIAS SANTIAGO",
+      "lastName": "ALCOCER GALARZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "30a99346-98db-4c1a-9e19-2e66542553f8",
+      "email": "mzaballa@gmail.com",
+      "firstName": "MAURICIO ERNESTO",
+      "lastName": "ZABALLA ROMERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "fe9ec0b9-e7b1-4ccd-8769-c9ff52c69621",
+      "email": "jhonnyaguilera2009@gmail.com",
+      "firstName": "MAXIMO JHONNY",
+      "lastName": "AGUILERA MONTECINOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4358898b-ad87-43d3-917d-fb355bc866d8",
+      "email": "marketing.ats@sargentos.com.bo",
+      "firstName": "MAYTE CAMILA AZENETH",
+      "lastName": "PAREDES CACHI",
+      "roles": [
+        {
+          "name": "MODULO_SOCIOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "ec420709-97e7-47a5-ae63-8e99bb9b58c4",
+      "email": "mensajeria@sargentos.com.bo",
+      "firstName": "Mensajero",
+      "lastName": "Oficial CHLS",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "806b70f9-85cb-46c2-b3aa-6e49ebf16776",
+      "email": "miguel.arancibia@gmail.com",
+      "firstName": "MIGUEL ALBERTO",
+      "lastName": "ARANCIBIA MEDRANO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2562dad2-34f8-4d9a-8128-23dce82ed12a",
+      "email": "ayudante.herrero@sargentos.com.bo",
+      "firstName": "MIGUEL ANGEL",
+      "lastName": "CONDORI QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "3b7bc131-d9c9-4300-be44-e02eea67c6b4",
+      "email": "zamburmil@sargentos.com.bo",
+      "firstName": "MILGUER",
+      "lastName": "ZAMBRANA BURGOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "0fa52cb8-c754-4cba-907a-35744bab3e2c",
+      "email": "miloche1@gmail.com",
+      "firstName": "MILIBOY MARIO",
+      "lastName": "ABASTOFLOR BARBERICH",
+      "roles": [
+        {
+          "name": "SOCIO"
+        },
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "dcf2aaea-0f1a-447b-ab08-e5c2235480b6",
+      "email": "secretaria@chls.bo",
+      "firstName": "MONICA",
+      "lastName": "IÑIGUEZ DURAN",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "a41c6242-440f-4fa4-9283-aa126ebf4e4a",
+      "email": "recaudaciones@chls.bo",
+      "firstName": "MONICA KAREN",
+      "lastName": "GONZALES ARAMAYO",
+      "roles": [
+        {
+          "name": "MODULO_USUARIO_PQRS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "0c667799-dfa2-4bc4-9cba-29f18c21ffe9",
+      "email": "vilsannata@sargentos.com.bo",
+      "firstName": "NATALIA ANAHI",
+      "lastName": "VILLAVICENCIO SANCHEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "d7648c4f-2987-4120-8b4f-499d8aa3cbae",
+      "email": "wilgalnatd@sargentos.com.bo",
+      "firstName": "NATALIA DENISE",
+      "lastName": "WILDE GALLO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "52bc7136-fa2f-4531-83c8-21256fb6048a",
+      "email": "nezepe@hotmail.com",
+      "firstName": "NELLY",
+      "lastName": "ZENTENO PEREIRA DE ALOISIO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "468c4716-9c0c-44d7-a8b4-1ce024b7a149",
+      "email": "nicolas..arauco@gmail.com",
+      "firstName": "NICOLAS ANDRE",
+      "lastName": "ARAUCO JIMENO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "3ce60f43-6a73-44a4-ac35-f5f972275377",
+      "email": "recepcionnoemi@sargentos.com.bo",
+      "firstName": "NOEMI CECILIA",
+      "lastName": "PALENQUE GUTIERREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "b1d6fe89-4e1a-4129-add8-9d0524d2d4cc",
+      "email": "oliver@alvestegui.com",
+      "firstName": "OLIVER ERNESTO MARCELO",
+      "lastName": "ALVESTEGUI SANCHEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "10ef2dab-c3e6-40e9-bd2b-6f058651e708",
+      "email": "sandra.aramayo@gmail.com",
+      "firstName": "ORIETTA SANDRA",
+      "lastName": "ARAMAYO MERCADO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ae83288c-46e3-48fb-891a-f2a14480e2f0",
+      "email": "os_af58@hotmail.com",
+      "firstName": "OSCAR",
+      "lastName": "ARANCIBIA FLORES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "5b82238e-8f6e-4091-9233-a8380efdea56",
+      "email": "oscar.zamora@cobee.com",
+      "firstName": "OSCAR DANIEL",
+      "lastName": "ZAMORA ARCE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "8d9707f7-80a2-4780-80ee-2fcdb52dfb59",
+      "email": "oscar.zaballa@impexpap.com",
+      "firstName": "OSCAR RODOLFO",
+      "lastName": "ZABALLA MONASTERIOS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a44a8d4b-4fea-4f93-a982-700eb4b56648",
+      "email": "pamelaalcoreza@gmail.com",
+      "firstName": "PAMELA",
+      "lastName": "ALCOREZA LORA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "de31859b-a3ae-401b-b2fc-c8306a633521",
+      "email": "paoceya.v@gmail.com",
+      "firstName": "PAOLA CECILIA",
+      "lastName": "YAÑEZ VALDEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "49625bc9-25a0-45de-8bed-e8105665630c",
+      "email": "paola_zapana@yahoo.com",
+      "firstName": "PAOLA CONSUELO",
+      "lastName": "ZAPANA CASTILLO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "229391e8-1887-4d34-b008-88f9ac8795da",
+      "email": "recepcion@chls.bo",
+      "firstName": "PAOLA VICTORIA",
+      "lastName": "BELZU QUISPE",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "95f8ba9b-8a16-4e08-999f-276ac2a0086c",
+      "email": "pati.acosta.fernandez@gmail.com",
+      "firstName": "PATRICIA JANETH",
+      "lastName": "ACOSTA FERNANDEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "e7c51114-6e76-409b-884e-98ef39226054",
+      "email": "gimnasio@sargentos.com.bo",
+      "firstName": "PEDRO",
+      "lastName": "ALVAREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "d09a0e7b-fab6-49e2-9f66-9fa6b73fb6f2",
+      "email": "mantenimiento.operativo6@sargentos.com.bo",
+      "firstName": "POLICARPIO",
+      "lastName": "MAMANI CALLISAYA",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "e361f7ca-8c1a-4fcf-a69f-438199888687",
+      "email": "rafael.arias@gmail.com",
+      "firstName": "RAFAEL",
+      "lastName": "ARIAS NUÑEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "c819eacb-6b3d-4dd7-a170-122f6458d52a",
+      "email": "mantenimiento.operativo1@sargentos.com.bo",
+      "firstName": "RAUL ALBERTO",
+      "lastName": "BALTAZAR MAMANI",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "4a451203-b758-4d94-b56a-27ce08a42179",
+      "email": "cecy_agui_vera@hotmail.com",
+      "firstName": "REBECA CECILIA",
+      "lastName": "AGUILERA VEGA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "e0a00431-6c5d-476c-b5e7-4e5819451b64",
+      "email": "recepcion.gimnasio@sargentos.com.bo",
+      "firstName": "RECEPCIONISTA",
+      "lastName": "GIMNASIO",
+      "roles": [
+        {
+          "name": "MODULO_CANCHAS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "8e01f2e3-d10c-4ba6-aff3-77592b2565dc",
+      "email": "recepcion.padel@sargentos.com.bo",
+      "firstName": "RECEPCIONISTA",
+      "lastName": "PADEL",
+      "roles": [
+        {
+          "name": "MODULO_CANCHAS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "4498087f-a992-4897-9859-90226423e42f",
+      "email": "recepcion.piscina@sargentos.com.bo",
+      "firstName": "RECEPCIONISTA",
+      "lastName": "PISCINA",
+      "roles": [
+        {
+          "name": "MODULO_CANCHAS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "f5205438-1ce1-4c4f-9a8a-fe55f83abf0f",
+      "email": "lais.rac@gmail.com",
+      "firstName": "RENATA LAIS",
+      "lastName": "ALMEIDA CRUZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "361e1785-efe2-4505-bdc7-c9e869699af3",
+      "email": "pistero@sargentos.com.bo",
+      "firstName": "RENATO",
+      "lastName": "SALAZAR CARITA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "62a7c6d6-71ed-44ad-a890-a09316b28961",
+      "email": "contrataciones@sargentos.com.bo",
+      "firstName": "Responsable",
+      "lastName": "de Contrataciones",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "e1da7515-8613-4560-85f7-753f736afcb2",
+      "email": "iva94aleman@gmail.com",
+      "firstName": "RICARDO IVAN",
+      "lastName": "ALEMAN MENDUIÑA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "dfbc6be7-d7eb-4dbf-b19c-98db41f6cf68",
+      "email": "comunicacion@chls.bo",
+      "firstName": "RICARDO LUIS",
+      "lastName": "GOMEZ GARCIA",
+      "roles": [
+        {
+          "name": "MODULO_CONTRATACIONES"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "e84826d6-8059-4e02-b283-1dfce1df96dc",
+      "email": "robert_ville@hotmail.com",
+      "firstName": "ROBERTO",
+      "lastName": "VILLEGAS ALBA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2046c240-b6fa-48d1-b999-20e1a0e68212",
+      "email": "rzentenothaine@gmail.com",
+      "firstName": "ROBERTO",
+      "lastName": "ZENTENO THAINE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4ba22a0d-971e-4f78-b131-eeff9c927500",
+      "email": "rzenteno@bnb.com.bo",
+      "firstName": "ROBERTO FIDEL ",
+      "lastName": "ZENTENO MENDOZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "87828b15-47bd-472e-9538-0e2ce778eee7",
+      "email": "rd_aguilera@hotmail.com",
+      "firstName": "RODOLFO DIEGO",
+      "lastName": "AGUILERA VERA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "23226429-2ec7-49e2-b5b8-a17c9c61d8be",
+      "email": "rodolfo.adler@gmail.com",
+      "firstName": "RODOLFO IGNACIO",
+      "lastName": "ADLER YAÑEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "d35bb007-0c09-46a8-b16c-0c2314d651f3",
+      "email": "tenis@sargentos.com.bo",
+      "firstName": "RODOLFO JAVIER",
+      "lastName": "HUANQUIRI YUJRA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "0f18d78a-ea2e-4938-9798-d2bdf8867b16",
+      "email": "donivanaleman@hotmail.com",
+      "firstName": "RODRIGO",
+      "lastName": "ALEMAN JADUE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "70643bee-e6a2-4721-9e1a-ed8626c054f8",
+      "email": "lizu@hotmail.com",
+      "firstName": "RODRIGO",
+      "lastName": "ZENTENO THAINE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "260da754-caca-4cea-9569-b78b127793ae",
+      "email": "rodrigo.daniel@gmail.com",
+      "firstName": "RODRIGO DANIEL",
+      "lastName": "APARICIO AMPUERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "46af52f9-ba5c-468f-ae54-1853d87e2aa7",
+      "email": "redaguilera@hotmail.com",
+      "firstName": "ROLY",
+      "lastName": "AGUILERA VERA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "167e3b98-bb89-43de-84f6-4a1871793fd7",
+      "email": "racuna@bolivialaw.com",
+      "firstName": "RUBEN",
+      "lastName": "ACUÑA ZALLES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "182bb083-8459-4feb-b9d9-925323236be9",
+      "email": "reac.roco@gmail.com",
+      "firstName": "RUBEN EUGENIO",
+      "lastName": "ARAMAYO CORTEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a6a344b3-93af-45b2-a85f-3d99765384f6",
+      "email": "sahara@gmail.com",
+      "firstName": "SAHARA KARINA",
+      "lastName": "ALBARRACIN RODRIGUEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "8d53a13a-8a25-4848-bef9-af77b0d7caff",
+      "email": "araoz@hotmail.com",
+      "firstName": "SANTIAGO",
+      "lastName": "ARAOZ DE VILLEGAS",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ed101053-b8f1-4fff-9469-56e069507e47",
+      "email": "monicjimenez@gmail.com",
+      "firstName": "SEBASTIAN ALBERTO",
+      "lastName": "WILDE JIMENEZ",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "6a509683-cece-4275-b3f9-56f795957350",
+      "email": "sampuero@hansa.com.bo",
+      "firstName": "SERGIO GERMAN",
+      "lastName": "AMPUERO PEÑARANDA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "609ac590-87f7-481c-a522-e9a975153db1",
+      "email": "rrhh@chls.bo",
+      "firstName": "SEVERO",
+      "lastName": "HUANCA MENDOZA",
+      "roles": [
+        {
+          "name": "MODULO_RRHH"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "6f20fd5e-e65d-499d-bd0e-e0d3a86109f3",
+      "email": "tecnico.ats@sargentos.com.bo",
+      "firstName": "SHEILA HELBERT",
+      "lastName": "ESPRELLA PIEROLA",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_CONTROL_ACCESO"
+        },
+        {
+          "name": "MODULO_PQRS"
+        },
+        {
+          "name": "ADMIN"
+        }
+      ]
+    },
+    {
+      "id": "36c89fab-3766-403b-b916-ddc6862d7a35",
+      "email": "salmanza@camachoasociados.com.bo",
+      "firstName": "SILVANA SANDRA",
+      "lastName": "ALMANZA ROMERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "39a28207-c616-44e1-ba07-2f3edca974eb",
+      "email": "sorelz@hotmail.com",
+      "firstName": "SOREL HUGO",
+      "lastName": "ZABALA ROSSO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "5356e173-f45f-437b-ba55-64b16de22dc5",
+      "email": "apoyocobranzas@sargentos.com.bo",
+      "firstName": "SUSANA CLAUDIA",
+      "lastName": "CARVAJAL CALDERON",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "31271a9c-f259-4ca3-94f4-a0943e2d4cb0",
+      "email": "sylviaramburo@hotmail.com",
+      "firstName": "SYLVIA CARLOTA",
+      "lastName": "ARAMBURO ANTEZANA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "3e91b770-85ad-402b-a93a-ca6185798b15",
+      "email": "rosiorivero33@gmail.com",
+      "firstName": "TALIA ROSIO",
+      "lastName": "YRIGOYEN RIVERO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "b7c1af08-c6cd-4484-93cd-b6f369f6d090",
+      "email": "legal@chls.bo",
+      "firstName": "TATIANA FELICIDAD",
+      "lastName": "PEREZ FERNANDEZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "4631d300-393a-4add-a690-7a41950c5fd6",
+      "email": "gerencia@sargentos.com.bo",
+      "firstName": "TITO NORMAN",
+      "lastName": "TORNERO RODRIGUEZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "MODULO_DIRECTORIO"
+        },
+        {
+          "name": "SUPER_ADMIN"
+        }
+      ]
+    },
+    {
+      "id": "5eaad69c-ef63-48e8-8803-f061c07c2b5c",
+      "email": "valentina.jodue@gmail.com",
+      "firstName": "VALENTINA",
+      "lastName": "ALEMAN JADUE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "32a88aed-b778-444c-946c-712ffeb85050",
+      "email": "responsable.mantenimiento@sargentos.com.bo",
+      "firstName": "VICENTE",
+      "lastName": "KUNO CONDORI",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "1faab415-8237-44f7-89d0-e752bae8cb93",
+      "email": "drzotesvaldivia@hotmail.com",
+      "firstName": "VICTOR HUGO",
+      "lastName": "ZOTES VALDIVIA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "2f013ac2-4890-49df-af89-6b37dc751e0f",
+      "email": "mantenimiento.operativo8@sargentos.com.bo",
+      "firstName": "VLADIMIR",
+      "lastName": "YUJRA LIPE",
+      "roles": [
+        {
+          "name": "MODULO_ACTIVOS_FIJOS"
+        },
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "856ef1d7-ca89-4131-9729-8a9e51f4be2e",
+      "email": "vladimir.aguirre@gmail.com",
+      "firstName": "VLADIMIR ALEJANDRO",
+      "lastName": "AGUIRRE MORALES",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "672d413e-df04-4ff0-97ac-1dbd67493548",
+      "email": "vladimir.alvarez@axsbolivia.net",
+      "firstName": "VLADIMIR FERNANDO",
+      "lastName": "ALVAREZ ROA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "aaf54f40-8d24-4b5e-ae66-1969438c24d1",
+      "email": "aguivlaiah@hotmail.com",
+      "firstName": "VLADIMIR IVAN",
+      "lastName": "AGUILERA AVENDAÑO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "181028cd-4ca4-46ca-9268-cc94f193b9b1",
+      "email": "walker.alarcon@gmail.com",
+      "firstName": "WALKER ANTONIO",
+      "lastName": "ALARCON BASCOPE",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "a60da0d5-0a81-45ff-bdb0-72fad0cf62d8",
+      "email": "giovanachaveznunez@gmail.com",
+      "firstName": "WILDER ELOY",
+      "lastName": "ANDRADE LANZA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "661c92df-479a-41a9-a94b-01397a37d0bf",
+      "email": "wyujra@gmail.com",
+      "firstName": "WILFREDO ",
+      "lastName": "YUJRA MAMANI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "917accfd-0581-4996-9bb2-8aca875bef78",
+      "email": "ferreringlesa@gmail.com",
+      "firstName": "XAVIER",
+      "lastName": "MOLINA WAYAR",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "64fc1f03-5545-42e8-a54a-99c7f9aca1d3",
+      "email": "yyaksic@yahoo.es",
+      "firstName": "YANHEL SOLANGE",
+      "lastName": "YAKSIC LAGUNA",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "ffba0a5b-4204-4353-82f9-7fde3665321e",
+      "email": "yab@constec.com.bo",
+      "firstName": "YECID",
+      "lastName": "ALIAGA BRUCH",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "535ea0f6-f0e9-4fa3-a58c-d050d7fc4d7d",
+      "email": "yecialiaga@hotmail.com",
+      "firstName": "YECID MARIO",
+      "lastName": "ALIAGA BADANI",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "4a967a5d-4b22-4352-a8b5-1c84f58deb62",
+      "email": "ayudante.pistero@sargentos.com.bo",
+      "firstName": "YHONNIE UBALDO",
+      "lastName": "CALLISAYA RAMIREZ",
+      "roles": [
+        {
+          "name": "MODULO_CORRESPONDENCIA"
+        },
+        {
+          "name": "STAFF"
+        }
+      ]
+    },
+    {
+      "id": "dd6d3146-9d49-409c-96d0-114c6e8342e7",
+      "email": "zcimportaciones@yahoo.com",
+      "firstName": "YOLANDA MARITZA",
+      "lastName": "ZAPANA CASTILLO",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    },
+    {
+      "id": "9a4f010e-47c8-455e-8d34-fba66e12fc0a",
+      "email": "yuri-zamorano@yahoo.com",
+      "firstName": "YURI ROBERTO",
+      "lastName": "ZAMORANO BRAUN",
+      "roles": [
+        {
+          "name": "USER"
+        }
+      ]
+    }
+  ],
+  "currentUserPrivileges": {
+    "canEdit": true,
+    "canDelete": true
+  },
   "workflow": {
     "nodes": [
       {
         "id": "node-gerencia-general",
         "type": "GERENCIA",
         "title": "GERENCIA GENERAL",
-        "subtitle": "Máxima Autoridad Ejecutiva (1)",
+        "subtitle": "GERENCIA GENERAL",
         "manager": "Gerente General",
         "areaKey": "GERENCIA GENERAL",
-        "x": 1780,
-        "y": -120,
+        "x": 1820,
+        "y": -420,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "gerencia@chls.bo",
-        "phone": "70110001"
+        "phone": "70110001",
+        "userIds": [
+          "0fa52cb8-c754-4cba-907a-35744bab3e2c",
+          "a9d38495-ce78-458d-b3dd-5c9d5cc943a2",
+          "0e294a54-c1e0-4d8e-838e-1ae5c5eebb42"
+        ],
+        "userId": "0fa52cb8-c754-4cba-907a-35744bab3e2c"
       },
       {
         "id": "node-secretaria",
         "type": "SECRETARIA",
-        "title": "SECRETARÍA",
-        "subtitle": "SECRETARÍA (1)",
-        "manager": "MONICA IÑIGUEZ DURAN",
+        "title": "SECRETARÍA DE GERENCIA GENERAL",
+        "subtitle": "Secretaría de Despacho (1)",
+        "manager": "Secretaria de Gerencia",
         "areaKey": "SECRETARÍA",
         "x": 1380,
-        "y": 40,
+        "y": -30,
         "slaHours": 24,
         "canReceiveExternal": true,
         "email": "secretaria@chls.bo",
@@ -439,7 +3469,7 @@
         "manager": "Mensajero Oficial",
         "areaKey": "MENSAJERO",
         "x": 1380,
-        "y": 180,
+        "y": 150,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "mensajeria@chls.bo",
@@ -452,8 +3482,8 @@
         "subtitle": "Dictámenes, Contratos y Normativa (1)",
         "manager": "Asesor Legal Principal",
         "areaKey": "ASESORÍA LEGAL",
-        "x": 2300,
-        "y": -60,
+        "x": 2450,
+        "y": -240,
         "slaHours": 72,
         "canReceiveExternal": false,
         "email": "legal@chls.bo",
@@ -466,8 +3496,8 @@
         "subtitle": "Convenios, Alianzas y Publicidad (1)",
         "manager": "Coordinador Comercial",
         "areaKey": "COORDINADOR COMERCIAL",
-        "x": 2220,
-        "y": 180,
+        "x": 1160,
+        "y": -260,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "comercial@chls.bo",
@@ -477,29 +3507,35 @@
         "id": "node-subgerencia-financiera",
         "type": "FINANZAS",
         "title": "JEFATURA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
-        "subtitle": "Finanzas, Contabilidad, Compras, Almacén y RRHH (1)",
-        "manager": "Jefatura Financiera y RRHH",
+        "subtitle": "JEFATURA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
+        "manager": "Subgerente Financiero y RRHH",
         "areaKey": "SUBGERENCIA DE OPERACIONES FINANCIERAS Y RECURSOS HUMANOS",
-        "x": 580,
-        "y": 340,
+        "x": 640,
+        "y": 50,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "finanzas@chls.bo",
-        "phone": "70110006"
+        "phone": "70110006",
+        "userIds": [
+          "54ed3af5-1f9b-4eb4-ad38-42612e5deea0"
+        ],
+        "userId": "54ed3af5-1f9b-4eb4-ad38-42612e5deea0"
       },
       {
         "id": "node-apoyo-jofrh",
         "type": "FINANZAS",
         "title": "APOYO J.O.F.R.H.",
-        "subtitle": "Asistencia a Jefatura de Operaciones Financieras (1)",
-        "manager": "Personal de Apoyo J.O.F.R.H.",
+        "subtitle": "APOYO J.O.F.R.H.",
+        "manager": "Vacante / Sin Asignar",
         "areaKey": "APOYO J.O.F.R.H.",
-        "x": -190,
-        "y": 280,
+        "x": 1020,
+        "y": 190,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "apoyo.finanzas@chls.bo",
-        "phone": "70110007"
+        "phone": "70110007",
+        "userIds": [],
+        "userId": null
       },
       {
         "id": "node-archivo",
@@ -508,8 +3544,8 @@
         "subtitle": "Custodia y Archivo Central Institucional (1)",
         "manager": "Responsable de Archivo",
         "areaKey": "ARCHIVO",
-        "x": 40,
-        "y": 520,
+        "x": 50,
+        "y": 510,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "archivo@chls.bo",
@@ -519,11 +3555,11 @@
         "id": "node-almacen",
         "type": "OPERACIONES",
         "title": "ALMACÉN",
-        "subtitle": "ALMACÉN (1)",
-        "manager": "MARIA DEL PILAR ATANACIO TOLA",
+        "subtitle": "Inventarios, Ingresos y Salidas de Material (1)",
+        "manager": "Encargado de Almacén",
         "areaKey": "ALMACÉN",
         "x": 330,
-        "y": 520,
+        "y": 510,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "almacen@chls.bo",
@@ -551,7 +3587,7 @@
         "manager": "Responsable de Contrataciones",
         "areaKey": "RESPONSABLE DE CONTRATACIONES",
         "x": 890,
-        "y": 520,
+        "y": 510,
         "slaHours": 48,
         "canReceiveExternal": false,
         "email": "contrataciones@chls.bo",
@@ -565,7 +3601,7 @@
         "manager": "Asistente de Contrataciones",
         "areaKey": "ASISTENTE ADMINISTRATIVO CONTRATACIONES",
         "x": 890,
-        "y": 740,
+        "y": 680,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "asistente.compras@chls.bo",
@@ -575,39 +3611,47 @@
         "id": "node-contabilidad",
         "type": "FINANZAS",
         "title": "ENCARGADO DE CONTABILIDAD",
-        "subtitle": "Estados Financieros, Balance e Impuestos (1)",
+        "subtitle": "ENCARGADO DE CONTABILIDAD",
         "manager": "Encargado de Contabilidad",
         "areaKey": "ENCARGADO DE CONTABILIDAD",
-        "x": 1170,
-        "y": 520,
+        "x": 1180,
+        "y": 510,
         "slaHours": 48,
         "canReceiveExternal": false,
         "email": "contabilidad@chls.bo",
-        "phone": "70110013"
+        "phone": "70110013",
+        "userIds": [
+          "1f11a6d7-6a2b-4954-ae60-4103701bda14"
+        ],
+        "userId": "1f11a6d7-6a2b-4954-ae60-4103701bda14"
       },
       {
         "id": "node-analista-contable",
         "type": "FINANZAS",
         "title": "ANALISTA CONTABLE",
-        "subtitle": "Asientos, Conciliaciones y Libros (1)",
+        "subtitle": "ANALISTA CONTABLE",
         "manager": "Analista Contable",
         "areaKey": "ANALISTA CONTABLE",
-        "x": 1170,
-        "y": 770,
+        "x": 1180,
+        "y": 680,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "analista.contable@chls.bo",
-        "phone": "70110014"
+        "phone": "70110014",
+        "userIds": [
+          "00466a40-67ea-4e1e-b214-f3e5fd6a9aee"
+        ],
+        "userId": "00466a40-67ea-4e1e-b214-f3e5fd6a9aee"
       },
       {
         "id": "node-recaudaciones",
         "type": "FINANZAS",
-        "title": "ANALISTA CONTABLE - RECAUDACIONES",
-        "subtitle": "ANALISTA CONTABLE - RECAUDACIONES (1)",
-        "manager": "MONICA KAREN GONZALES ARAMAYO",
+        "title": "GESTION DE COBRANZAS",
+        "subtitle": "Cobranza de Cuotas, Facturación y Caja (1)",
+        "manager": "Analista de Recaudaciones",
         "areaKey": "ANALISTA CONTABLE - RECAUDACIONES",
         "x": 1450,
-        "y": 520,
+        "y": 510,
         "slaHours": 48,
         "canReceiveExternal": false,
         "email": "recaudaciones@chls.bo",
@@ -617,25 +3661,29 @@
         "id": "node-cajero",
         "type": "FINANZAS",
         "title": "CAJERO",
-        "subtitle": "Cobros en Ventanilla y Medios de Pago (1)",
+        "subtitle": "CAJERO",
         "manager": "Cajero Principal",
         "areaKey": "CAJERO",
-        "x": 1450,
-        "y": 710,
+        "x": 1460,
+        "y": 680,
         "slaHours": 12,
         "canReceiveExternal": true,
         "email": "caja@chls.bo",
-        "phone": "70110016"
+        "phone": "70110016",
+        "userIds": [
+          "a2a72b28-6157-4988-85d6-66474565ffeb"
+        ],
+        "userId": "a2a72b28-6157-4988-85d6-66474565ffeb"
       },
       {
         "id": "node-apoyo-cobranzas",
         "type": "FINANZAS",
         "title": "APOYO COBRANZAS",
-        "subtitle": "APOYO COBRANZAS (1)",
-        "manager": "SUSANA CLAUDIA CARVAJAL CALDERON",
+        "subtitle": "Gestión de Cartera Morosa y Notificaciones (1)",
+        "manager": "Encargado de Cobranzas",
         "areaKey": "APOYO COBRANZAS",
         "x": 1450,
-        "y": 900,
+        "y": 840,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "cobranzas@chls.bo",
@@ -648,8 +3696,8 @@
         "subtitle": "Experiencia del Socio, Reclamos y Solicitudes (1)",
         "manager": "Subgerente de Atención al Socio",
         "areaKey": "SUBGERENCIA DE ATENCIÓN AL SOCIO",
-        "x": 1780,
-        "y": 340,
+        "x": 1820,
+        "y": -10,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "atencionsocio@chls.bo",
@@ -659,71 +3707,74 @@
         "id": "node-asistente-ats",
         "type": "RECEPCION",
         "title": "ASISTENTE A.T.S.",
-        "subtitle": "Asistencia a Subgerencia de Atención al Socio (1)",
-        "manager": "Asistente A.T.S.",
+        "subtitle": "ASISTENTE A.T.S.",
+        "manager": "Vacante / Sin Asignar",
         "areaKey": "ASISTENTE A.T.S.",
-        "x": 2080,
-        "y": 490,
+        "x": 2070,
+        "y": 230,
         "slaHours": 24,
         "canReceiveExternal": true,
         "email": "asistente.ats@chls.bo",
-        "phone": "70110019"
+        "phone": "70110019",
+        "userIds": [],
+        "userId": null
       },
       {
         "id": "node-tecnico-socio",
         "type": "RECEPCION",
         "title": "TÉCNICO ESPECIALISTA I",
-        "subtitle": "Atención Técnica y Trámites Especiales (1)",
+        "subtitle": "TÉCNICO ESPECIALISTA I",
         "manager": "Técnico Especialista",
         "areaKey": "TÉCNICO ESPECIALISTA I",
-        "x": 1780,
-        "y": 520,
+        "x": 1630,
+        "y": 280,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "tecnico.socio@chls.bo",
-        "phone": "70110020"
-      },
-      {
-        "id": "node-apoyo-ats",
-        "type": "RECEPCION",
-        "title": "APOYO A.T.S.",
-        "subtitle": "Atención a Socios y Visitantes (2)",
-        "manager": "Personal de Apoyo A.T.S.",
-        "areaKey": "APOYO A.T.S.",
-        "x": 1780,
-        "y": 680,
-        "slaHours": 24,
-        "canReceiveExternal": true,
-        "email": "apoyo.ats@chls.bo",
-        "phone": "70110021"
+        "phone": "70110020",
+        "userIds": [
+          "6f20fd5e-e65d-499d-bd0e-e0d3a86109f3"
+        ],
+        "userId": "6f20fd5e-e65d-499d-bd0e-e0d3a86109f3"
       },
       {
         "id": "node-recepcionistas",
         "type": "RECEPCION",
-        "title": "RECEPCIONISTA ATENCION AL SOCIO",
-        "subtitle": "RECEPCIONISTA ATENCION AL SOCIO (1)",
-        "manager": "NOEMI CECILIA PALENQUE GUTIERREZ",
+        "title": "RECEPCIONISTAS",
+        "subtitle": "RECEPCIONISTAS",
+        "manager": "Equipo de Recepción",
         "areaKey": "RECEPCIONISTAS",
-        "x": 1770,
-        "y": 910,
+        "x": 1780,
+        "y": 470,
         "slaHours": 12,
         "canReceiveExternal": true,
         "email": "recepcion@chls.bo",
-        "phone": "70110022"
+        "phone": "70110022",
+        "userIds": [
+          "3ce60f43-6a73-44a4-ac35-f5f972275377",
+          "af313d92-5d03-469d-b9d3-b02766efe36e",
+          "558693e9-b639-47ca-a221-0b52d2d88ab0"
+        ],
+        "userId": "3ce60f43-6a73-44a4-ac35-f5f972275377"
       },
       {
         "id": "node-asistente-toallas",
         "type": "OPERACIONES",
         "title": "ASISTENTE DE TOALLAS",
-        "subtitle": "Control y Entrega de Toallas a Socios (2)",
+        "subtitle": "ASISTENTE DE TOALLAS",
         "manager": "Asistente de Toallas",
         "areaKey": "ASISTENTE DE TOALLAS",
-        "x": 1770,
-        "y": 1090,
+        "x": 2070,
+        "y": 550,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "toallas@chls.bo",
-        "phone": "70110023"
+        "phone": "70110023",
+        "userIds": [
+          "53d506c3-6c6b-4693-af79-3ae3cca4ace6",
+          "bba595d8-9391-439f-abd5-9ce1eb27f266"
+        ],
+        "userId": "53d506c3-6c6b-4693-af79-3ae3cca4ace6"
       },
       {
         "id": "node-encargado-sistemas",
@@ -743,8 +3794,8 @@
         "id": "node-comunicacion",
         "type": "COMPRAS",
         "title": "COMUNICACIÓN",
-        "subtitle": "COMUNICACIÓN (1)",
-        "manager": "RICARDO LUIS GOMEZ GARCIA",
+        "subtitle": "Redes Sociales, Boletines y Comunicados (1)",
+        "manager": "Encargado de Comunicación",
         "areaKey": "COMUNICACIÓN",
         "x": 2360,
         "y": 520,
@@ -756,12 +3807,12 @@
       {
         "id": "node-jefe-mantenimiento",
         "type": "OPERACIONES",
-        "title": "JEFATURA DE MANTENIMIENTO",
-        "subtitle": "JEFATURA DE MANTENIMIENTO (1)",
-        "manager": "CRISTIAN ALEJANDRO GONZALES QUINT REINA",
+        "title": "JEFE DE MANTENIMIENTO",
+        "subtitle": "Infraestructura, Áreas Verdes, Pistas y Servicios (1)",
+        "manager": "Jefe de Mantenimiento",
         "areaKey": "JEFE DE MANTENIMIENTO",
         "x": 2680,
-        "y": 340,
+        "y": 470,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "mantenimiento@chls.bo",
@@ -771,71 +3822,102 @@
         "id": "node-piscinero",
         "type": "OPERACIONES",
         "title": "ASISTENTE PISCINERO",
-        "subtitle": "ASISTENTE PISCINERO (1)",
-        "manager": "MARCOS AMERICO JUCUMANI POMA",
+        "subtitle": "ASISTENTE PISCINERO",
+        "manager": "Asistente Piscinero",
         "areaKey": "ASISTENTE PISCINERO",
         "x": 2680,
-        "y": 520,
+        "y": 690,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "piscinero@chls.bo",
-        "phone": "70110027"
+        "phone": "70110027",
+        "userIds": [
+          "23caccb2-6e63-4912-98a7-3dbdd28a2831",
+          "63516f39-7d1d-4ad5-805b-f8bc96f80dab"
+        ],
+        "userId": "23caccb2-6e63-4912-98a7-3dbdd28a2831"
       },
       {
         "id": "node-asistente-tenis",
         "type": "DEPORTES",
         "title": "ASISTENTE CANCHAS TENIS",
-        "subtitle": "Riego, Mantenimiento de Arcilla y Canchas (2)",
+        "subtitle": "ASISTENTE CANCHAS TENIS",
         "manager": "Asistente de Canchas Tenis",
         "areaKey": "ASISTENTE CANCHAS TENIS",
         "x": 2680,
-        "y": 680,
+        "y": 840,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "tenis@chls.bo",
-        "phone": "70110028"
+        "phone": "70110028",
+        "userIds": [
+          "d35bb007-0c09-46a8-b16c-0c2314d651f3",
+          "ef4b601f-e6ea-4abd-9dc1-b05835000971"
+        ],
+        "userId": "d35bb007-0c09-46a8-b16c-0c2314d651f3"
       },
       {
         "id": "node-asistente-tiro",
         "type": "DEPORTES",
         "title": "ASISTENTE POLÍGONO DE TIRO",
-        "subtitle": "Línea de Tiro, Blancos y Seguridad (2)",
+        "subtitle": "ASISTENTE POLÍGONO DE TIRO",
         "manager": "Asistente Polígono",
         "areaKey": "ASISTENTE POLÍGONO DE TIRO",
         "x": 2680,
-        "y": 840,
+        "y": 1020,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "tiro@chls.bo",
-        "phone": "70110029"
+        "phone": "70110029",
+        "userIds": [
+          "eabfcb4c-913e-4ad9-a0b9-978dbf6b2119",
+          "03f7c29e-3676-4bec-8536-8869c8af1839"
+        ],
+        "userId": "eabfcb4c-913e-4ad9-a0b9-978dbf6b2119"
       },
       {
         "id": "node-personal-mantenimiento",
         "type": "OPERACIONES",
         "title": "PERSONAL DE MANTENIMIENTO",
-        "subtitle": "Cuadrilla General de Obras, Jardinería y Plomería (11)",
+        "subtitle": "PERSONAL DE MANTENIMIENTO",
         "manager": "Equipo de Mantenimiento",
         "areaKey": "PERSONAL DE MANTENIMIENTO",
         "x": 2680,
-        "y": 1000,
+        "y": 1180,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "mantenimiento.operativo@chls.bo",
-        "phone": "70110030"
+        "phone": "70110030",
+        "userIds": [
+          "93e12884-7eeb-45ab-b753-84560935a6d9",
+          "c819eacb-6b3d-4dd7-a170-122f6458d52a",
+          "9280df8c-fe10-4fe6-b500-d27a123c1d58",
+          "6c734a5c-0cd2-4b21-996e-8468dad56bdc",
+          "658f8040-7260-49f0-9c2e-bb94727aea60",
+          "861cb634-4b87-4bc0-8815-7c28ead58fea",
+          "d09a0e7b-fab6-49e2-9f66-9fa6b73fb6f2",
+          "8acd51bc-eb1c-4844-b8b2-10b16f09066c",
+          "2f013ac2-4890-49df-af89-6b37dc751e0f"
+        ],
+        "userId": "93e12884-7eeb-45ab-b753-84560935a6d9"
       },
       {
         "id": "node-encargado-hipica",
         "type": "DEPORTES",
-        "title": "ENCARGADO ÁREA HÍPICA",
-        "subtitle": "Caballerizas, Pistas de Salto, Picaderos y Equitación (1)",
+        "title": "COORDINADOR ADMINISTRATIVO - AREA HIPICA CAPATAZ",
+        "subtitle": "COORDINADOR ADMINISTRATIVO - AREA HIPICA CAPATAZ",
         "manager": "Capitán / Encargado de Hípica",
         "areaKey": "ENCARGADO ÁREA HÍPICA",
-        "x": 3080,
-        "y": 340,
+        "x": 3040,
+        "y": 280,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "hipica@chls.bo",
-        "phone": "70110031"
+        "phone": "70110031",
+        "userIds": [
+          "f9f15aa6-9770-4c26-944c-4d0863035524"
+        ],
+        "userId": "f9f15aa6-9770-4c26-944c-4d0863035524"
       },
       {
         "id": "node-veterinario",
@@ -844,8 +3926,8 @@
         "subtitle": "Sanidad Animal, Control de Caballos y Vacunación (1)",
         "manager": "Médico Veterinario",
         "areaKey": "MÉDICO VETERINARIO",
-        "x": 3080,
-        "y": 540,
+        "x": 3040,
+        "y": 440,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "veterinaria@chls.bo",
@@ -855,71 +3937,92 @@
         "id": "node-pistero",
         "type": "DEPORTES",
         "title": "PISTERO",
-        "subtitle": "Armado de Pistas y Obstáculos de Salto (1)",
+        "subtitle": "PISTERO",
         "manager": "Pistero Principal",
         "areaKey": "PISTERO",
-        "x": 3080,
-        "y": 680,
+        "x": 3040,
+        "y": 590,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "pistero@chls.bo",
-        "phone": "70110033"
+        "phone": "70110033",
+        "userIds": [
+          "361e1785-efe2-4505-bdc7-c9e869699af3"
+        ],
+        "userId": "361e1785-efe2-4505-bdc7-c9e869699af3"
       },
       {
         "id": "node-ayudante-pistero",
         "type": "DEPORTES",
         "title": "AYUDANTE PISTERO",
-        "subtitle": "Soporte de Pista y Salto (1)",
+        "subtitle": "AYUDANTE PISTERO",
         "manager": "Ayudante Pistero",
         "areaKey": "AYUDANTE PISTERO",
-        "x": 3360,
-        "y": 680,
+        "x": 3400,
+        "y": 800,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "ayudante.pistero@chls.bo",
-        "phone": "70110034"
+        "phone": "70110034",
+        "userIds": [
+          "4a967a5d-4b22-4352-a8b5-1c84f58deb62"
+        ],
+        "userId": "4a967a5d-4b22-4352-a8b5-1c84f58deb62"
       },
       {
         "id": "node-herrero",
         "type": "DEPORTES",
         "title": "HERRERO",
-        "subtitle": "Herrería y Cuidado de Cascos Equinos (1)",
+        "subtitle": "HERRERO",
         "manager": "Herrero Oficial",
         "areaKey": "HERRERO",
-        "x": 3080,
-        "y": 840,
+        "x": 3040,
+        "y": 750,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "herrero@chls.bo",
-        "phone": "70110035"
+        "phone": "70110035",
+        "userIds": [
+          "2475b88b-bf95-4845-bfdd-32f4e8cd8c8b"
+        ],
+        "userId": "2475b88b-bf95-4845-bfdd-32f4e8cd8c8b"
       },
       {
         "id": "node-ayudante-herrero",
         "type": "DEPORTES",
         "title": "AYUDANTE HERRERO",
-        "subtitle": "Soporte de Herrería (1)",
+        "subtitle": "AYUDANTE HERRERO",
         "manager": "Ayudante de Herrero",
         "areaKey": "AYUDANTE HERRERO",
-        "x": 3440,
-        "y": 990,
+        "x": 3410,
+        "y": 1020,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "ayudante.herrero@chls.bo",
-        "phone": "70110036"
+        "phone": "70110036",
+        "userIds": [
+          "2562dad2-34f8-4d9a-8128-23dce82ed12a"
+        ],
+        "userId": "2562dad2-34f8-4d9a-8128-23dce82ed12a"
       },
       {
         "id": "node-sereno",
         "type": "OPERACIONES",
         "title": "SERENO",
-        "subtitle": "Guardia Nocturna y Seguridad de Caballerizas (3)",
+        "subtitle": "SERENO",
         "manager": "Personal de Seguridad / Serenos",
         "areaKey": "SERENO",
-        "x": 3080,
-        "y": 1000,
+        "x": 3040,
+        "y": 1120,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "sereno@chls.bo",
-        "phone": "70110037"
+        "phone": "70110037",
+        "userIds": [
+          "3095eba5-89cb-4b88-80cd-12cfb821e3a6",
+          "f60fb60b-7fba-4b3f-bd83-d05134b6bf7a"
+        ],
+        "userId": "3095eba5-89cb-4b88-80cd-12cfb821e3a6"
       },
       {
         "id": "node-caballerizo",
@@ -928,8 +4031,8 @@
         "subtitle": "Alimentación, Limpieza y Cuidado de Caballos (18)",
         "manager": "Equipo de Caballerizos",
         "areaKey": "CABALLERIZO",
-        "x": 3080,
-        "y": 1160,
+        "x": 3040,
+        "y": 950,
         "slaHours": 24,
         "canReceiveExternal": false,
         "email": "caballerizos@chls.bo",
@@ -939,60 +4042,264 @@
         "id": "node-supervisor-gimnasio",
         "type": "DEPORTES",
         "title": "SUPERVISOR GIMNASIO",
-        "subtitle": "Acondicionamiento Físico, Máquinas y Entrenadores (1)",
+        "subtitle": "SUPERVISOR GIMNASIO",
         "manager": "Supervisor de Gimnasio",
         "areaKey": "SUPERVISOR GIMNASIO",
-        "x": 3760,
-        "y": 180,
+        "x": 3670,
+        "y": 310,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "gimnasio@chls.bo",
-        "phone": "70110039"
+        "phone": "70110039",
+        "userIds": [
+          "e7c51114-6e76-409b-884e-98ef39226054"
+        ],
+        "userId": "e7c51114-6e76-409b-884e-98ef39226054"
       },
       {
         "id": "node-supervisor-piscina",
         "type": "DEPORTES",
-        "title": "SUPERVISOR PISCINA",
-        "subtitle": "Piscina Techada, Cursos y Operación Acuática (1)",
+        "title": "DIRECTORA DE NATACION",
+        "subtitle": "DIRECTORA DE NATACION",
         "manager": "Supervisor de Piscina",
         "areaKey": "SUPERVISOR PISCINA",
         "x": 3960,
-        "y": 340,
+        "y": 310,
         "slaHours": 48,
         "canReceiveExternal": true,
         "email": "piscina@chls.bo",
-        "phone": "70110040"
+        "phone": "70110040",
+        "userIds": [
+          "116395e5-d721-4e82-883f-74fccc05d9f3"
+        ],
+        "userId": "116395e5-d721-4e82-883f-74fccc05d9f3"
       },
       {
         "id": "node-guardavidas",
         "type": "DEPORTES",
         "title": "GUARDAVIDAS",
-        "subtitle": "Seguridad Acuática y Rescate (2)",
+        "subtitle": "GUARDAVIDAS",
         "manager": "Equipo de Guardavidas",
         "areaKey": "GUARDAVIDAS",
         "x": 3960,
-        "y": 580,
+        "y": 680,
         "slaHours": 12,
         "canReceiveExternal": false,
         "email": "guardavidas@chls.bo",
-        "phone": "70110041"
+        "phone": "70110041",
+        "userIds": [
+          "66ce23f6-d3be-471f-9825-41803339ff0e",
+          "13bdc9cd-6f4c-482d-9e45-1e82bfb1a165"
+        ],
+        "userId": "66ce23f6-d3be-471f-9825-41803339ff0e"
       },
       {
-        "id": "node-1788377976037",
+        "id": "node-1792177791648",
         "type": "DEPORTES",
-        "title": "JEFE DE DEPORTES",
-        "subtitle": "Deportes del CHLS",
-        "manager": "Jefe de deportes",
+        "title": "JEFE DEPORTIVO",
+        "subtitle": "JEFE DEPORTIVO",
+        "manager": "Alberto Arellano",
         "areaKey": "GERENCIA GENERAL",
-        "x": 3460,
+        "x": 4250,
         "y": 310,
         "slaHours": 48,
         "canReceiveExternal": false,
-        "email": "",
-        "phone": ""
+        "email": "deportes@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "905bd165-7d01-4199-a019-bb46ab72cda6"
+        ],
+        "userId": "905bd165-7d01-4199-a019-bb46ab72cda6"
+      },
+      {
+        "id": "node-1792793032186",
+        "type": "OPERACIONES",
+        "title": "AUXILIAR A.T.S.",
+        "subtitle": "AUXILIAR A.T.S.",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 2070,
+        "y": 400,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "auxiliar.ats@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "1578ccaf-19d5-4e46-97c4-5e29fc730441"
+        ],
+        "userId": "1578ccaf-19d5-4e46-97c4-5e29fc730441"
+      },
+      {
+        "id": "node-1792793536997",
+        "type": "OPERACIONES",
+        "title": "RESPONSABLE DE MANTENIMINETO",
+        "subtitle": "RESPONSABLE DE MANTENIMINETO",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 2380,
+        "y": 730,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "responsable.mantenimiento@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "32a88aed-b778-444c-946c-712ffeb85050"
+        ],
+        "userId": "32a88aed-b778-444c-946c-712ffeb85050"
+      },
+      {
+        "id": "node-1792795255145",
+        "type": "DEPORTES",
+        "title": "SUPERVISOR AREA HIPICA",
+        "subtitle": "SUPERVISOR AREA HIPICA",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 3390,
+        "y": 310,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "supervisor.hipica@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "9c592b6f-2931-4f28-b81a-f5a7bce69275"
+        ],
+        "userId": "9c592b6f-2931-4f28-b81a-f5a7bce69275"
+      },
+      {
+        "id": "node-1792795340834",
+        "type": "DEPORTES",
+        "title": "SUPERVISOR DE RAQUETBOL",
+        "subtitle": "SUPERVISOR DE RAQUETBOL",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 4250,
+        "y": 500,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "supervisor.raquet@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "1d2481bc-bcbf-40ea-8dc8-999fe445dcf4"
+        ],
+        "userId": "1d2481bc-bcbf-40ea-8dc8-999fe445dcf4"
+      },
+      {
+        "id": "node-1792795588221",
+        "type": "DEPORTES",
+        "title": "PROFESORA DE NATACION",
+        "subtitle": "PROFESORA DE NATACION",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 3960,
+        "y": 500,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "profesora.natacion@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "fba7ee96-6b17-459e-ab67-c30d4f983a1d"
+        ],
+        "userId": "fba7ee96-6b17-459e-ab67-c30d4f983a1d"
+      },
+      {
+        "id": "node-1792797532311",
+        "type": "DEPORTES",
+        "title": "RECEPCIONISTA PISCINA",
+        "subtitle": "RECEPCIONISTA PISCINA",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 1880,
+        "y": 1000,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "recepcion.piscina@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "4498087f-a992-4897-9859-90226423e42f"
+        ],
+        "userId": "4498087f-a992-4897-9859-90226423e42f"
+      },
+      {
+        "id": "node-1792797578212",
+        "type": "DEPORTES",
+        "title": "RECEPCIONISTA PADEL",
+        "subtitle": "RECEPCIONISTA PADEL",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 2070,
+        "y": 850,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "recepcion.padel@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "8e01f2e3-d10c-4ba6-aff3-77592b2565dc"
+        ],
+        "userId": "8e01f2e3-d10c-4ba6-aff3-77592b2565dc"
+      },
+      {
+        "id": "node-1792797622822",
+        "type": "DEPORTES",
+        "title": "RECEPCIONISTA GIMNASIO",
+        "subtitle": "RECEPCIONISTA GIMNASIO",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 1720,
+        "y": 850,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "recepcion.gimnasio@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "e0a00431-6c5d-476c-b5e7-4e5819451b64"
+        ],
+        "userId": "e0a00431-6c5d-476c-b5e7-4e5819451b64"
+      },
+      {
+        "id": "node-1792798009484",
+        "type": "FINANZAS",
+        "title": "AUXILIAR CONTABLE",
+        "subtitle": "AUXILIAR CONTABLE",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 1180,
+        "y": 840,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "auxcontabilidad@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "fa1440b7-fb71-4b49-bf60-296bab7a5e24"
+        ],
+        "userId": "fa1440b7-fb71-4b49-bf60-296bab7a5e24"
+      },
+      {
+        "id": "node-1792798475549",
+        "type": "DEPORTES",
+        "title": "ASISTENTE DE AREA HUMEDA",
+        "subtitle": "ASISTENTE DE AREA HUMEDA",
+        "manager": "Funcionario Responsable",
+        "areaKey": "GERENCIA GENERAL",
+        "x": 3960,
+        "y": 850,
+        "slaHours": 48,
+        "canReceiveExternal": false,
+        "email": "asistente.a.h@sargentos.com.bo",
+        "phone": "",
+        "userIds": [
+          "90767264-f8fc-4b2f-bfd0-c188cdab02d3"
+        ],
+        "userId": "90767264-f8fc-4b2f-bfd0-c188cdab02d3"
       }
     ],
     "edges": [
+      {
+        "id": "e-ger-sec",
+        "source": "node-gerencia-general",
+        "target": "node-secretaria",
+        "label": "Despacho & Asistencia",
+        "style": "HIERARCHICAL"
+      },
       {
         "id": "e-sec-men",
         "source": "node-secretaria",
@@ -1001,402 +4308,339 @@
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788374561600",
+        "id": "e-ger-leg",
         "source": "node-gerencia-general",
         "target": "node-asesoria-legal",
-        "label": "Derivación GERENCIA ➔ ASESORÍA",
+        "label": "Asesoría Legal",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788376279981",
-        "source": "node-gerencia-general",
-        "target": "node-secretaria",
-        "label": "Derivación GERENCIA ➔ SECRETARÍA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788376283088",
-        "source": "node-gerencia-general",
-        "target": "node-subgerencia-socio",
-        "label": "Derivación GERENCIA ➔ SUBGERENCIA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788376594441",
-        "source": "node-subgerencia-financiera",
-        "target": "node-archivo",
-        "label": "Derivación SUBGERENCIA ➔ ARCHIVO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788376600756",
-        "source": "node-subgerencia-financiera",
-        "target": "node-apoyo-jofrh",
-        "label": "Derivación SUBGERENCIA ➔ APOYO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788376603696",
-        "source": "node-subgerencia-financiera",
-        "target": "node-almacen",
-        "label": "Derivación SUBGERENCIA ➔ ALMACÉN",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377845279",
-        "source": "node-subgerencia-financiera",
-        "target": "node-rrhh",
-        "label": "Derivación SUBGERENCIA ➔ RECURSOS",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377848617",
-        "source": "node-subgerencia-financiera",
-        "target": "node-contrataciones",
-        "label": "Derivación SUBGERENCIA ➔ RESPONSABLE",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377851800",
-        "source": "node-subgerencia-financiera",
-        "target": "node-asistente-contrataciones",
-        "label": "Derivación SUBGERENCIA ➔ ASISTENTE",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377854877",
-        "source": "node-subgerencia-financiera",
-        "target": "node-contabilidad",
-        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377857988",
-        "source": "node-contrataciones",
-        "target": "node-asistente-contrataciones",
-        "label": "Derivación RESPONSABLE ➔ ASISTENTE",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377860845",
-        "source": "node-contabilidad",
-        "target": "node-analista-contable",
-        "label": "Derivación ENCARGADO ➔ ANALISTA",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377864456",
-        "source": "node-subgerencia-financiera",
-        "target": "node-analista-contable",
-        "label": "Derivación SUBGERENCIA ➔ ANALISTA",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377873296",
-        "source": "node-subgerencia-financiera",
-        "target": "node-recaudaciones",
-        "label": "Derivación SUBGERENCIA ➔ ANALISTA",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377876137",
-        "source": "node-subgerencia-financiera",
-        "target": "node-cajero",
-        "label": "Derivación SUBGERENCIA ➔ CAJERO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377879463",
-        "source": "node-subgerencia-financiera",
-        "target": "node-apoyo-cobranzas",
-        "label": "Derivación SUBGERENCIA ➔ APOYO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377888542",
-        "source": "node-recaudaciones",
-        "target": "node-cajero",
-        "label": "Derivación ANALISTA ➔ CAJERO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377891589",
-        "source": "node-cajero",
-        "target": "node-apoyo-cobranzas",
-        "label": "Derivación CAJERO ➔ APOYO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377897454",
-        "source": "node-subgerencia-socio",
-        "target": "node-tecnico-socio",
-        "label": "Derivación SUBGERENCIA ➔ TÉCNICO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377899979",
-        "source": "node-subgerencia-socio",
-        "target": "node-apoyo-ats",
-        "label": "Derivación SUBGERENCIA ➔ APOYO",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377903397",
-        "source": "node-subgerencia-socio",
-        "target": "node-recepcionistas",
-        "label": "Derivación SUBGERENCIA ➔ RECEPCIONISTAS",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377911676",
-        "source": "node-subgerencia-socio",
-        "target": "node-asistente-ats",
-        "label": "Derivación SUBGERENCIA ➔ ASISTENTE",
-        "style": "OPERATIONAL"
-      },
-      {
-        "id": "edge-1788377920919",
+        "id": "e-ger-com",
         "source": "node-gerencia-general",
         "target": "node-coordinador-comercial",
-        "label": "Derivación GERENCIA ➔ COORDINADOR",
+        "label": "Comercial & Convenios",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788377930372",
+        "id": "e-ger-fin",
+        "source": "node-gerencia-general",
+        "target": "node-subgerencia-financiera",
+        "label": "Línea Financiera & RRHH",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "e-fin-apo",
+        "source": "node-subgerencia-financiera",
+        "target": "node-apoyo-jofrh",
+        "label": "Apoyo Jefatura",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-arc",
+        "source": "node-subgerencia-financiera",
+        "target": "node-archivo",
+        "label": "Archivo Central",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-alm",
+        "source": "node-subgerencia-financiera",
+        "target": "node-almacen",
+        "label": "Almacén",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-rrh",
+        "source": "node-subgerencia-financiera",
+        "target": "node-rrhh",
+        "label": "RRHH",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-con",
+        "source": "node-subgerencia-financiera",
+        "target": "node-contrataciones",
+        "label": "Contrataciones",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-con-asi",
+        "source": "node-contrataciones",
+        "target": "node-asistente-contrataciones",
+        "label": "Asistente",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-cnt",
+        "source": "node-subgerencia-financiera",
+        "target": "node-contabilidad",
+        "label": "Contabilidad",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-cnt-ana",
+        "source": "node-contabilidad",
+        "target": "node-analista-contable",
+        "label": "Analista",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-fin-rec",
+        "source": "node-subgerencia-financiera",
+        "target": "node-recaudaciones",
+        "label": "Recaudaciones",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-rec-caj",
+        "source": "node-recaudaciones",
+        "target": "node-cajero",
+        "label": "Caja",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-rec-cob",
+        "source": "node-recaudaciones",
+        "target": "node-apoyo-cobranzas",
+        "label": "Cobranzas",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-ger-soc",
+        "source": "node-gerencia-general",
+        "target": "node-subgerencia-socio",
+        "label": "Línea Atención al Socio",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "e-soc-asi",
+        "source": "node-subgerencia-socio",
+        "target": "node-asistente-ats",
+        "label": "Asistente A.T.S.",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-soc-tec",
+        "source": "node-subgerencia-socio",
+        "target": "node-tecnico-socio",
+        "label": "Técnico I",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-soc-rec",
+        "source": "node-subgerencia-socio",
+        "target": "node-recepcionistas",
+        "label": "Recepción",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-soc-toa",
+        "source": "node-subgerencia-socio",
+        "target": "node-asistente-toallas",
+        "label": "Toallas",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-ger-sis",
         "source": "node-gerencia-general",
         "target": "node-encargado-sistemas",
-        "label": "Derivación GERENCIA ➔ ENCARGADO",
+        "label": "Línea Sistemas & TI",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788377932429",
+        "id": "e-sis-com",
         "source": "node-encargado-sistemas",
         "target": "node-comunicacion",
-        "label": "Derivación ENCARGADO ➔ COMUNICACIÓN",
+        "label": "Comunicación",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788377939771",
+        "id": "e-ger-man",
         "source": "node-gerencia-general",
         "target": "node-jefe-mantenimiento",
-        "label": "Derivación GERENCIA ➔ JEFE",
+        "label": "Línea Mantenimiento",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788377949691",
+        "id": "e-man-pis",
+        "source": "node-jefe-mantenimiento",
+        "target": "node-piscinero",
+        "label": "Piscinas",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-man-ten",
+        "source": "node-jefe-mantenimiento",
+        "target": "node-asistente-tenis",
+        "label": "Tenis",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-man-tir",
+        "source": "node-jefe-mantenimiento",
+        "target": "node-asistente-tiro",
+        "label": "Polígono de Tiro",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-man-ope",
+        "source": "node-jefe-mantenimiento",
+        "target": "node-personal-mantenimiento",
+        "label": "Cuadrilla Mantenimiento",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "e-ger-hip",
         "source": "node-gerencia-general",
         "target": "node-encargado-hipica",
-        "label": "Derivación GERENCIA ➔ ENCARGADO",
+        "label": "Línea Hípica",
         "style": "HIERARCHICAL"
       },
       {
-        "id": "edge-1788378084201",
-        "source": "node-gerencia-general",
-        "target": "node-1788377976037",
-        "label": "Derivación GERENCIA ➔ JEFE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378102099",
-        "source": "node-gerencia-general",
-        "target": "node-veterinario",
-        "label": "Derivación GERENCIA ➔ MÉDICO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378105203",
+        "id": "e-hip-vet",
         "source": "node-encargado-hipica",
         "target": "node-veterinario",
-        "label": "Derivación ENCARGADO ➔ MÉDICO",
+        "label": "Veterinaria",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378130093",
-        "source": "node-gerencia-general",
-        "target": "node-mensajero",
-        "label": "Derivación GERENCIA ➔ MENSAJERO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378134512",
-        "source": "node-gerencia-general",
-        "target": "node-subgerencia-financiera",
-        "label": "Derivación GERENCIA ➔ SUBGERENCIA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378142078",
-        "source": "node-gerencia-general",
-        "target": "node-recaudaciones",
-        "label": "Derivación GERENCIA ➔ ANALISTA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378145885",
-        "source": "node-gerencia-general",
-        "target": "node-contabilidad",
-        "label": "Derivación GERENCIA ➔ ENCARGADO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378149091",
-        "source": "node-gerencia-general",
-        "target": "node-contrataciones",
-        "label": "Derivación GERENCIA ➔ RESPONSABLE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378331286",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-jofrh",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378335710",
-        "source": "node-gerencia-general",
-        "target": "node-archivo",
-        "label": "Derivación GERENCIA ➔ ARCHIVO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378341717",
-        "source": "node-gerencia-general",
-        "target": "node-almacen",
-        "label": "Derivación GERENCIA ➔ ALMACÉN",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378347007",
-        "source": "node-gerencia-general",
-        "target": "node-rrhh",
-        "label": "Derivación GERENCIA ➔ RECURSOS",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378384396",
-        "source": "node-gerencia-general",
-        "target": "node-asistente-contrataciones",
-        "label": "Derivación GERENCIA ➔ ASISTENTE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378389415",
-        "source": "node-gerencia-general",
-        "target": "node-analista-contable",
-        "label": "Derivación GERENCIA ➔ ANALISTA",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378393570",
-        "source": "node-gerencia-general",
-        "target": "node-cajero",
-        "label": "Derivación GERENCIA ➔ CAJERO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378397680",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-cobranzas",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378446592",
-        "source": "node-gerencia-general",
-        "target": "node-tecnico-socio",
-        "label": "Derivación GERENCIA ➔ TÉCNICO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378453228",
-        "source": "node-gerencia-general",
-        "target": "node-asistente-ats",
-        "label": "Derivación GERENCIA ➔ ASISTENTE",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378457902",
-        "source": "node-gerencia-general",
-        "target": "node-apoyo-ats",
-        "label": "Derivación GERENCIA ➔ APOYO",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378464030",
-        "source": "node-gerencia-general",
-        "target": "node-recepcionistas",
-        "label": "Derivación GERENCIA ➔ RECEPCIONISTAS",
-        "style": "HIERARCHICAL"
-      },
-      {
-        "id": "edge-1788378627445",
-        "source": "node-subgerencia-financiera",
-        "target": "node-subgerencia-socio",
-        "label": "Derivación SUBGERENCIA ➔ SUBGERENCIA",
+        "id": "e-hip-pis",
+        "source": "node-encargado-hipica",
+        "target": "node-pistero",
+        "label": "Pistas",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378632244",
-        "source": "node-subgerencia-socio",
-        "target": "node-subgerencia-financiera",
-        "label": "Derivación SUBGERENCIA ➔ SUBGERENCIA",
+        "id": "e-pis-ayu",
+        "source": "node-pistero",
+        "target": "node-ayudante-pistero",
+        "label": "Ayudante",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378697650",
-        "source": "node-subgerencia-socio",
-        "target": "node-encargado-sistemas",
-        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "id": "e-hip-her",
+        "source": "node-encargado-hipica",
+        "target": "node-herrero",
+        "label": "Herrería",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378700072",
-        "source": "node-subgerencia-socio",
-        "target": "node-jefe-mantenimiento",
-        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "id": "e-her-ayu",
+        "source": "node-herrero",
+        "target": "node-ayudante-herrero",
+        "label": "Ayudante",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378707610",
-        "source": "node-subgerencia-socio",
-        "target": "node-encargado-hipica",
-        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "id": "e-hip-ser",
+        "source": "node-encargado-hipica",
+        "target": "node-sereno",
+        "label": "Serenos",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378711134",
-        "source": "node-subgerencia-socio",
-        "target": "node-1788377976037",
-        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "id": "e-hip-cab",
+        "source": "node-encargado-hipica",
+        "target": "node-caballerizo",
+        "label": "Caballerizos",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378726603",
-        "source": "node-subgerencia-financiera",
-        "target": "node-encargado-sistemas",
-        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "id": "e-ger-gim",
+        "source": "node-gerencia-general",
+        "target": "node-supervisor-gimnasio",
+        "label": "Línea Gimnasio",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "e-ger-psc",
+        "source": "node-gerencia-general",
+        "target": "node-supervisor-piscina",
+        "label": "Línea Piscina",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1792698687469",
+        "source": "node-gerencia-general",
+        "target": "node-1792177791648",
+        "label": "Derivación GERENCIA ➔ JEFE",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1792795605202",
+        "source": "node-supervisor-piscina",
+        "target": "node-1792795588221",
+        "label": "Derivación SUPERVISOR ➔ PROFESORA",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378733808",
-        "source": "node-subgerencia-financiera",
-        "target": "node-encargado-hipica",
-        "label": "Derivación SUBGERENCIA ➔ ENCARGADO",
+        "id": "edge-1792795949219",
+        "source": "node-gerencia-general",
+        "target": "node-1792795255145",
+        "label": "Derivación GERENCIA ➔ SUPERVISOR",
+        "style": "HIERARCHICAL"
+      },
+      {
+        "id": "edge-1792796014651",
+        "source": "node-jefe-mantenimiento",
+        "target": "node-1792793536997",
+        "label": "Derivación JEFE ➔ RESPONSABLE",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378747185",
-        "source": "node-subgerencia-financiera",
-        "target": "node-1788377976037",
-        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "id": "edge-1792796825859",
+        "source": "node-asistente-ats",
+        "target": "node-1792793032186",
+        "label": "Derivación ASISTENTE ➔ AUXILIAR",
         "style": "OPERATIONAL"
       },
       {
-        "id": "edge-1788378757109",
-        "source": "node-subgerencia-financiera",
-        "target": "node-jefe-mantenimiento",
-        "label": "Derivación SUBGERENCIA ➔ JEFE",
+        "id": "edge-1792797196658",
+        "source": "node-1792177791648",
+        "target": "node-1792795340834",
+        "label": "Derivación JEFE ➔ SUPERVISOR",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792797574131",
+        "source": "node-recepcionistas",
+        "target": "node-1792797532311",
+        "label": "Derivación RECEPCIONISTAS ➔ RECEPCIONISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792797616579",
+        "source": "node-recepcionistas",
+        "target": "node-1792797578212",
+        "label": "Derivación RECEPCIONISTAS ➔ RECEPCIONISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792797644124",
+        "source": "node-recepcionistas",
+        "target": "node-1792797622822",
+        "label": "Derivación RECEPCIONISTAS ➔ RECEPCIONISTA",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792798035623",
+        "source": "node-analista-contable",
+        "target": "node-1792798009484",
+        "label": "Derivación ANALISTA ➔ AUXILIAR",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792798432069",
+        "source": "node-1792795588221",
+        "target": "node-guardavidas",
+        "label": "Derivación PROFESORA ➔ GUARDAVIDAS",
+        "style": "OPERATIONAL"
+      },
+      {
+        "id": "edge-1792798497254",
+        "source": "node-guardavidas",
+        "target": "node-1792798475549",
+        "label": "Derivación GUARDAVIDAS ➔ ASISTENTE",
         "style": "OPERATIONAL"
       }
     ]

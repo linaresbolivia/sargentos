@@ -28,7 +28,7 @@ export class RouteSheetService {
   /**
    * Obtiene la configuración general del módulo de correspondencia
    */
-  private getSettingsConfig(): any {
+  public getSettingsConfig(): any {
     try {
       const configFilePath = path.join(process.cwd(), 'data', 'correspondence_settings.json');
       if (fs.existsSync(configFilePath)) {
@@ -263,10 +263,107 @@ export class RouteSheetService {
     };
   }
 
+  public get defaultInclude() {
+    return {
+      person: true,
+      createdBy: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      currentAssignee: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      movements: {
+        orderBy: { sequenceNumber: 'asc' as const },
+        include: {
+          sourceUser: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+          documents: true,
+        },
+      },
+      documents: true,
+      parentRouteSheet: {
+        select: {
+          id: true,
+          hrCode: true,
+          reference: true,
+          currentArea: true,
+          status: true,
+          senderName: true,
+          senderArea: true,
+          senderType: true,
+          cite: true,
+          pageCount: true,
+          createdAt: true,
+          documents: true,
+          fusedRouteSheets: {
+            select: {
+              id: true,
+              hrCode: true,
+              reference: true,
+              currentArea: true,
+              status: true,
+              senderName: true,
+              senderArea: true,
+              senderType: true,
+              cite: true,
+              pageCount: true,
+              createdAt: true,
+              documents: true,
+            },
+          },
+        },
+      },
+      fusedRouteSheets: {
+        select: {
+          id: true,
+          hrCode: true,
+          reference: true,
+          currentArea: true,
+          status: true,
+          senderName: true,
+          senderArea: true,
+          senderType: true,
+          cite: true,
+          pageCount: true,
+          createdAt: true,
+          documents: true,
+        },
+      },
+    };
+  }
+
+  /**
+   * Helper que obtiene todas las Hojas de Ruta vinculadas al paquete fusionado (matriz o secundarias)
+   */
+  public async getFusedBundleSheets(routeSheet: any) {
+    let bundleSheets: any[] = [];
+    if (routeSheet.parentRouteSheetId) {
+      const matriz = await this.prisma.routeSheet.findUnique({
+        where: { id: routeSheet.parentRouteSheetId },
+        include: {
+          movements: { orderBy: { sequenceNumber: 'asc' } },
+          fusedRouteSheets: { include: { movements: { orderBy: { sequenceNumber: 'asc' } } } },
+        },
+      });
+      if (matriz) {
+        const siblings = (matriz.fusedRouteSheets || []).filter((s: any) => s.id !== routeSheet.id);
+        bundleSheets = [matriz, ...siblings];
+      }
+    } else if (routeSheet.fusedRouteSheets && routeSheet.fusedRouteSheets.length > 0) {
+      bundleSheets = await this.prisma.routeSheet.findMany({
+        where: { parentRouteSheetId: routeSheet.id },
+        include: { movements: { orderBy: { sequenceNumber: 'asc' } } },
+      });
+    }
+    return bundleSheets;
+  }
+
   /**
    * Genera el siguiente código correlativo de Hoja de Ruta
    * Formato oficial solicitado: MM-XXX (donde MM = dos dígitos del mes, XXX = 3 dígitos correlativos por mes)
-   * Ejemplo: 09-001, 09-002, 10-001
+   * Respeta el punto de corte inicial configurado en parámetros (ej. arranque en N° 80 -> 10-080)
+   * Ejemplo: 09-001, 09-002, 10-080
    */
   private async generateNextCode(nowDate: Date = new Date()): Promise<{ hrCode: string; correlativeNumber: number; year: number }> {
     const year = nowDate.getFullYear();
@@ -275,6 +372,16 @@ export class RouteSheetService {
 
     const startOfMonth = new Date(year, nowDate.getMonth(), 1, 0, 0, 0, 0);
     const endOfMonth = new Date(year, nowDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    // Obtener configuración institucional de arranque / punto de corte
+    const settings = this.getSettingsConfig();
+    const currentGestionYear = Number(settings.currentGestion) || year;
+    const initialCutoff = Number(
+      settings.gestiones?.[String(year)]?.initialCorrelative ||
+      settings.gestiones?.[String(currentGestionYear)]?.initialCorrelative ||
+      settings.initialCorrelativeNumber ||
+      1
+    );
 
     // Obtener registros creados en este mes
     const monthRecords = await this.prisma.routeSheet.findMany({
@@ -290,8 +397,11 @@ export class RouteSheetService {
 
     let maxSeq = 0;
     for (const rec of monthRecords) {
+      if (typeof rec.correlativeNumber === 'number' && rec.correlativeNumber > maxSeq) {
+        maxSeq = rec.correlativeNumber;
+      }
       if (rec.hrCode) {
-        const match = rec.hrCode.match(/^(\d{2})-(\d{3,})$/);
+        const match = rec.hrCode.match(/^(\d{2})-(\d+)$/);
         if (match && match[1] === monthStr) {
           const num = parseInt(match[2], 10);
           if (!isNaN(num) && num > maxSeq) {
@@ -301,11 +411,13 @@ export class RouteSheetService {
       }
     }
 
-    if (maxSeq === 0 && monthRecords.length > 0) {
-      maxSeq = monthRecords.length;
+    let nextCorrelative: number;
+    if (maxSeq === 0) {
+      nextCorrelative = Math.max(1, initialCutoff);
+    } else {
+      nextCorrelative = Math.max(maxSeq + 1, initialCutoff);
     }
 
-    const nextCorrelative = maxSeq + 1;
     const nextSeqStr = String(nextCorrelative).padStart(3, '0');
     const hrCode = `${monthStr}-${nextSeqStr}`;
 
@@ -313,7 +425,15 @@ export class RouteSheetService {
   }
 
   /**
+   * Obtiene la vista previa del siguiente código correlativo de Hoja de Ruta
+   */
+  public async getNextCode(nowDate: Date = new Date()): Promise<{ hrCode: string; correlativeNumber: number; year: number }> {
+    return this.generateNextCode(nowDate);
+  }
+
+  /**
    * Normaliza y compara dos áreas institucionales
+
    */
   private isSameArea(areaA?: string | null, areaB?: string | null): boolean {
     if (!areaA || !areaB) return false;
@@ -358,12 +478,14 @@ export class RouteSheetService {
     const { hrCode, correlativeNumber, year } = await this.generateNextCode(nowDate);
 
     const sourceArea = (data as any).sourceArea?.trim() || data.senderArea?.trim() || 'GERENCIA GENERAL';
-    const targetArea = data.suggestedArea || data.initialArea || 'SECRETARIA_GENERAL';
+    const hasInitialProveido = Boolean(data.initialArea && data.initialArea.trim());
+    const targetArea = hasInitialProveido ? (data.suggestedArea || data.initialArea!) : sourceArea;
 
     // Determinar si es una derivación saliente hacia otra área o funcionario
-    const isOutgoingDerivation =
+    const isOutgoingDerivation = hasInitialProveido && (
       Boolean(data.initialInstruction?.trim()) ||
-      (Boolean(targetArea) && !this.isSameArea(targetArea, sourceArea));
+      (Boolean(targetArea) && !this.isSameArea(targetArea, sourceArea))
+    );
 
     const initialStatus: RouteSheetStatus = isOutgoingDerivation ? 'DERIVADO' : 'RECIBIDO';
 
@@ -758,8 +880,15 @@ export class RouteSheetService {
       where.currentArea = { contains: area, mode: 'insensitive' };
     }
     if (senderType && senderType !== 'ALL') {
-      where.senderType = senderType;
+      const up = String(senderType).toUpperCase().trim();
+      const normalized = (up === 'INTERNA' || up === 'INTERNO' || up === 'AREA_INTERNA')
+        ? 'AREA_INTERNA'
+        : (up === 'EXTERNA' || up === 'EXTERNO' || up === 'COURIER')
+        ? 'EXTERNO'
+        : up;
+      where.senderType = normalized;
     }
+
 
     // Búsqueda Inteligente Global
     if (search && search.trim().length > 0) {
@@ -803,22 +932,7 @@ export class RouteSheetService {
         take: limit,
         skip: offset,
         orderBy: { createdAt: 'desc' },
-        include: {
-          person: true,
-          createdBy: {
-            select: { id: true, firstName: true, lastName: true, email: true },
-          },
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: {
-                select: { id: true, firstName: true, lastName: true, email: true },
-              },
-              documents: true,
-            },
-          },
-          documents: true,
-        },
+        include: this.defaultInclude,
       }),
     ]);
 
@@ -841,7 +955,16 @@ export class RouteSheetService {
   }) {
     const routeSheet = await this.prisma.routeSheet.findUnique({
       where: { id },
-      include: { movements: true },
+      include: {
+        movements: { orderBy: { sequenceNumber: 'asc' } },
+        fusedRouteSheets: { include: { movements: { orderBy: { sequenceNumber: 'asc' } } } },
+        parentRouteSheet: {
+          include: {
+            movements: { orderBy: { sequenceNumber: 'asc' } },
+            fusedRouteSheets: { include: { movements: { orderBy: { sequenceNumber: 'asc' } } } },
+          },
+        },
+      },
     });
 
     if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
@@ -866,10 +989,13 @@ export class RouteSheetService {
     const quickStamp = isPersonal ? 'ARCHIVO PERSONAL' : 'ARCHIVADO';
     const instrHeader = isPersonal ? 'ARCHIVADO EN ARCHIVO PERSONAL' : 'ARCHIVADO EN ARCHIVO CENTRAL';
 
+    // Determinar paquete de Hojas de Ruta fusionadas
+    const bundleSheets = await this.getFusedBundleSheets(routeSheet);
     const nextSeq = routeSheet.movements.length + 1;
+    const now = new Date();
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      // 1. Crear proveído de archivo
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Crear proveído de archivo en la hoja principal
       await tx.hrMovement.create({
         data: {
           routeSheetId: id,
@@ -883,8 +1009,8 @@ export class RouteSheetService {
         },
       });
 
-      // 2. Actualizar estado y ubicación de archivo
-      return (tx.routeSheet as any).update({
+      // 2. Actualizar estado y ubicación de archivo de la principal
+      await (tx.routeSheet as any).update({
         where: { id },
         data: {
           status: 'CONCLUIDO',
@@ -892,28 +1018,50 @@ export class RouteSheetService {
           archiveLocation: data.archiveLocation.trim(),
           archiveBox: data.archiveBox?.trim() || null,
           archiveNotes: data.archiveNotes?.trim() || null,
-          archivedAt: new Date(),
+          archivedAt: now,
           archivedById: validUserId,
         },
-        include: {
-          person: true,
-          createdBy: true,
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: true,
-              documents: true,
-            },
-          },
-          documents: true,
-        },
       });
+
+      // 3. Archivar en conjunto a todas las Hojas de Ruta fusionadas del paquete
+      for (const other of bundleSheets) {
+        const otherNextSeq = (other.movements?.length || 0) + 1;
+        await tx.hrMovement.create({
+          data: {
+            routeSheetId: other.id,
+            sequenceNumber: otherNextSeq,
+            sourceUserId: validUserId,
+            sourceArea: other.currentArea,
+            targetArea,
+            targetPersonName: targetPerson,
+            instruction: `[EXPEDIENTE FUSIONADO EN CONJUNTO CON ${routeSheet.hrCode}]\n${instrHeader}.\nUbicación: ${data.archiveLocation.trim()}${data.archiveBox ? ` (Caja/Gaveta: ${data.archiveBox.trim()})` : ''}\nMotivo / Auto: ${data.archiveNotes ? data.archiveNotes.trim() : 'Trámite concluido y archivado formalmente en conjunto.'}`,
+            quickStamp,
+          },
+        });
+
+        await (tx.routeSheet as any).update({
+          where: { id: other.id },
+          data: {
+            status: 'CONCLUIDO',
+            currentArea: targetArea,
+            archiveLocation: data.archiveLocation.trim(),
+            archiveBox: data.archiveBox?.trim() || null,
+            archiveNotes: data.archiveNotes?.trim() || null,
+            archivedAt: now,
+            archivedById: validUserId,
+          },
+        });
+      }
     });
 
-    const enriched = this.enrichRouteSheet(updated);
+    const enriched = await this.getByIdOrCode(id);
 
     try {
       socketService.getIo()?.emit('correspondence:updated', enriched);
+      for (const other of bundleSheets) {
+        const enrichedOther = await this.getByIdOrCode(other.id);
+        socketService.getIo()?.emit('correspondence:updated', enrichedOther);
+      }
     } catch (sockErr) {
       logger.warn('Socket broadcast error on archive', sockErr);
     }
@@ -923,11 +1071,21 @@ export class RouteSheetService {
 
   /**
    * Desarchivar y reabrir Hoja de Ruta
+   * Si forma parte de un expediente fusionado, se desarchivan todas las hojas del paquete
    */
   public async unarchive(id: string, data: { unarchiveReason: string; targetArea: string; userId: string }) {
     const routeSheet = await this.prisma.routeSheet.findUnique({
       where: { id },
-      include: { movements: true },
+      include: {
+        movements: { orderBy: { sequenceNumber: 'asc' } },
+        fusedRouteSheets: { include: { movements: { orderBy: { sequenceNumber: 'asc' } } } },
+        parentRouteSheet: {
+          include: {
+            movements: { orderBy: { sequenceNumber: 'asc' } },
+            fusedRouteSheets: { include: { movements: { orderBy: { sequenceNumber: 'asc' } } } },
+          },
+        },
+      },
     });
 
     if (!routeSheet) throw new Error('Hoja de Ruta no encontrada');
@@ -945,9 +1103,10 @@ export class RouteSheetService {
 
     const nextSeq = routeSheet.movements.length + 1;
     const destArea = data.targetArea || 'SECRETARIA_GENERAL';
+    const bundleSheets = await this.getFusedBundleSheets(routeSheet);
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      // 1. Crear proveído de reapertura
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Crear proveído de reapertura en la principal
       await tx.hrMovement.create({
         data: {
           routeSheetId: id,
@@ -962,32 +1121,54 @@ export class RouteSheetService {
       });
 
       // 2. Actualizar estado y remover custodia de archivo
-      return (tx.routeSheet as any).update({
+      await (tx.routeSheet as any).update({
         where: { id },
         data: {
-          status: 'EN_PROCESO',
+          status: 'DERIVADO',
           currentArea: destArea,
           archiveNotes: `Reabierto el ${new Date().toLocaleDateString('es-BO')}: ${data.unarchiveReason.trim()}`,
-        },
-        include: {
-          person: true,
-          createdBy: true,
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: true,
-              documents: true,
-            },
-          },
-          documents: true,
+          archivedAt: null,
+          archivedById: null,
         },
       });
+
+      // 3. Desarchivar en conjunto a todas las hojas del paquete
+      for (const other of bundleSheets) {
+        const otherNextSeq = (other.movements?.length || 0) + 1;
+        await tx.hrMovement.create({
+          data: {
+            routeSheetId: other.id,
+            sequenceNumber: otherNextSeq,
+            sourceUserId: validUserId,
+            sourceArea: other.currentArea || 'ARCHIVO_CENTRAL',
+            targetArea: destArea,
+            targetPersonName: 'Reapertura de Expediente',
+            instruction: `[EXPEDIENTE FUSIONADO EN CONJUNTO CON ${routeSheet.hrCode}]\nREAPERTURA Y DESARCHIVO DE EXPEDIENTE.\nMotivo: ${data.unarchiveReason.trim()}\nDerivado a: ${destArea} para prosecución del trámite conjunto.`,
+            quickStamp: 'EXPEDIENTE REABIERTO',
+          },
+        });
+
+        await (tx.routeSheet as any).update({
+          where: { id: other.id },
+          data: {
+            status: 'DERIVADO',
+            currentArea: destArea,
+            archiveNotes: `Reabierto el ${new Date().toLocaleDateString('es-BO')}: ${data.unarchiveReason.trim()}`,
+            archivedAt: null,
+            archivedById: null,
+          },
+        });
+      }
     });
 
-    const enriched = this.enrichRouteSheet(updated);
+    const enriched = await this.getByIdOrCode(id);
 
     try {
       socketService.getIo()?.emit('correspondence:updated', enriched);
+      for (const other of bundleSheets) {
+        const enrichedOther = await this.getByIdOrCode(other.id);
+        socketService.getIo()?.emit('correspondence:updated', enrichedOther);
+      }
     } catch (sockErr) {
       logger.warn('Socket broadcast error on unarchive', sockErr);
     }
@@ -1003,25 +1184,7 @@ export class RouteSheetService {
       where: {
         OR: [{ id: idOrCode }, { hrCode: idOrCode }],
       },
-      include: {
-        person: true,
-        createdBy: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        currentAssignee: {
-          select: { id: true, firstName: true, lastName: true, email: true },
-        },
-        movements: {
-          orderBy: { sequenceNumber: 'asc' },
-          include: {
-            sourceUser: {
-              select: { id: true, firstName: true, lastName: true, email: true },
-            },
-            documents: true,
-          },
-        },
-        documents: true,
-      },
+      include: this.defaultInclude,
     });
 
     return this.enrichRouteSheet(routeSheet);
@@ -1029,11 +1192,25 @@ export class RouteSheetService {
 
   /**
    * Agregar un Proveído / Movimiento de Derivación a la Hoja de Ruta
+   * Si forma parte de un paquete fusionado, deriva en bloque a todas las hojas del paquete
    */
   public async addMovement(routeSheetId: string, data: AddMovementInput, sourceUserId: string) {
     const routeSheet = await this.prisma.routeSheet.findUnique({
       where: { id: routeSheetId },
-      include: { movements: true },
+      include: {
+        movements: { orderBy: { sequenceNumber: 'asc' } },
+        fusedRouteSheets: {
+          include: { movements: { orderBy: { sequenceNumber: 'asc' } } },
+        },
+        parentRouteSheet: {
+          include: {
+            movements: { orderBy: { sequenceNumber: 'asc' } },
+            fusedRouteSheets: {
+              include: { movements: { orderBy: { sequenceNumber: 'asc' } } },
+            },
+          },
+        },
+      },
     });
 
     if (!routeSheet) {
@@ -1053,7 +1230,11 @@ export class RouteSheetService {
     const ccSuffix = ccParts.length > 0 ? `\n[C.C.: ${ccParts.join(' | ')}]` : '';
     const fullInstruction = `${data.instruction.trim()}${ccSuffix}`;
 
+    // Determinar paquete de Hojas de Ruta fusionadas
+    const bundleSheets = await this.getFusedBundleSheets(routeSheet);
+
     const result = await this.prisma.$transaction(async (tx) => {
+      // 1. Movimiento en la Hoja de Ruta primaria
       const movement = await tx.hrMovement.create({
         data: {
           routeSheetId,
@@ -1073,33 +1254,51 @@ export class RouteSheetService {
         },
       });
 
-      const updatedHr = await tx.routeSheet.update({
+      await tx.routeSheet.update({
         where: { id: routeSheetId },
         data: {
           status: updatedStatus,
           currentArea: data.targetArea,
         },
-        include: {
-          person: true,
-          createdBy: true,
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: true,
-              documents: true,
-            },
-          },
-          documents: true,
-        },
       });
 
-      return { movement, routeSheet: updatedHr };
+      // 2. Derivación automática en bloque para todas las Hojas de Ruta fusionadas del paquete
+      for (const other of bundleSheets) {
+        const otherNextSeq = (other.movements?.length || 0) + 1;
+        await tx.hrMovement.create({
+          data: {
+            routeSheetId: other.id,
+            sequenceNumber: otherNextSeq,
+            sourceUserId,
+            sourceArea: other.currentArea || routeSheet.currentArea,
+            targetArea: data.targetArea,
+            targetPersonName: data.targetPersonName?.trim() || null,
+            instruction: `[TRÁMITE FUSIONADO EN CONJUNTO CON ${routeSheet.hrCode}]\n${fullInstruction}`,
+            quickStamp: data.quickStamp || 'EXPEDIENTE FUSIONADO',
+            signatureUrl: data.signatureUrl || null,
+          },
+        });
+
+        await tx.routeSheet.update({
+          where: { id: other.id },
+          data: {
+            status: updatedStatus,
+            currentArea: data.targetArea,
+          },
+        });
+      }
+
+      return { movement };
     });
 
-    const enrichedRouteSheet = this.enrichRouteSheet(result.routeSheet);
+    const enrichedRouteSheet = await this.getByIdOrCode(routeSheetId);
 
     try {
       socketService.getIo()?.emit('correspondence:updated', enrichedRouteSheet);
+      for (const other of bundleSheets) {
+        const enrichedOther = await this.getByIdOrCode(other.id);
+        socketService.getIo()?.emit('correspondence:updated', enrichedOther);
+      }
     } catch (err) {
       logger.warn('Socket emit error on correspondence:updated', err);
     }
@@ -1109,6 +1308,7 @@ export class RouteSheetService {
 
   /**
    * Recepcionar formalmente una derivación de Hoja de Ruta en el despacho de destino
+   * Si forma parte de un paquete fusionado, recepciona todas las hojas en sincronía
    */
   public async receive(routeSheetId: string, userId: string) {
     const routeSheet = await this.prisma.routeSheet.findUnique({
@@ -1118,6 +1318,8 @@ export class RouteSheetService {
           orderBy: { sequenceNumber: 'desc' },
           take: 1,
         },
+        fusedRouteSheets: true,
+        parentRouteSheet: { include: { fusedRouteSheets: true } },
       },
     });
 
@@ -1125,11 +1327,11 @@ export class RouteSheetService {
       throw new Error('Hoja de Ruta no encontrada');
     }
 
-    const latestMovement = routeSheet.movements[0];
+    const bundleSheets = await this.getFusedBundleSheets(routeSheet);
     const now = new Date();
 
-    const updated = await this.prisma.$transaction(async (tx) => {
-      // 1. Estampar la fecha/hora de recepción formal en cualquier movimiento pendiente
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Estampar la fecha/hora de recepción formal en cualquier movimiento pendiente de la principal
       await tx.hrMovement.updateMany({
         where: {
           routeSheetId,
@@ -1138,32 +1340,43 @@ export class RouteSheetService {
         data: { receivedAt: now },
       });
 
-      // 2. Actualizar estado general de la Hoja de Ruta a RECIBIDO
-      return tx.routeSheet.update({
+      // 2. Actualizar estado general a RECIBIDO
+      await tx.routeSheet.update({
         where: { id: routeSheetId },
         data: {
           status: 'RECIBIDO',
           currentAssigneeId: userId,
         },
-        include: {
-          person: true,
-          createdBy: true,
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: true,
-              documents: true,
-            },
-          },
-          documents: true,
-        },
       });
+
+      // 3. Recepcionar en sincronía las hojas fusionadas del paquete
+      for (const other of bundleSheets) {
+        await tx.hrMovement.updateMany({
+          where: {
+            routeSheetId: other.id,
+            receivedAt: null,
+          },
+          data: { receivedAt: now },
+        });
+
+        await tx.routeSheet.update({
+          where: { id: other.id },
+          data: {
+            status: 'RECIBIDO',
+            currentAssigneeId: userId,
+          },
+        });
+      }
     });
 
-    const enrichedRouteSheet = this.enrichRouteSheet(updated);
+    const enrichedRouteSheet = await this.getByIdOrCode(routeSheetId);
 
     try {
       socketService.getIo()?.emit('correspondence:updated', enrichedRouteSheet);
+      for (const other of bundleSheets) {
+        const enrichedOther = await this.getByIdOrCode(other.id);
+        socketService.getIo()?.emit('correspondence:updated', enrichedOther);
+      }
     } catch (err) {
       logger.warn('Socket emit error on correspondence:updated (receive)', err);
     }
@@ -1327,7 +1540,143 @@ export class RouteSheetService {
   }
 
   /**
+   * Actualizar / Editar los datos oficiales de radicación de una Hoja de Ruta
+   */
+  public async updateRouteSheet(id: string, data: any, _user?: any) {
+    const existing = await this.prisma.routeSheet.findUnique({
+      where: { id },
+      include: { movements: true },
+    });
+
+    if (!existing) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    if (existing.status === 'CONCLUIDO' || existing.status === 'ANULADO') {
+      throw new Error('No es posible editar una Hoja de Ruta que ya se encuentra concluida o archivada');
+    }
+
+    let normalizedSenderType: RouteSheetSenderType | undefined = undefined;
+    if (data.senderType !== undefined) {
+      const up = String(data.senderType).toUpperCase().trim();
+      if (up === 'INTERNA' || up === 'INTERNO' || up === 'AREA_INTERNA') normalizedSenderType = 'AREA_INTERNA' as RouteSheetSenderType;
+      else if (up === 'EXTERNA' || up === 'EXTERNO' || up === 'COURIER') normalizedSenderType = 'EXTERNO' as RouteSheetSenderType;
+      else if (up === 'SOCIO') normalizedSenderType = 'SOCIO' as RouteSheetSenderType;
+    }
+
+    const updated = await this.prisma.routeSheet.update({
+      where: { id },
+      data: {
+        ...(data.reference !== undefined ? { reference: String(data.reference).trim() } : {}),
+        ...(normalizedSenderType !== undefined ? { senderType: normalizedSenderType } : {}),
+        ...(data.senderName !== undefined ? { senderName: String(data.senderName).trim() } : {}),
+
+        ...(data.senderArea !== undefined ? { senderArea: data.senderArea ? String(data.senderArea).trim() : null } : {}),
+        ...(data.senderPhone !== undefined ? { senderPhone: data.senderPhone ? String(data.senderPhone).trim() : null } : {}),
+        ...(data.senderEmail !== undefined ? { senderEmail: data.senderEmail ? String(data.senderEmail).trim() : null } : {}),
+        ...(data.senderDoc !== undefined ? { senderDoc: data.senderDoc ? String(data.senderDoc).trim() : null } : {}),
+        ...(data.cite !== undefined ? { cite: data.cite ? String(data.cite).trim() : null } : {}),
+        ...(data.pageCount !== undefined ? { pageCount: Math.max(1, Number(data.pageCount) || 1) } : {}),
+        ...(data.attachmentDescription !== undefined ? { attachmentDescription: data.attachmentDescription ? String(data.attachmentDescription).trim() : null } : {}),
+        ...(data.priority !== undefined ? { priority: data.priority } : {}),
+      },
+      include: {
+        person: true,
+        createdBy: true,
+        movements: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: { sourceUser: true, documents: true },
+        },
+        documents: true,
+      },
+    });
+
+    const enriched = this.enrichRouteSheet(updated);
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', enriched);
+    } catch (sockErr) {
+      logger.warn('[RouteSheetService] Error al emitir socket correspondence:updated tras edición:', sockErr);
+    }
+
+    return enriched;
+  }
+
+  /**
+   * Eliminar o anular una Hoja de Ruta institucional
+   */
+  public async deleteRouteSheet(
+    id: string,
+    options?: { reason?: string; mode?: 'DELETE' | 'ANULAR' },
+    _user?: any
+  ) {
+    const existing = await this.prisma.routeSheet.findUnique({
+      where: { id },
+      include: { movements: true, documents: true },
+    });
+
+    if (!existing) {
+      throw new Error('Hoja de Ruta no encontrada');
+    }
+
+    const mode = options?.mode || 'DELETE';
+
+    if (mode === 'ANULAR') {
+      const updated = await this.prisma.routeSheet.update({
+        where: { id },
+        data: {
+          status: 'ANULADO',
+          archiveNotes: options?.reason ? `ANULADO: ${options.reason.trim()}` : 'Anulado por usuario autorizado',
+        },
+        include: {
+          person: true,
+          createdBy: true,
+          movements: { orderBy: { sequenceNumber: 'asc' }, include: { sourceUser: true, documents: true } },
+          documents: true,
+        },
+      });
+
+      const enriched = this.enrichRouteSheet(updated);
+      try {
+        socketService.getIo()?.emit('correspondence:updated', enriched);
+      } catch (err) {}
+      return { success: true, mode: 'ANULAR', hrCode: existing.hrCode, item: enriched };
+    }
+
+    // Modo DELETE: Hard Delete definitivo
+    // 1. Eliminar archivos adjuntos del disco si existen
+    for (const doc of existing.documents) {
+      if (doc.fileUrl) {
+        const localPath = path.join(process.cwd(), doc.fileUrl.replace(/^\//, ''));
+        if (fs.existsSync(localPath)) {
+          try {
+            fs.unlinkSync(localPath);
+          } catch (err) {
+            logger.warn(`[RouteSheetService] Error al borrar archivo ${localPath}:`, err);
+          }
+        }
+      }
+    }
+
+    // 2. Eliminar registro en base de datos (onDelete: Cascade remueve movements y documents)
+    await this.prisma.routeSheet.delete({
+      where: { id },
+    });
+
+    // 3. Emitir evento por Socket.IO a todos los despachos para eliminar de sus bandejas
+    try {
+      socketService.getIo()?.emit('correspondence:deleted', { id, hrCode: existing.hrCode });
+    } catch (sockErr) {
+      logger.warn('[RouteSheetService] Error al emitir socket correspondence:deleted:', sockErr);
+    }
+
+    return { success: true, mode: 'DELETE', hrCode: existing.hrCode, id };
+  }
+
+  /**
    * Fusión / Acumulación de Hojas de Ruta
+   * Las hojas secundarias NO se concluyen: permanecen activas, acompañan a la matriz en su área actual
+   * y se derivan y archivan en conjunto.
    */
   public async mergeRouteSheets(data: MergeRouteSheetsInput, userId: string) {
     const { targetRouteSheetId, sourceRouteSheetIds, reason } = data;
@@ -1343,7 +1692,10 @@ export class RouteSheetService {
 
     const sourceHrs = await this.prisma.routeSheet.findMany({
       where: { id: { in: sourceRouteSheetIds } },
-      include: { movements: { include: { sourceUser: true } } },
+      include: {
+        movements: { include: { sourceUser: true } },
+        fusedRouteSheets: true,
+      },
     });
 
     if (sourceHrs.length === 0) {
@@ -1362,7 +1714,7 @@ export class RouteSheetService {
     const newTotalPages = (targetHr.pageCount || 1) + additionalPages;
     let nextSeq = targetHr.movements.length + 1;
 
-    const result = await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async (tx) => {
       // 1. Re-vincular / copiar proveídos de las secundarias a la Matriz con su etiqueta distintiva
       for (const src of sourceHrs) {
         for (const mov of src.movements) {
@@ -1380,18 +1732,48 @@ export class RouteSheetService {
           });
         }
 
-        // 2. Marcar la Hoja de Ruta secundaria como CONCLUIDO / FUSIONADO
+        // 2. Las Hojas de Ruta secundarias NO SE CONCLUYEN: se mantienen ACTIVAS
+        // acompañando a la Matriz en su área actual y con su estado activo.
         await tx.routeSheet.update({
           where: { id: src.id },
           data: {
-            status: 'CONCLUIDO',
-            currentArea: `FUSIONADO EN ${targetHr.hrCode}`,
-            aiSummary: `FUSIONADO Y ACUMULADO A LA HOJA DE RUTA MATRIZ ${targetHr.hrCode}. Motivo: ${reason}`,
+            parentRouteSheetId: targetHr.id,
+            status: targetHr.status,
+            currentArea: targetHr.currentArea,
+            aiSummary: `FUSIONADO Y ACUMULADO AL EXPEDIENTE MATRIZ ${targetHr.hrCode}. Motivo: ${reason}`,
+          },
+        });
+
+        // Si la secundaria tenía a su vez hojas fusionadas, re-vincularlas a la matriz raíz
+        if (src.fusedRouteSheets && src.fusedRouteSheets.length > 0) {
+          for (const child of src.fusedRouteSheets) {
+            await tx.routeSheet.update({
+              where: { id: child.id },
+              data: {
+                parentRouteSheetId: targetHr.id,
+                status: targetHr.status,
+                currentArea: targetHr.currentArea,
+              },
+            });
+          }
+        }
+
+        // 3. Registrar proveído formal de acumulación en la Hoja de Ruta secundaria
+        await tx.hrMovement.create({
+          data: {
+            routeSheetId: src.id,
+            sequenceNumber: src.movements.length + 1,
+            sourceUserId: userId,
+            sourceArea: src.currentArea,
+            targetArea: targetHr.currentArea,
+            targetPersonName: 'Mesa de Entrada / Secretaría',
+            instruction: `AUTO DE ACUMULACIÓN DE EXPEDIENTES: Este trámite ha sido fusionado e incorporado formalmente al expediente matriz [${targetHr.hrCode}].\nMotivo: ${reason.trim()}\nContinuará su curso, derivación y archivo en conjunto con la Hoja de Ruta matriz.`,
+            quickStamp: 'EXPEDIENTE FUSIONADO',
           },
         });
       }
 
-      // 3. Crear el Proveído Formal Maestro de Acumulación en la Matriz
+      // 4. Crear el Proveído Formal Maestro de Acumulación en la Matriz
       await tx.hrMovement.create({
         data: {
           routeSheetId: targetRouteSheetId,
@@ -1400,56 +1782,112 @@ export class RouteSheetService {
           sourceArea: targetHr.currentArea,
           targetArea: targetHr.currentArea,
           targetPersonName: 'Secretaría de Gerencia General',
-          instruction: `AUTO DE ACUMULACIÓN DE EXPEDIENTES: Se fusionan e incorporan formalmente los antecedentes de las Hojas de Ruta [${sourceCodes.join(', ')}] por conexidad de trámite.\nMotivo: ${reason.trim()}\nTotal fojas acumuladas en el expediente: ${newTotalPages} fojas.`,
+          instruction: `AUTO DE ACUMULACIÓN DE EXPEDIENTES: Se fusionan e incorporan formalmente los antecedentes de las Hojas de Ruta [${sourceCodes.join(', ')}] por conexidad de trámite.\nMotivo: ${reason.trim()}\nTotal fojas acumuladas en el expediente: ${newTotalPages} fojas.\nContinuarán su curso, derivaciones y archivo en conjunto.`,
           quickStamp: 'EXPEDIENTE FUSIONADO',
         },
       });
 
-      // 4. Actualizar total de fojas y recargar Matriz consolidada
-      const updatedTarget = await tx.routeSheet.update({
+      // 5. Actualizar total de fojas en la Matriz
+      await tx.routeSheet.update({
         where: { id: targetRouteSheetId },
         data: {
           pageCount: newTotalPages,
         },
-        include: {
-          person: true,
-          createdBy: true,
-          movements: {
-            orderBy: { sequenceNumber: 'asc' },
-            include: {
-              sourceUser: true,
-              documents: true,
-            },
-          },
-          documents: true,
-        },
       });
-
-      return updatedTarget;
     });
 
-    const enriched = this.enrichRouteSheet(result);
+    const enriched = await this.getByIdOrCode(targetRouteSheetId);
 
     try {
-      socketService.getIo()?.emit('correspondence:updated', {
-        id: targetRouteSheetId,
-        hrCode: targetHr.hrCode,
-        status: result.status,
-        currentArea: result.currentArea,
-      });
+      socketService.getIo()?.emit('correspondence:updated', enriched);
       for (const src of sourceHrs) {
-        socketService.getIo()?.emit('correspondence:updated', {
-          id: src.id,
-          hrCode: src.hrCode,
-          status: 'CONCLUIDO',
-          currentArea: `FUSIONADO EN ${targetHr.hrCode}`,
-        });
+        const enrichedSrc = await this.getByIdOrCode(src.id);
+        socketService.getIo()?.emit('correspondence:updated', enrichedSrc);
       }
     } catch (err) {
-      logger.warn('Socket emit error on correspondence:updated', err);
+      logger.warn('Socket emit error on correspondence:updated after merge', err);
     }
 
     return enriched;
+  }
+
+  /**
+   * Desfusionar / Separar una Hoja de Ruta previamente acumulada
+   */
+  public async unmergeRouteSheet(routeSheetId: string, reason: string, userId: string) {
+    const routeSheet = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheetId },
+      include: {
+        parentRouteSheet: { include: { movements: true } },
+        movements: true,
+      },
+    });
+
+    if (!routeSheet || !routeSheet.parentRouteSheetId || !routeSheet.parentRouteSheet) {
+      throw new Error('La Hoja de Ruta no se encuentra vinculada a ningún expediente matriz para desfusionar');
+    }
+
+    const parent = routeSheet.parentRouteSheet;
+    const parentNewPages = Math.max(1, (parent.pageCount || 1) - (routeSheet.pageCount || 1));
+
+    await this.prisma.$transaction(async (tx) => {
+      // 1. Desvincular de la matriz
+      await tx.routeSheet.update({
+        where: { id: routeSheetId },
+        data: {
+          parentRouteSheetId: null,
+          aiSummary: `DESFUSIONADO DE ${parent.hrCode}. Motivo: ${reason}`,
+        },
+      });
+
+      // 2. Descontar fojas de la matriz
+      await tx.routeSheet.update({
+        where: { id: parent.id },
+        data: {
+          pageCount: parentNewPages,
+        },
+      });
+
+      // 3. Crear proveído en la hoja desvinculada
+      await tx.hrMovement.create({
+        data: {
+          routeSheetId,
+          sequenceNumber: routeSheet.movements.length + 1,
+          sourceUserId: userId,
+          sourceArea: routeSheet.currentArea,
+          targetArea: routeSheet.currentArea,
+          targetPersonName: 'Mesa de Entrada / Secretaría',
+          instruction: `AUTO DE SEPARACIÓN / DESFUSIÓN DE EXPEDIENTE: Se separa formalmente del expediente matriz [${parent.hrCode}].\nMotivo: ${reason.trim()}\nProsecución de trámite independiente.`,
+          quickStamp: 'EXPEDIENTE INDEPENDIENTE',
+        },
+      });
+
+      // 4. Crear proveído en la matriz
+      await tx.hrMovement.create({
+        data: {
+          routeSheetId: parent.id,
+          sequenceNumber: parent.movements.length + 1,
+          sourceUserId: userId,
+          sourceArea: parent.currentArea,
+          targetArea: parent.currentArea,
+          targetPersonName: 'Secretaría de Gerencia General',
+          instruction: `AUTO DE SEPARACIÓN DE EXPEDIENTE: Se desvincula la Hoja de Ruta [${routeSheet.hrCode}] del expediente acumulado.\nMotivo: ${reason.trim()}\nFojas restantes del expediente: ${parentNewPages} fojas.`,
+          quickStamp: 'EXPEDIENTE SEPARADO',
+        },
+      });
+    });
+
+    const [updatedChild, updatedParent] = await Promise.all([
+      this.getByIdOrCode(routeSheetId),
+      this.getByIdOrCode(parent.id),
+    ]);
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', updatedChild);
+      socketService.getIo()?.emit('correspondence:updated', updatedParent);
+    } catch (err) {}
+
+    return { child: updatedChild, parent: updatedParent };
   }
 
   /**
@@ -1768,4 +2206,71 @@ export class RouteSheetService {
       myRouteSheets: formattedRouteSheets,
     };
   }
+
+  /**
+   * Elimina un documento adjunto específico de una Hoja de Ruta
+   */
+  public async deleteDocument(routeSheetId: string, documentId: string, _user?: any) {
+    const doc = await this.prisma.corrDocument.findUnique({
+      where: { id: documentId },
+    });
+
+    if (!doc) {
+      throw new Error('Documento adjunto no encontrado');
+    }
+
+    if (doc.routeSheetId !== routeSheetId) {
+      throw new Error('El documento adjunto no pertenece a la Hoja de Ruta especificada');
+    }
+
+    // Eliminar archivo físico del disco si existe
+    if (doc.fileUrl) {
+      try {
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'correspondence');
+        const filename = path.basename(doc.fileUrl);
+        const absolutePath = path.join(uploadsDir, filename);
+        if (fs.existsSync(absolutePath)) {
+          fs.unlinkSync(absolutePath);
+        }
+      } catch (fileErr) {
+        logger.warn('No se pudo eliminar el archivo físico en disco para CorrDocument:', fileErr);
+      }
+    }
+
+    // Eliminar registro en la base de datos
+    await this.prisma.corrDocument.delete({
+      where: { id: documentId },
+    });
+
+    // Retornar Hoja de Ruta actualizada y enriquecida
+    const updated = await this.prisma.routeSheet.findUnique({
+      where: { id: routeSheetId },
+      include: {
+        person: true,
+        createdBy: true,
+        movements: {
+          orderBy: { sequenceNumber: 'asc' },
+          include: { sourceUser: true, documents: true },
+        },
+        documents: true,
+      },
+    });
+
+    if (!updated) {
+      throw new Error('Hoja de Ruta no encontrada tras eliminar documento');
+    }
+
+    const settings = this.getSettingsConfig();
+    const defaultDays = Number(settings.defaultSlaDays) || 5;
+    const enriched = this.enrichRouteSheet(updated, defaultDays);
+
+    try {
+      socketService.getIo()?.emit('correspondence:updated', enriched);
+    } catch (sockErr) {
+      logger.warn('[RouteSheetService] Error al emitir socket correspondence:updated tras eliminar documento:', sockErr);
+    }
+
+    return enriched;
+  }
 }
+

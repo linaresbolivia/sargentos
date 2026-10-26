@@ -5,11 +5,12 @@ const prisma = new PrismaClient();
 async function main() {
   const hash = await argon2.hash('123456');
   await prisma.user.update({
-    where: { email: 'adminpqrs@chls.com' },
+    where: { email: 'jabuday@gmail.com' },
     data: { passwordHash: hash }
   });
-  console.log('Password updated to 123456');
+  console.log('Password for jabuday@gmail.com updated to 123456');
 }
+
 
 main()
   .catch(console.error)

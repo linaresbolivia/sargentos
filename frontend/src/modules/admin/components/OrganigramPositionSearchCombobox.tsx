@@ -13,9 +13,18 @@ import {
   Shield,
   Briefcase,
   UserX,
+  AlertCircle,
+  AlertTriangle,
+  CheckCircle2,
+  Lock,
+  Users,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { WorkflowNode } from '@modules/correspondence/types/correspondence.types';
-import { DEFAULT_ORGANIGRAM_NODES } from '@modules/correspondence/utils/organigramWorkflowService';
+import {
+  DEFAULT_ORGANIGRAM_NODES,
+  getOrganigramOccupancyMap,
+} from '@modules/correspondence/utils/organigramWorkflowService';
 
 interface OrganigramPositionSearchComboboxProps {
   nodes?: WorkflowNode[];
@@ -24,6 +33,8 @@ interface OrganigramPositionSearchComboboxProps {
   baseRole?: string;
   placeholder?: string;
   disabled?: boolean;
+  users?: any[];
+  editingUserId?: string | null;
 }
 
 // Normaliza texto eliminando acentos y caracteres especiales para búsqueda ultra-flexible
@@ -139,7 +150,7 @@ const getNodeTypeStyle = (type: string) => {
   }
 };
 
-type DepartmentFilter = 'ALL' | 'GERENCIA' | 'FINANZAS' | 'OPERACIONES' | 'RECEPCION' | 'COMPRAS' | 'DEPORTES' | 'SECRETARIA' | 'LEGAL';
+type DepartmentFilter = 'ALL' | 'VACANTES' | 'GERENCIA' | 'FINANZAS' | 'OPERACIONES' | 'RECEPCION' | 'COMPRAS' | 'DEPORTES' | 'SECRETARIA' | 'LEGAL';
 
 export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearchComboboxProps> = ({
   nodes = DEFAULT_ORGANIGRAM_NODES,
@@ -148,6 +159,8 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
   baseRole = 'STAFF',
   placeholder = 'Buscar puesto, área o departamento del organigrama...',
   disabled = false,
+  users = [],
+  editingUserId = null,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -158,6 +171,11 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
+  // Mapa de ocupación 1:1 entre cargos y funcionarios del sistema
+  const occupancyMap = useMemo(() => {
+    return getOrganigramOccupancyMap(users, { nodes, edges: [] });
+  }, [users, nodes]);
+
   // Nodo actualmente seleccionado
   const selectedNode = useMemo(() => {
     return nodes.find((n) => n.id === selectedNodeId);
@@ -167,8 +185,13 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
   const filteredNodes = useMemo(() => {
     let result = nodes;
 
-    // 1. Filtro por categoría departamental
-    if (selectedCategory !== 'ALL') {
+    // 1. Filtro por categoría departamental o vacantes
+    if (selectedCategory === 'VACANTES') {
+      result = result.filter((node) => {
+        const occ = occupancyMap.get(node.id);
+        return !occ?.isOccupied || (occ.occupant && occ.occupant.id === editingUserId);
+      });
+    } else if (selectedCategory !== 'ALL') {
       result = result.filter((node) => {
         if (selectedCategory === 'GERENCIA') return node.type === 'GERENCIA' || node.type === 'DIRECTORIO';
         if (selectedCategory === 'OPERACIONES') return node.type === 'OPERACIONES' || node.type === 'ARCHIVO';
@@ -183,18 +206,29 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
     const terms = q.split(/\s+/).filter((t) => t.length > 0);
 
     return result.filter((node) => {
+      const occ = occupancyMap.get(node.id);
+      const occupantsList = occ?.occupants || (occ?.occupant ? [occ.occupant] : []);
+      const occupantText = occupantsList
+        .map((u: any) => `${u.firstName || ''} ${u.lastName || ''} ${u.email || ''}`)
+        .join(' ');
       const fullText = normalizeText(
-        `${node.title || ''} ${node.subtitle || ''} ${node.manager || ''} ${node.areaKey || ''} ${node.type || ''} ${node.email || ''}`
+        `${node.title || ''} ${node.subtitle || ''} ${node.manager || ''} ${node.areaKey || ''} ${node.type || ''} ${node.email || ''} ${occupantText}`
       );
       // Cada término de búsqueda debe estar presente en el conjunto de campos del puesto
       return terms.every((term) => fullText.includes(term));
     });
-  }, [nodes, selectedCategory, searchTerm]);
+  }, [nodes, selectedCategory, searchTerm, occupancyMap, editingUserId]);
 
   // Categorías con conteos dinámicos
   const categoryChips = useMemo(() => {
+    const vacantCount = nodes.filter((n) => {
+      const occ = occupancyMap.get(n.id);
+      return !occ?.isOccupied;
+    }).length;
+
     const counts: Record<string, number> = {
       ALL: nodes.length,
+      VACANTES: vacantCount,
       GERENCIA: nodes.filter((n) => n.type === 'GERENCIA' || n.type === 'DIRECTORIO').length,
       FINANZAS: nodes.filter((n) => n.type === 'FINANZAS').length,
       OPERACIONES: nodes.filter((n) => n.type === 'OPERACIONES' || n.type === 'ARCHIVO').length,
@@ -207,6 +241,7 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
 
     return [
       { id: 'ALL' as DepartmentFilter, label: 'Todos', count: counts.ALL },
+      { id: 'VACANTES' as DepartmentFilter, label: '✨ Vacantes', count: counts.VACANTES },
       { id: 'GERENCIA' as DepartmentFilter, label: 'Gerencia', count: counts.GERENCIA },
       { id: 'FINANZAS' as DepartmentFilter, label: 'Finanzas', count: counts.FINANZAS },
       { id: 'OPERACIONES' as DepartmentFilter, label: 'Operaciones', count: counts.OPERACIONES },
@@ -216,7 +251,7 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
       { id: 'SECRETARIA' as DepartmentFilter, label: 'Secretaría', count: counts.SECRETARIA },
       { id: 'LEGAL' as DepartmentFilter, label: 'Legal', count: counts.LEGAL },
     ].filter((cat) => cat.count > 0);
-  }, [nodes]);
+  }, [nodes, occupancyMap]);
 
   // Reset highlight index al filtrar
   useEffect(() => {
@@ -362,6 +397,47 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
         </div>
       </div>
 
+      {/* Indicador de estado de asignación del cargo seleccionado */}
+      {selectedNode && !isOpen && (
+        <div className="mt-1.5 flex items-center justify-between text-[11px] px-2.5 py-1.5 rounded-xl border bg-slate-950/70 border-white/10 backdrop-blur-sm">
+          {(() => {
+            const occ = occupancyMap.get(selectedNode.id);
+            const occupants = occ?.occupants || (occ?.occupant ? [occ.occupant] : []);
+            const isCurrentAssigned = Boolean(editingUserId && occupants.some((u: any) => u.id === editingUserId));
+            const otherOccupants = occupants.filter((u: any) => u.id !== editingUserId);
+
+            if (otherOccupants.length > 0) {
+              return (
+                <div className="flex items-center gap-1.5 text-sky-300 font-medium">
+                  <Users className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span>
+                    Cargo asignado a {occupants.length} funcionario{occupants.length === 1 ? '' : 's'}:{' '}
+                    <strong className="text-white">
+                      {occupants.map((u: any) => `${u.firstName || ''} ${u.lastName || ''}`.trim()).join(', ')}
+                    </strong>.
+                    {isCurrentAssigned ? ' Este usuario ya forma parte de este puesto.' : ' Este usuario compartirá las funciones de este despacho.'}
+                  </span>
+                </div>
+              );
+            }
+            if (isCurrentAssigned) {
+              return (
+                <div className="flex items-center gap-1.5 text-emerald-300 font-bold">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span>Cargo institucional asignado a este usuario</span>
+                </div>
+              );
+            }
+            return (
+              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>Puesto vacante — Este usuario será el titular asignado</span>
+              </div>
+            );
+          })()}
+        </div>
+      )}
+
       {/* Menú Desplegable con Motor de Búsqueda */}
       {isOpen && (
         <div
@@ -438,6 +514,11 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
                 const isSelected = selectedNodeId === node.id;
                 const isHighlighted = index === highlightedIndex;
                 const typeStyle = getNodeTypeStyle(node.type);
+                const occInfo = occupancyMap.get(node.id);
+                const occupants = occInfo?.occupants || (occInfo?.occupant ? [occInfo.occupant] : []);
+                const isOccupiedByCurrent = Boolean(editingUserId && occupants.some((u: any) => u.id === editingUserId));
+                const otherOccupants = occupants.filter((u: any) => u.id !== editingUserId);
+                const hasOccupants = occupants.length > 0;
 
                 return (
                   <button
@@ -451,11 +532,13 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
                         ? 'bg-emerald-500/20 border border-emerald-500/50 text-white shadow-md'
                         : isHighlighted
                         ? 'bg-emerald-950/40 border border-emerald-500/30 text-white'
+                        : hasOccupants
+                        ? 'bg-sky-950/10 hover:bg-slate-900 border border-sky-500/20 text-slate-200'
                         : 'hover:bg-slate-900/80 text-slate-300 border border-transparent'
                     }`}
                   >
                     <div className="min-w-0 flex-1 space-y-1">
-                      {/* Título & Badge de Área */}
+                      {/* Título & Badge de Área & Estado de Ocupación */}
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md border shrink-0 ${typeStyle.badge}`}>
                           {typeStyle.label}
@@ -463,7 +546,36 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
                         <span className="font-black text-white text-xs sm:text-[13px] tracking-wide">
                           <HighlightedText text={node.title} query={searchTerm} />
                         </span>
+
+                        {isOccupiedByCurrent ? (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            <span>Asignado a este Usuario {otherOccupants.length > 0 ? `(+${otherOccupants.length})` : ''}</span>
+                          </span>
+                        ) : hasOccupants ? (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-sky-500/15 text-sky-300 border border-sky-500/30 flex items-center gap-1">
+                            <Users className="w-2.5 h-2.5 text-sky-400" />
+                            <span>{occupants.length} {occupants.length === 1 ? 'Funcionario' : 'Funcionarios'}</span>
+                          </span>
+                        ) : (
+                          <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-md bg-slate-800 text-emerald-400 border border-emerald-500/30">
+                            Disponible / Vacante
+                          </span>
+                        )}
                       </div>
+
+                      {/* Lista de funcionarios que ocupan el puesto */}
+                      {hasOccupants && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-200 text-[10.5px]">
+                          <Users className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                          <span>
+                            Personal asignado:{' '}
+                            <strong className="text-white">
+                              {occupants.map((u: any) => `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.email).join(', ')}
+                            </strong>
+                          </span>
+                        </div>
+                      )}
 
                       {/* Subtítulo / Descripción de Funciones */}
                       {node.subtitle && (
@@ -496,11 +608,15 @@ export const OrganigramPositionSearchCombobox: React.FC<OrganigramPositionSearch
                     </div>
 
                     {/* Check de Selección */}
-                    {isSelected && (
+                    {isSelected ? (
                       <div className="w-5 h-5 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center shrink-0 mt-0.5">
                         <Check className="w-3.5 h-3.5 stroke-[3]" />
                       </div>
-                    )}
+                    ) : isOccupiedByCurrent ? (
+                      <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center shrink-0 mt-0.5" title="Asignado a este usuario">
+                        <Check className="w-3 h-3 stroke-[2.5]" />
+                      </div>
+                    ) : null}
                   </button>
                 );
               })

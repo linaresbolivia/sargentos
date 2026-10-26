@@ -316,30 +316,30 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="bg-[#0c1611] border-2 border-brand-gold/40 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-[0_0_50px_rgba(0,0,0,0.9)] overflow-hidden my-auto">
+      <div className="bg-white dark:bg-[#0c1611] border-2 border-brand-gold/40 rounded-3xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden my-auto">
         
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-brand-gold/20 flex justify-between items-center bg-gradient-to-r from-brand-green/40 via-brand-green/20 to-transparent">
+        <div className="p-5 sm:p-6 border-b border-slate-200 dark:border-brand-gold/20 flex justify-between items-center bg-gradient-to-r from-emerald-50 via-amber-50/40 to-transparent dark:from-brand-green/40 dark:via-brand-green/20 dark:to-transparent">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 flex items-center justify-center text-brand-gold shadow-sm">
+            <div className="w-11 h-11 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-700 dark:text-brand-gold shadow-sm">
               {isEditing ? <Pencil className="w-5 h-5" /> : <Sparkles className="w-5 h-5" />}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-bold text-white serif-brand tracking-tight">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white serif-brand tracking-tight">
                   {isEditing ? (
-                    <>Editar <span className="text-brand-gold">Turno / Horario / Ocupación</span></>
+                    <>Editar <span className="text-amber-700 dark:text-brand-gold">Turno / Horario / Ocupación</span></>
                   ) : (
-                    <>Programar <span className="text-brand-gold">Cierre de Canchas / Clases / Bloqueo</span></>
+                    <>Programar <span className="text-amber-700 dark:text-brand-gold">Cierre de Canchas / Clases / Bloqueo</span></>
                   )}
                 </h2>
                 {isEditing && editingReservation && (
-                  <span className="font-mono text-xs font-bold text-brand-gold bg-brand-gold/15 px-2.5 py-0.5 rounded-full border border-brand-gold/30">
+                  <span className="font-mono text-xs font-bold text-amber-900 dark:text-brand-gold bg-amber-100 dark:bg-brand-gold/15 px-2.5 py-0.5 rounded-full border border-amber-300 dark:border-brand-gold/30">
                     #{editingReservation.code || editingReservation.id?.slice(0, 8).toUpperCase()}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-0.5">
+              <p className="text-xs text-slate-600 dark:text-gray-400 mt-0.5">
                 {isEditing 
                   ? 'Modifica los datos, horario, espacio asignado o motivo de este turno en el mismo entorno.'
                   : 'El concepto y título se registrarán automáticamente en el cronograma y en las vistas de socios.'}
@@ -348,33 +348,33 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           </div>
           <button 
             onClick={onClose}
-            className="p-2 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+            className="p-2 rounded-xl text-slate-400 hover:text-slate-800 hover:bg-slate-100 dark:text-gray-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-gray-200">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-6 text-sm text-slate-800 dark:text-gray-200">
           
           {/* Si es reserva de socio, mostrar banner informativo */}
           {isEditing && editingReservation && editingReservation.memberCode && editingReservation.memberCode !== 'ADMIN_BLOCK' && (
-            <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
+            <div className="p-3.5 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-300 dark:border-emerald-500/30 flex items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2">
-                <User className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span className="text-gray-300">
-                  Socio Titular: <strong className="text-white">{editingReservation.memberName}</strong> (Código: <span className="font-mono text-emerald-300 font-bold">{editingReservation.memberCode}</span>)
+                <User className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span className="text-slate-700 dark:text-gray-300">
+                  Socio Titular: <strong className="text-slate-900 dark:text-white">{editingReservation.memberName}</strong> (Código: <span className="font-mono text-emerald-700 dark:text-emerald-300 font-bold">{editingReservation.memberCode}</span>)
                 </span>
               </div>
               {editingReservation.memberPhone && (
-                <span className="text-emerald-400 font-mono text-[11px]">📱 {editingReservation.memberPhone}</span>
+                <span className="text-emerald-700 dark:text-emerald-400 font-mono text-[11px]">📱 {editingReservation.memberPhone}</span>
               )}
             </div>
           )}
 
           {/* Tipo de Actividad */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-2">
+            <label className="block text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold mb-2">
               Tipo de Actividad / Cierre
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
@@ -389,7 +389,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     className={`flex flex-col items-center justify-center p-2.5 rounded-xl border text-center transition-all ${
                       isSelected 
                         ? `${item.color} shadow-[0_0_15px_rgba(204,161,75,0.25)] font-bold scale-[1.02]` 
-                        : 'border-white/10 bg-black/30 hover:border-white/20 text-gray-400'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-black/30 hover:border-slate-300 dark:hover:border-white/20 text-slate-600 dark:text-gray-400'
                     }`}
                   >
                     <Icon className="w-4 h-4 mb-1" />
@@ -401,26 +401,26 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           </div>
 
           {/* Título / Concepto y Notas */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-black/40 border border-brand-gold/25">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-black/40 border border-slate-200 dark:border-brand-gold/25">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-brand-gold mb-1 flex items-center justify-between">
+              <label className="block text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold mb-1 flex items-center justify-between">
                 <span>Título / Concepto del Turno *</span>
-                <span className="text-[10px] text-emerald-400 font-normal">Visible en horarios</span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">Visible en horarios</span>
               </label>
               <input 
                 type="text"
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 placeholder="Ej. Cierre de Canchas / Clases de Tenis / Torneo CHLS"
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm font-semibold"
                 required
               />
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">
                 Este concepto se mostrará exactamente a los socios en la grilla y cronograma.
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 mb-1">
                 Detalles / Observaciones / Profesor
               </label>
               <input 
@@ -428,9 +428,9 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 placeholder="Ej. Trabajos de pintura y luminarias / Prof. Marcelo"
-                className="w-full bg-black/60 border border-white/20 rounded-xl px-3.5 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
+                className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3.5 py-2.5 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-sm"
               />
-              <p className="text-[10px] text-gray-400 mt-1">
+              <p className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">
                 Información interna adicional sobre la actividad o motivo del turno.
               </p>
             </div>
@@ -438,9 +438,9 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
           {/* Acompañantes y Estado (Visible en Modo Edición) */}
           {isEditing && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-black/30 border border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-black/30 border border-slate-200 dark:border-white/10">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 mb-1">
                   Acompañantes / Invitados Registrados
                 </label>
                 <input 
@@ -448,17 +448,17 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                   value={playerNames}
                   onChange={e => setPlayerNames(e.target.value)}
                   placeholder="Ej. Juan Pérez, Carlos Gómez"
-                  className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
+                  className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none focus:border-brand-gold text-xs"
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-300 mb-1">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-gray-300 mb-1">
                   Estado del Turno
                 </label>
                 <select
                   value={status}
                   onChange={e => setStatus(e.target.value)}
-                  className="w-full bg-black/60 border border-white/20 rounded-xl px-3 py-2 text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
+                  className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/20 rounded-xl px-3 py-2 text-slate-900 dark:text-white text-xs font-semibold focus:outline-none focus:border-brand-gold"
                 >
                   <option value="APPROVED">🟢 Aprobada / Activa</option>
                   <option value="PENDING">🟡 Pendiente de Aprobación</option>
@@ -470,9 +470,9 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           )}
 
           {/* Fechas */}
-          <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
+          <div className="bg-slate-50 dark:bg-black/30 p-4 rounded-xl border border-slate-200 dark:border-white/10 space-y-3">
             <div className="flex justify-between items-center flex-wrap gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
                 <Calendar className="w-4 h-4" /> {isEditing ? 'Fecha del Turno' : 'Rango de Fechas para el Cierre / Ocupación'}
               </label>
               {!isEditing && (
@@ -483,7 +483,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       handleStartDateChange(todayStr);
                       handleEndDateChange(todayStr);
                     }}
-                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                    className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                   >
                     Solo Hoy
                   </button>
@@ -493,7 +493,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       handleStartDateChange(todayStr);
                       handleEndDateChange(format(addDays(new Date(), 2), 'yyyy-MM-dd'));
                     }}
-                    className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
+                    className="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/15 text-amber-900 dark:text-brand-gold border border-amber-300 dark:border-transparent text-[10px] font-bold transition-colors"
                   >
                     3 Días (Hoy + 2)
                   </button>
@@ -503,7 +503,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       handleStartDateChange(todayStr);
                       handleEndDateChange(format(addDays(new Date(), 7), 'yyyy-MM-dd'));
                     }}
-                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                    className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                   >
                     7 Días
                   </button>
@@ -513,7 +513,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       handleStartDateChange(todayStr);
                       handleEndDateChange(format(addMonths(new Date(), 1), 'yyyy-MM-dd'));
                     }}
-                    className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                    className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                   >
                     1 Mes
                   </button>
@@ -523,7 +523,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
             <div className={`grid ${isEditing ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'} gap-3`}>
               <div>
-                <span className="text-[11px] text-gray-400 block mb-1">
+                <span className="text-[11px] text-slate-600 dark:text-gray-400 block mb-1">
                   {isEditing ? 'Fecha Asignada:' : 'Fecha de Inicio:'}
                 </span>
                 <div className="relative flex items-center">
@@ -532,7 +532,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     type="date"
                     value={startDate}
                     onChange={e => handleStartDateChange(e.target.value)}
-                    className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
+                    className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/15 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
                     required
                   />
                   <button
@@ -542,7 +542,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       if (el?.showPicker) el.showPicker();
                       else el?.focus();
                     }}
-                    className="absolute right-2.5 text-brand-gold hover:text-yellow-400 p-1 transition-transform hover:scale-110"
+                    className="absolute right-2.5 text-amber-700 dark:text-brand-gold hover:text-amber-900 dark:hover:text-yellow-400 p-1 transition-transform hover:scale-110"
                     title="Abrir selector de fecha"
                   >
                     <Calendar className="w-4 h-4" />
@@ -551,14 +551,14 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
               </div>
               {!isEditing && (
                 <div>
-                  <span className="text-[11px] text-gray-400 block mb-1">Fecha de Fin:</span>
+                  <span className="text-[11px] text-slate-600 dark:text-gray-400 block mb-1">Fecha de Fin:</span>
                   <div className="relative flex items-center">
                     <input 
                       id="endDateInput"
                       type="date"
                       value={endDate}
                       onChange={e => handleEndDateChange(e.target.value)}
-                      className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
+                      className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/15 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-brand-gold text-sm cursor-pointer pr-9 font-mono"
                       required
                     />
                     <button
@@ -568,7 +568,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                         if (el?.showPicker) el.showPicker();
                         else el?.focus();
                       }}
-                      className="absolute right-2.5 text-brand-gold hover:text-yellow-400 p-1 transition-transform hover:scale-110"
+                      className="absolute right-2.5 text-amber-700 dark:text-brand-gold hover:text-amber-900 dark:hover:text-yellow-400 p-1 transition-transform hover:scale-110"
                       title="Abrir selector de fecha"
                     >
                       <Calendar className="w-4 h-4" />
@@ -580,51 +580,51 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           </div>
 
           {/* Rango de Horarios */}
-          <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
+          <div className="bg-slate-50 dark:bg-black/30 p-4 rounded-xl border border-slate-200 dark:border-white/10 space-y-3">
             <div className="flex justify-between items-center flex-wrap gap-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
                 <Clock className="w-4 h-4" /> Horario del Turno / Bloqueo
               </label>
               <div className="flex flex-wrap gap-1.5">
                 <button
                   type="button"
                   onClick={() => { setStartTime('06:00'); setEndTime('22:00'); }}
-                  className="px-2 py-1 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 text-[10px] font-bold transition-colors"
+                  className="px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 dark:bg-rose-500/20 text-rose-900 dark:text-rose-300 border border-rose-300 dark:border-rose-500/30 text-[10px] font-bold transition-colors"
                 >
                   Todo el Día (06-22)
                 </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('07:00'); setEndTime('09:00'); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                 >
                   07-09
                 </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('08:00'); setEndTime('10:00'); }}
-                  className="px-2 py-1 rounded bg-brand-gold/15 text-brand-gold text-[10px] font-bold transition-colors"
+                  className="px-2 py-1 rounded bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/15 text-amber-900 dark:text-brand-gold border border-amber-300 dark:border-transparent text-[10px] font-bold transition-colors"
                 >
                   08-10
                 </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('16:00'); setEndTime('18:00'); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                 >
                   16-18
                 </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('18:00'); setEndTime('20:00'); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                 >
                   18-20
                 </button>
                 <button
                   type="button"
                   onClick={() => { setStartTime('20:00'); setEndTime('22:00'); }}
-                  className="px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-[10px] text-gray-300 transition-colors"
+                  className="px-2 py-1 rounded bg-slate-200/80 hover:bg-slate-300 dark:bg-white/5 dark:hover:bg-white/10 text-[10px] text-slate-700 dark:text-gray-300 transition-colors"
                 >
                   20-22
                 </button>
@@ -633,11 +633,11 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <span className="text-[11px] text-gray-400 block mb-1">Hora Inicio:</span>
+                <span className="text-[11px] text-slate-600 dark:text-gray-400 block mb-1">Hora Inicio:</span>
                 <select
                   value={startTime}
                   onChange={e => setStartTime(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
+                  className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/15 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
                 >
                   {TIME_SLOTS_OPTIONS.slice(0, -1).map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -645,11 +645,11 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 </select>
               </div>
               <div>
-                <span className="text-[11px] text-gray-400 block mb-1">Hora Fin:</span>
+                <span className="text-[11px] text-slate-600 dark:text-gray-400 block mb-1">Hora Fin:</span>
                 <select
                   value={endTime}
                   onChange={e => setEndTime(e.target.value)}
-                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
+                  className="w-full bg-white dark:bg-black/60 border border-slate-300 dark:border-white/15 rounded-xl px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:border-brand-gold text-sm font-mono"
                 >
                   {TIME_SLOTS_OPTIONS.slice(1).map(t => (
                     <option key={t} value={t}>{t}</option>
@@ -661,13 +661,13 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
 
           {/* Días de la Semana (solo en modo creación) */}
           {!isEditing && (
-            <div className="bg-black/30 p-4 rounded-xl border border-white/10 space-y-3">
+            <div className="bg-slate-50 dark:bg-black/30 p-4 rounded-xl border border-slate-200 dark:border-white/10 space-y-3">
               <div className="flex justify-between items-center flex-wrap gap-2 mb-1">
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-brand-gold block">
+                  <label className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold block">
                     Días de Repetición en el Rango
                   </label>
-                  <span className="text-[10px] text-emerald-400">
+                  <span className="text-[10px] text-emerald-700 dark:text-emerald-400 font-semibold">
                     * Se programará y cerrará automáticamente en los días marcados
                   </span>
                 </div>
@@ -675,42 +675,42 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setDaysPreset('RANGE')}
-                    className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold hover:bg-emerald-500/30 transition-colors"
+                    className="px-2 py-0.5 rounded bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30 text-[10px] font-bold transition-colors"
                   >
                     ✓ Días del Rango
                   </button>
                   <button
                     type="button"
                     onClick={() => setDaysPreset('ALL')}
-                    className="px-2 py-0.5 rounded bg-white/10 text-white text-[10px] font-bold hover:bg-white/20 transition-colors"
+                    className="px-2 py-0.5 rounded bg-slate-800 dark:bg-white/10 text-white text-[10px] font-bold hover:bg-slate-900 dark:hover:bg-white/20 transition-colors"
                   >
                     Todos (7 días)
                   </button>
                   <button
                     type="button"
                     onClick={() => setDaysPreset('WEEKDAYS')}
-                    className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                    className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-white/5 text-slate-700 dark:text-gray-300 text-[10px] transition-colors"
                   >
                     Lun a Vie
                   </button>
                   <button
                     type="button"
                     onClick={() => setDaysPreset('WEEKENDS')}
-                    className="px-2 py-0.5 rounded bg-white/5 text-gray-300 hover:bg-white/10 text-[10px] transition-colors"
+                    className="px-2 py-0.5 rounded bg-slate-200 hover:bg-slate-300 dark:bg-white/5 text-slate-700 dark:text-gray-300 text-[10px] transition-colors"
                   >
                     Sáb y Dom
                   </button>
                   <button
                     type="button"
                     onClick={() => setDaysPreset('MWF')}
-                    className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
+                    className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/10 text-amber-900 dark:text-brand-gold text-[10px] transition-colors"
                   >
                     L-M-V
                   </button>
                   <button
                     type="button"
                     onClick={() => setDaysPreset('TT')}
-                    className="px-2 py-0.5 rounded bg-brand-gold/10 text-brand-gold hover:bg-brand-gold/20 text-[10px] transition-colors"
+                    className="px-2 py-0.5 rounded bg-amber-100 hover:bg-amber-200 dark:bg-brand-gold/10 text-amber-900 dark:text-brand-gold text-[10px] transition-colors"
                   >
                     M-J
                   </button>
@@ -727,8 +727,8 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                       onClick={() => toggleDay(d.value)}
                       className={`py-2.5 rounded-xl border text-center font-bold text-xs transition-all flex flex-col items-center justify-center gap-0.5 ${
                         isSelected
-                          ? 'bg-brand-gold text-[#0a150e] border-brand-gold shadow-[0_0_12px_rgba(204,161,75,0.3)] scale-[1.02]'
-                          : 'border-white/10 bg-black/40 text-gray-400 hover:border-white/20'
+                          ? 'bg-amber-400 dark:bg-brand-gold text-slate-950 border-amber-500 dark:border-brand-gold shadow-sm scale-[1.02]'
+                          : 'border-slate-200 dark:border-white/10 bg-white dark:bg-black/40 text-slate-700 dark:text-gray-400 hover:border-slate-300 dark:hover:border-white/20'
                       }`}
                     >
                       <span>{d.label}</span>
@@ -743,7 +743,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           {/* Selección de Canchas */}
           <div>
             <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-brand-gold flex items-center gap-1.5">
+              <label className="text-xs font-bold uppercase tracking-wider text-amber-800 dark:text-brand-gold flex items-center gap-1.5">
                 <Layers className="w-4 h-4" /> {isEditing ? 'Espacio / Cancha Asignada' : `Seleccionar Canchas (${selectedCourtIds.length} seleccionadas)`}
               </label>
               
@@ -751,7 +751,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                 <select
                   value={selectedSportFilter}
                   onChange={e => setSelectedSportFilter(e.target.value)}
-                  className="bg-black/50 border border-white/15 rounded-lg px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-brand-gold"
+                  className="bg-white dark:bg-black/50 border border-slate-300 dark:border-white/15 rounded-lg px-2 py-1 text-xs text-slate-800 dark:text-gray-300 focus:outline-none focus:border-brand-gold"
                 >
                   <option value="ALL">Todos los Deportes</option>
                   {sports.map(s => (
@@ -763,7 +763,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                   <button
                     type="button"
                     onClick={selectAllFilteredCourts}
-                    className="px-2.5 py-1 rounded bg-brand-green-light/30 border border-brand-green-light text-[11px] text-emerald-300 hover:bg-brand-green-light/50 transition-colors"
+                    className="px-2.5 py-1 rounded bg-emerald-100 hover:bg-emerald-200 dark:bg-brand-green-light/30 border border-emerald-300 dark:border-brand-green-light text-[11px] font-bold text-emerald-900 dark:text-emerald-300 transition-colors"
                   >
                     {filteredCourts.every(c => selectedCourtIds.includes(c.id)) ? 'Deseleccionar' : 'Seleccionar Visibles'}
                   </button>
@@ -771,7 +771,7 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-2 bg-black/40 rounded-xl border border-white/10">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto p-2 bg-slate-50 dark:bg-black/40 rounded-xl border border-slate-200 dark:border-white/10">
               {filteredCourts.map(c => {
                 const isSelected = selectedCourtIds.includes(c.id);
                 return (
@@ -780,18 +780,18 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
                     onClick={() => toggleCourt(c.id)}
                     className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                       isSelected
-                        ? 'bg-brand-gold/15 border-brand-gold text-white font-semibold shadow-[0_0_10px_rgba(204,161,75,0.2)]'
-                        : 'bg-black/20 border-white/5 text-gray-400 hover:border-white/15 hover:text-gray-200'
+                        ? 'bg-amber-100 dark:bg-brand-gold/15 border-amber-400 dark:border-brand-gold text-slate-900 dark:text-white font-semibold shadow-xs'
+                        : 'bg-white dark:bg-black/20 border-slate-200 dark:border-white/5 text-slate-700 dark:text-gray-400 hover:border-slate-300 dark:hover:border-white/15 hover:text-slate-900 dark:hover:text-gray-200'
                     }`}
                   >
                     <div className="min-w-0 pr-2">
                       <p className="text-xs font-bold truncate">{c.name}</p>
-                      <p className="text-[10px] text-gray-400">{c.sport}</p>
+                      <p className="text-[10px] text-slate-500 dark:text-gray-400">{c.sport}</p>
                     </div>
                     {isSelected ? (
-                      <CheckCircle2 className="w-4 h-4 text-brand-gold shrink-0" />
+                      <CheckCircle2 className="w-4 h-4 text-amber-600 dark:text-brand-gold shrink-0" />
                     ) : (
-                      <Square className="w-4 h-4 text-gray-600 shrink-0" />
+                      <Square className="w-4 h-4 text-slate-400 dark:text-gray-600 shrink-0" />
                     )}
                   </div>
                 );
@@ -800,27 +800,27 @@ export const AdminCreateBlockModal: React.FC<AdminCreateBlockModalProps> = ({
           </div>
 
           {/* Resumen */}
-          <div className="p-3.5 rounded-xl bg-brand-gold/10 border border-brand-gold/30 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-brand-gold shrink-0 mt-0.5" />
-            <div className="text-xs text-gray-300">
+          <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-brand-gold/10 border border-amber-300 dark:border-brand-gold/30 flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-700 dark:text-brand-gold shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-800 dark:text-gray-300">
               {isEditing ? (
                 <>
-                  <span className="font-bold text-brand-gold">Resumen de Actualización:</span> Se guardarán los cambios para el turno <strong>#{editingReservation?.code || editingReservation?.id?.slice(0, 8).toUpperCase()}</strong> en <strong>{courts.find(c => selectedCourtIds.includes(c.id))?.name || 'la cancha seleccionada'}</strong> el día <strong>{startDate}</strong> de <strong>{startTime} a {endTime}</strong> ({title}).
+                  <span className="font-bold text-amber-800 dark:text-brand-gold">Resumen de Actualización:</span> Se guardarán los cambios para el turno <strong>#{editingReservation?.code || editingReservation?.id?.slice(0, 8).toUpperCase()}</strong> en <strong>{courts.find(c => selectedCourtIds.includes(c.id))?.name || 'la cancha seleccionada'}</strong> el día <strong>{startDate}</strong> de <strong>{startTime} a {endTime}</strong> ({title}).
                 </>
               ) : (
                 <>
-                  <span className="font-bold text-brand-gold">Resumen de Programación:</span> Se crearán bloques continuos para <strong>{selectedCourtIds.length} cancha(s)</strong> de <strong>{startTime} a {endTime}</strong> los días seleccionados entre el <strong>{startDate}</strong> y el <strong>{endDate}</strong>. Estos horarios quedarán reservados como <em>{title}</em> y no podrán ser reservados por socios.
+                  <span className="font-bold text-amber-800 dark:text-brand-gold">Resumen de Programación:</span> Se crearán bloques continuos para <strong>{selectedCourtIds.length} cancha(s)</strong> de <strong>{startTime} a {endTime}</strong> los días seleccionados entre el <strong>{startDate}</strong> y el <strong>{endDate}</strong>. Estos horarios quedarán reservados como <em>{title}</em> y no podrán ser reservados por socios.
                 </>
               )}
             </div>
           </div>
 
           {/* Footer Buttons */}
-          <div className="pt-2 flex justify-end gap-3 border-t border-white/10">
+          <div className="pt-2 flex justify-end gap-3 border-t border-slate-200 dark:border-white/10">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-gray-300 text-xs font-bold transition-colors"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-white/5 dark:hover:bg-white/10 dark:text-gray-300 text-xs font-bold transition-colors"
             >
               Cancelar
             </button>
