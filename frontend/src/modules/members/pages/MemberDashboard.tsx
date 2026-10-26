@@ -37,7 +37,8 @@ import {
   Download,
   Info,
   PhoneCall,
-  Leaf
+  Leaf,
+  MessageSquare
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { logout } from '@store/authSlice';
@@ -145,72 +146,54 @@ export const MemberDashboard: React.FC = () => {
   });
 
   return (
-    <div className="min-h-screen bg-[#030805] text-gray-100 font-sans pb-24 selection:bg-brand-gold selection:text-black">
+    <div className="min-h-screen bg-[#f8f9f6] dark:bg-[#050906] text-gray-900 dark:text-gray-100 font-sans pb-16 selection:bg-brand-gold selection:text-black transition-colors duration-300">
       
-      {/* Background Ambient Glow Orbs */}
+      {/* Background Ambient Radial Glow */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute -top-40 left-1/4 w-96 h-96 bg-brand-gold/10 rounded-full blur-[120px]"></div>
-        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-[130px]"></div>
-        <div className="absolute -bottom-40 left-1/3 w-96 h-96 bg-yellow-600/10 rounded-full blur-[140px]"></div>
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[500px] bg-gradient-to-b from-brand-gold/[0.12] dark:from-brand-gold/[0.08] via-emerald-600/[0.06] dark:via-emerald-600/[0.04] to-transparent rounded-full blur-[140px]"></div>
+        <div className="absolute top-1/3 -right-40 w-96 h-96 bg-emerald-500/[0.08] dark:bg-emerald-500/[0.05] rounded-full blur-[140px]"></div>
+        <div className="absolute bottom-10 -left-40 w-96 h-96 bg-amber-600/[0.06] dark:bg-amber-600/[0.04] rounded-full blur-[140px]"></div>
       </div>
 
-      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 py-4 space-y-4">
         
         {/* ========================================================================= */}
-        {/* TOP VIP HERO BANNER (Elegance & Polish like Court Booking)                 */}
+        {/* TOP VIP HERO BANNER (Quiet Luxury & Minimalist)                           */}
         {/* ========================================================================= */}
-        <header className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c2016] via-[#08150f] to-[#040a07] border border-brand-gold/30 p-5 sm:p-7 shadow-2xl">
-          <div className="absolute -top-20 -right-20 w-64 h-64 bg-brand-gold/15 rounded-full blur-3xl pointer-events-none"></div>
+        <header className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-white/95 via-[#fcfbfa]/95 to-[#f6f5f0]/95 dark:from-[#0c1811]/90 dark:via-[#070f0b]/90 dark:to-[#040806]/95 border border-amber-900/10 dark:border-white/[0.08] backdrop-blur-2xl p-4 sm:p-5 shadow-xl shadow-amber-950/[0.04] dark:shadow-2xl transition-colors duration-300">
+          <div className="absolute -top-16 -right-16 w-56 h-56 bg-brand-gold/[0.12] dark:bg-brand-gold/[0.08] rounded-full blur-3xl pointer-events-none"></div>
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3.5">
               <BackButton to="/" title="Volver al Portal Principal" />
               <CrestLogo size="sm" />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-[0.18em] bg-amber-500/15 text-amber-900 dark:text-brand-gold border border-amber-500/30 dark:border-brand-gold/30">
                     Socio Distinguido
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> EN LÍNEA
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-semibold bg-emerald-500/15 dark:bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-500/30 dark:border-emerald-500/25 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                    <span>EN LÍNEA</span>
                   </span>
                 </div>
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-white serif-brand tracking-tight mt-1">
-                  Portal Exclusivo <span className="text-brand-gold">del Socio</span>
+                <h1 className="text-xl sm:text-2xl font-bold text-gray-950 dark:text-white serif-brand tracking-tight mt-1">
+                  Portal del <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-700 via-amber-600 to-yellow-600 dark:from-brand-gold dark:via-yellow-200 dark:to-amber-400">Socio</span>
                 </h1>
-                <p className="text-xs text-gray-400 mt-0.5">
+                <p className="text-[11px] text-gray-600 dark:text-gray-400 tracking-wider">
                   Club Hípico Los Sargentos • Sede Principal La Paz
                 </p>
               </div>
             </div>
 
-            {/* Quick Actions Header Pills */}
-            <div className="flex items-center gap-2 self-stretch sm:self-auto flex-wrap sm:flex-nowrap">
-              <button
-                onClick={() => navigate('/member/statement')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white/10 hover:bg-white/15 text-brand-gold text-xs font-bold border border-brand-gold/30 hover:scale-105 transition-all shadow-md"
-              >
-                <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Estado de Cuentas</span>
-              </button>
-
-              <button
-                onClick={() => navigate('/member/reservations')}
-                className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-brand-gold to-yellow-600 text-black text-xs font-extrabold shadow-md shadow-brand-gold/20 hover:scale-105 transition-all"
-              >
-                <CalendarCheck className="w-3.5 h-3.5" />
-                <span>Reservar Cancha</span>
-              </button>
-
-              <div className="hidden sm:block">
-                <LanguageToggle />
-              </div>
-
+            {/* Controls: Language, Theme, Logout */}
+            <div className="flex items-center gap-2 self-stretch sm:self-auto">
+              <LanguageToggle />
               <ThemeToggle />
 
               <button 
                 onClick={handleLogout}
-                className="p-2 rounded-2xl bg-white/5 hover:bg-red-500/20 border border-white/10 hover:border-red-500/30 text-gray-400 hover:text-red-400 transition-all"
+                className="p-2.5 rounded-xl bg-white hover:bg-red-50 text-gray-600 hover:text-red-600 border border-gray-200 hover:border-red-300 dark:bg-white/[0.04] dark:hover:bg-red-500/15 dark:border-white/[0.08] dark:hover:border-red-500/30 dark:text-gray-400 dark:hover:text-red-400 transition-all shadow-sm dark:shadow-none"
                 title="Cerrar Sesión"
               >
                 <LogOut className="w-4 h-4" />
@@ -220,393 +203,273 @@ export const MemberDashboard: React.FC = () => {
         </header>
 
         {/* ========================================================================= */}
-        {/* VIP BLACK & GOLD DIGITAL PASSPORT CARD (Exclusive Metal Card Styling)     */}
+        {/* VIP MEMBER PROFILE CARD (Sleek Black Titanium Luxury Card)                 */}
         {/* ========================================================================= */}
-        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#16251d] via-[#0d1712] to-[#080d0a] border-2 border-brand-gold/40 p-6 sm:p-8 shadow-2xl space-y-6">
+        <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#ffffff] via-[#faf8f3] to-[#f4eee2] dark:from-[#121f17]/95 dark:via-[#09130d]/95 dark:to-[#040705]/98 border border-amber-400/40 dark:border-amber-500/35 p-5 sm:p-6 shadow-[0_20px_50px_rgba(204,161,75,0.12),0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85),0_0_35px_rgba(217,171,83,0.09)] backdrop-blur-2xl space-y-4 transition-colors duration-300">
+          {/* Subtle Ambient Radial Gold Glow */}
+          <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-brand-gold/20 dark:from-brand-gold/15 via-amber-500/10 dark:via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none"></div>
+
           {/* Card Holographic Watermark Crest */}
-          <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none transform translate-x-8 translate-y-8">
+          <div className="absolute right-3 bottom-1 opacity-[0.06] dark:opacity-[0.08] pointer-events-none transform translate-x-4 translate-y-4 text-amber-900 dark:text-white">
             <CrestLogo size="xl" />
           </div>
 
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative z-10">
-            
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
             {/* Titular Details */}
-            <div className="flex items-start gap-4">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-brand-gold/50 bg-black/60 overflow-hidden shadow-lg shrink-0 flex items-center justify-center text-brand-gold font-bold text-2xl">
-                {socio.fullName.charAt(0)}
+            <div className="flex items-center gap-4">
+              {/* Luxury Seal Medallion Avatar */}
+              <div className="relative shrink-0">
+                <div className="p-[2.5px] rounded-2xl bg-gradient-to-tr from-amber-600 via-amber-300 to-yellow-600 shadow-xl shadow-amber-500/25">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-[14px] bg-gradient-to-b from-[#18291f] via-[#0d1712] to-[#060a08] flex items-center justify-center font-serif text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-100 via-amber-300 to-amber-500">
+                    {socio.fullName.charAt(0)}
+                  </div>
+                </div>
+                <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-white dark:border-[#08100c] shadow-sm"></span>
+                </span>
               </div>
 
               <div className="space-y-1">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40">
+                  <span className="px-3 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-gradient-to-r from-amber-500/20 to-yellow-500/25 dark:from-amber-500/25 dark:to-yellow-500/15 text-amber-900 dark:text-amber-200 border border-amber-500/30 dark:border-amber-400/40 shadow-sm">
                     {socio.category}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-black/60 text-emerald-400 border border-emerald-500/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 dark:bg-black/70 text-emerald-800 dark:text-emerald-300 border border-emerald-600/30 dark:border-emerald-500/30">
                     {socio.alphaCode}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/10 text-gray-300 border border-white/10">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/[0.08]">
                     {socio.seniorityYears} años antigüedad
                   </span>
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-white serif-brand">
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-950 dark:text-white serif-brand tracking-tight">
                   {socio.fullName}
                 </h2>
 
-                <p className="text-xs text-gray-400">
-                  CI: <span className="text-white font-mono font-semibold">{socio.documentId}</span> • Nro. Título: <span className="text-brand-gold font-bold">{socio.membershipNumber}</span>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
+                  CI: <span className="text-gray-900 dark:text-white font-mono font-semibold">{socio.documentId}</span> • Nro. Título: <span className="text-amber-700 dark:text-brand-gold font-bold font-mono tracking-wider">{socio.membershipNumber}</span>
                 </p>
               </div>
             </div>
 
-            {/* Credential Trigger Button */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
-              <button
-                onClick={() => { setSelectedFamilyMemberQr(null); setShowQrModal(true); }}
-                className="px-5 py-3 rounded-2xl bg-gradient-to-r from-brand-gold via-yellow-500 to-amber-600 text-black text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 hover:scale-105 shadow-xl shadow-brand-gold/20 transition-all border border-brand-gold"
-              >
-                <QrCode className="w-4 h-4" /> Ver Pase Digital Holográfico
-              </button>
-
-              <button
-                onClick={() => navigate('/member/statement')}
-                className="px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-gray-200 text-xs font-bold flex items-center justify-center gap-2 border border-brand-gold/30 transition-all"
-              >
-                <CreditCard className="w-4 h-4 text-emerald-400" /> Ver Estado de Cuenta
-              </button>
-
-              <button
-                onClick={() => setShowQrPayModal(true)}
-                className="px-4 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 hover:scale-105 text-black text-xs font-black flex items-center justify-center gap-2 transition-all shadow-md"
-              >
-                <DollarSign className="w-4 h-4" /> Pagar por QR
-              </button>
+            {/* Subtle VIP Club Crest badge on right */}
+            <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-50/90 dark:bg-black/40 border border-amber-300 dark:border-amber-500/20 text-amber-900 dark:text-amber-300/80 text-[11px] font-medium shadow-sm dark:shadow-none">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-brand-gold animate-pulse" />
+              <span>Membresía Vitalicia Activa</span>
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-brand-gold/15 text-xs">
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
-              <p className="text-[10px] text-gray-400 uppercase font-semibold">Estado de Membresía</p>
+          {/* Integrated Luxury Telemetry Strip (2 Columns with Hairline Divider) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-amber-900/10 dark:divide-white/[0.08] bg-white/80 dark:bg-black/50 border border-amber-400/30 dark:border-amber-500/20 rounded-2xl overflow-hidden shadow-sm dark:shadow-inner">
+            <div className="p-3.5 sm:p-4 flex flex-col justify-center">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-[0.18em]">Estado de Membresía</p>
               {dynamicAccessStatus === 'GRANTED' ? (
-                <p className="text-sm font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                  <CheckCircle2 className="w-4 h-4" /> 100% Habilitado
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)] animate-pulse"></span>
+                  <span className="text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-300">100% Habilitado</span>
+                  <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal hidden lg:inline">• Garita, Molinetes y Canchas</span>
+                </div>
               ) : dynamicAccessStatus === 'WARNING' ? (
-                <p className="text-sm font-bold text-amber-400 flex items-center gap-1 mt-0.5">
-                  <AlertTriangle className="w-4 h-4" /> 1 Mes Mora (Tolerancia)
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <span className="text-sm sm:text-base font-bold text-amber-700 dark:text-amber-400">1 Mes Mora (Tolerancia)</span>
+                </div>
               ) : (
-                <p className="text-sm font-bold text-red-400 flex items-center gap-1 mt-0.5">
-                  <AlertTriangle className="w-4 h-4" /> Acceso Restringido
-                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                  <span className="text-sm sm:text-base font-bold text-red-700 dark:text-red-400">Acceso Restringido</span>
+                </div>
               )}
             </div>
 
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
-              <p className="text-[10px] text-gray-400 uppercase font-semibold">Saldo en Mora</p>
-              <p className={`text-sm font-bold mt-0.5 ${dynamicDebt === 0 ? 'text-emerald-400' : 'text-amber-400 font-mono'}`}>
-                Bs {dynamicDebt.toFixed(2)} {dynamicDebt === 0 ? '(Al Día)' : '(Pendiente)'}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
-              <p className="text-[10px] text-gray-400 uppercase font-semibold">Próximo Vencimiento</p>
-              <p className="text-sm font-bold text-gray-200 mt-0.5">
-                {socio.nextQuotaDate}
-              </p>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-black/40 border border-white/5">
-              <p className="text-[10px] text-gray-400 uppercase font-semibold">Cuota Social Mensual</p>
-              <p className="text-sm font-bold text-brand-gold mt-0.5">
-                Bs {socio.monthlyQuotaAmount} + {socio.boxMonthlyAmount} Box
-              </p>
-            </div>
-          </div>
-
-          {/* CDP Equity Amortization Progress Bar */}
-          <div className="p-4 rounded-2xl bg-black/50 border border-brand-gold/20 space-y-2.5">
-            <div className="flex justify-between items-center text-xs">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-brand-gold" />
-                <span className="font-bold text-white">Amortización Patrimonial CDP (Cuota de Participación)</span>
+            <div className="p-3.5 sm:p-4 flex flex-col justify-center">
+              <p className="text-[10px] text-gray-500 dark:text-gray-400 uppercase font-bold tracking-[0.18em]">Próximo Vencimiento</p>
+              <div className="flex items-center gap-2 mt-1">
+                <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400/80" />
+                <span className="text-sm sm:text-base font-bold text-gray-900 dark:text-gray-100 font-mono">
+                  {socio.nextQuotaDate}
+                </span>
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 font-normal hidden lg:inline">• Cuota Mensual Ordinaria</span>
               </div>
-              <span className="font-mono font-bold text-brand-gold">
-                {socio.paidCDPInstallments} de {socio.totalCDPInstallments} cuotas ({cdpPercentage}%)
-              </span>
-            </div>
-
-            <div className="w-full h-3 rounded-full bg-white/10 overflow-hidden p-0.5 border border-white/5">
-              <div 
-                className="h-full rounded-full bg-gradient-to-r from-yellow-500 via-brand-gold to-emerald-400 transition-all duration-700 shadow-md shadow-brand-gold/30"
-                style={{ width: `${cdpPercentage}%` }}
-              ></div>
-            </div>
-
-            <div className="flex justify-between text-[11px] text-gray-400 pt-0.5">
-              <span>Abonado acumulado: <strong className="text-emerald-400">Bs {socio.cdpAmountPaid.toLocaleString()}</strong></span>
-              <span>Valor total del título: <strong className="text-white">Bs {socio.cdpTotalAmount.toLocaleString()}</strong></span>
             </div>
           </div>
         </section>
 
         {/* ========================================================================= */}
-        {/* LIVE CLUB OCCUPANCY & RADAR TELEMETRY WIDGET                              */}
+        {/* CORE SERVICES (Harmonious, Ultra-Premium Minimalist 4-Card Grid)          */}
         {/* ========================================================================= */}
-        <section 
-          onClick={() => navigate('/member/occupancy')}
-          className="relative overflow-hidden rounded-3xl p-5 border border-emerald-500/30 hover:border-brand-gold bg-gradient-to-r from-[#0c2317] via-[#091810] to-[#06110a] cursor-pointer group shadow-xl hover:shadow-emerald-500/10 transition-all"
-        >
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
-            <div className="flex items-center gap-3.5">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                <Activity className="w-6 h-6 animate-pulse" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 tracking-wider">
-                    RADAR EN TIEMPO REAL
-                  </span>
-                  <span className="text-xs text-brand-gold font-bold">Semáforo de Aforo del Club</span>
-                </div>
-                <h3 className="text-base font-extrabold text-white group-hover:text-brand-gold transition-colors mt-0.5">
-                  ¿Cuán concurrido está el Club en este momento?
-                </h3>
-                <p className="text-xs text-gray-400">
-                  Piscina: <span className="text-emerald-400 font-semibold">38% (Normal)</span> • Gimnasio: <span className="text-emerald-400 font-semibold">42% (Normal)</span> • Tenis: <span className="text-amber-400 font-semibold">65% (Moderado)</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 self-end sm:self-center px-4 py-2 rounded-xl bg-white/5 border border-white/10 group-hover:border-brand-gold/40 transition-colors">
-              <span className="text-xs font-bold text-brand-gold uppercase tracking-wider">
-                Ver Semáforo Completo
-              </span>
-              <ChevronRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 transition-transform" />
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* INICIATIVA CERO PAPEL • CLUB INTELIGENTE - MI CORRESPONDENCIA VERDE       */}
-        {/* ========================================================================= */}
-        <section 
-          onClick={() => setShowEcoModal(true)}
-          className="relative overflow-hidden rounded-3xl p-5 sm:p-6 border-2 border-emerald-500/40 hover:border-brand-gold bg-gradient-to-br from-[#061a12] via-[#0b281c] to-[#040f0a] cursor-pointer group shadow-2xl hover:shadow-emerald-500/20 transition-all"
-        >
-          {/* Subtle eco ambient glowing orbs */}
-          <div className="absolute -top-16 -right-16 w-56 h-56 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform duration-700"></div>
-          <div className="absolute bottom-0 right-1/4 w-32 h-32 bg-brand-gold/10 rounded-full blur-2xl pointer-events-none"></div>
-
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 relative z-10">
-            <div className="flex items-start sm:items-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-500/25 to-emerald-700/30 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all shrink-0">
-                <Leaf className="w-7 h-7" />
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40">
-                    INICIATIVA CERO PAPEL
-                  </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-brand-gold/20 text-brand-gold border border-brand-gold/40 flex items-center gap-1">
-                    <Sparkles className="w-2.5 h-2.5" /> CLUB INTELIGENTE
-                  </span>
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold text-white group-hover:text-brand-gold transition-colors serif-brand">
-                  Mi Correspondencia Verde con el Club
-                </h3>
-                <p className="text-xs text-gray-300 max-w-2xl leading-relaxed">
-                  Gracias a la implementación de <strong className="text-emerald-400">Club Inteligente</strong>, tu correspondencia y trámites institucionales son 100% digitales. Conoce cuánto papel, agua y emisiones de CO₂ estás ahorrando activamente.
-                </p>
-              </div>
-            </div>
-
-            {/* Quick stats preview badge & action button */}
-            <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-3 lg:pt-0 border-white/10">
-              <div className="hidden sm:flex items-center gap-3 bg-black/40 px-4 py-2 rounded-2xl border border-emerald-500/20 text-center">
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Tus Hojas</p>
-                  <p className="text-sm font-black text-emerald-400 font-mono">100% Digital</p>
-                </div>
-                <div className="w-[1px] h-6 bg-white/10"></div>
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase font-semibold">Tu Certificado</p>
-                  <p className="text-sm font-black text-brand-gold">Ver Diploma</p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 group-hover:from-emerald-400 group-hover:to-brand-gold text-black text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all shrink-0"
-              >
-                <span>Ver Mi Impacto</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* ========================================================================= */}
-        {/* INTERACTIVE ASSETS & ATTRIBUTES GRID (4 Cards with Modal Drawers)         */}
-        {/* ========================================================================= */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           
-          {/* 1. Beneficiarios */}
+          {/* Card 1: Reserva de Canchas Deportivas */}
           <div 
-            onClick={() => setShowFamilyModal(true)}
-            className="p-5 rounded-3xl bg-gradient-to-b from-[#121c17] to-[#09110d] border border-white/10 hover:border-brand-gold transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-lg text-center space-y-2 relative overflow-hidden"
+            onClick={() => navigate('/member/reservations')}
+            className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#f7fbf8] to-[#edf7f0] dark:from-[#102218]/95 dark:via-[#0b1711]/90 dark:to-[#050b07]/95 border border-emerald-600/30 hover:border-emerald-500 dark:border-amber-500/30 dark:hover:border-amber-400/80 shadow-[0_12px_30px_rgba(29,78,52,0.08)] hover:shadow-[0_20px_45px_rgba(29,78,52,0.16)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(245,158,11,0.2),0_0_25px_rgba(16,185,129,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
           >
-            <div className="w-12 h-12 rounded-2xl bg-brand-gold/15 text-brand-gold flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-              <Users className="w-6 h-6" />
-            </div>
-            <p className="text-2xl font-black text-white">{socio.beneficiaries.length}</p>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Núcleo Familiar</p>
-            <span className="text-[10px] text-brand-gold block group-hover:underline">Ver Dependientes →</span>
-          </div>
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 dark:bg-amber-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 dark:group-hover:bg-amber-400/20 transition-all pointer-events-none"></div>
 
-          {/* 2. Equinos */}
-          <div 
-            onClick={() => setShowHorsesModal(true)}
-            className="p-5 rounded-3xl bg-gradient-to-b from-[#121c17] to-[#09110d] border border-white/10 hover:border-emerald-500 transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-lg text-center space-y-2 relative overflow-hidden"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <p className="text-2xl font-black text-white">{socio.horses.length}</p>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Equinos (Box H-08)</p>
-            <span className="text-[10px] text-emerald-400 block group-hover:underline">Ver Establo & Dieta →</span>
-          </div>
-
-          {/* 3. Vehículos */}
-          <div 
-            onClick={() => setShowVehiclesModal(true)}
-            className="p-5 rounded-3xl bg-gradient-to-b from-[#121c17] to-[#09110d] border border-white/10 hover:border-blue-500 transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-lg text-center space-y-2 relative overflow-hidden"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-              <Car className="w-6 h-6" />
-            </div>
-            <p className="text-2xl font-black text-white">{socio.vehicles.length}</p>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Tag Garita (Prado)</p>
-            <span className="text-[10px] text-blue-400 block group-hover:underline">Ver Placas Activas →</span>
-          </div>
-
-          {/* 4. Reservas */}
-          <div 
-            onClick={() => navigate('/reservations')}
-            className="p-5 rounded-3xl bg-gradient-to-b from-[#121c17] to-[#09110d] border border-white/10 hover:border-purple-500 transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-lg text-center space-y-2 relative overflow-hidden"
-          >
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/15 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-              <CalendarCheck className="w-6 h-6" />
-            </div>
-            <p className="text-2xl font-black text-white">{socio.activeReservations.length}</p>
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Canchas Reservadas</p>
-            <span className="text-[10px] text-purple-400 block group-hover:underline">Gestionar Canchas →</span>
-          </div>
-
-        </section>
-
-        {/* ========================================================================= */}
-        {/* CURATED SERVICES ECOSYSTEM (High-End Action Cards)                       */}
-        {/* ========================================================================= */}
-        <section className="space-y-4">
-          <div className="flex justify-between items-center border-b border-white/10 pb-3">
-            <div>
-              <h3 className="text-base font-bold text-white serif-brand uppercase tracking-wider">
-                Ecosistema de Servicios Exclusivos
-              </h3>
-              <p className="text-xs text-gray-400">Accede directamente a todas las facilidades de tu club</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            {/* Card 1: Canchas */}
-            <div 
-              onClick={() => navigate('/reservations')}
-              className="p-5 rounded-3xl bg-gradient-to-br from-[#101b15] to-[#08100c] border border-white/10 hover:border-brand-gold cursor-pointer transition-all duration-300 hover:-translate-y-1 group space-y-3"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-brand-gold flex items-center justify-center font-bold">
-                  🎾
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex justify-between items-center">
+                <div className="w-14 h-14 p-0.5 rounded-2xl bg-gradient-to-br from-emerald-500/40 via-amber-400/30 to-emerald-600/40 dark:from-amber-400/50 dark:via-yellow-500/20 dark:to-emerald-500/30 shadow-lg shadow-emerald-500/10 dark:shadow-amber-500/10 group-hover:scale-105 group-hover:rotate-1 transition-all duration-300">
+                  <div className="w-full h-full rounded-[14px] bg-[#0c1912] flex items-center justify-center text-amber-300 group-hover:text-amber-200">
+                    <CalendarCheck className="w-6 h-6" />
+                  </div>
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                  En Vivo
+                <span className="text-[9px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30 flex items-center gap-1.5 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse"></span>
+                  <span>En Vivo</span>
                 </span>
               </div>
+
               <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-brand-gold transition-colors">
-                  Reserva de Canchas Deportivas
-                </h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  Tenis, Pádel Panorámico, Frontón Oficial, Raquet, Wally y Fútbol de césped.
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-800 dark:text-white dark:group-hover:text-amber-200 transition-colors serif-brand tracking-tight">
+                  Reserva de Canchas
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300/85 mt-1.5 leading-relaxed">
+                  Tenis, Pádel Panorámico, Frontón Oficial, Raquet, Wally y Fútbol de césped sintético.
                 </p>
-              </div>
-              <div className="pt-2 flex items-center text-xs font-bold text-brand-gold group-hover:translate-x-1 transition-transform">
-                <span>Reservar turno online</span>
-                <ChevronRight className="w-4 h-4" />
               </div>
             </div>
 
-            {/* Card 2: Aforo & Semáforo */}
-            <div 
-              onClick={() => navigate('/member/occupancy')}
-              className="p-5 rounded-3xl bg-gradient-to-br from-[#101b15] to-[#08100c] border border-white/10 hover:border-emerald-500 cursor-pointer transition-all duration-300 hover:-translate-y-1 group space-y-3"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold">
-                  🏊
+            {/* Tactile Premium Button Bar */}
+            <div className="relative z-10 pt-2 border-t border-emerald-900/10 dark:border-white/[0.08]">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-50 via-amber-50/50 to-emerald-50 hover:from-emerald-100 hover:to-amber-100 dark:from-amber-500/15 dark:via-yellow-500/10 dark:to-emerald-500/10 dark:group-hover:from-amber-500/25 dark:group-hover:to-emerald-500/20 border border-emerald-300/80 dark:border-amber-400/30 group-hover:border-emerald-500 dark:group-hover:border-amber-400/60 text-emerald-900 dark:text-amber-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
+                <span>Reservar Online</span>
+                <div className="w-6 h-6 rounded-lg bg-emerald-700 group-hover:bg-emerald-800 dark:bg-amber-400/20 dark:group-hover:bg-amber-400 text-white dark:text-amber-300 dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
+                  <ArrowRight className="w-3.5 h-3.5" />
                 </div>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                  En Vivo
-                </span>
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors">
-                  Piscina, Saunas & Gimnasio en Vivo
-                </h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  Temperaturas de piscinas 5 y 3 carriles, jacuzzi, saunas y aforo en tiempo real.
-                </p>
-              </div>
-              <div className="pt-2 flex items-center text-xs font-bold text-emerald-400 group-hover:translate-x-1 transition-transform">
-                <span>Ver telemetría y temperaturas</span>
-                <ChevronRight className="w-4 h-4" />
               </div>
             </div>
+          </div>
 
-            {/* Card 3: Estado de Cuenta & Pagos */}
-            <div 
-              onClick={() => navigate('/member/statement')}
-              className="p-5 rounded-3xl bg-gradient-to-br from-[#101b15] to-[#08100c] border border-white/10 hover:border-brand-gold cursor-pointer transition-all duration-300 hover:-translate-y-1 group space-y-3"
-            >
-              <div className="flex justify-between items-start">
-                <div className="w-10 h-10 rounded-xl bg-yellow-500/20 text-brand-gold flex items-center justify-center font-bold">
-                  💳
+          {/* Card 2: Estado de Cuenta & Pagos QR */}
+          <div 
+            onClick={() => navigate('/member/statement')}
+            className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#f6fcf8] to-[#edf9f1] dark:from-[#0e2119]/95 dark:via-[#091711]/90 dark:to-[#040b07]/95 border border-emerald-600/30 hover:border-emerald-500 dark:border-emerald-500/30 dark:hover:border-emerald-400/80 shadow-[0_12px_30px_rgba(16,185,129,0.08)] hover:shadow-[0_20px_45px_rgba(16,185,129,0.16)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(16,185,129,0.2),0_0_25px_rgba(245,158,11,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
+          >
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-400/20 transition-all pointer-events-none"></div>
+
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex justify-between items-center">
+                <div className="w-14 h-14 p-0.5 rounded-2xl bg-gradient-to-br from-emerald-500/40 via-teal-500/30 to-amber-500/30 dark:from-emerald-400/50 dark:via-teal-500/20 dark:to-amber-500/30 shadow-lg shadow-emerald-500/10 group-hover:scale-105 group-hover:rotate-1 transition-all duration-300">
+                  <div className="w-full h-full rounded-[14px] bg-[#091913] flex items-center justify-center text-emerald-300 group-hover:text-emerald-200">
+                    <CreditCard className="w-6 h-6" />
+                  </div>
                 </div>
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
+                <span className={`text-[9px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full shadow-sm ${
                   dynamicDebt === 0
-                    ? 'bg-emerald-500/20 text-emerald-400'
-                    : 'bg-amber-500/20 text-amber-400'
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 dark:bg-emerald-500/15 dark:text-emerald-300 dark:border-emerald-500/30'
+                    : 'bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-500/15 dark:text-amber-300 dark:border-amber-500/30'
                 }`}>
                   {dynamicDebt === 0 ? 'Al Día' : `Mora Bs ${dynamicDebt.toFixed(2)}`}
                 </span>
               </div>
+
               <div>
-                <h4 className="text-sm font-bold text-white group-hover:text-brand-gold transition-colors">
-                  Estado de Cuenta & Pagos QR
-                </h4>
-                <p className="text-xs text-gray-400 mt-1">
-                  Consulta de cuotas sociales, notas veterinarias y pago rápido por QR bancario.
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-emerald-800 dark:text-white dark:group-hover:text-amber-200 transition-colors serif-brand tracking-tight">
+                  Estado de Cuenta & Pagos
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300/85 mt-1.5 leading-relaxed">
+                  Extracto de aportes, cuotas sociales, notas de débito y pago rápido mediante QR Simple bancario.
                 </p>
-              </div>
-              <div className="pt-2 flex items-center text-xs font-bold text-brand-gold group-hover:translate-x-1 transition-transform">
-                <span>Ver estado & pagar por QR</span>
-                <ChevronRight className="w-4 h-4" />
               </div>
             </div>
 
+            {/* Tactile Premium Button Bar */}
+            <div className="relative z-10 pt-2 border-t border-emerald-900/10 dark:border-white/[0.08]">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-emerald-50 via-teal-50/50 to-emerald-50 hover:from-emerald-100 hover:to-teal-100 dark:from-emerald-500/15 dark:via-teal-500/10 dark:to-amber-500/10 dark:group-hover:from-emerald-500/25 dark:group-hover:to-amber-500/20 border border-emerald-300/80 dark:border-emerald-400/30 group-hover:border-emerald-500 dark:group-hover:border-emerald-400/60 text-emerald-900 dark:text-emerald-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
+                <span>Ver Extracto y Pagar</span>
+                <div className="w-6 h-6 rounded-lg bg-emerald-700 group-hover:bg-emerald-800 dark:bg-emerald-400/20 dark:group-hover:bg-emerald-400 text-white dark:text-emerald-300 dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
           </div>
+
+          {/* Card 3: Piscina, Saunas & Gimnasio */}
+          <div 
+            onClick={() => navigate('/member/occupancy')}
+            className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#f5fbfd] to-[#eaf5f9] dark:from-[#0c1f26]/95 dark:via-[#08151c]/90 dark:to-[#040a0e]/95 border border-cyan-600/30 hover:border-cyan-500 dark:border-cyan-500/30 dark:hover:border-cyan-400/80 shadow-[0_12px_30px_rgba(6,182,212,0.08)] hover:shadow-[0_20px_45px_rgba(6,182,212,0.16)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(6,182,212,0.2),0_0_25px_rgba(59,130,246,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
+          >
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-cyan-500/10 rounded-full blur-2xl group-hover:bg-cyan-400/20 transition-all pointer-events-none"></div>
+
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex justify-between items-center">
+                <div className="w-14 h-14 p-0.5 rounded-2xl bg-gradient-to-br from-cyan-500/40 via-sky-500/30 to-teal-500/30 dark:from-cyan-400/50 dark:via-sky-500/20 dark:to-teal-500/30 shadow-lg shadow-cyan-500/10 group-hover:scale-105 group-hover:rotate-1 transition-all duration-300">
+                  <div className="w-full h-full rounded-[14px] bg-[#07181f] flex items-center justify-center text-cyan-300 group-hover:text-cyan-200">
+                    <Waves className="w-6 h-6" />
+                  </div>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-500/15 dark:text-cyan-300 dark:border-cyan-500/30 shadow-sm">
+                  Telemetría
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-cyan-800 dark:text-white dark:group-hover:text-amber-200 transition-colors serif-brand tracking-tight">
+                  Aforo & Telemetría
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300/85 mt-1.5 leading-relaxed">
+                  Temperaturas de piscinas 5 y 3 carriles, jacuzzi, saunas y aforo de deportistas en tiempo real.
+                </p>
+              </div>
+            </div>
+
+            {/* Tactile Premium Button Bar */}
+            <div className="relative z-10 pt-2 border-t border-cyan-900/10 dark:border-white/[0.08]">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-cyan-50 via-sky-50/50 to-cyan-50 hover:from-cyan-100 hover:to-sky-100 dark:from-cyan-500/15 dark:via-sky-500/10 dark:to-teal-500/10 dark:group-hover:from-cyan-500/25 dark:group-hover:to-teal-500/20 border border-cyan-300/80 dark:border-cyan-400/30 group-hover:border-cyan-500 dark:group-hover:border-cyan-400/60 text-cyan-900 dark:text-cyan-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
+                <span>Ver Aforo y Clima</span>
+                <div className="w-6 h-6 rounded-lg bg-cyan-700 group-hover:bg-cyan-800 dark:bg-cyan-400/20 dark:group-hover:bg-cyan-400 text-white dark:text-cyan-300 dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 4: Formulario PQRS */}
+          <div 
+            onClick={() => navigate('/pqrs')}
+            className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#f7f8fe] to-[#edf0fc] dark:from-[#121626]/95 dark:via-[#0b0e1a]/90 dark:to-[#05070f]/95 border border-indigo-600/30 hover:border-indigo-500 dark:border-indigo-500/30 dark:hover:border-amber-400/80 shadow-[0_12px_30px_rgba(99,102,241,0.08)] hover:shadow-[0_20px_45px_rgba(99,102,241,0.16)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(99,102,241,0.2),0_0_25px_rgba(245,158,11,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
+          >
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl group-hover:bg-amber-400/20 transition-all pointer-events-none"></div>
+
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex justify-between items-center">
+                <div className="w-14 h-14 p-0.5 rounded-2xl bg-gradient-to-br from-indigo-500/40 via-blue-500/30 to-amber-500/30 dark:from-indigo-400/50 dark:via-blue-500/20 dark:to-amber-500/30 shadow-lg shadow-indigo-500/10 group-hover:scale-105 group-hover:rotate-1 transition-all duration-300">
+                  <div className="w-full h-full rounded-[14px] bg-[#0c1021] flex items-center justify-center text-indigo-300 group-hover:text-amber-200">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-300 dark:bg-indigo-500/15 dark:text-indigo-300 dark:border-indigo-500/30 shadow-sm">
+                  Oficial
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-indigo-800 dark:text-white dark:group-hover:text-amber-200 transition-colors serif-brand tracking-tight">
+                  Formulario PQRS
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300/85 mt-1.5 leading-relaxed">
+                  Peticiones, quejas, reclamos y sugerencias directamente con la administración del club.
+                </p>
+              </div>
+            </div>
+
+            {/* Tactile Premium Button Bar */}
+            <div className="relative z-10 pt-2 border-t border-indigo-900/10 dark:border-white/[0.08]">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-indigo-50 via-blue-50/50 to-indigo-50 hover:from-indigo-100 hover:to-blue-100 dark:from-indigo-500/15 dark:via-blue-500/10 dark:to-amber-500/10 dark:group-hover:from-indigo-500/25 dark:group-hover:to-amber-500/20 border border-indigo-300/80 dark:border-indigo-400/30 group-hover:border-indigo-500 dark:group-hover:border-amber-400/60 text-indigo-900 dark:text-indigo-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
+                <span>Llenar Formulario</span>
+                <div className="w-6 h-6 rounded-lg bg-indigo-700 group-hover:bg-indigo-800 dark:bg-indigo-400/20 dark:group-hover:bg-amber-400 text-white dark:text-indigo-300 dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+          </div>
+
         </section>
 
       </div>

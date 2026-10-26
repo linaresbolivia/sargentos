@@ -107,6 +107,8 @@ export const App: React.FC = () => {
             <Route path="/member/statement" element={<MemberAccountStatementPage />} />
             <Route path="/member/estado-cuentas" element={<MemberAccountStatementPage />} />
             <Route path="/member/reservations" element={<CourtBooking />} />
+            <Route path="/reservations" element={<Navigate to="/member/reservations" replace />} />
+            <Route path="/reservas" element={<Navigate to="/member/reservations" replace />} />
             <Route path="/member/occupancy" element={<LiveClubOccupancy />} />
             <Route path="/live-occupancy" element={<LiveClubOccupancy />} />
           </Route>

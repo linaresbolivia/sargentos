@@ -8,7 +8,7 @@ export const ThemeToggle: React.FC = () => {
     <button
       onClick={toggleTheme}
       className="p-2 rounded-full border transition-all duration-300
-                 bg-black/20 border-brand-gold/30 text-brand-gold hover:bg-brand-gold/20 hover:scale-105 shadow-goldGlow"
+                 bg-amber-500/15 dark:bg-black/20 border-brand-gold/40 dark:border-brand-gold/30 text-amber-700 dark:text-brand-gold hover:bg-brand-gold/20 hover:scale-105 shadow-sm dark:shadow-goldGlow"
       title={`Cambiar a modo ${theme === 'dark' ? 'claro' : 'oscuro'}`}
     >
       {theme === 'dark' ? (
