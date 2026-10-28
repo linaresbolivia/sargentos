@@ -21,8 +21,19 @@ export const getSocketUrl = (): string => {
   if (isDevServer) {
     return `http://${window.location.hostname}:5000`;
   }
-  // En producción, usa el origen actual (window.location.origin), lo que usa wss:// sobre https:// automáticamente
   return typeof window !== 'undefined' ? window.location.origin : '';
+};
+
+export const getFileUrl = (url?: string | null): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const cleanPath = url.startsWith('/') ? url : `/${url}`;
+  if (isDevServer) {
+    return `http://${window.location.hostname}:5000${cleanPath}`;
+  }
+  return typeof window !== 'undefined' ? `${window.location.origin}${cleanPath}` : cleanPath;
 };
 
 export const api = axios.create({

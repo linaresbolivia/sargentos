@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { RootState } from '@store/store';
-import { api } from '@config/api';
+import { api, getFileUrl } from '@config/api';
 import toast from 'react-hot-toast';
 import {
   FileText,
@@ -157,11 +157,10 @@ export const MemberNewsPage: React.FC = () => {
       );
 
       const link = document.createElement('a');
-      link.href = doc.attachmentUrl.startsWith('http')
-        ? doc.attachmentUrl
-        : `${api.defaults.baseURL?.replace('/api', '') || 'http://localhost:5000'}${doc.attachmentUrl}`;
+      link.href = getFileUrl(doc.attachmentUrl);
       link.download = doc.attachmentName || `${doc.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.pdf`;
       link.target = '_blank';
+      link.rel = 'noopener noreferrer';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
