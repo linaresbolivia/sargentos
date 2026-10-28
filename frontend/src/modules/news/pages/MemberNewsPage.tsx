@@ -270,7 +270,13 @@ export const MemberNewsPage: React.FC = () => {
         }
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || 'Error al guardar el documento');
+      if (err.response?.status === 413) {
+        toast.error('Error 413: El archivo supera el tamaño máximo permitido por el servidor web (Nginx/Apache). Configure client_max_body_size en el servidor.', { duration: 6000 });
+      } else if (err.response?.status === 404) {
+        toast.error('Error 404: El módulo de biblioteca digital no está activo o desplegado en el backend de producción.', { duration: 6000 });
+      } else {
+        toast.error(err.response?.data?.message || 'Error al guardar el documento');
+      }
     } finally {
       setSavingDoc(false);
     }
@@ -965,21 +971,38 @@ export const MemberNewsPage: React.FC = () => {
 
               {/* Archivo Adjunto */}
               <div className="p-3.5 rounded-xl bg-[#04120a] border border-emerald-500/30 space-y-2">
-                <span className="font-bold text-emerald-300 block flex items-center gap-1.5">
-                  <FileDown className="w-3.5 h-3.5 text-emerald-400" />
-                  Archivo para Descarga (PDF, Word, Excel)
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-emerald-300 flex items-center gap-1.5">
+                    <FileDown className="w-3.5 h-3.5 text-emerald-400" />
+                    Archivo para Descarga (PDF, Word, Excel)
+                  </span>
+                  <span className="text-[10px] text-emerald-400/80 font-mono bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                    Soporta hasta 50 MB
+                  </span>
+                </div>
                 
                 {formExistingAttachment?.url && !formAttachmentFile && (
                   <p className="text-[11px] text-emerald-400 truncate font-mono">
-                    Archivo cargado: {formExistingAttachment.name} ({formExistingAttachment.size})
+                    Archivo previo: {formExistingAttachment.name} ({formExistingAttachment.size})
+                  </p>
+                )}
+
+                {formAttachmentFile && (
+                  <p className="text-[11px] text-emerald-300 font-mono bg-emerald-950/40 p-2 rounded-lg border border-emerald-500/20">
+                    Archivo seleccionado: <strong className="text-white">{formAttachmentFile.name}</strong> ({(formAttachmentFile.size / (1024 * 1024)).toFixed(2)} MB)
                   </p>
                 )}
 
                 <input
                   type="file"
-                  onChange={(e) => setFormAttachmentFile(e.target.files?.[0] || null)}
-                  className="text-xs text-emerald-300 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/20 file:text-emerald-300"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0] || null;
+                    if (file && file.size > 50 * 1024 * 1024) {
+                      toast.error(`El archivo seleccionado (${(file.size / (1024 * 1024)).toFixed(1)} MB) excede los 50 MB permitidos.`);
+                    }
+                    setFormAttachmentFile(file);
+                  }}
+                  className="text-xs text-emerald-300 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-500/20 file:text-emerald-300 cursor-pointer"
                 />
               </div>
 
