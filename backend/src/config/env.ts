@@ -1,7 +1,30 @@
 import dotenv from 'dotenv';
+import path from 'path';
+import fs from 'fs';
 import { z } from 'zod';
 
-dotenv.config();
+// Resolve possible paths for .env (handles running from root, workspace, PM2 daemon, etc.)
+const candidatePaths = [
+  path.resolve(__dirname, '../../.env'),
+  path.resolve(process.cwd(), 'backend/.env'),
+  path.resolve(process.cwd(), '.env'),
+  path.resolve(__dirname, '../../../.env'),
+  '/var/www/sargentos/backend/.env',
+  '/var/www/sargentos/.env'
+];
+
+let envLoaded = false;
+for (const envPath of candidatePaths) {
+  if (fs.existsSync(envPath)) {
+    dotenv.config({ path: envPath });
+    envLoaded = true;
+    break;
+  }
+}
+
+if (!envLoaded) {
+  dotenv.config();
+}
 
 const envSchema = z.object({
   PORT: z.string().transform((val) => parseInt(val, 10)).default('5000'),
