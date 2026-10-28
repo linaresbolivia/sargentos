@@ -29,7 +29,8 @@ import {
   Calendar,
   Sparkles,
   ArrowUpRight,
-  ExternalLink
+  ExternalLink,
+  LogIn
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
@@ -58,7 +59,7 @@ export const MemberNewsPage: React.FC = () => {
   const [documents, setDocuments] = useState<DigitalDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<DocumentCategoryFilter>('TODOS');
+  const [selectedCategory, setSelectedCategory] = useState<DocumentCategoryFilter>('REPORTES');
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID');
 
   // Modal de vista/detalle del documento
@@ -71,7 +72,7 @@ export const MemberNewsPage: React.FC = () => {
 
   // Campos del formulario
   const [formTitle, setFormTitle] = useState('');
-  const [formCategory, setFormCategory] = useState('ESTATUTOS');
+  const [formCategory, setFormCategory] = useState('REPORTES');
   const [formType, setFormType] = useState('DOCUMENTO_OFICIAL');
   const [formSummary, setFormSummary] = useState('');
   const [formContent, setFormContent] = useState('');
@@ -107,10 +108,13 @@ export const MemberNewsPage: React.FC = () => {
     fetchDocuments();
   }, []);
 
-  // Filtrado reactivo de la biblioteca
+  // Filtrado reactivo de la biblioteca: enfocado en Reportes & Balances
   const filteredDocs = useMemo(() => {
     return documents.filter((doc) => {
-      if (selectedCategory !== 'TODOS' && doc.category !== selectedCategory) {
+      // Filtrar estrictamente por la categoría REPORTES & BALANCES
+      const cat = (doc.category || '').toUpperCase();
+      const isReport = cat === 'REPORTES' || cat === 'REPORTE' || cat.includes('REPORTE') || cat.includes('BALANCE');
+      if (!isReport) {
         return false;
       }
 
@@ -128,19 +132,19 @@ export const MemberNewsPage: React.FC = () => {
 
       return true;
     });
-  }, [documents, selectedCategory, searchQuery]);
+  }, [documents, searchQuery]);
 
-  // Documento supremo / destacado
+  // Documento supremo / destacado de Reportes & Balances
   const featuredDoc = useMemo(() => {
-    return documents.find((d) => d.isPinned && d.isPublished);
-  }, [documents]);
+    return filteredDocs.find((d) => d.isPinned && d.isPublished);
+  }, [filteredDocs]);
 
   const regularDocs = useMemo(() => {
-    if (selectedCategory === 'TODOS' && featuredDoc && !searchQuery) {
+    if (featuredDoc && !searchQuery) {
       return filteredDocs.filter((d) => d.id !== featuredDoc.id);
     }
     return filteredDocs;
-  }, [filteredDocs, featuredDoc, selectedCategory, searchQuery]);
+  }, [filteredDocs, featuredDoc, searchQuery]);
 
   // Descarga directa del archivo oficial
   const handleDownload = async (e: React.MouseEvent, doc: DigitalDocument) => {
@@ -319,46 +323,59 @@ export const MemberNewsPage: React.FC = () => {
       <div className="fixed bottom-0 right-1/4 w-[550px] h-[380px] bg-teal-500/10 rounded-full blur-[140px] pointer-events-none -z-0"></div>
 
       {/* ========================================================= */}
-      {/* TOP MODERN EMERALD HEADER                                 */}
+      {/* TOP MODERN RESPONSIVE EMERALD HEADER                      */}
       {/* ========================================================= */}
       <header className="sticky top-0 z-40 w-full backdrop-blur-2xl bg-[#041209]/95 border-b border-emerald-500/25 transition-all shadow-lg shadow-emerald-950/30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between gap-4">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 sm:gap-4">
           
-          <div className="flex items-center gap-3.5 sm:gap-4.5 min-w-0">
-            <BackButton />
-            <CrestLogo size="md" className="w-11 h-13 sm:w-12 sm:h-14 shrink-0 drop-shadow-[0_0_15px_rgba(16,185,129,0.35)]" />
-            <div className="border-l-2 border-emerald-500/40 pl-3.5 sm:pl-4">
-              <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_12px_rgba(52,211,153,1)]"></span>
-                <h1 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight leading-none">
-                  <span className="bg-gradient-to-r from-white via-emerald-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-md">
+          {/* Left Brand Identity */}
+          <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
+            <BackButton 
+              className="p-1.5 xs:p-2 sm:p-2.5 rounded-xl sm:rounded-2xl shrink-0" 
+              iconClassName="w-4 h-4 sm:w-5 sm:h-5"
+            />
+            <CrestLogo 
+              size="sm" 
+              className="w-8 h-10 sm:w-11 sm:h-13 shrink-0 drop-shadow-[0_0_12px_rgba(16,185,129,0.35)]" 
+            />
+            
+            <div className="border-l border-emerald-500/40 pl-2 sm:pl-3.5 min-w-0 flex-1">
+              {/* Title row */}
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,1)] shrink-0"></span>
+                <h1 className="text-sm xs:text-base sm:text-xl md:text-2xl font-black uppercase tracking-tight leading-tight truncate">
+                  <span className="bg-gradient-to-r from-white via-emerald-100 to-emerald-400 bg-clip-text text-transparent drop-shadow-sm">
                     CLUB INTELIGENTE
                   </span>
                 </h1>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 tracking-wider">
+                <span className="hidden md:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 tracking-wider shrink-0">
                   SISTEMA
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-emerald-300 mt-1.5 flex-wrap">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold font-extrabold uppercase text-[11px] sm:text-xs tracking-wide">
-                  <BookOpen className="w-3.5 h-3.5 text-brand-gold shrink-0" />
+
+              {/* Subtitle / Badge row */}
+              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-300 mt-0.5 sm:mt-1 min-w-0">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-brand-gold font-extrabold uppercase text-[9px] xs:text-[10px] sm:text-xs tracking-wide shrink-0">
+                  <BookOpen className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-brand-gold shrink-0" />
                   <span>Biblioteca Digital</span>
                 </div>
                 <span className="text-emerald-700 hidden sm:inline">&bull;</span>
-                <span className="text-emerald-400/80 font-mono text-[11px] sm:text-xs hidden sm:inline">
+                <span className="text-emerald-400/80 font-mono text-[10px] sm:text-xs truncate hidden sm:inline">
                   Repositorio Institucional CHLS
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 shrink-0">
+          {/* Right Action Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
             {isStaffOrAdmin && (
               <button
                 onClick={() => handleOpenEditor()}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black transition-all shadow-md shadow-emerald-500/25 hover:scale-105"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black transition-all shadow-md shadow-emerald-500/25 hover:scale-105 shrink-0"
+                title="Subir Documento"
               >
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
+                <Plus className="w-3.5 h-3.5 stroke-[3] shrink-0" />
                 <span className="hidden sm:inline">Subir Documento</span>
               </button>
             )}
@@ -366,17 +383,22 @@ export const MemberNewsPage: React.FC = () => {
             {!user && (
               <button
                 onClick={() => navigate('/login')}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-black border border-emerald-500/40 transition-all shadow-sm"
+                className="inline-flex items-center gap-1 sm:gap-1.5 px-2.5 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-bold bg-emerald-500/15 hover:bg-emerald-500 text-emerald-300 hover:text-black border border-emerald-500/40 transition-all shadow-sm shrink-0"
+                title="Acceso Socios"
               >
-                <span>Acceso Socios</span>
+                <LogIn className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden xs:inline">Acceso Socios</span>
+                <span className="xs:hidden">Socios</span>
               </button>
             )}
 
-            <ThemeToggle />
+            <div className="shrink-0">
+              <ThemeToggle />
+            </div>
 
             <button
               onClick={fetchDocuments}
-              className="w-8 h-8 rounded-xl flex items-center justify-center bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 hover:text-white hover:border-emerald-400/50 transition-colors"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl flex items-center justify-center bg-emerald-950/40 border border-emerald-500/20 text-emerald-300 hover:text-white hover:border-emerald-400/50 transition-colors shrink-0"
               title="Actualizar biblioteca"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
@@ -394,7 +416,7 @@ export const MemberNewsPage: React.FC = () => {
         {/* ========================================================= */}
         {/* FEATURED / KEY DOCUMENT BANNER (Glowing Emerald)          */}
         {/* ========================================================= */}
-        {featuredDoc && selectedCategory === 'TODOS' && !searchQuery && (
+        {featuredDoc && !searchQuery && (
           <section
             onClick={() => handleInspectDoc(featuredDoc)}
             className="group relative cursor-pointer overflow-hidden rounded-3xl bg-gradient-to-br from-[#061d12] via-[#04140c] to-[#020a06] border-2 border-emerald-500/40 hover:border-emerald-400 transition-all duration-300 shadow-2xl shadow-emerald-950/40 hover:shadow-[0_0_40px_rgba(16,185,129,0.22)] p-6 sm:p-8"
@@ -466,7 +488,7 @@ export const MemberNewsPage: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Buscar estatuto, reglamento, formulario, convocatoria..."
+                placeholder="Buscar reporte, balance, estado financiero, documento..."
                 className="w-full pl-9 pr-8 py-2.5 rounded-full bg-[#06180f]/90 border border-emerald-500/30 text-xs sm:text-sm text-emerald-100 placeholder-emerald-500/40 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20 transition-all shadow-inner"
               />
               {searchQuery && (
@@ -482,7 +504,7 @@ export const MemberNewsPage: React.FC = () => {
             {/* View Switcher & Document Counter */}
             <div className="flex items-center justify-between sm:justify-end gap-3 text-xs">
               <span className="text-emerald-400/80 font-mono text-[11px]">
-                {filteredDocs.length} {filteredDocs.length === 1 ? 'documento' : 'documentos oficiales'}
+                {filteredDocs.length} {filteredDocs.length === 1 ? 'reporte oficial' : 'reportes y balances oficiales'}
               </span>
 
               <div className="flex items-center p-0.5 rounded-full bg-[#06160e] border border-emerald-500/30">
@@ -513,16 +535,10 @@ export const MemberNewsPage: React.FC = () => {
 
           </div>
 
-          {/* Clean Category Filter Tabs in Emerald Pills */}
+          {/* Clean Category Filter Tabs in Emerald Pills - Solo Reportes & Balances */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             {[
-              { id: 'TODOS', label: 'Todos los Documentos' },
-              { id: 'REPORTES', label: 'Reportes & Balances' },
-              { id: 'ESTATUTOS', label: 'Estatutos & Reglamentos' },
-              { id: 'CONVOCATORIAS', label: 'Convocatorias & Resoluciones' },
-              { id: 'FORMULARIOS', label: 'Formularios & Solicitudes' },
-              { id: 'MANUALES', label: 'Manuales & Normativas' },
-              { id: 'MEMORIAS', label: 'Memorias & Actas' }
+              { id: 'REPORTES', label: 'Reportes & Balances' }
             ].map((tab) => {
               const isActive = selectedCategory === tab.id;
               return (
@@ -535,6 +551,7 @@ export const MemberNewsPage: React.FC = () => {
                       : 'bg-[#06160e]/80 text-emerald-300/80 border-emerald-500/20 hover:border-emerald-400/60 hover:text-emerald-100 hover:bg-emerald-950/50'
                   }`}
                 >
+                  <FileSpreadsheet className="w-3.5 h-3.5 inline mr-1.5 text-black" />
                   {tab.label}
                 </button>
               );
@@ -558,10 +575,10 @@ export const MemberNewsPage: React.FC = () => {
             {documents.length === 0 ? (
               <div className="space-y-2">
                 <p className="text-lg font-black text-white">
-                  Biblioteca Digital Lista y Vacía
+                  Sección de Reportes y Balances Lista y Vacía
                 </p>
                 <p className="text-xs sm:text-sm text-emerald-400/70 max-w-md mx-auto leading-relaxed">
-                  No hay documentos registrados actualmente. Todo está preparado para comenzar a cargar los documentos oficiales del Club.
+                  No hay reportes ni balances registrados actualmente. Todo está preparado para comenzar a cargar los reportes oficiales del Club.
                 </p>
                 {isStaffOrAdmin && (
                   <div className="pt-3">
@@ -570,7 +587,7 @@ export const MemberNewsPage: React.FC = () => {
                       className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-black bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black transition-all shadow-lg shadow-emerald-500/30 hover:scale-105"
                     >
                       <Plus className="w-4 h-4 stroke-[3]" />
-                      <span>Subir Primer Documento</span>
+                      <span>Subir Primer Reporte</span>
                     </button>
                   </div>
                 )}
@@ -578,10 +595,10 @@ export const MemberNewsPage: React.FC = () => {
             ) : (
               <div className="space-y-1">
                 <p className="text-sm font-bold text-white">
-                  No se encontraron documentos con los filtros seleccionados
+                  No se encontraron reportes o balances con la búsqueda ingresada
                 </p>
                 <p className="text-xs text-emerald-400/60 max-w-sm mx-auto">
-                  Intenta seleccionar otra categoría o cambiar tu término de búsqueda.
+                  Intenta cambiar o limpiar tu término de búsqueda.
                 </p>
               </div>
             )}
