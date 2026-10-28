@@ -14,6 +14,7 @@ generator client {
 model User {
   id           String   @id @default(uuid())
   email        String   @unique
+  username     String?  @unique // Código de Socio (ej. 2625) o usuario institucional
   passwordHash String
   firstName    String   @default("Usuario")
   lastName     String   @default("Desconocido")
@@ -1271,4 +1272,42 @@ model ElectionAuditLog {
   createdAt      DateTime  @default(now())
 
   @@map("election_audit_logs")
+}
+
+// ------------------------------------------------------
+// CLUB NOTICIAS, COMUNICADOS & ARCHIVOS OFICIALES
+// ------------------------------------------------------
+
+model ClubPost {
+  id              String   @id @default(uuid())
+  title           String
+  slug            String?  @unique
+  summary         String   @db.Text
+  content         String   @db.Text
+  category        String   @default("INSTITUCIONAL") // INSTITUCIONAL, DEPORTES, FINANZAS, CONVOCATORIAS, REGLAMENTOS, EVENTOS
+  type            String   @default("NOTICIA")       // NOTICIA, COMUNICADO, DOCUMENTO_OFICIAL, CIRCULAR, CONVOCATORIA
+  coverImageUrl   String?
+  isPinned        Boolean  @default(false)
+  isPublished     Boolean  @default(true)
+  authorName      String   @default("Directorio CHLS")
+  publishedAt     DateTime @default(now())
+  viewCount       Int      @default(0)
+  downloadCount   Int      @default(0)
+
+  // Archivo adjunto principal
+  attachmentUrl   String?
+  attachmentName  String?
+  attachmentSize  String?
+  attachmentType  String? // PDF, EXCEL, WORD, IMAGEN, ZIP
+
+  // Metadatos adicionales JSON (para múltiples archivos si aplica)
+  attachments     Json?    @default("[]")
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([category])
+  @@index([type])
+  @@index([isPublished, publishedAt])
+  @@map("club_posts")
 }

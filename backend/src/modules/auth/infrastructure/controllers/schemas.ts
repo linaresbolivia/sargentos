@@ -9,8 +9,12 @@ export const registerSchema = z.object({
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().min(1, 'El usuario o correo electrónico es requerido.'),
+    email: z.string().optional(),
+    username: z.string().optional(),
     password: z.string().min(1, 'La contraseña es requerida.'),
+  }).refine((data) => !!(data.email || data.username), {
+    message: 'Debe ingresar su código de socio, usuario o correo electrónico.',
+    path: ['email'],
   }),
 });
 

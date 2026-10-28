@@ -30,6 +30,7 @@ import { LiveClubOccupancy } from './modules/members/pages/LiveClubOccupancy';
 import { CommercialHub } from './modules/commercial/pages/CommercialHub';
 import { CorrespondenceHub } from './modules/correspondence/pages/CorrespondenceHub';
 import { ElectoralHub } from './modules/elections/pages/ElectoralHub';
+import { MemberNewsPage } from './modules/news/pages/MemberNewsPage';
 
 import { MainPortal } from '@shared/pages/MainPortal';
 import { VirtualKeyboardProvider, VirtualKeyboard } from '@shared/components/VirtualKeyboard';
@@ -93,11 +94,18 @@ export const App: React.FC = () => {
         />
         
         <Routes>
-          {/* Public routes */}
+          {/* Public routes (Acceso público sin inicio de sesión) */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
           <Route path="/pqrs" element={<PqrsPublicForm />} />
+          <Route path="/news" element={<MemberNewsPage />} />
+          <Route path="/noticias" element={<MemberNewsPage />} />
+          <Route path="/biblioteca" element={<MemberNewsPage />} />
+          <Route path="/admin/news" element={<MemberNewsPage />} />
+          <Route path="/admin/noticias" element={<MemberNewsPage />} />
+          <Route path="/member/news" element={<MemberNewsPage />} />
+          <Route path="/member/noticias" element={<MemberNewsPage />} />
 
           {/* Protected routes: Portal General & Socios */}
           <Route element={<ProtectedRoute />}>

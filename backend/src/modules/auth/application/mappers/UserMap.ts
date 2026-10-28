@@ -6,6 +6,7 @@ export class UserMap {
     return {
       id: user.id,
       email: user.email.value,
+      username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
       isActive: user.isActive,

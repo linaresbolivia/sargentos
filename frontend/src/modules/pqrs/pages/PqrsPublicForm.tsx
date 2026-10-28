@@ -1,7 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { useSelector } from 'react-redux';
+import { RootState } from '@store/store';
+import { memberPortalApi } from '@modules/members/services/memberPortalApi';
 import toast from 'react-hot-toast';
 import { api } from '@config/api';
-import { Send, CheckCircle2, Globe } from 'lucide-react';
+import { Send, CheckCircle2, Globe, UserCheck, ShieldCheck, Sparkles, Lock } from 'lucide-react';
 import logoClub from '../../../assets/logo.png';
 import { BackButton } from '@shared/components/BackButton';
 
@@ -102,16 +106,57 @@ export const PqrsPublicForm: React.FC = () => {
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const t = translations[lang];
 
+  const location = useLocation();
+  const prefillState = location.state as {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    memberCode?: string;
+  } | undefined;
+
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
+
+  const initialFullName = prefillState?.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '');
+  const initialPhone = prefillState?.phone || user?.phone || '';
+  const initialEmail = prefillState?.email || (user?.email && !user.email.includes('nologin.com.bo') ? user.email : '');
+  const initialMemberCode = prefillState?.memberCode || user?.username || '';
+
   const [formData, setFormData] = useState({
-    fullName: '',
-    phone: '',
-    email: '',
-    memberCode: '',
+    fullName: initialFullName,
+    phone: initialPhone,
+    email: initialEmail,
+    memberCode: initialMemberCode,
     type: 'PETICION',
     area: '',
     applicantCondition: 'ASOCIADO',
     description: '',
   });
+
+  const isMemberAuthed = Boolean(
+    prefillState?.memberCode || (isAuthenticated && user?.username)
+  );
+
+  useEffect(() => {
+    // Si el socio está autenticado, obtener los datos actualizados de su ficha si falta algo
+    if (isAuthenticated) {
+      memberPortalApi.getMyAccountStatement()
+        .then((res) => {
+          if (res?.socio) {
+            setFormData((prev) => ({
+              ...prev,
+              fullName: prev.fullName || res.socio.fullName || '',
+              phone: prev.phone || res.socio.phone || '',
+              email: prev.email || (res.socio.email && !res.socio.email.includes('nologin.com.bo') ? res.socio.email : ''),
+              memberCode: prev.memberCode || res.socio.membershipNumber || user?.username || '',
+              applicantCondition: 'ASOCIADO',
+            }));
+          }
+        })
+        .catch(() => {
+          // Fallback seguro a los datos de la sesión del usuario
+        });
+    }
+  }, [isAuthenticated, user]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -232,9 +277,9 @@ export const PqrsPublicForm: React.FC = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-emerald-500/20 px-6 py-4 flex flex-col justify-center items-center gap-2 backdrop-blur-xl shadow-[0_10px_30px_rgba(0,0,0,0.5)] bg-[#050e09]/80 transition-all duration-300 relative">
         <BackButton
-          to="/"
+          to={isAuthenticated ? '/member' : '/'}
           className="absolute left-6 top-5"
-          title={lang === 'es' ? 'Volver al Inicio' : 'Back to Home'}
+          title={lang === 'es' ? (isAuthenticated ? 'Volver al Portal del Socio' : 'Volver al Inicio') : (isAuthenticated ? 'Back to Member Portal' : 'Back to Home')}
         />
         <img src={logoClub} alt="Club Logo" className="w-14 h-14 object-contain drop-shadow-[0_0_15px_rgba(204,161,75,0.5)] transition-transform duration-300 hover:scale-105" />
         
@@ -340,12 +385,47 @@ export const PqrsPublicForm: React.FC = () => {
             </p>
           </div>
 
+          {/* VIP Socio Autocompleted Card */}
+          {isMemberAuthed && formData.memberCode && (
+            <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-emerald-900/40 to-black/90 border border-brand-gold/40 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-brand-gold/30 to-amber-500/10 border border-brand-gold/50 flex items-center justify-center text-brand-gold shadow-md shrink-0">
+                  <UserCheck size={22} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-brand-gold bg-brand-gold/20 px-2.5 py-0.5 rounded-full border border-brand-gold/40">
+                      Socio Verificado CHLS
+                    </span>
+                    <span className="text-xs font-mono font-bold text-emerald-300 bg-black/60 px-2 py-0.5 rounded border border-emerald-500/30">
+                      Acción N° {formData.memberCode}
+                    </span>
+                  </div>
+                  <h4 className="text-sm text-white font-bold mt-1">
+                    {formData.fullName || (user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : '')}
+                  </h4>
+                </div>
+              </div>
+              <div className="text-xs text-emerald-300 font-medium flex items-center gap-1.5 self-start sm:self-center bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">
+                <Sparkles size={14} className="text-brand-gold shrink-0" />
+                <span>Datos autocompletados desde su perfil oficial</span>
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
               {/* Nombre Completo */}
               <div className="group">
-                <label className="block text-xs font-bold text-brand-gold uppercase tracking-widest mb-2 transition-colors group-focus-within:text-brand-gold-light">{t.fullName}</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-brand-gold uppercase tracking-widest transition-colors group-focus-within:text-brand-gold-light">{t.fullName}</label>
+                  {isMemberAuthed && formData.fullName && (
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck size={12} /> Autocompletado
+                    </span>
+                  )}
+                </div>
                 <input
                   type="text"
                   name="fullName"
@@ -361,7 +441,14 @@ export const PqrsPublicForm: React.FC = () => {
 
               {/* Teléfono */}
               <div className="group">
-                <label className="block text-xs font-bold text-brand-gold uppercase tracking-widest mb-2 transition-colors group-focus-within:text-brand-gold-light">{t.phone}</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-brand-gold uppercase tracking-widest transition-colors group-focus-within:text-brand-gold-light">{t.phone}</label>
+                  {isMemberAuthed && formData.phone && (
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck size={12} /> Autocompletado
+                    </span>
+                  )}
+                </div>
                 <input
                   type="tel"
                   name="phone"
@@ -381,7 +468,14 @@ export const PqrsPublicForm: React.FC = () => {
 
               {/* Correo Electrónico */}
               <div className="group">
-                <label className="block text-xs font-bold text-brand-gold uppercase tracking-widest mb-2 transition-colors group-focus-within:text-brand-gold-light">{t.email}</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-brand-gold uppercase tracking-widest transition-colors group-focus-within:text-brand-gold-light">{t.email}</label>
+                  {isMemberAuthed && formData.email && (
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck size={12} /> Autocompletado
+                    </span>
+                  )}
+                </div>
                 <input
                   type="email"
                   name="email"
@@ -394,27 +488,48 @@ export const PqrsPublicForm: React.FC = () => {
 
               {/* Condición Solicitante */}
               <div className="group">
-                <label className="block text-xs font-bold text-brand-gold uppercase tracking-widest mb-2 transition-colors group-focus-within:text-brand-gold-light">{t.condition}</label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold text-brand-gold uppercase tracking-widest transition-colors group-focus-within:text-brand-gold-light">{t.condition}</label>
+                  {isMemberAuthed && (
+                    <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <ShieldCheck size={12} /> Asociado
+                    </span>
+                  )}
+                </div>
                 <select
                   name="applicantCondition"
                   required
                   value={formData.applicantCondition}
                   onChange={handleChange}
-                  className="w-full bg-black/40 border-2 border-emerald-900/50 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/50 transition-all shadow-inner appearance-none"
+                  disabled={isMemberAuthed}
+                  className={`w-full bg-black/40 border-2 rounded-xl px-4 py-3.5 text-white focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/50 transition-all shadow-inner appearance-none ${
+                    isMemberAuthed ? 'border-emerald-500/50 cursor-not-allowed bg-emerald-950/20' : 'border-emerald-900/50'
+                  }`}
                   style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23cca14b'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem center', backgroundSize: '1.5em 1.5em', paddingRight: '2.5rem' }}
                 >
                   <option value="ASOCIADO" className="bg-[#0a150e] text-white">{t.options.ASOCIADO}</option>
-                  <option value="COLABORADOR" className="bg-[#0a150e] text-white">{t.options.COLABORADOR}</option>
-                  <option value="EMPRESA_TERCERIZADA" className="bg-[#0a150e] text-white">{t.options.EMPRESA_TERCERIZADA}</option>
+                  {!isMemberAuthed && (
+                    <>
+                      <option value="COLABORADOR" className="bg-[#0a150e] text-white">{t.options.COLABORADOR}</option>
+                      <option value="EMPRESA_TERCERIZADA" className="bg-[#0a150e] text-white">{t.options.EMPRESA_TERCERIZADA}</option>
+                    </>
+                  )}
                 </select>
               </div>
 
               {/* Código de Socio */}
               {formData.applicantCondition === 'ASOCIADO' && (
                 <div className="group">
-                  <label className="block text-xs font-bold text-brand-gold uppercase tracking-widest mb-2 transition-colors group-focus-within:text-brand-gold-light">
-                    {t.memberCode} *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-brand-gold uppercase tracking-widest transition-colors group-focus-within:text-brand-gold-light">
+                      {t.memberCode} *
+                    </label>
+                    {isMemberAuthed && formData.memberCode && (
+                      <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                        <ShieldCheck size={12} /> Autocompletado oficial
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     name="memberCode"
@@ -424,7 +539,12 @@ export const PqrsPublicForm: React.FC = () => {
                     required
                     value={formData.memberCode}
                     onChange={handleChange}
-                    className="w-full bg-black/40 border-2 border-emerald-900/50 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold focus:ring-1 focus:ring-brand-gold/50 transition-all shadow-inner"
+                    readOnly={isMemberAuthed && !!formData.memberCode}
+                    className={`w-full bg-black/40 border-2 rounded-xl px-4 py-3.5 text-white placeholder-gray-500 focus:outline-none focus:ring-1 transition-all shadow-inner ${
+                      isMemberAuthed && formData.memberCode 
+                        ? 'border-emerald-500/60 bg-emerald-950/20 text-emerald-200 font-mono font-bold cursor-not-allowed'
+                        : 'border-emerald-900/50 focus:border-brand-gold focus:ring-brand-gold/50'
+                    }`}
                     placeholder={t.memberCodePlaceholder}
                   />
                 </div>

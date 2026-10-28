@@ -39,6 +39,7 @@ export class PrismaUserRepository implements IUserRepository {
     const userResult = User.create(
       {
         email: emailResult.getValue(),
+        username: raw.username,
         password: passwordResult.getValue(),
         firstName: raw.firstName,
         lastName: raw.lastName,
@@ -80,6 +81,95 @@ export class PrismaUserRepository implements IUserRepository {
     return this.toDomain(raw);
   }
 
+  public async findByUsername(username: string): Promise<User | null> {
+    const raw = await prisma.user.findFirst({
+      where: {
+        username: { equals: username, mode: 'insensitive' },
+      },
+      include: {
+        roles: {
+          include: {
+            permissions: true,
+          },
+        },
+      },
+    });
+
+    if (!raw) return null;
+    return this.toDomain(raw);
+  }
+
+  public async findByIdentifier(identifier: string): Promise<User | null> {
+    const clean = identifier.trim();
+    if (!clean) return null;
+
+    // 1. Direct search by username (código de socio o login username)
+    let raw = await prisma.user.findFirst({
+      where: {
+        username: { equals: clean, mode: 'insensitive' },
+      },
+      include: {
+        roles: {
+          include: { permissions: true },
+        },
+      },
+    });
+
+    // 2. Search by email if contains @
+    if (!raw && clean.includes('@')) {
+      raw = await prisma.user.findFirst({
+        where: {
+          email: { equals: clean, mode: 'insensitive' },
+        },
+        include: {
+          roles: {
+            include: { permissions: true },
+          },
+        },
+      });
+    }
+
+    // 3. Search via Person titular memberships (código de acción / membresía)
+    if (!raw) {
+      raw = await prisma.user.findFirst({
+        where: {
+          person: {
+            titularMemberships: {
+              some: {
+                membershipNumber: { equals: clean, mode: 'insensitive' },
+              },
+            },
+          },
+        },
+        include: {
+          roles: {
+            include: { permissions: true },
+          },
+        },
+      });
+    }
+
+    // 4. Search by Document ID (CI)
+    if (!raw) {
+      raw = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { documentId: { equals: clean, mode: 'insensitive' } },
+            { person: { documentId: { equals: clean, mode: 'insensitive' } } },
+          ],
+        },
+        include: {
+          roles: {
+            include: { permissions: true },
+          },
+        },
+      });
+    }
+
+    if (!raw) return null;
+    return this.toDomain(raw);
+  }
+
   public async findById(id: string): Promise<User | null> {
     const raw = await prisma.user.findUnique({
       where: { id },
@@ -99,6 +189,7 @@ export class PrismaUserRepository implements IUserRepository {
   public async save(user: User): Promise<void> {
     const data = {
       email: user.email.value,
+      username: user.username,
       passwordHash: user.password.value,
       firstName: user.firstName,
       lastName: user.lastName,

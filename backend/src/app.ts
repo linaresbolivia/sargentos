@@ -14,6 +14,7 @@ import { AccessController } from '@modules/accessControl/infrastructure/controll
 import { CommercialController } from '@modules/commercial/infrastructure/controllers/CommercialController';
 import { CorrespondenceController } from '@modules/correspondence/infrastructure/CorrespondenceController';
 import { ElectionController } from '@modules/elections/infrastructure/ElectionController';
+import { NewsController } from './modules/news/infrastructure/NewsController';
 
 import path from 'path';
 
@@ -23,6 +24,7 @@ const accessController = new AccessController();
 const commercialController = new CommercialController();
 const correspondenceController = new CorrespondenceController();
 const electionController = new ElectionController();
+const newsController = new NewsController();
 
 // Static uploads serving with HTTP 7-day browser caching
 app.use(
@@ -85,6 +87,7 @@ app.use('/api/access', accessController.router);
 app.use('/api/commercial', commercialController.router);
 app.use('/api/correspondence', correspondenceController.router);
 app.use('/api/elections', electionController.router);
+app.use('/api/news', newsController.router);
 
 // Global Error Handler
 app.use(errorHandler);

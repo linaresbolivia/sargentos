@@ -22,23 +22,22 @@ export class LoginUseCase {
   ) {}
 
   public async execute(input: LoginInput): Promise<Result<AuthResponseDto>> {
-    // 1. Normalize and validate email/username input
-    const rawInput = (input.email || '').trim().toLowerCase();
-    let user = null;
+    // 1. Normalize and resolve user by identifier (Código de Socio, Username o Email)
+    const rawInput = (input.email || '').trim();
+    if (!rawInput) {
+      return Result.fail<AuthResponseDto>('Debe ingresar su Código de Socio, usuario o correo electrónico.');
+    }
 
-    if (rawInput.includes('@')) {
-      const emailResult = Email.create(rawInput);
-      if (!emailResult.isFailure) {
-        user = await this.userRepository.findByEmail(emailResult.getValue().value);
-      }
-    } else {
-      // Allow login with just username (e.g. 'archivo', 'cgonzales', 'secretaria')
-      const emailSargentos = Email.create(`${rawInput}@sargentos.com.bo`);
+    let user = await this.userRepository.findByIdentifier(rawInput);
+
+    // Fallback: If not found and input lacks '@', try institutional email domain suffixes
+    if (!user && !rawInput.includes('@')) {
+      const emailSargentos = Email.create(`${rawInput.toLowerCase()}@sargentos.com.bo`);
       if (!emailSargentos.isFailure) {
         user = await this.userRepository.findByEmail(emailSargentos.getValue().value);
       }
       if (!user) {
-        const emailChls = Email.create(`${rawInput}@chls.bo`);
+        const emailChls = Email.create(`${rawInput.toLowerCase()}@chls.bo`);
         if (!emailChls.isFailure) {
           user = await this.userRepository.findByEmail(emailChls.getValue().value);
         }

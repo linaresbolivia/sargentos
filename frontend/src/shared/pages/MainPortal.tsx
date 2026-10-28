@@ -26,6 +26,8 @@ import {
   Key,
   Shield,
   Vote,
+  Newspaper,
+  BookOpen,
 } from 'lucide-react';
 import CrestLogo from '@shared/components/CrestLogo';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -692,6 +694,30 @@ export const MainPortal: React.FC = () => {
                 <ArrowUpRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
               </Link>
             )}
+
+            {/* 14. BIBLIOTECA DIGITAL OFICIAL */}
+            <Link 
+              to="/admin/news"
+              className="group relative flex items-center gap-4 p-4 bg-gradient-to-r from-emerald-950/45 via-[#06150d] to-[#040f09] dark:bg-[#06140c] border border-amber-500/40 hover:border-amber-400 rounded-2xl transition-all duration-300 shadow-md shadow-emerald-950/20 hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] hover:-translate-y-1 overflow-hidden"
+            >
+              <div className="w-13 h-13 rounded-2xl bg-amber-500/20 border-2 border-brand-gold/50 flex items-center justify-center text-brand-gold shrink-0 group-hover:scale-110 group-hover:bg-brand-gold group-hover:text-black transition-all duration-300 shadow-[0_0_15px_rgba(212,175,55,0.25)]">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-sm font-black text-white group-hover:text-amber-300 transition-colors truncate">
+                    14. Biblioteca Digital Oficial
+                  </h3>
+                  <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-brand-gold border border-brand-gold/50 shrink-0">
+                    REPOSITORIO NORMATIVO
+                  </span>
+                </div>
+                <p className="text-xs text-gray-300 line-clamp-1">
+                  Estatutos, reglamentos internos, normativas y archivos oficiales para socios.
+                </p>
+              </div>
+              <ArrowUpRight className="w-4 h-4 text-brand-gold group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform shrink-0" />
+            </Link>
 
             {/* Aviso cuando el usuario no tiene módulos activos asignados */}
             {totalAccessibleModules === 0 && (

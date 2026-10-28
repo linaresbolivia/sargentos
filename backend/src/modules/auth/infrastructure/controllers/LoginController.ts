@@ -9,9 +9,10 @@ export class LoginController extends BaseController {
   }
 
   protected async executeImpl(req: Request, res: Response): Promise<any> {
-    const { email, password } = req.body;
+    const { email, username, password } = req.body;
+    const identifier = (username || email || '').trim();
 
-    const result = await this.loginUseCase.execute({ email, password });
+    const result = await this.loginUseCase.execute({ email: identifier, password });
 
     if (result.isFailure) {
       return this.clientError(res, result.getError());

@@ -31,7 +31,11 @@ export const Login: React.FC = () => {
     dispatch(loginStart());
 
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post('/auth/login', { 
+        email, 
+        username: email, 
+        password 
+      });
       const { user, accessToken } = response.data.data;
 
       dispatch(loginSuccess({ user, accessToken }));
@@ -66,16 +70,22 @@ export const Login: React.FC = () => {
           <p className="text-gray-300 text-xs md:text-sm">{t('login.title')}</p>
         </div>
 
+        {/* Socio Quick Notice */}
+        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-900/40 border border-emerald-500/30 text-emerald-200 text-xs">
+          <span className="font-bold text-brand-gold uppercase tracking-wider">Socios:</span>
+          <span>Ingrese con su <strong>Código de Socio / N° de Acción</strong></span>
+        </div>
+
         {/* Form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1.5 relative">
-            <label className="text-xs font-medium text-gray-300 px-1">Usuario / Área / Correo Institucional</label>
+            <label className="text-xs font-medium text-gray-300 px-1">Código de Socio / Usuario / Correo</label>
             <div className="relative flex items-center">
               <Mail size={16} className="absolute left-3 text-slate-400 dark:text-gray-400" />
               <input
                 id="login-email"
                 type="text"
-                placeholder="Ej. tecnologia, gerencia, caja..."
+                placeholder="Ej. 2625 (Socio) o usuario institucional"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full glass-input pl-10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-gray-400 font-medium"
@@ -125,6 +135,17 @@ export const Login: React.FC = () => {
             )}
           </button>
         </form>
+
+        <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/10 text-center">
+          <button
+            type="button"
+            onClick={() => navigate('/news')}
+            className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 inline-flex items-center gap-1.5 transition-colors"
+          >
+            <span>Ver Biblioteca Digital y Noticias Oficiales</span>
+            <ArrowRight size={13} />
+          </button>
+        </div>
 
       </div>
     </div>

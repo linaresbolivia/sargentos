@@ -38,7 +38,9 @@ import {
   Info,
   PhoneCall,
   Leaf,
-  MessageSquare
+  MessageSquare,
+  Newspaper,
+  BookOpen
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { logout } from '@store/authSlice';
@@ -238,9 +240,6 @@ export const MemberDashboard: React.FC = () => {
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-50 dark:bg-black/70 text-emerald-800 dark:text-emerald-300 border border-emerald-600/30 dark:border-emerald-500/30">
                     {socio.alphaCode}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-gray-100 dark:bg-white/[0.08] text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/[0.08]">
-                    {socio.seniorityYears} años antigüedad
-                  </span>
                 </div>
 
                 <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-950 dark:text-white serif-brand tracking-tight">
@@ -248,7 +247,7 @@ export const MemberDashboard: React.FC = () => {
                 </h2>
 
                 <p className="text-xs text-gray-600 dark:text-gray-400">
-                  CI: <span className="text-gray-900 dark:text-white font-mono font-semibold">{socio.documentId}</span> • Nro. Título: <span className="text-amber-700 dark:text-brand-gold font-bold font-mono tracking-wider">{socio.membershipNumber}</span>
+                  Nro. Acción / Membresía: <span className="text-amber-700 dark:text-brand-gold font-bold font-mono tracking-wider">{socio.membershipNumber}</span>
                 </p>
               </div>
             </div>
@@ -297,9 +296,9 @@ export const MemberDashboard: React.FC = () => {
         </section>
 
         {/* ========================================================================= */}
-        {/* CORE SERVICES (Harmonious, Ultra-Premium Minimalist 4-Card Grid)          */}
+        {/* CORE SERVICES (Harmonious, Ultra-Premium 5-Card Grid)                   */}
         {/* ========================================================================= */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
           
           {/* Card 1: Reserva de Canchas Deportivas */}
           <div 
@@ -431,7 +430,16 @@ export const MemberDashboard: React.FC = () => {
 
           {/* Card 4: Formulario PQRS */}
           <div 
-            onClick={() => navigate('/pqrs')}
+            onClick={() => navigate('/pqrs', {
+              state: {
+                fullName: socio.fullName,
+                memberCode: socio.membershipNumber || user?.username,
+                phone: statement?.socio?.phone || user?.phone || '',
+                email: statement?.socio?.email && !statement.socio.email.includes('nologin.com.bo')
+                  ? statement.socio.email
+                  : (user?.email && !user.email.includes('nologin.com.bo') ? user.email : '')
+              }
+            })}
             className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#f7f8fe] to-[#edf0fc] dark:from-[#121626]/95 dark:via-[#0b0e1a]/90 dark:to-[#05070f]/95 border border-indigo-600/30 hover:border-indigo-500 dark:border-indigo-500/30 dark:hover:border-amber-400/80 shadow-[0_12px_30px_rgba(99,102,241,0.08)] hover:shadow-[0_20px_45px_rgba(99,102,241,0.16)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(99,102,241,0.2),0_0_25px_rgba(245,158,11,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
           >
             {/* Ambient Radial Flare */}
@@ -464,6 +472,48 @@ export const MemberDashboard: React.FC = () => {
               <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-indigo-50 via-blue-50/50 to-indigo-50 hover:from-indigo-100 hover:to-blue-100 dark:from-indigo-500/15 dark:via-blue-500/10 dark:to-amber-500/10 dark:group-hover:from-indigo-500/25 dark:group-hover:to-amber-500/20 border border-indigo-300/80 dark:border-indigo-400/30 group-hover:border-indigo-500 dark:group-hover:border-amber-400/60 text-indigo-900 dark:text-indigo-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
                 <span>Llenar Formulario</span>
                 <div className="w-6 h-6 rounded-lg bg-indigo-700 group-hover:bg-indigo-800 dark:bg-indigo-400/20 dark:group-hover:bg-amber-400 text-white dark:text-indigo-300 dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 5: Biblioteca Digital Oficial */}
+          <div 
+            onClick={() => navigate('/member/news')}
+            className="relative overflow-hidden p-5 rounded-3xl bg-gradient-to-b from-white via-[#fcfaf5] to-[#f7f2e4] dark:from-[#1a170d]/95 dark:via-[#121008]/90 dark:to-[#070603]/95 border border-amber-500/30 hover:border-amber-400 dark:border-brand-gold/30 dark:hover:border-brand-gold shadow-[0_12px_30px_rgba(212,175,55,0.08)] hover:shadow-[0_20px_45px_rgba(212,175,55,0.18)] dark:shadow-[0_15px_35px_rgba(0,0,0,0.7)] dark:hover:shadow-[0_20px_45px_rgba(212,175,55,0.22),0_0_25px_rgba(245,158,11,0.12)] cursor-pointer transition-all duration-300 hover:-translate-y-1.5 group flex flex-col justify-between space-y-4"
+          >
+            {/* Ambient Radial Flare */}
+            <div className="absolute -top-12 -right-12 w-32 h-32 bg-brand-gold/10 rounded-full blur-2xl group-hover:bg-brand-gold/20 transition-all pointer-events-none"></div>
+
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex justify-between items-center">
+                <div className="w-14 h-14 p-0.5 rounded-2xl bg-gradient-to-br from-brand-gold/40 via-amber-400/30 to-yellow-500/30 dark:from-brand-gold/50 dark:via-amber-500/20 dark:to-yellow-500/30 shadow-lg shadow-brand-gold/10 group-hover:scale-105 group-hover:rotate-1 transition-all duration-300">
+                  <div className="w-full h-full rounded-[14px] bg-[#1a160a] flex items-center justify-center text-brand-gold group-hover:text-amber-200">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                </div>
+                <span className="text-[9px] font-bold uppercase tracking-[0.16em] px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-300 dark:bg-brand-gold/15 dark:text-brand-gold dark:border-brand-gold/40 shadow-sm flex items-center gap-1">
+                  <Sparkles className="w-2.5 h-2.5" />
+                  <span>Oficial</span>
+                </span>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-gray-900 group-hover:text-amber-800 dark:text-white dark:group-hover:text-brand-gold transition-colors serif-brand tracking-tight">
+                  Biblioteca Digital
+                </h3>
+                <p className="text-xs text-gray-600 dark:text-gray-300/85 mt-1.5 leading-relaxed">
+                  Estatutos, reglamentos internos, convocatorias, normativas y formularios oficiales para descarga.
+                </p>
+              </div>
+            </div>
+
+            {/* Tactile Premium Button Bar */}
+            <div className="relative z-10 pt-2 border-t border-amber-900/10 dark:border-white/[0.08]">
+              <div className="w-full py-2.5 px-3.5 rounded-xl bg-gradient-to-r from-amber-50 via-yellow-50/50 to-amber-50 hover:from-amber-100 hover:to-yellow-100 dark:from-brand-gold/15 dark:via-amber-500/10 dark:to-yellow-500/10 dark:group-hover:from-brand-gold/25 dark:group-hover:to-amber-500/20 border border-amber-300/80 dark:border-brand-gold/30 group-hover:border-brand-gold text-amber-900 dark:text-amber-200 dark:group-hover:text-white flex items-center justify-between text-xs font-semibold tracking-wide shadow-sm dark:shadow-md transition-all duration-300">
+                <span>Ver Documentos Oficiales</span>
+                <div className="w-6 h-6 rounded-lg bg-amber-700 group-hover:bg-amber-800 dark:bg-brand-gold/20 dark:group-hover:bg-brand-gold text-white dark:text-brand-gold dark:group-hover:text-black flex items-center justify-center transition-all duration-300 group-hover:translate-x-1 shadow-sm">
                   <ArrowRight className="w-3.5 h-3.5" />
                 </div>
               </div>

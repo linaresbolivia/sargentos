@@ -6,6 +6,7 @@ import { Role } from './Role';
 
 interface UserProps {
   email: Email;
+  username?: string | null;
   password: UserPassword;
   firstName: string;
   lastName: string;
@@ -22,6 +23,10 @@ export class User extends Entity<UserProps> {
 
   public get email(): Email {
     return this.props.email;
+  }
+
+  public get username(): string | undefined {
+    return this.props.username || undefined;
   }
 
   public get firstName(): string {

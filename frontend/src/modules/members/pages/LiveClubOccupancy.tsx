@@ -16,7 +16,6 @@ import {
   AlertCircle, 
   Sparkles, 
   CalendarCheck, 
-  Car, 
   Thermometer, 
   ChevronRight,
   TrendingDown,
@@ -24,9 +23,6 @@ import {
   Flame,
   Droplets
 } from 'lucide-react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell 
-} from 'recharts';
 import CrestLogo from '@shared/components/CrestLogo';
 import { BackButton } from '@shared/components/BackButton';
 import { ThemeToggle } from '@shared/components/ThemeToggle';
@@ -527,63 +523,6 @@ export const LiveClubOccupancy: React.FC = () => {
             </span>
           </div>
 
-        </div>
-
-        {/* CASETA PRINCIPAL STATUS */}
-        <div className="p-4.5 rounded-2xl bg-white dark:bg-[#0a120e] border border-gray-200 dark:border-white/10 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center font-bold">
-              <Car className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="font-extrabold text-xs text-gray-900 dark:text-white">
-                Portería & Caseta Principal
-              </h4>
-              <p className="text-[11px] text-gray-500 dark:text-gray-400">Acceso vehicular y peatonal fluido &bull; Total ingresos hoy: {data?.gatehouse.todayTotal || 0} personas</p>
-            </div>
-          </div>
-          <span className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-            🟢 Tráfico Fluido
-          </span>
-        </div>
-
-        {/* HOURLY RECOMMENDED VISITING CURVE */}
-        <div className="bg-white dark:bg-[#0a120e] p-6 rounded-3xl border border-gray-200 dark:border-brand-gold/20 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-            <div>
-              <h3 className="font-extrabold text-sm sm:text-base text-gray-900 dark:text-white flex items-center gap-2">
-                <Clock className="w-4 h-4 text-brand-gold" />
-                Curva de Afluencia de Hoy (Horarios Sugeridos)
-              </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                La barra resaltada en dorado indica la hora actual. Las horas con barras más bajas son ideales para venir con tranquilidad.
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 text-[11px] font-bold">
-              <span className="flex items-center gap-1 text-cyan-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400"></span> Piscina
-              </span>
-              <span className="flex items-center gap-1 text-emerald-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> Gimnasio
-              </span>
-            </div>
-          </div>
-
-          <div className="h-56 sm:h-64 w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.hourlyCurve || []} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="hour" stroke="#888" fontSize={10} />
-                <YAxis stroke="#888" fontSize={10} />
-                <Tooltip 
-                  contentStyle={{ backgroundColor: '#0c1410', border: '1px solid rgba(212,175,55,0.3)', borderRadius: '12px', fontSize: '11px' }}
-                />
-                <Bar dataKey="piscina" name="Piscina" fill="#06b6d4" radius={[3, 3, 0, 0]} stackId="a" />
-                <Bar dataKey="gimnasio" name="Gimnasio" fill="#10b981" radius={[3, 3, 0, 0]} stackId="a" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
         </div>
 
       </main>
